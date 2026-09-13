@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Car Racer v1.0</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#87b5d9;font-family:Arial,Helvetica,sans-serif}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 5px #000;z-index:3}#title{position:absolute;top:16px;left:18px;font-weight:900;font-size:24px;letter-spacing:.06em}#version{font-size:11px;opacity:.7;margin-left:6px}#speedBox{position:absolute;top:16px;right:18px;text-align:right}.speed{font-size:48px;font-weight:900;line-height:.85}.unit{font-size:11px;letter-spacing:.25em;opacity:.8}.boostText{font-size:11px;font-weight:800;letter-spacing:.18em;margin-top:12px}.bar{width:220px;max-width:35vw;height:12px;border:2px solid #fff;background:#0008;margin-top:4px}.fill{height:100%;width:35%;background:linear-gradient(90deg,#ff7800,#ffe600)}#help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}.key{display:inline-block;border:1px solid #fff9;border-radius:4px;padding:0 5px;min-width:22px;text-align:center;background:#fff1}#status{position:absolute;right:18px;bottom:18px;font-size:11px;opacity:.8;text-align:right;max-width:44vw}#msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}#msg.show{opacity:1}
+#start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:radial-gradient(circle,#263b4bbb,#071018f5);color:#fff}#card{width:min(650px,90vw);text-align:center;background:#0009;border:1px solid #ffffff33;border-radius:16px;padding:30px;box-shadow:0 30px 90px #0009}#card h1{font-size:clamp(38px,8vw,68px);margin:0 0 8px}#card p{line-height:1.5;opacity:.85}button{border:0;border-radius:100px;background:#ff7a00;color:#111;font-weight:900;font-size:17px;padding:13px 28px;cursor:pointer}button:hover{filter:brightness(1.1)}#fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:white;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+</head>
+<body>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>Physics stunt-driving prototype. Build speed, hit the ramps, land cleanly and earn boost.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse<br><b>A D / ← →</b> steer &nbsp; <b>SPACE</b> boost &nbsp; <b>R</b> reset</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v1.0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET</div><div id="status">Loading car…</div></div>
+<div id="fatal"></div>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import * as CANNON from 'cannon-es';
+
+const $=id=>document.getElementById(id); const status=$('status'), msg=$('msg'), speedEl=$('speed'), boostEl=$('boost');
+window.addEventListener('error',e=>{ $('fatal').style.display='block'; $('fatal').textContent='ERROR\n'+e.message+'\n'+(e.error?.stack||''); });
+
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x8fc4e8); scene.fog=new THREE.Fog(0x8fc4e8,90,330);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,700);
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; document.body.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0x44552f,2.0)); const sun=new THREE.DirectionalLight(0xffffff,2.2); sun.position.set(35,65,-25); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100; scene.add(sun);
+
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)}); world.broadphase=new CANNON.SAPBroadphase(world); world.allowSleep=true; world.defaultContactMaterial.friction=.35;
+const groundMat=new CANNON.Material('ground'), wheelMat=new CANNON.Material('wheel'); world.addContactMaterial(new CANNON.ContactMaterial(wheelMat,groundMat,{friction:.65,restitution:0,contactEquationStiffness:1e7}));
+
+const grass=new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1})); grass.rotation.x=-Math.PI/2; grass.position.y=-1.05; grass.receiveShadow=true; scene.add(grass);
+const grassBody=new CANNON.Body({mass:0,material:groundMat,shape:new CANNON.Plane()}); grassBody.quaternion.setFromEuler(-Math.PI/2,0,0); grassBody.position.y=-1; world.addBody(grassBody);
+
+const trackMat=new THREE.MeshStandardMaterial({color:0x4c5054,roughness:.82,metalness:.03}); const edgeMat=new THREE.MeshStandardMaterial({color:0xf4e8cb,roughness:.8});
+function staticBox(x,y,z,w,h,d,ry=0,color=null){const geo=new THREE.BoxGeometry(w,h,d);const mesh=new THREE.Mesh(geo,color?new THREE.MeshStandardMaterial({color,roughness:.8}):trackMat);mesh.position.set(x,y,z);mesh.rotation.y=ry;mesh.receiveShadow=mesh.castShadow=true;scene.add(mesh);const body=new CANNON.Body({mass:0,material:groundMat,shape:new CANNON.Box(new CANNON.Vec3(w/2,h/2,d/2))});body.position.set(x,y,z);body.quaternion.setFromEuler(0,ry,0);world.addBody(body);return {mesh,body}}
+function ramp(x,y,z,w,d,angle,heading=0){const h=.7;const {mesh,body}=staticBox(x,y,z,w,h,d,heading);const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(angle,heading,0,'YXZ'));mesh.quaternion.copy(q);body.quaternion.set(q.x,q.y,q.z,q.w);return {mesh,body}}
+function stripe(x,y,z,w,d,ry=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,.06,d),new THREE.MeshStandardMaterial({color:0xe8dd3c}));m.position.set(x,y,z);m.rotation.y=ry;scene.add(m)}
+
+// Main straight, jump one, bend, elevated run and jump two.
+staticBox(0,0,28,16,1.2,76); stripe(0,.63,28,.35,73);
+ramp(0,2.0,72,16,20,-0.20,0); // rises toward +Z
+staticBox(0,3.0,101,16,1.2,28); stripe(0,3.63,101,.35,27);
+// curved right-hand section built from short angled slabs
+const bend=[
+ [2,3,119,0.10],[7,3,132,0.28],[15,3,143,0.48],[26,3,151,0.70],[39,3,156,0.91],[53,3,157,1.08]
+];
+for(const [x,y,z,a] of bend){staticBox(x,y,z,16,1.2,20,a);}
+staticBox(70,3,153,16,1.2,38,Math.PI/2); stripe(70,3.63,153,36,.35,Math.PI/2);
+staticBox(92,3,153,16,1.2,26,Math.PI/2);
+ramp(111,4.7,153,16,19,-0.19,Math.PI/2);
+staticBox(139,6,153,32,1.2,16,Math.PI/2); stripe(139,6.63,153,30,.35,Math.PI/2);
+// final descending section
+ramp(160,4.6,153,16,26,0.13,Math.PI/2); staticBox(184,2,153,34,1.2,16,Math.PI/2);
+
+// scenery posts make height/speed easier to read
+for(let z=-5;z<190;z+=18){for(const x of [-18,18]){const p=new THREE.Mesh(new THREE.BoxGeometry(.7,5,.7),edgeMat);p.position.set(x,1.5,z);p.castShadow=true;scene.add(p)}}
+for(let x=65;x<205;x+=18){for(const z of [135,171]){const p=new THREE.Mesh(new THREE.BoxGeometry(.7,5,.7),edgeMat);p.position.set(x,1.5,z);p.castShadow=true;scene.add(p)}}
+
+// Vehicle chassis
+const chassisShape=new CANNON.Box(new CANNON.Vec3(1.05,.38,2.15)); const chassisBody=new CANNON.Body({mass:1350,material:wheelMat}); chassisBody.addShape(chassisShape,new CANNON.Vec3(0,.05,0)); chassisBody.position.set(0,2,-3); chassisBody.angularDamping=.42; world.addBody(chassisBody);
+const vehicle=new CANNON.RaycastVehicle({chassisBody,indexRightAxis:0,indexUpAxis:1,indexForwardAxis:2});
+const wheelOpts={radius:.42,directionLocal:new CANNON.Vec3(0,-1,0),suspensionStiffness:38,suspensionRestLength:.36,frictionSlip:4.2,dampingRelaxation:2.4,dampingCompression:4.4,maxSuspensionForce:100000,rollInfluence:.075,axleLocal:new CANNON.Vec3(-1,0,0),chassisConnectionPointLocal:new CANNON.Vec3(),maxSuspensionTravel:.35,customSlidingRotationalSpeed:-30,useCustomSlidingRotationalSpeed:true};
+[[.96,0,1.42],[-.96,0,1.42],[.96,0,-1.42],[-.96,0,-1.42]].forEach((p,i)=>{wheelOpts.chassisConnectionPointLocal.set(...p);vehicle.addWheel({...wheelOpts,isFrontWheel:i<2})}); vehicle.addToWorld(world);
+const wheelMeshes=[];const wheelGeo=new THREE.CylinderGeometry(.42,.42,.32,20);wheelGeo.rotateZ(Math.PI/2);const wheelVisualMat=new THREE.MeshStandardMaterial({color:0x161616,roughness:.85});for(let i=0;i<4;i++){const m=new THREE.Mesh(wheelGeo,wheelVisualMat);m.castShadow=true;scene.add(m);wheelMeshes.push(m)}
+
+const carRoot=new THREE.Group();scene.add(carRoot); let carModel=null;
+function placeholder(){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(2.05,.55,4.25),new THREE.MeshStandardMaterial({color:0xe86c08,roughness:.55,metalness:.15}));body.position.y=.12;body.castShadow=true;g.add(body);const roof=new THREE.Mesh(new THREE.BoxGeometry(1.65,.52,1.8),new THREE.MeshStandardMaterial({color:0xd95f05,roughness:.55}));roof.position.set(0,.62,-.25);roof.castShadow=true;g.add(roof);const glass=new THREE.Mesh(new THREE.BoxGeometry(1.69,.35,1.35),new THREE.MeshStandardMaterial({color:0x20313b,roughness:.2,metalness:.2}));glass.position.set(0,.69,-.1);g.add(glass);const bumper=new THREE.Mesh(new THREE.BoxGeometry(2.12,.17,.16),new THREE.MeshStandardMaterial({color:0x777777,metalness:.7,roughness:.3}));bumper.position.set(0,-.05,2.16);g.add(bumper);return g}
+carModel=placeholder();carRoot.add(carModel);
+async function loadCar(){const loader=new GLTFLoader();const paths=['cars/cars.glb','cars/car.glb','cars/general lee car.glb'];for(const path of paths){try{const gltf=await loader.loadAsync(path);carRoot.remove(carModel);carModel=gltf.scene;carModel.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});const box=new THREE.Box3().setFromObject(carModel),size=new THREE.Vector3();box.getSize(size);const scale=4.3/Math.max(size.z,size.x*1.7);carModel.scale.setScalar(scale);box.setFromObject(carModel);const c=new THREE.Vector3();box.getCenter(c);carModel.position.sub(c);carModel.position.y+=.15;carRoot.add(carModel);status.textContent='Model: '+path;return}catch(e){}}
+status.textContent='cars/cars.glb not found — using orange test car';}
+loadCar();
+
+const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if(e.code==='KeyR')resetCar()});addEventListener('keyup',e=>{keys[e.code]=false});
+let boost=35, airborne=false, airStart=0, lastGrounded=performance.now(), started=false;
+function resetCar(){chassisBody.position.set(0,2,-3);chassisBody.quaternion.set(0,0,0,1);chassisBody.velocity.setZero();chassisBody.angularVelocity.setZero();vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0});boost=Math.max(boost,20)}
+function flash(text){msg.textContent=text;msg.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>msg.classList.remove('show'),900)}
+
+function controls(dt){const forward=keys.KeyW||keys.ArrowUp, back=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight;const v=chassisBody.velocity.length();const steerMax=.48*Math.max(.35,1-v/55);const steer=(left?1:0)+(right?-1:0);vehicle.setSteeringValue(steer*steerMax,0);vehicle.setSteeringValue(steer*steerMax,1);
+let engine=0;if(forward)engine=-3900;if(back)engine=2200;if((keys.Space)&&boost>0&&forward){engine=-7200;boost=Math.max(0,boost-23*dt)}vehicle.applyEngineForce(engine,2);vehicle.applyEngineForce(engine,3);const brake=back&&v>3?32:0;for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
+// mild aerodynamic stability, but physics still decides bad landings
+if(v>10){const up=new CANNON.Vec3(0,1,0);const carUp=chassisBody.quaternion.vmult(up);chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.22,0),chassisBody.position);if(!airborne){chassisBody.angularVelocity.x*=.985;chassisBody.angularVelocity.z*=.985}}
+}
+
+const camPos=new THREE.Vector3(),look=new THREE.Vector3(),desired=new THREE.Vector3(),forward3=new THREE.Vector3();
+function updateVisuals(){carRoot.position.copy(chassisBody.position);carRoot.quaternion.copy(chassisBody.quaternion);for(let i=0;i<4;i++){vehicle.updateWheelTransform(i);const t=vehicle.wheelInfos[i].worldTransform;wheelMeshes[i].position.copy(t.position);wheelMeshes[i].quaternion.copy(t.quaternion)}
+const q=carRoot.quaternion;forward3.set(0,0,1).applyQuaternion(q);desired.copy(carRoot.position).addScaledVector(forward3,-9);desired.y+=5.3;camera.position.lerp(desired,.08);look.copy(carRoot.position).addScaledVector(forward3,5);look.y+=.8;camera.lookAt(look);
+const mph=chassisBody.velocity.length()*2.23694;speedEl.textContent=Math.round(mph);boostEl.style.width=boost+'%';}
+
+function landingLogic(){const grounded=vehicle.wheelInfos.some(w=>w.isInContact);const now=performance.now();if(!grounded&&now-lastGrounded>130&&!airborne){airborne=true;airStart=now}if(grounded){if(airborne){const air=(now-airStart)/1000;if(air>.45){const up=new CANNON.Vec3(0,1,0);const carUp=chassisBody.quaternion.vmult(up);if(carUp.y>.62&&Math.abs(chassisBody.velocity.y)<10){const earned=Math.min(28,Math.round(8+air*7));boost=Math.min(100,boost+earned);flash('NICE LANDING  +'+earned+' BOOST')}else flash('ROUGH LANDING')}}airborne=false;lastGrounded=now}}
+
+let last=performance.now();function animate(now){requestAnimationFrame(animate);const dt=Math.min(.035,(now-last)/1000);last=now;if(started){controls(dt);world.step(1/60,dt,3);landingLogic();if(chassisBody.position.y<-12)resetCar();updateVisuals()}renderer.render(scene,camera)}requestAnimationFrame(animate);
+$('startBtn').addEventListener('click',()=>{$('start').style.display='none';started=true;last=performance.now();resetCar()});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+camera.position.set(0,6,-12);camera.lookAt(0,0,5);updateVisuals();
+</script>
+</body>
+</html>
