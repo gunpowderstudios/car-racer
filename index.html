@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v1.4</title>
+<title>Car Racer v1.5</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}
 #hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 5px #000;z-index:3}#title{position:absolute;top:16px;left:18px;font-weight:900;font-size:24px;letter-spacing:.06em}#version{font-size:11px;opacity:.7;margin-left:6px}#speedBox{position:absolute;top:16px;right:18px;text-align:right}.speed{font-size:48px;font-weight:900;line-height:.85}.unit{font-size:11px;letter-spacing:.25em;opacity:.8}.boostText{font-size:11px;font-weight:800;letter-spacing:.18em;margin-top:12px}.bar{width:220px;max-width:35vw;height:12px;border:2px solid #fff;background:#0008;margin-top:4px}.fill{height:100%;width:35%;background:linear-gradient(90deg,#ff7800,#ffe600)}#help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}.key{display:inline-block;border:1px solid #fff9;border-radius:4px;padding:0 5px;min-width:22px;text-align:center;background:#fff1}#status{position:absolute;right:18px;bottom:18px;font-size:11px;opacity:.88;text-align:right;max-width:48vw}#msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}#msg.show{opacity:1}
@@ -12,8 +12,8 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v1.4 adds solid raised road decks and more neutral jump balance.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v1.4</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE</div><div id="status">Loading cars/car.glb…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v1.5 adds softer steering response and a little old-school body roll.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v1.5</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE</div><div id="status">Loading cars/car.glb…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -42,18 +42,11 @@ function ribbon(points,width=16,depth=1.35){
   const L=[p[0]+lx*width/2,p[1],p[2]+lz*width/2],R=[p[0]-lx*width/2,p[1],p[2]-lz*width/2];left.push(L);right.push(R);top.push(...L,...R);
  }
  for(let i=0;i<n-1;i++){const li=i*2,ri=li+1,lj=li+2,rj=li+3;idx.push(li,rj,ri,li,lj,rj)}
- const topGeo=new THREE.BufferGeometry();topGeo.setAttribute('position',new THREE.Float32BufferAttribute(top,3));topGeo.setIndex(idx);const topMesh=new THREE.Mesh(topGeo,roadTopMat);scene.add(topMesh);
+ const topGeo=new THREE.BufferGeometry();topGeo.setAttribute('position',new THREE.Float32BufferAttribute(top,3));topGeo.setIndex(idx);scene.add(new THREE.Mesh(topGeo,roadTopMat));
  const shape=new CANNON.Trimesh(top,idx);world.addBody(new CANNON.Body({mass:0,material:roadPhys,shape}));
- const sideVerts=[],sideIdx=[];
- function quad(a,b,c,d){const k=sideVerts.length/3;sideVerts.push(...a,...b,...c,...d);sideIdx.push(k,k+1,k+2,k,k+2,k+3)}
- for(let i=0;i<n-1;i++){
-  const l0=left[i],l1=left[i+1],r0=right[i],r1=right[i+1];
-  quad(l0,l1,[l1[0],l1[1]-depth,l1[2]],[l0[0],l0[1]-depth,l0[2]]);
-  quad(r1,r0,[r0[0],r0[1]-depth,r0[2]],[r1[0],r1[1]-depth,r1[2]]);
- }
- const l0=left[0],r0=right[0],ln=left[n-1],rn=right[n-1];
- quad(r0,l0,[l0[0],l0[1]-depth,l0[2]],[r0[0],r0[1]-depth,r0[2]]);
- quad(ln,rn,[rn[0],rn[1]-depth,rn[2]],[ln[0],ln[1]-depth,ln[2]]);
+ const sideVerts=[],sideIdx=[];function quad(a,b,c,d){const k=sideVerts.length/3;sideVerts.push(...a,...b,...c,...d);sideIdx.push(k,k+1,k+2,k,k+2,k+3)}
+ for(let i=0;i<n-1;i++){const l0=left[i],l1=left[i+1],r0=right[i],r1=right[i+1];quad(l0,l1,[l1[0],l1[1]-depth,l1[2]],[l0[0],l0[1]-depth,l0[2]]);quad(r1,r0,[r0[0],r0[1]-depth,r0[2]],[r1[0],r1[1]-depth,r1[2]])}
+ const l0=left[0],r0=right[0],ln=left[n-1],rn=right[n-1];quad(r0,l0,[l0[0],l0[1]-depth,l0[2]],[r0[0],r0[1]-depth,r0[2]]);quad(ln,rn,[rn[0],rn[1]-depth,rn[2]],[ln[0],ln[1]-depth,ln[2]]);
  const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(sideVerts,3));sideGeo.setIndex(sideIdx);scene.add(new THREE.Mesh(sideGeo,roadSideMat));
  const linePts=points.map(p=>new THREE.Vector3(p[0],p[1]+.05,p[2]));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts),centreMat));
 }
@@ -64,22 +57,20 @@ ribbon([[135,4.7,105],[149,4.7,96],[165,4.2,90],[184,3.2,88],[205,2.0,88]],16,1.
 
 const postMat=new THREE.MeshStandardMaterial({color:0xf4e8cb,roughness:.85});for(let z=-5;z<120;z+=18){for(const x of[-18,18]){const p=new THREE.Mesh(new THREE.BoxGeometry(.7,5,.7),postMat);p.position.set(x,1.5,z);p.castShadow=true;scene.add(p)}}
 
-// Body origin is the centre of mass. Moving the chassis shape slightly forward leaves the COM a little rearward and helps neutral jump balance.
-const chassisBody=new CANNON.Body({mass:1350,material:carPhys});chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.05,.35,2.1)),new CANNON.Vec3(0,.03,.14));chassisBody.position.set(0,2.0,-5);chassisBody.angularDamping=.5;world.addBody(chassisBody);
+const chassisBody=new CANNON.Body({mass:1350,material:carPhys});chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.05,.35,2.1)),new CANNON.Vec3(0,.03,.14));chassisBody.position.set(0,2,-5);chassisBody.angularDamping=.5;world.addBody(chassisBody);
 const vehicle=new CANNON.RaycastVehicle({chassisBody,indexRightAxis:0,indexUpAxis:1,indexForwardAxis:2});
 const wheelOpts={radius:.42,directionLocal:new CANNON.Vec3(0,-1,0),suspensionStiffness:40,suspensionRestLength:.38,frictionSlip:4.5,dampingRelaxation:2.3,dampingCompression:4.5,maxSuspensionForce:100000,rollInfluence:.065,axleLocal:new CANNON.Vec3(-1,0,0),chassisConnectionPointLocal:new CANNON.Vec3(),maxSuspensionTravel:.36,customSlidingRotationalSpeed:-30,useCustomSlidingRotationalSpeed:true};
 [[.96,0,1.42],[-.96,0,1.42],[.96,0,-1.42],[-.96,0,-1.42]].forEach((p,i)=>{wheelOpts.chassisConnectionPointLocal.set(...p);vehicle.addWheel({...wheelOpts,isFrontWheel:i<2})});vehicle.addToWorld(world);
 const wheelMeshes=[];const wheelGeo=new THREE.CylinderGeometry(.42,.42,.32,20);wheelGeo.rotateZ(Math.PI/2);const tyreMat=new THREE.MeshStandardMaterial({color:0x161616,roughness:.9});for(let i=0;i<4;i++){const m=new THREE.Mesh(wheelGeo,tyreMat);m.castShadow=true;scene.add(m);wheelMeshes.push(m)}
 
-const carRoot=new THREE.Group();scene.add(carRoot);let carVisual=null;
+const carRoot=new THREE.Group();scene.add(carRoot);const leanRoot=new THREE.Group();carRoot.add(leanRoot);let carVisual=null;
 function placeholder(){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color:0xe86c08,roughness:.55});const b=new THREE.Mesh(new THREE.BoxGeometry(2.05,.55,4.25),m);b.castShadow=true;g.add(b);return g}
-carVisual=placeholder();carRoot.add(carVisual);
+carVisual=placeholder();leanRoot.add(carVisual);
 async function loadCar(){try{
- const gltf=await new GLTFLoader().loadAsync('cars/car.glb');carRoot.remove(carVisual);const holder=new THREE.Group();const model=gltf.scene;holder.add(model);carVisual=holder;
+ const gltf=await new GLTFLoader().loadAsync('cars/car.glb');leanRoot.remove(carVisual);const holder=new THREE.Group();const model=gltf.scene;holder.add(model);carVisual=holder;
  let materials=0,textured=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(!m)continue;materials++;if(m.map)textured++;m.needsUpdate=true}}});
  let box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3();box.getSize(size);const scale=4.35/Math.max(size.x,size.z);model.scale.setScalar(scale);box.setFromObject(model);const c=new THREE.Vector3();box.getCenter(c);model.position.x-=c.x;model.position.z-=c.z;model.position.y+=-0.72-box.min.y;
- // v1.3 was exactly 180 degrees wrong, so rotate it 180 degrees from that orientation.
- holder.rotation.y=Math.PI/2;carRoot.add(holder);wheelMeshes.forEach(w=>w.visible=false);
+ holder.rotation.y=Math.PI/2;leanRoot.add(holder);wheelMeshes.forEach(w=>w.visible=false);
  status.textContent=`cars/car.glb loaded • ${textured}/${materials} material${materials===1?'':'s'} with colour texture${textured===1?'':'s'}`+(textured===0?' — GLB appears to contain no colour bitmap textures':'');
 }catch(e){status.textContent='Could not load cars/car.glb — orange test body in use';console.warn(e)}}
 loadCar();
@@ -87,18 +78,21 @@ loadCar();
 const keys={};let orbitYaw=0,orbitPitch=.38,orbitDist=10.5,manualOrbit=false,dragging=false,lastX=0,lastY=0;
 addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if(e.code==='KeyR')resetCar();if(e.code==='KeyC'){manualOrbit=false;orbitYaw=0;orbitPitch=.38;orbitDist=10.5}});addEventListener('keyup',e=>keys[e.code]=false);
 renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;manualOrbit=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});renderer.domElement.addEventListener('pointermove',e=>{if(!dragging)return;orbitYaw-=(e.clientX-lastX)*.007;orbitPitch+=(e.clientY-lastY)*.005;orbitPitch=THREE.MathUtils.clamp(orbitPitch,.08,1.1);lastX=e.clientX;lastY=e.clientY});renderer.domElement.addEventListener('pointerup',()=>dragging=false);renderer.domElement.addEventListener('wheel',e=>{manualOrbit=true;orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);e.preventDefault()},{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false;
-function resetCar(){chassisBody.position.set(0,2,-5);chassisBody.quaternion.set(0,0,0,1);chassisBody.velocity.setZero();chassisBody.angularVelocity.setZero();vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0});boost=Math.max(boost,20)}
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0;
+function resetCar(){chassisBody.position.set(0,2,-5);chassisBody.quaternion.set(0,0,0,1);chassisBody.velocity.setZero();chassisBody.angularVelocity.setZero();vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0});boost=Math.max(boost,20);steerState=0;bodyRoll=0;leanRoot.rotation.z=0}
 function flash(t){msg.textContent=t;msg.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>msg.classList.remove('show'),900)}
 function controls(dt){
  const go=keys.KeyW||keys.ArrowUp,back=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight;
- const v=chassisBody.velocity.length(),steerMax=.47*Math.max(.34,1-v/58),steer=(left?1:0)+(right?-1:0);vehicle.setSteeringValue(steer*steerMax,0);vehicle.setSteeringValue(steer*steerMax,1);
+ const v=chassisBody.velocity.length(),steerMax=.47*Math.max(.34,1-v/58),rawSteer=(left?1:0)+(right?-1:0);
+ // Steering rack takes a moment to wind on/off instead of snapping instantly.
+ const steerResponse=1-Math.exp(-5.0*dt);steerState+=(rawSteer-steerState)*steerResponse;
+ vehicle.setSteeringValue(steerState*steerMax,0);vehicle.setSteeringValue(steerState*steerMax,1);
  let engine=go?-4100:0;if(back)engine=2200;if(keys.Space&&boost>0&&go){engine=-7600;boost=Math.max(0,boost-23*dt)}vehicle.applyEngineForce(engine,2);vehicle.applyEngineForce(engine,3);const brake=back&&v>3?34:0;for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
  if(keys.KeyQ){manualOrbit=true;orbitYaw+=1.45*dt}if(keys.KeyE){manualOrbit=true;orbitYaw-=1.45*dt}
- // Downforce only while both front and rear have road contact. This prevents the rear axle acting like a hinge at ramp take-off.
- const frontOn=vehicle.wheelInfos[0].isInContact||vehicle.wheelInfos[1].isInContact,rearOn=vehicle.wheelInfos[2].isInContact||vehicle.wheelInfos[3].isInContact;
+ const frontOn=vehicle.wheelInfos[0].isInContact||vehicle.wheelInfos[1].isInContact,rearOn=vehicle.wheelInfos[2].isInContact||vehicle.wheelInfos[3].isInContact,grounded=frontOn||rearOn;
+ // Soft 1970s suspension look: a few degrees of outward body roll, visual only.
+ const rollTarget=grounded?-steerState*Math.min(1,v/15)*0.065:0;bodyRoll+=(rollTarget-bodyRoll)*(1-Math.exp(-4.2*dt));leanRoot.rotation.z=bodyRoll;
  if(v>12&&frontOn&&rearOn)chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.18,0),chassisBody.position);
- // A balanced road car resists rapid pitch changes in the air but is still free to rotate naturally.
  if(!frontOn&&!rearOn)chassisBody.angularVelocity.x*=Math.pow(.965,dt*60);
 }
 const fwd=new THREE.Vector3(),right3=new THREE.Vector3(),desired=new THREE.Vector3(),look=new THREE.Vector3();
