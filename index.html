@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v1.6</title>
+<title>Car Racer v1.7</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}
 #hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 5px #000;z-index:3}#title{position:absolute;top:16px;left:18px;font-weight:900;font-size:24px;letter-spacing:.06em}#version{font-size:11px;opacity:.7;margin-left:6px}#speedBox{position:absolute;top:16px;right:18px;text-align:right}.speed{font-size:48px;font-weight:900;line-height:.85}.unit{font-size:11px;letter-spacing:.25em;opacity:.8}.boostText{font-size:11px;font-weight:800;letter-spacing:.18em;margin-top:12px}.bar{width:220px;max-width:35vw;height:12px;border:2px solid #fff;background:#0008;margin-top:4px}.fill{height:100%;width:35%;background:linear-gradient(90deg,#ff7800,#ffe600)}#help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}.key{display:inline-block;border:1px solid #fff9;border-radius:4px;padding:0 5px;min-width:22px;text-align:center;background:#fff1}#status{position:absolute;right:18px;bottom:18px;font-size:11px;opacity:.88;text-align:right;max-width:48vw}#msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}#msg.show{opacity:1}
@@ -12,8 +12,8 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v1.6 adds dramatic old-school body roll and physically solid raised road slabs.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v1.6</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE</div><div id="status">Loading cars/car.glb…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v1.7 adds knockable physics barrels to smash, roll and throw off the track.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v1.7</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE</div><div id="status">Loading cars/car.glb…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -28,7 +28,10 @@ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(
 scene.add(new THREE.HemisphereLight(0xffffff,0x4f6038,2.35));const sun=new THREE.DirectionalLight(0xffffff,2.5);sun.position.set(45,70,-30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-150;sun.shadow.camera.right=150;sun.shadow.camera.top=150;sun.shadow.camera.bottom=-150;scene.add(sun);
 
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});world.broadphase=new CANNON.SAPBroadphase(world);world.allowSleep=true;
-const roadPhys=new CANNON.Material('road'),carPhys=new CANNON.Material('car');world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.6,restitution:0,contactEquationStiffness:1e7}));
+const roadPhys=new CANNON.Material('road'),carPhys=new CANNON.Material('car'),barrelPhys=new CANNON.Material('barrel');
+world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.6,restitution:0,contactEquationStiffness:1e7}));
+world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.55,restitution:.08}));
+world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.25,restitution:.18}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(900,900),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));grass.rotation.x=-Math.PI/2;grass.position.y=-1.02;grass.receiveShadow=true;scene.add(grass);
 const grassBody=new CANNON.Body({mass:0,material:roadPhys,shape:new CANNON.Plane()});grassBody.quaternion.setFromEuler(-Math.PI/2,0,0);grassBody.position.y=-1;world.addBody(grassBody);
 
@@ -57,19 +60,12 @@ function ribbon(points,width=16,depth=1.35){
  const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(sideVerts,3));sideGeo.setIndex(sideIdx);scene.add(new THREE.Mesh(sideGeo,roadSideMat));
 
  const bottom=[],bottomIdx=[];
- for(let i=0;i<n;i++){
-  const L=left[i],R=right[i];bottom.push(L[0],L[1]-depth,L[2],R[0],R[1]-depth,R[2]);
- }
+ for(let i=0;i<n;i++){const L=left[i],R=right[i];bottom.push(L[0],L[1]-depth,L[2],R[0],R[1]-depth,R[2])}
  for(let i=0;i<n-1;i++){const li=i*2,ri=li+1,lj=li+2,rj=li+3;bottomIdx.push(li,ri,rj,li,rj,lj)}
  const bottomGeo=new THREE.BufferGeometry();bottomGeo.setAttribute('position',new THREE.Float32BufferAttribute(bottom,3));bottomGeo.setIndex(bottomIdx);scene.add(new THREE.Mesh(bottomGeo,roadSideMat));
 
- // One static body containing top, sides/end faces and underside: the visible road is now physically a solid slab.
  const roadBody=new CANNON.Body({mass:0,material:roadPhys});
- roadBody.addShape(new CANNON.Trimesh(top,idx));
- roadBody.addShape(new CANNON.Trimesh(sideVerts,sideIdx));
- roadBody.addShape(new CANNON.Trimesh(bottom,bottomIdx));
- world.addBody(roadBody);
-
+ roadBody.addShape(new CANNON.Trimesh(top,idx));roadBody.addShape(new CANNON.Trimesh(sideVerts,sideIdx));roadBody.addShape(new CANNON.Trimesh(bottom,bottomIdx));world.addBody(roadBody);
  const linePts=points.map(p=>new THREE.Vector3(p[0],p[1]+.05,p[2]));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts),centreMat));
 }
 
@@ -78,6 +74,27 @@ ribbon([[0,3.55,93],[0,3.55,116],[2,3.55,128],[7,3.55,139],[15,3.55,148],[26,3.5
 ribbon([[135,4.7,105],[149,4.7,96],[165,4.2,90],[184,3.2,88],[205,2.0,88]],16,1.55);
 
 const postMat=new THREE.MeshStandardMaterial({color:0xf4e8cb,roughness:.85});for(let z=-5;z<120;z+=18){for(const x of[-18,18]){const p=new THREE.Mesh(new THREE.BoxGeometry(.7,5,.7),postMat);p.position.set(x,1.5,z);p.castShadow=true;scene.add(p)}}
+
+// Dynamic metal barrels. The Cannon cylinder's native axis is Z, so rotate its physics shape upright onto Y.
+const barrels=[];
+const barrelRed=new THREE.MeshStandardMaterial({color:0xb62b20,roughness:.68,metalness:.25});
+const barrelBand=new THREE.MeshStandardMaterial({color:0xd7d7d2,roughness:.42,metalness:.65});
+const barrelGeo=new THREE.CylinderGeometry(.46,.46,1.1,18);
+const bandGeo=new THREE.TorusGeometry(.468,.035,7,18);
+function addBarrel(x,y,z){
+ const group=new THREE.Group();
+ const drum=new THREE.Mesh(barrelGeo,barrelRed);drum.castShadow=true;drum.receiveShadow=true;group.add(drum);
+ for(const yy of[-.34,.34]){const ring=new THREE.Mesh(bandGeo,barrelBand);ring.rotation.x=Math.PI/2;ring.position.y=yy;ring.castShadow=true;group.add(ring)}
+ scene.add(group);
+ const body=new CANNON.Body({mass:32,material:barrelPhys,linearDamping:.08,angularDamping:.08,allowSleep:true,sleepSpeedLimit:.12,sleepTimeLimit:.7});
+ const shape=new CANNON.Cylinder(.46,.46,1.1,14);const q=new CANNON.Quaternion();q.setFromEuler(Math.PI/2,0,0);body.addShape(shape,new CANNON.Vec3(),q);body.position.set(x,y,z);world.addBody(body);
+ const item={mesh:group,body,start:new CANNON.Vec3(x,y,z),startQ:new CANNON.Quaternion(0,0,0,1)};barrels.push(item);group.position.set(x,y,z);return item;
+}
+// Opening straight: enough room to dodge or plough through them.
+[[-3,1.2,20],[0,1.2,21],[3,1.2,20],[-1.8,1.2,32],[1.8,1.2,32],[0,1.2,43]].forEach(p=>addBarrel(...p));
+// First raised landing: a second little cluster after the jump.
+[[-3,4.13,105],[0,4.13,106],[3,4.13,105]].forEach(p=>addBarrel(...p));
+function resetBarrels(){for(const b of barrels){b.body.position.copy(b.start);b.body.quaternion.copy(b.startQ);b.body.velocity.setZero();b.body.angularVelocity.setZero();b.body.force.setZero();b.body.torque.setZero();b.body.wakeUp();b.mesh.position.copy(b.start);b.mesh.quaternion.set(0,0,0,1)}}
 
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.05,.35,2.1)),new CANNON.Vec3(0,.03,.14));chassisBody.position.set(0,2,-5);chassisBody.angularDamping=.5;world.addBody(chassisBody);
 const vehicle=new CANNON.RaycastVehicle({chassisBody,indexRightAxis:0,indexUpAxis:1,indexForwardAxis:2});
@@ -101,7 +118,7 @@ const keys={};let orbitYaw=0,orbitPitch=.38,orbitDist=10.5,manualOrbit=false,dra
 addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if(e.code==='KeyR')resetCar();if(e.code==='KeyC'){manualOrbit=false;orbitYaw=0;orbitPitch=.38;orbitDist=10.5}});addEventListener('keyup',e=>keys[e.code]=false);
 renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;manualOrbit=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});renderer.domElement.addEventListener('pointermove',e=>{if(!dragging)return;orbitYaw-=(e.clientX-lastX)*.007;orbitPitch+=(e.clientY-lastY)*.005;orbitPitch=THREE.MathUtils.clamp(orbitPitch,.08,1.1);lastX=e.clientX;lastY=e.clientY});renderer.domElement.addEventListener('pointerup',()=>dragging=false);renderer.domElement.addEventListener('wheel',e=>{manualOrbit=true;orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);e.preventDefault()},{passive:false});
 let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0;
-function resetCar(){chassisBody.position.set(0,2,-5);chassisBody.quaternion.set(0,0,0,1);chassisBody.velocity.setZero();chassisBody.angularVelocity.setZero();vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0});boost=Math.max(boost,20);steerState=0;bodyRoll=0;leanRoot.rotation.z=0}
+function resetCar(){chassisBody.position.set(0,2,-5);chassisBody.quaternion.set(0,0,0,1);chassisBody.velocity.setZero();chassisBody.angularVelocity.setZero();vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0});boost=Math.max(boost,20);steerState=0;bodyRoll=0;leanRoot.rotation.z=0;resetBarrels()}
 function flash(t){msg.textContent=t;msg.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>msg.classList.remove('show'),900)}
 function controls(dt){
  const go=keys.KeyW||keys.ArrowUp,back=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight;
@@ -111,14 +128,17 @@ function controls(dt){
  let engine=go?-4100:0;if(back)engine=2200;if(keys.Space&&boost>0&&go){engine=-7600;boost=Math.max(0,boost-23*dt)}vehicle.applyEngineForce(engine,2);vehicle.applyEngineForce(engine,3);const brake=back&&v>3?34:0;for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
  if(keys.KeyQ){manualOrbit=true;orbitYaw+=1.45*dt}if(keys.KeyE){manualOrbit=true;orbitYaw-=1.45*dt}
  const frontOn=vehicle.wheelInfos[0].isInContact||vehicle.wheelInfos[1].isInContact,rearOn=vehicle.wheelInfos[2].isInContact||vehicle.wheelInfos[3].isInContact,grounded=frontOn||rearOn;
- // Deliberately soft American-car body roll: ~6.9 degrees at full steering/speed, with a lazy settle.
  const rollTarget=grounded?-steerState*Math.min(1,v/15)*0.12:0;bodyRoll+=(rollTarget-bodyRoll)*(1-Math.exp(-3.0*dt));leanRoot.rotation.z=bodyRoll;
  if(v>12&&frontOn&&rearOn)chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.18,0),chassisBody.position);
  if(!frontOn&&!rearOn)chassisBody.angularVelocity.x*=Math.pow(.965,dt*60);
 }
 const fwd=new THREE.Vector3(),right3=new THREE.Vector3(),desired=new THREE.Vector3(),look=new THREE.Vector3();
-function updateVisuals(){carRoot.position.copy(chassisBody.position);carRoot.quaternion.copy(chassisBody.quaternion);for(let i=0;i<4;i++){vehicle.updateWheelTransform(i);const t=vehicle.wheelInfos[i].worldTransform;wheelMeshes[i].position.copy(t.position);wheelMeshes[i].quaternion.copy(t.quaternion)}
- fwd.set(0,0,1).applyQuaternion(carRoot.quaternion);fwd.y=0;if(fwd.lengthSq()<.001)fwd.set(0,0,1);fwd.normalize();right3.set(fwd.z,0,-fwd.x);const yaw=manualOrbit?orbitYaw:0,pitch=manualOrbit?orbitPitch:.38,horiz=Math.cos(pitch)*orbitDist;desired.copy(carRoot.position).addScaledVector(right3,Math.sin(yaw)*horiz).addScaledVector(fwd,-Math.cos(yaw)*horiz);desired.y+=1.0+Math.sin(pitch)*orbitDist;camera.position.lerp(desired,manualOrbit?.16:.09);look.copy(carRoot.position);look.y+=.5;camera.lookAt(look);speedEl.textContent=Math.round(chassisBody.velocity.length()*2.23694);boostEl.style.width=boost+'%'}
+function updateVisuals(){
+ carRoot.position.copy(chassisBody.position);carRoot.quaternion.copy(chassisBody.quaternion);
+ for(let i=0;i<4;i++){vehicle.updateWheelTransform(i);const t=vehicle.wheelInfos[i].worldTransform;wheelMeshes[i].position.copy(t.position);wheelMeshes[i].quaternion.copy(t.quaternion)}
+ for(const b of barrels){b.mesh.position.copy(b.body.position);b.mesh.quaternion.copy(b.body.quaternion)}
+ fwd.set(0,0,1).applyQuaternion(carRoot.quaternion);fwd.y=0;if(fwd.lengthSq()<.001)fwd.set(0,0,1);fwd.normalize();right3.set(fwd.z,0,-fwd.x);const yaw=manualOrbit?orbitYaw:0,pitch=manualOrbit?orbitPitch:.38,horiz=Math.cos(pitch)*orbitDist;desired.copy(carRoot.position).addScaledVector(right3,Math.sin(yaw)*horiz).addScaledVector(fwd,-Math.cos(yaw)*horiz);desired.y+=1.0+Math.sin(pitch)*orbitDist;camera.position.lerp(desired,manualOrbit?.16:.09);look.copy(carRoot.position);look.y+=.5;camera.lookAt(look);speedEl.textContent=Math.round(chassisBody.velocity.length()*2.23694);boostEl.style.width=boost+'%'
+}
 function landingLogic(){const grounded=vehicle.wheelInfos.some(w=>w.isInContact),now=performance.now();if(!grounded&&now-lastGrounded>140&&!airborne){airborne=true;airStart=now}if(grounded){if(airborne){const air=(now-airStart)/1000;if(air>.4){const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));if(up.y>.6&&Math.abs(chassisBody.velocity.y)<11){const earned=Math.min(30,Math.round(8+air*7));boost=Math.min(100,boost+earned);flash('NICE LANDING  +'+earned+' BOOST')}else flash('ROUGH LANDING')}}airborne=false;lastGrounded=now}}
 let last=performance.now();function animate(now){requestAnimationFrame(animate);const dt=Math.min(.035,(now-last)/1000);last=now;if(started){controls(dt);world.step(1/60,dt,4);landingLogic();if(chassisBody.position.y<-10)resetCar();updateVisuals()}renderer.render(scene,camera)}requestAnimationFrame(animate);
 $('startBtn').addEventListener('click',()=>{$('start').style.display='none';started=true;last=performance.now();resetCar()});addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});camera.position.set(0,6,-12);camera.lookAt(0,0,5);updateVisuals();
