@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.5</title>
+<title>Car Racer v4.6</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.5 improves reverse and adds an emergency low-speed unwind so the car can back away when wedged on obstacles.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.5</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.6 adds arcade-style impact deflection: collisions preserve momentum, bounce the car clear and briefly reduce control while it recovers.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.6</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -534,7 +534,7 @@ renderer.domElement.addEventListener('wheel',e=>{
   orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);
   e.preventDefault();
 },{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,impactRecoverUntil=0,lastBounceAt=0,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
 
 const damageParts={front:0,rear:0,left:0,right:0,top:0};
 const damageCooldown={front:0,rear:0,left:0,right:0,top:0};
@@ -691,6 +691,61 @@ function preserveWallGlance(contact){
     );
   }
 }
+function arcadeImpactBounce(contact,strength=1){
+  if(!contact||exploded)return;
+  const now=performance.now();
+  if(now-lastBounceAt<140)return;
+  lastBounceAt=now;
+
+  const n=new CANNON.Vec3();
+  if(contact.bi===chassisBody)contact.ni.negate(n);
+  else if(contact.bj===chassisBody)n.copy(contact.ni);
+  else return;
+
+  // Keep the response mostly horizontal so a barrier hit does not launch the car.
+  n.y*=.18;
+  const nl=Math.hypot(n.x,n.y,n.z)||1;
+  n.x/=nl;n.y/=nl;n.z/=nl;
+
+  const v=chassisBody.velocity;
+  const beforeSpeed=v.length();
+  const normalSpeed=v.dot(n);
+  const tangent=new CANNON.Vec3(
+    v.x-n.x*normalSpeed,
+    v.y-n.y*normalSpeed,
+    v.z-n.z*normalSpeed
+  );
+
+  // Preserve most travel momentum, but replace the into-wall component
+  // with a modest outward kick.
+  const keep=Math.max(.72,Math.min(.90,.86-strength*.05));
+  const kick=Math.min(7.5,Math.max(2.0,beforeSpeed*.16+strength*1.1));
+  tangent.scale(keep,tangent);
+  v.set(
+    tangent.x+n.x*kick,
+    tangent.y+n.y*kick,
+    tangent.z+n.z*kick
+  );
+
+  // If the solver ate too much speed, restore a sensible arcade minimum
+  // in the car's current forward direction.
+  const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  f.y=0;
+  const fl=Math.hypot(f.x,f.z)||1;f.x/=fl;f.z/=fl;
+  const long=v.x*f.x+v.z*f.z;
+  const minForward=Math.min(beforeSpeed*.62,13);
+  if(beforeSpeed>4 && long>0 && long<minForward){
+    const add=minForward-long;
+    v.x+=f.x*add;v.z+=f.z*add;
+  }
+
+  // A little yaw disturbance makes the hit readable without spinning wildly.
+  const side=(n.x*f.z-n.z*f.x);
+  chassisBody.angularVelocity.y+=side*(.45+.35*strength);
+
+  // Brief loss of authority after the hit, then controls fade back in.
+  impactRecoverUntil=Math.max(impactRecoverUntil,now+520+Math.min(360,beforeSpeed*12));
+}
 function carCollisionDamage(e){
   if(exploded)return;
   const c=e.contact;
@@ -702,6 +757,7 @@ function carCollisionDamage(e){
 
   if(e.body?.material===wallPhys){
     preserveWallGlance(c);
+    if(impact>1.2||speed>4)arcadeImpactBounce(c,Math.min(1.5,.45+impact/10));
 
     // Initial strike damage.
     if(impact>2.8){
@@ -716,6 +772,8 @@ function carCollisionDamage(e){
       playCrashSound(Math.min(.6,speed/28),true);
     }
   }else if(e.body?.material===obstaclePhys){
+    // Movable/kinematic obstacles deflect the car rather than acting like glue.
+    if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
     // Spinner, crates or other physical obstacles can damage the actual side hit.
     if(impact>2.0 || speed>6){
       const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
@@ -748,7 +806,7 @@ function resetCar(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();
-  damage=0;wrecked=false;exploded=false;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
+  damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
   for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
   clearDamageDebris();
   if(carVisual)carVisual.visible=true;
@@ -774,18 +832,23 @@ function controls(dt){
   const right=keys.KeyD||keys.ArrowRight;
 
   const v=chassisBody.velocity.length();
+  const recoverLeft=Math.max(0,impactRecoverUntil-performance.now());
+  const recoverT=Math.min(1,recoverLeft/850);
+  const controlRecovery=1-recoverT*.68;
+  const powerRecovery=1-recoverT*.48;
   const steerHealth=Math.max(.72,1-damage*.0025);
   const powerHealth=Math.max(.55,1-damage*.0045);
 
-  // Gentle, progressive steering. Less angle as speed rises.
-  const steerMax=.38*Math.max(.42,1-v/48)*steerHealth;
+  // Gentle, progressive steering. A collision briefly knocks steering authority down,
+  // then it smoothly returns as the driver/car recovers.
+  const steerMax=.38*Math.max(.42,1-v/48)*steerHealth*controlRecovery;
   const rawSteer=(left?1:0)+(right?-1:0);
   const response=1-Math.exp(-3.2*dt);
   steerState+=(rawSteer-steerState)*response;
   vehicle.setSteeringValue(steerState*steerMax,0);
   vehicle.setSteeringValue(steerState*steerMax,1);
 
-  let engine=go?-4400*powerHealth:0;
+  let engine=go?-4400*powerHealth*powerRecovery:0;
   let brake=0;
 
   if(back){
@@ -794,15 +857,19 @@ function controls(dt){
       engine=0;
       brake=48;
     }else{
-      engine=3100*powerHealth;
+      engine=3100*powerHealth*powerRecovery;
     }
   }
 
   if(keys.Space&&boost>0&&go&&!back&&!wrecked){
-    engine=-7200*powerHealth;
+    engine=-7200*powerHealth*powerRecovery;
     boost=Math.max(0,boost-22*dt);
   }
   if(wrecked){engine=0;brake=70;}
+
+  if(recoverLeft>0 && !wrecked && !exploded && recoverLeft>500 && performance.now()-lastBounceAt<180){
+    flash('KNOCKED!  RECOVER...');
+  }
 
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
