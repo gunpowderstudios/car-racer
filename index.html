@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.1</title>
+<title>Car Racer v4.2</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.1 adds directional car damage, glowing/crumbling body zones and explosive failure while keeping the clean v4 physics.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.1</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.2 adds a full outer safety wall, two integrated stunt jumps and the spinning sweeper while keeping the clean v4 physics.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.2</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -159,18 +159,22 @@ function addOuterWall(points,width=16){
     // Outer edge of our left-hand oval turns is the RIGHT edge.
     const ax=a[0]-ea.lx*width/2, ay=a[1]-ea.ly*width/2, az=a[2]-ea.lz*width/2;
     const bx=b[0]-eb.lx*width/2, by=b[1]-eb.ly*width/2, bz=b[2]-eb.lz*width/2;
-    const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz);
+    const dx=bx-ax,dy=by-ay,dz=bz-az,horiz=Math.hypot(dx,dz),len=Math.hypot(horiz,dy);
     if(len<.01)continue;
-    const yaw=Math.atan2(dx,dz);
+    const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horiz);
     const body=new CANNON.Body({mass:0,material:wallPhys});
     body.addShape(new CANNON.Box(new CANNON.Vec3(.16,.55,(len+.15)/2)));
     body.position.set((ax+bx)/2,(ay+by)/2+.55,(az+bz)/2);
-    body.quaternion.setFromEuler(0,yaw,0);
+    const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qWall=new CANNON.Quaternion();
+    qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+    qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
+    qYaw.mult(qPitch,qWall);body.quaternion.copy(qWall);
     world.addBody(body);
 
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,1.1,len+.15),wallMat);
     mesh.position.set(body.position.x,body.position.y,body.position.z);
-    mesh.rotation.y=yaw;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+    mesh.rotation.order='YXZ';mesh.rotation.y=yaw;mesh.rotation.x=-pitch;
+    mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
   }
 }
 function addTrack(points,width=16,depth=1.5){
@@ -186,22 +190,39 @@ function arcTurn(cz,startTheta,endTheta){
   return pts;
 }
 
-// v4 baseline: ONE continuous oval road mesh.
-// No ramps, boxes, gaps or obstacles until the car feels right.
+// v4.2: continuous oval with two smooth launch crests.
+// The road remains a single collision skin; the jumps are elevations in that same surface.
+function smooth01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
+function jumpHeight(z,crest,travelDir,rise,drop,height){
+  const t=travelDir*z,ct=travelDir*crest;
+  if(t<ct-rise||t>ct+drop)return 0;
+  if(t<=ct)return height*smooth01((t-(ct-rise))/rise);
+  return height*(1-smooth01((t-ct)/drop));
+}
+
 const oval=[];
-for(let z=-85;z<=85;z+=10)oval.push(p(45,.65,z,0));
+for(let z=-85;z<=85;z+=5){
+  // Front straight travels north (+Z): smaller jump.
+  const y=.65+jumpHeight(z,8,1,20,8,1.75);
+  oval.push(p(45,y,z,0));
+}
 
 const topTurn=arcTurn(85,0,Math.PI);
 for(let i=1;i<topTurn.length;i++)oval.push(topTurn[i]);
 
-for(let z=75;z>=-85;z-=10)oval.push(p(-45,.65,z,0));
+for(let z=80;z>=-85;z-=5){
+  // Back straight travels south (-Z): larger jump.
+  const y=.65+jumpHeight(z,-12,-1,23,9,2.45);
+  oval.push(p(-45,y,z,0));
+}
 
 const bottomTurn=arcTurn(-85,Math.PI,Math.PI*2);
 for(let i=1;i<bottomTurn.length;i++)oval.push(bottomTurn[i]);
 
 addTrack(oval,18,1.5);
-addOuterWall(topTurn,18);
-addOuterWall(bottomTurn,18);
+
+// Same wall style as the bends, now around the complete outside edge of the oval.
+addOuterWall(oval,18);
 
 const startLineZ=-60;
 const finishGroup=new THREE.Group();finishGroup.position.set(45,.65,startLineZ);scene.add(finishGroup);
@@ -276,9 +297,9 @@ function addCrate(x,y,z,size=1.15){
 // Crates disabled in v4 baseline.
 function resetCrates(){for(const c of crates){c.body.position.copy(c.start);c.body.quaternion.copy(c.startQ);c.body.velocity.setZero();c.body.angularVelocity.setZero();c.body.force.setZero();c.body.torque.setZero();c.body.wakeUp();}}
 const sweeperMesh=new THREE.Group();scene.add(sweeperMesh);
-const sweepBar=new THREE.Mesh(new THREE.BoxGeometry(9,.45,.5),new THREE.MeshStandardMaterial({color:0xf2b51d,roughness:.65}));sweepBar.castShadow=true;sweeperMesh.add(sweepBar);
+const sweepBar=new THREE.Mesh(new THREE.BoxGeometry(9,.45,.5),new THREE.MeshStandardMaterial({color:0xf2b51d,roughness:.65,metalness:.12}));sweepBar.castShadow=true;sweeperMesh.add(sweepBar);
 const sweepHub=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,1.4,16),new THREE.MeshStandardMaterial({color:0x333333,roughness:.7}));sweepHub.position.y=-.3;sweepHub.castShadow=true;sweeperMesh.add(sweepHub);
-const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(999,-100,999);sweeperBody.collisionResponse=false;world.addBody(sweeperBody);sweeperMesh.visible=false;
+const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(-45,1.55,57);sweeperBody.collisionResponse=true;sweeperBody.angularVelocity.set(0,.82,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.visible=true;
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});
 chassisBody.addShape(
   new CANNON.Box(new CANNON.Vec3(1.02,.28,1.95)),
