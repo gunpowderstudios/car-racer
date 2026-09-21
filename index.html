@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.3</title>
+<title>Car Racer v4.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.3 adds a matching inner safety wall around the complete circuit, alongside the outer wall, jumps and sweeper.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.3</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.4 adds glancing wall collisions, sustained scrape/object damage and engine, crash, jump and landing sounds.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.4</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -40,6 +40,78 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox');
+
+let audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
+function initAudio(){
+  if(audioCtx){
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    return;
+  }
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  audioCtx=new AC();
+
+  engineFilter=audioCtx.createBiquadFilter();
+  engineFilter.type='lowpass';engineFilter.frequency.value=520;engineFilter.Q.value=.7;
+
+  engineGain=audioCtx.createGain();engineGain.gain.value=.0001;
+  engineOsc=audioCtx.createOscillator();engineOsc.type='triangle';engineOsc.frequency.value=52;
+  engineOsc2=audioCtx.createOscillator();engineOsc2.type='sawtooth';engineOsc2.frequency.value=104;
+  const g2=audioCtx.createGain();g2.gain.value=.14;
+
+  engineOsc.connect(engineFilter);
+  engineOsc2.connect(g2).connect(engineFilter);
+  engineFilter.connect(engineGain).connect(audioCtx.destination);
+  engineOsc.start();engineOsc2.start();
+}
+function updateEngineSound(){
+  if(!audioCtx||!engineGain||audioCtx.state!=='running')return;
+  const now=audioCtx.currentTime;
+  const speed=chassisBody?chassisBody.velocity.length():0;
+  const throttle=(keys?.KeyW||keys?.ArrowUp||keys?.KeyS||keys?.ArrowDown)?1:0;
+  const rpm=48+Math.min(170,speed*5.3)+(throttle?25:0);
+  engineOsc.frequency.setTargetAtTime(rpm,now,.07);
+  engineOsc2.frequency.setTargetAtTime(rpm*2.02,now,.07);
+  engineFilter.frequency.setTargetAtTime(360+speed*24+(throttle?180:0),now,.08);
+  const target=(!started||exploded)?.0001:(.018+Math.min(.055,speed*.0022)+(throttle?.025:0));
+  engineGain.gain.setTargetAtTime(target,now,.09);
+}
+function noiseBurst(duration=.16,volume=.12,highpass=120){
+  if(!audioCtx||audioCtx.state!=='running')return;
+  const n=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,n,audioCtx.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+  const src=audioCtx.createBufferSource(),filter=audioCtx.createBiquadFilter(),gain=audioCtx.createGain();
+  filter.type='highpass';filter.frequency.value=highpass;
+  gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);
+  src.buffer=buffer;src.connect(filter).connect(gain).connect(audioCtx.destination);src.start();
+}
+function toneSweep(type,start,end,duration,volume){
+  if(!audioCtx||audioCtx.state!=='running')return;
+  const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),now=audioCtx.currentTime;
+  osc.type=type;osc.frequency.setValueAtTime(start,now);osc.frequency.exponentialRampToValueAtTime(Math.max(10,end),now+duration);
+  gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
+  osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
+}
+function playCrashSound(intensity=.5,scrape=false){
+  if(!audioCtx)return;
+  const now=performance.now();
+  if(now-lastCrashSound<(scrape?120:65))return;
+  lastCrashSound=now;
+  const v=Math.max(.03,Math.min(.24,.05+intensity*.18));
+  noiseBurst(scrape?.11:.20,v,scrape?520:80);
+  if(!scrape)toneSweep('triangle',95,42,.16,Math.min(.15,.045+intensity*.09));
+}
+function playJumpSound(){
+  toneSweep('sine',150,420,.28,.06);
+  noiseBurst(.22,.035,650);
+}
+function playLandingSound(intensity=.5){
+  toneSweep('triangle',82,38,.16,.035+Math.min(.10,intensity*.09));
+  noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
+}
+
 window.addEventListener('error',e=>{
   $('fatal').style.display='block';
   $('fatal').textContent='ERROR\n'+e.message+'\n'+(e.error?.stack||'');
@@ -74,7 +146,7 @@ const wallPhys=new CANNON.Material('wall');
 const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
-world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:.28,restitution:.03,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
+world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:.025,restitution:.08,contactEquationStiffness:7e5,contactEquationRelaxation:6}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.58,restitution:.06}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.25,restitution:.16}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
@@ -324,7 +396,7 @@ function resetBarrels(){
 }
 const obstaclePhys=new CANNON.Material('obstacle');
 world.addContactMaterial(new CANNON.ContactMaterial(obstaclePhys,roadPhys,{friction:.7,restitution:.04}));
-world.addContactMaterial(new CANNON.ContactMaterial(obstaclePhys,carPhys,{friction:.35,restitution:.08}));
+world.addContactMaterial(new CANNON.ContactMaterial(obstaclePhys,carPhys,{friction:.12,restitution:.16}));
 const crates=[];const crateMat=new THREE.MeshStandardMaterial({color:0x9a642f,roughness:.9});
 function addCrate(x,y,z,size=1.15){
   const mesh=new THREE.Mesh(new THREE.BoxGeometry(size,size,size),crateMat);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
@@ -545,6 +617,8 @@ function updateDamageFx(dt){
 function explodeCar(region){
   if(exploded)return;
   exploded=true;wrecked=true;
+  playCrashSound(1,false);
+  toneSweep('sine',72,24,.52,.18);
   vehicle.applyEngineForce(0,2);vehicle.applyEngineForce(0,3);
   for(let i=0;i<4;i++)vehicle.setBrake(90,i);
   chassisBody.velocity.scale(.15,chassisBody.velocity);
@@ -586,21 +660,72 @@ function getLocalContact(contact){
   chassisBody.pointToLocalFrame(wp,local);
   return local;
 }
+function preserveWallGlance(contact){
+  // Low-friction material does most of the work. This only prevents shallow
+  // contacts from eating almost all forward speed at segment joins.
+  if(!contact)return;
+  const n=new CANNON.Vec3();
+  if(contact.bi===chassisBody)contact.ni.negate(n);
+  else if(contact.bj===chassisBody)n.copy(contact.ni);
+  else return;
+
+  const v=chassisBody.velocity;
+  const normalSpeed=v.dot(n);
+  const speed=v.length();
+  if(speed<2.5)return;
+
+  // Only help true glancing blows, not head-on impacts.
+  const normalRatio=Math.abs(normalSpeed)/Math.max(.001,speed);
+  if(normalRatio<.55){
+    const tangent=new CANNON.Vec3(
+      v.x-n.x*normalSpeed,
+      v.y-n.y*normalSpeed,
+      v.z-n.z*normalSpeed
+    );
+    const keep=.985;
+    const softenedNormal=normalSpeed<0?normalSpeed*.12:normalSpeed;
+    v.set(
+      tangent.x*keep+n.x*softenedNormal,
+      tangent.y*keep+n.y*softenedNormal,
+      tangent.z*keep+n.z*softenedNormal
+    );
+  }
+}
 function carCollisionDamage(e){
   if(exploded)return;
   const c=e.contact;
   const impact=Math.abs(c?.getImpactVelocityAlongNormal?.()||0);
+  const speed=chassisBody.velocity.length();
   const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
+  const local=getLocalContact(c);
+  const region=local?classifyDamagePoint(local):'front';
 
-  if(e.body?.material===wallPhys && impact>3.3){
-    const local=getLocalContact(c);
-    const region=local?classifyDamagePoint(local):'front';
-    const amount=Math.min(38,Math.max(3,(impact-3.0)*6.2));
-    addPartDamage(region,amount,true);
+  if(e.body?.material===wallPhys){
+    preserveWallGlance(c);
+
+    // Initial strike damage.
+    if(impact>2.8){
+      const amount=Math.min(38,Math.max(3,(impact-2.5)*5.5));
+      addPartDamage(region,amount,true);
+      playCrashSound(Math.min(1,impact/12),false);
+    }else if(speed>4.0){
+      // Sustained scrape damage: small repeated increments while the car
+      // continues sliding along the wall.
+      const amount=Math.min(3.2,.55+(speed-4)*.11);
+      addPartDamage(region,amount,false);
+      playCrashSound(Math.min(.6,speed/28),true);
+    }
+  }else if(e.body?.material===obstaclePhys){
+    // Spinner, crates or other physical obstacles can damage the actual side hit.
+    if(impact>2.0 || speed>6){
+      const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
+      addPartDamage(region,amount,true);
+      playCrashSound(Math.min(1,Math.max(impact,speed*.18)/10),false);
+    }
   }else if(e.body?.material===roadPhys && up.y<.38 && impact>2.2){
-    // Roof strike / inverted slide.
     const amount=Math.min(32,Math.max(4,(impact-1.8)*5.5));
     addPartDamage('top',amount,true);
+    playCrashSound(Math.min(1,impact/10),false);
   }
 }
 chassisBody.addEventListener('collide',carCollisionDamage);
@@ -747,6 +872,7 @@ function landingLogic(){
       peakDownVel=Math.max(0,-chassisBody.velocity.y);
       airMinUp=upNow.y;
       airUnstable=upNow.y<.55;
+      playJumpSound();
     }
   }
 
@@ -754,6 +880,7 @@ function landingLogic(){
     if(airborne){
       const air=(now-airStart)/1000;
       const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
+      playLandingSound(Math.min(1,peakDownVel/12));
       const hard=Math.max(0,peakDownVel-6.2)*4.8;
       const crooked=Math.max(0,.93-up.y)*105;
       const tumblePenalty=airUnstable?18:0;
@@ -814,10 +941,12 @@ function animate(now){
     updateVisuals();
   }
   updateDamageFx(dt);
+  updateEngineSound();
   renderer.render(scene,camera);
 }
 requestAnimationFrame(animate);
 $('startBtn').addEventListener('click',()=>{
+  initAudio();
   $('start').style.display='none';
   started=true;
   last=performance.now();
