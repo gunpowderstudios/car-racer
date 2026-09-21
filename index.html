@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v3.2</title>
+<title>Car Racer v3.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.2 fixes throttle engagement on the banked oval while keeping the separate airborne pitch controls.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v3.2</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.3 fixes launch traction and replaces road-box seams with a smooth physics driving surface.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v3.3</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -129,13 +129,31 @@ function addRoadVisual(points,width=16,depth=1.5){
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts),centreMat));
 }
 function addRoadCollision(points,width=16,depth=1.5){
+  // Smooth triangle-mesh skin for tyres and normal driving.
+  // Solid boxes remain underneath, recessed so their joins cannot form invisible kerbs.
+  const verts=[],indices=[],left=[],right=[];
+  for(let i=0;i<points.length;i++){
+    const q=points[i],e=edgeFrame(points,i),h=width/2;
+    const L=[q[0]+e.lx*h,q[1],q[2]+e.lz*h],R=[q[0]-e.lx*h,q[1],q[2]-e.lz*h];
+    left.push(L);right.push(R);verts.push(...L,...R);
+  }
+  for(let i=0;i<points.length-1;i++){
+    const a=i*2,b=a+1,c=a+2,d=a+3;
+    indices.push(a,c,b,b,c,d);
+  }
+  const skin=new CANNON.Body({mass:0,material:roadPhys});
+  skin.addShape(new CANNON.Trimesh(verts,indices));
+  world.addBody(skin);
+
+  // Recessed solid structure: catches the chassis at track edges but stays below the tyre surface.
   for(let i=0;i<points.length-1;i++){
     const a=points[i],b=points[i+1],dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
     const horizontal=Math.hypot(dx,dz),length=Math.hypot(horizontal,dy);if(length<.01)continue;
-    const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horizontal),bank=((a[3]||0)+(b[3]||0))/2,overlap=.75;
+    const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horizontal),bank=((a[3]||0)+(b[3]||0))/2;
+    const supportDepth=Math.max(.8,depth-.18);
     const body=new CANNON.Body({mass:0,material:roadPhys});
-    body.addShape(new CANNON.Box(new CANNON.Vec3(width/2+.06,depth/2,(length+overlap)/2)));
-    body.position.set((a[0]+b[0])/2,(a[1]+b[1])/2-depth/2,(a[2]+b[2])/2);
+    body.addShape(new CANNON.Box(new CANNON.Vec3(width/2-.10,supportDepth/2,(length+.18)/2)));
+    body.position.set((a[0]+b[0])/2,(a[1]+b[1])/2-supportDepth/2-.16,(a[2]+b[2])/2);
     const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qBank=new CANNON.Quaternion();
     qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
     qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
@@ -263,7 +281,7 @@ const wheelOpts={
   radius:.42,
   directionLocal:new CANNON.Vec3(0,-1,0),
   suspensionStiffness:40,
-  suspensionRestLength:.38,
+  suspensionRestLength:.44,
   frictionSlip:4.5,
   dampingRelaxation:2.3,
   dampingCompression:4.5,
@@ -271,7 +289,7 @@ const wheelOpts={
   rollInfluence:.065,
   axleLocal:new CANNON.Vec3(-1,0,0),
   chassisConnectionPointLocal:new CANNON.Vec3(),
-  maxSuspensionTravel:.36,
+  maxSuspensionTravel:.48,
   customSlidingRotationalSpeed:-30,
   useCustomSlidingRotationalSpeed:true
 };
@@ -401,8 +419,19 @@ function controls(dt){
     boost=Math.max(0,boost-23*dt);
   }
   if(wrecked)engine=0;
+  // Rear-wheel drive with a small front assist for reliable traction on banked/jump geometry.
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
+  vehicle.applyEngineForce(engine*.22,0);
+  vehicle.applyEngineForce(engine*.22,1);
+
+  // Launch assist prevents a raycast-contact hiccup from leaving the car stationary.
+  // It fades away once the car is rolling, so normal wheel/suspension physics take over.
+  if(go&&!wrecked&&v<8){
+    const forward=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+    const assist=5200*(1-v/8)*powerHealth;
+    chassisBody.applyForce(new CANNON.Vec3(forward.x*assist,forward.y*assist*.08,forward.z*assist),chassisBody.position);
+  }
   const brake=wrecked?70:(back&&v>3?34:0);
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
 
