@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.4</title>
+<title>Car Racer v4.5</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.4 adds glancing wall collisions, sustained scrape/object damage and engine, crash, jump and landing sounds.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.4</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.5 improves reverse and adds an emergency low-speed unwind so the car can back away when wedged on obstacles.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.5</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -769,7 +769,7 @@ function controls(dt){
   const airborneNow=!grounded;
 
   const go=keys.KeyW||keys.ArrowUp;
-  const back=grounded&&(keys.KeyS||keys.ArrowDown);
+  const back=keys.ArrowDown||(grounded&&keys.KeyS);
   const left=keys.KeyA||keys.ArrowLeft;
   const right=keys.KeyD||keys.ArrowRight;
 
@@ -786,18 +786,38 @@ function controls(dt){
   vehicle.setSteeringValue(steerState*steerMax,1);
 
   let engine=go?-4400*powerHealth:0;
-  if(back)engine=2300*powerHealth;
-  if(keys.Space&&boost>0&&go&&!wrecked){
+  let brake=0;
+
+  if(back){
+    // If still rolling forwards, brake first. Once nearly stopped, engage a useful reverse.
+    if(v>2.2){
+      engine=0;
+      brake=48;
+    }else{
+      engine=3100*powerHealth;
+    }
+  }
+
+  if(keys.Space&&boost>0&&go&&!back&&!wrecked){
     engine=-7200*powerHealth;
     boost=Math.max(0,boost-22*dt);
   }
-  if(wrecked)engine=0;
+  if(wrecked){engine=0;brake=70;}
 
-  // Pure rear-wheel drive; no direct chassis launch force.
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
 
-  const brake=wrecked?70:(back&&v>3?42:0);
+  // Dedicated Down-arrow low-speed escape assist. This only acts when almost stationary,
+  // and is there for cases where the chassis is perched on an obstacle and the tyres cannot grip.
+  if(keys.ArrowDown&&!wrecked&&v<2.2){
+    const reverseDir=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,-1));
+    const assist=2300*(1-v/2.2);
+    chassisBody.applyForce(
+      new CANNON.Vec3(reverseDir.x*assist,0,reverseDir.z*assist),
+      chassisBody.position
+    );
+  }
+
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
 
   if(keys.KeyQ){manualOrbit=true;orbitYaw+=1.45*dt;}
