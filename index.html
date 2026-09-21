@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v3.0</title>
+<title>Car Racer v3.1</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.0 is a complete banked stunt oval: one-lap racing, jumps, landing damage and airborne pitch control.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> ↑ nose down &nbsp; ↓ nose up</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v3.0</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">↑</span> NOSE DOWN &nbsp; <span class="key">↓</span> NOSE UP</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.1 is a complete banked stunt oval: one-lap racing, jumps, landing damage and separate airborne pitch controls.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v3.1</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -394,7 +394,7 @@ function controls(dt){
   vehicle.setSteeringValue(steerState*steerMax,1);
 
   let engine=go?-4100*powerHealth:0;
-  if(back)engine=2200*powerHealth;
+  if(grounded&&back)engine=2200*powerHealth;
   if(keys.Space&&boost>0&&go&&!wrecked){
     engine=-7600*powerHealth;
     boost=Math.max(0,boost-23*dt);
@@ -402,7 +402,7 @@ function controls(dt){
   if(wrecked)engine=0;
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
-  const brake=wrecked?70:(back&&v>3?34:0);
+  const brake=wrecked?70:(grounded&&back&&v>3?34:0);
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
 
   if(keys.KeyQ){manualOrbit=true;orbitYaw+=1.45*dt;}
@@ -416,11 +416,12 @@ function controls(dt){
     chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.18,0),chassisBody.position);
   }
 
-  // In the air the arrow keys become landing controls.
+  // Separate landing controls: S = nose up, X = nose down.
+  // S still acts as brake/reverse while the wheels are on the road.
   if(airborneNow&&!wrecked){
     let pitchInput=0;
-    if(keys.ArrowUp)pitchInput+=1;     // nose down
-    if(keys.ArrowDown)pitchInput-=1;   // nose up
+    if(keys.KeyS)pitchInput-=1;        // nose up
+    if(keys.KeyX)pitchInput+=1;        // nose down
     if(pitchInput){
       const axis=chassisBody.quaternion.vmult(new CANNON.Vec3(1,0,0));
       const torque=2600*pitchInput;
