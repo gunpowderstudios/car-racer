@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.2</title>
+<title>Car Racer v4.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.2 adds a full outer safety wall, two integrated stunt jumps and the spinning sweeper while keeping the clean v4 physics.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.2</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.3 adds a matching inner safety wall around the complete circuit, alongside the outer wall, jumps and sweeper.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.3</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -177,6 +177,42 @@ function addOuterWall(points,width=16){
     mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
   }
 }
+function addInnerWall(points,width=16){
+  const wallMat=new THREE.MeshStandardMaterial({color:0xe7e7df,roughness:.85});
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i],b=points[i+1];
+    const ea=edgeFrame(points,i),eb=edgeFrame(points,i+1);
+
+    // Inner edge is the LEFT edge relative to the direction of travel.
+    const ax=a[0]+ea.lx*width/2, ay=a[1]+ea.ly*width/2, az=a[2]+ea.lz*width/2;
+    const bx=b[0]+eb.lx*width/2, by=b[1]+eb.ly*width/2, bz=b[2]+eb.lz*width/2;
+
+    const dx=bx-ax,dy=by-ay,dz=bz-az,horiz=Math.hypot(dx,dz),len=Math.hypot(horiz,dy);
+    if(len<.01)continue;
+
+    const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horiz);
+    const body=new CANNON.Body({mass:0,material:wallPhys});
+    body.addShape(new CANNON.Box(new CANNON.Vec3(.16,.55,(len+.15)/2)));
+    body.position.set((ax+bx)/2,(ay+by)/2+.55,(az+bz)/2);
+
+    const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qWall=new CANNON.Quaternion();
+    qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+    qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
+    qYaw.mult(qPitch,qWall);
+    body.quaternion.copy(qWall);
+    world.addBody(body);
+
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,1.1,len+.15),wallMat);
+    mesh.position.set(body.position.x,body.position.y,body.position.z);
+    mesh.rotation.order='YXZ';
+    mesh.rotation.y=yaw;
+    mesh.rotation.x=-pitch;
+    mesh.castShadow=true;
+    mesh.receiveShadow=true;
+    scene.add(mesh);
+  }
+}
+
 function addTrack(points,width=16,depth=1.5){
   trackSections.push({points,width,depth});addRoadCollision(points,width,depth);addRoadVisual(points,width,depth);
 }
@@ -221,8 +257,9 @@ for(let i=1;i<bottomTurn.length;i++)oval.push(bottomTurn[i]);
 
 addTrack(oval,18,1.5);
 
-// Same wall style as the bends, now around the complete outside edge of the oval.
+// Matching safety walls on both the outside and inside edges of the complete oval.
 addOuterWall(oval,18);
+addInnerWall(oval,18);
 
 const startLineZ=-60;
 const finishGroup=new THREE.Group();finishGroup.position.set(45,.65,startLineZ);scene.add(finishGroup);
