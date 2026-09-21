@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.0</title>
+<title>Car Racer v4.1</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -13,7 +13,7 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 #version{font-size:11px;opacity:.7;margin-left:6px}
 #speedBox{position:absolute;top:16px;right:18px;text-align:right}
 .speed{font-size:48px;font-weight:900;line-height:.85}.unit{font-size:11px;letter-spacing:.25em;opacity:.8}
-.boostText,.damageText{font-size:11px;font-weight:800;letter-spacing:.18em;margin-top:12px}.damageText{margin-top:9px}.damageFill{height:100%;width:0%;background:linear-gradient(90deg,#ffd400,#ff5b00,#d40000)}#lapBox{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:900;letter-spacing:.16em;background:#0007;border:1px solid #ffffff55;border-radius:8px;padding:7px 12px}
+.boostText,.damageText{font-size:11px;font-weight:800;letter-spacing:.18em;margin-top:12px}.damageText{margin-top:9px}#partDamage{font-size:9px;letter-spacing:.08em;opacity:.9;margin-top:4px;white-space:nowrap}.damageFill{height:100%;width:0%;background:linear-gradient(90deg,#ffd400,#ff5b00,#d40000)}#lapBox{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:900;letter-spacing:.16em;background:#0007;border:1px solid #ffffff55;border-radius:8px;padding:7px 12px}
 .bar{width:220px;max-width:35vw;height:12px;border:2px solid #fff;background:#0008;margin-top:4px}
 .fill{height:100%;width:35%;background:linear-gradient(90deg,#ff7800,#ffe600)}
 #help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}
@@ -31,15 +31,15 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.0 is a clean physics rebuild: smooth banked oval, simpler chassis, retuned suspension and steering.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.0</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.1 adds directional car damage, glowing/crumbling body zones and explosive failure while keeping the clean v4 physics.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.1</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
-const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),lapEl=$('lapBox');
+const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox');
 window.addEventListener('error',e=>{
   $('fatal').style.display='block';
   $('fatal').textContent='ERROR\n'+e.message+'\n'+(e.error?.stack||'');
@@ -70,9 +70,11 @@ world.allowSleep=true;
 world.solver.iterations=10;
 world.solver.tolerance=.001;
 const roadPhys=new CANNON.Material('road');
+const wallPhys=new CANNON.Material('wall');
 const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
+world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:.28,restitution:.03,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.58,restitution:.06}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.25,restitution:.16}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
@@ -160,7 +162,7 @@ function addOuterWall(points,width=16){
     const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz);
     if(len<.01)continue;
     const yaw=Math.atan2(dx,dz);
-    const body=new CANNON.Body({mass:0,material:roadPhys});
+    const body=new CANNON.Body({mass:0,material:wallPhys});
     body.addShape(new CANNON.Box(new CANNON.Vec3(.16,.55,(len+.15)/2)));
     body.position.set((ax+bx)/2,(ay+by)/2+.55,(az+bz)/2);
     body.quaternion.setFromEuler(0,yaw,0);
@@ -215,7 +217,10 @@ const signCanvas=document.createElement('canvas');signCanvas.width=512;signCanva
 sctx.fillStyle='#111';sctx.fillRect(0,0,512,128);sctx.fillStyle='#fff';sctx.font='900 64px Arial';sctx.textAlign='center';sctx.textBaseline='middle';sctx.fillText('START / FINISH',256,68);
 const signTex=new THREE.CanvasTexture(signCanvas);signTex.colorSpace=THREE.SRGBColorSpace;
 const sign=new THREE.Mesh(new THREE.PlaneGeometry(8.8,2),new THREE.MeshBasicMaterial({map:signTex,side:THREE.DoubleSide}));
-sign.position.set(0,5,.32);finishGroup.add(sign);
+sign.position.set(0,6.45,-.38);
+sign.rotation.y=Math.PI;
+sign.renderOrder=3;
+finishGroup.add(sign);
 
 const checkpointTop=new THREE.Vector3(0,.65,130);
 const checkpointBack=new THREE.Vector3(-45,.65,0);
@@ -313,6 +318,24 @@ for(let i=0;i<4;i++){
 }
 const carRoot=new THREE.Group();scene.add(carRoot);
 const leanRoot=new THREE.Group();carRoot.add(leanRoot);
+
+const damageGroup=new THREE.Group();leanRoot.add(damageGroup);
+const damageMeshes={};
+function makeDamageZone(name,size,pos){
+  const mat=new THREE.MeshBasicMaterial({
+    color:0xff2100,transparent:true,opacity:0,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+  });
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);
+  mesh.position.set(...pos);mesh.visible=false;mesh.renderOrder=4;
+  damageGroup.add(mesh);damageMeshes[name]=mesh;
+}
+makeDamageZone('front',[1.95,.58,.48],[0,-.05,1.77]);
+makeDamageZone('rear',[1.95,.58,.46],[0,-.04,-1.72]);
+makeDamageZone('left',[.16,.62,2.55],[-1.00,-.02,.03]);
+makeDamageZone('right',[.16,.62,2.55],[1.00,-.02,.03]);
+makeDamageZone('top',[1.55,.14,1.65],[0,.61,-.12]);
+
 let carVisual=null;
 function placeholder(){
   const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color:0xe86c08,roughness:.55});
@@ -381,7 +404,159 @@ renderer.domElement.addEventListener('wheel',e=>{
   orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);
   e.preventDefault();
 },{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
+
+const damageParts={front:0,rear:0,left:0,right:0,top:0};
+const damageCooldown={front:0,rear:0,left:0,right:0,top:0};
+const damageDebris=[];
+let blast=null,blastLife=0;
+
+function damageLocalPoint(region){
+  return {
+    front:new THREE.Vector3(0,.05,1.9),
+    rear:new THREE.Vector3(0,.05,-1.85),
+    left:new THREE.Vector3(-1.05,.02,0),
+    right:new THREE.Vector3(1.05,.02,0),
+    top:new THREE.Vector3(0,.68,-.05)
+  }[region].clone();
+}
+function refreshDamageVisuals(){
+  damage=Math.max(...Object.values(damageParts));
+  damageEl.style.width=Math.min(100,damage)+'%';
+  damageNumEl.textContent=Math.round(damage);
+  partDamageEl.textContent=
+    'F '+Math.round(damageParts.front)+
+    ' · L '+Math.round(damageParts.left)+
+    ' · R '+Math.round(damageParts.right)+
+    ' · REAR '+Math.round(damageParts.rear)+
+    ' · TOP '+Math.round(damageParts.top);
+
+  for(const [name,mesh] of Object.entries(damageMeshes)){
+    const d=damageParts[name]||0;
+    mesh.visible=d>0;
+    mesh.material.opacity=d>0?.07+.46*(d/100):0;
+    const crush=1-Math.min(.28,d*.0028);
+    mesh.scale.set(1,1,1);
+    if(name==='front'||name==='rear')mesh.scale.z=crush;
+    if(name==='left'||name==='right')mesh.scale.x=crush;
+    if(name==='top')mesh.scale.y=crush;
+  }
+}
+function clearDamageDebris(){
+  for(const d of damageDebris)scene.remove(d.mesh);
+  damageDebris.length=0;
+  if(blast){scene.remove(blast);blast=null;blastLife=0;}
+}
+function spawnCrumble(region,amount,boom=false){
+  const count=boom?28:Math.max(2,Math.min(8,Math.ceil(amount/5)));
+  const local=damageLocalPoint(region);
+  const q=new THREE.Quaternion(chassisBody.quaternion.x,chassisBody.quaternion.y,chassisBody.quaternion.z,chassisBody.quaternion.w);
+  const origin=local.applyQuaternion(q).add(new THREE.Vector3(chassisBody.position.x,chassisBody.position.y,chassisBody.position.z));
+  for(let i=0;i<count;i++){
+    const mat=new THREE.MeshBasicMaterial({color:i%3===0?0xff3b12:0x3b3330,transparent:true,opacity:1});
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.08+Math.random()*.16,.05+Math.random()*.10,.10+Math.random()*.22),mat);
+    mesh.position.copy(origin);scene.add(mesh);
+    const outward=new THREE.Vector3(
+      (Math.random()-.5)*(boom?10:4),
+      1.5+Math.random()*(boom?8:3),
+      (Math.random()-.5)*(boom?10:4)
+    ).add(new THREE.Vector3(chassisBody.velocity.x,chassisBody.velocity.y,chassisBody.velocity.z).multiplyScalar(.12));
+    damageDebris.push({
+      mesh,vel:outward,
+      spin:new THREE.Vector3((Math.random()-.5)*8,(Math.random()-.5)*8,(Math.random()-.5)*8),
+      life:boom?2.4:1.5
+    });
+  }
+}
+function updateDamageFx(dt){
+  for(let i=damageDebris.length-1;i>=0;i--){
+    const d=damageDebris[i];
+    d.life-=dt;d.vel.y-=9.82*dt;
+    d.mesh.position.addScaledVector(d.vel,dt);
+    d.mesh.rotation.x+=d.spin.x*dt;d.mesh.rotation.y+=d.spin.y*dt;d.mesh.rotation.z+=d.spin.z*dt;
+    d.mesh.material.opacity=Math.max(0,Math.min(1,d.life/.45));
+    if(d.life<=0){scene.remove(d.mesh);damageDebris.splice(i,1);}
+  }
+  if(blast){
+    blastLife-=dt;
+    blast.scale.multiplyScalar(1+4*dt);
+    blast.material.opacity=Math.max(0,blastLife/.55);
+    if(blastLife<=0){scene.remove(blast);blast=null;}
+  }
+}
+function explodeCar(region){
+  if(exploded)return;
+  exploded=true;wrecked=true;
+  vehicle.applyEngineForce(0,2);vehicle.applyEngineForce(0,3);
+  for(let i=0;i<4;i++)vehicle.setBrake(90,i);
+  chassisBody.velocity.scale(.15,chassisBody.velocity);
+  chassisBody.angularVelocity.scale(.25,chassisBody.angularVelocity);
+  if(carVisual)carVisual.visible=false;
+  damageGroup.visible=false;
+  spawnCrumble(region,100,true);
+  blast=new THREE.Mesh(
+    new THREE.SphereGeometry(.65,16,10),
+    new THREE.MeshBasicMaterial({color:0xff8a00,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  blast.position.set(chassisBody.position.x,chassisBody.position.y,chassisBody.position.z);
+  scene.add(blast);blastLife=.55;
+  flash('BOOM!  '+region.toUpperCase()+' DESTROYED');
+  setTimeout(()=>{if(exploded)resetCar();},2300);
+}
+function addPartDamage(region,amount,showMessage=true){
+  if(exploded||!damageParts.hasOwnProperty(region)||amount<=0)return;
+  const now=performance.now();
+  if(now-damageCooldown[region]<180)return;
+  damageCooldown[region]=now;
+  damageParts[region]=Math.min(100,damageParts[region]+amount);
+  spawnCrumble(region,amount,false);
+  refreshDamageVisuals();
+  if(showMessage)flash(region.toUpperCase()+' DAMAGE  '+Math.round(damageParts[region])+'%');
+  if(damageParts[region]>=100)explodeCar(region);
+}
+function classifyDamagePoint(local){
+  if(local.y>.34)return 'top';
+  const x=Math.abs(local.x)/1.02,z=Math.abs(local.z)/1.95;
+  if(z>=x)return local.z>=0?'front':'rear';
+  return local.x>=0?'right':'left';
+}
+function getLocalContact(contact){
+  const wp=new CANNON.Vec3(),local=new CANNON.Vec3();
+  if(contact.bi===chassisBody)contact.bi.position.vadd(contact.ri,wp);
+  else if(contact.bj===chassisBody)contact.bj.position.vadd(contact.rj,wp);
+  else return null;
+  chassisBody.pointToLocalFrame(wp,local);
+  return local;
+}
+function carCollisionDamage(e){
+  if(exploded)return;
+  const c=e.contact;
+  const impact=Math.abs(c?.getImpactVelocityAlongNormal?.()||0);
+  const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
+
+  if(e.body?.material===wallPhys && impact>3.3){
+    const local=getLocalContact(c);
+    const region=local?classifyDamagePoint(local):'front';
+    const amount=Math.min(38,Math.max(3,(impact-3.0)*6.2));
+    addPartDamage(region,amount,true);
+  }else if(e.body?.material===roadPhys && up.y<.38 && impact>2.2){
+    // Roof strike / inverted slide.
+    const amount=Math.min(32,Math.max(4,(impact-1.8)*5.5));
+    addPartDamage('top',amount,true);
+  }
+}
+chassisBody.addEventListener('collide',carCollisionDamage);
+
+function landingDamageRegion(){
+  const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
+  if(up.y<.45)return 'top';
+  const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  const r=chassisBody.quaternion.vmult(new CANNON.Vec3(1,0,0));
+  if(Math.abs(r.y)>.40)return r.y>0?'left':'right';
+  if(Math.abs(f.y)>.28)return f.y<0?'front':'rear';
+  return null;
+}
+
 function resetCar(){
   chassisBody.position.set(45,1.72,-76);
   chassisBody.quaternion.set(0,0,0,1);
@@ -390,9 +565,14 @@ function resetCar(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();
-  damage=0;wrecked=false;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
+  damage=0;wrecked=false;exploded=false;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
+  for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
+  clearDamageDebris();
+  if(carVisual)carVisual.visible=true;
+  damageGroup.visible=true;
+  refreshDamageVisuals();
+  chassisBody.wakeUp();
   lapEl.textContent='READY';
-  damageEl.style.width='0%';damageNumEl.textContent='0';
 }
 function flash(t){
   msg.textContent=t;msg.classList.add('show');
@@ -492,7 +672,7 @@ function updateVisuals(){
   look.copy(carRoot.position);look.y+=.5;
   camera.lookAt(look);
   speedEl.textContent=Math.round(chassisBody.velocity.length()*2.23694);
-  boostEl.style.width=boost+'%';damageEl.style.width=Math.min(100,damage)+'%';damageNumEl.textContent=Math.round(damage);
+  boostEl.style.width=boost+'%';
 }
 function landingLogic(){
   const grounded=vehicle.wheelInfos.some(w=>w.isInContact);
@@ -501,7 +681,7 @@ function landingLogic(){
   if(!grounded){
     const upNow=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
     airMinUp=Math.min(airMinUp,upNow.y);
-    if(upNow.y<.55)airUnstable=true; // rolled/flipped far enough that it was not a clean jump
+    if(upNow.y<.55)airUnstable=true;
     peakDownVel=Math.max(peakDownVel,Math.max(0,-chassisBody.velocity.y));
 
     if(now-lastGrounded>140&&!airborne){
@@ -520,17 +700,18 @@ function landingLogic(){
       const crooked=Math.max(0,.93-up.y)*105;
       const tumblePenalty=airUnstable?18:0;
       const hit=Math.max(0,hard+crooked+tumblePenalty);
+      const region=landingDamageRegion();
 
       if(airUnstable || up.y<.72){
         const added=Math.min(45,Math.max(8,Math.round(hit)));
-        damage=Math.min(100,damage+added);
-        flash('OUCH! STEADY DRIVER!  +'+added+'% DAMAGE');
-        if(damage>=100){wrecked=true;flash('WRECKED!  PRESS R');}
+        if(region)addPartDamage(region,added,false);
+        else{addPartDamage('front',added*.5,false);addPartDamage('rear',added*.5,false);}
+        flash('OUCH! STEADY DRIVER!');
       }else if(hit>2){
         const added=Math.min(45,Math.round(hit));
-        damage=Math.min(100,damage+added);
-        flash('HARD LANDING  +'+added+'% DAMAGE');
-        if(damage>=100){wrecked=true;flash('WRECKED!  PRESS R');}
+        if(region)addPartDamage(region,added,false);
+        else{addPartDamage('front',added*.5,false);addPartDamage('rear',added*.5,false);}
+        flash('HARD LANDING');
       }else if(air>.35 && up.y>.88 && airMinUp>.72){
         const earned=Math.min(28,Math.round(7+air*7));
         boost=Math.min(100,boost+earned);
@@ -574,6 +755,7 @@ function animate(now){
     if(chassisBody.position.y<-10)resetCar();
     updateVisuals();
   }
+  updateDamageFx(dt);
   renderer.render(scene,camera);
 }
 requestAnimationFrame(animate);
