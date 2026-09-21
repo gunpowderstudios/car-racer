@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v3.3</title>
+<title>Car Racer v3.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.3 fixes launch traction and replaces road-box seams with a smooth physics driving surface.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v3.3</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.4 matches physics to the banked road, adds solid road sides, straightens launch behaviour and improves landing judgement.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v3.4</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -134,7 +134,9 @@ function addRoadCollision(points,width=16,depth=1.5){
   const verts=[],indices=[],left=[],right=[];
   for(let i=0;i<points.length;i++){
     const q=points[i],e=edgeFrame(points,i),h=width/2;
-    const L=[q[0]+e.lx*h,q[1],q[2]+e.lz*h],R=[q[0]-e.lx*h,q[1],q[2]-e.lz*h];
+    // Collision follows the exact same banked left/right edge as the visible road.
+    const L=[q[0]+e.lx*h,q[1]+e.ly*h,q[2]+e.lz*h];
+    const R=[q[0]-e.lx*h,q[1]-e.ly*h,q[2]-e.lz*h];
     left.push(L);right.push(R);verts.push(...L,...R);
   }
   for(let i=0;i<points.length-1;i++){
@@ -143,6 +145,32 @@ function addRoadCollision(points,width=16,depth=1.5){
   }
   const skin=new CANNON.Body({mass:0,material:roadPhys});
   skin.addShape(new CANNON.Trimesh(verts,indices));
+
+  // Solid vertical sides and underside matching the visible slab.
+  // These stop the chassis passing through the raised side of a banked corner.
+  const sideVerts=[],sideIdx=[],bottomVerts=[],bottomIdx=[];
+  const sideQuad=(a,b,c,d)=>{
+    const k=sideVerts.length/3;
+    sideVerts.push(...a,...b,...c,...d);
+    sideIdx.push(k,k+1,k+2,k,k+2,k+3,k+2,k+1,k,k+3,k+2);
+  };
+  for(let i=0;i<points.length-1;i++){
+    const l0=left[i],l1=left[i+1],r0=right[i],r1=right[i+1];
+    const l0b=[l0[0],l0[1]-depth,l0[2]],l1b=[l1[0],l1[1]-depth,l1[2]];
+    const r0b=[r0[0],r0[1]-depth,r0[2]],r1b=[r1[0],r1[1]-depth,r1[2]];
+    sideQuad(l0,l1,l1b,l0b);
+    sideQuad(r1,r0,r0b,r1b);
+  }
+  for(let i=0;i<points.length;i++){
+    const L=left[i],R=right[i];
+    bottomVerts.push(L[0],L[1]-depth,L[2],R[0],R[1]-depth,R[2]);
+  }
+  for(let i=0;i<points.length-1;i++){
+    const a=i*2,b=a+1,c=a+2,d=a+3;
+    bottomIdx.push(a,b,d,a,d,c,d,b,a,c,d,a);
+  }
+  if(sideVerts.length)skin.addShape(new CANNON.Trimesh(sideVerts,sideIdx));
+  if(bottomVerts.length)skin.addShape(new CANNON.Trimesh(bottomVerts,bottomIdx));
   world.addBody(skin);
 
   // Recessed solid structure: catches the chassis at track edges but stays below the tyre surface.
@@ -374,7 +402,7 @@ renderer.domElement.addEventListener('wheel',e=>{
   orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);
   e.preventDefault();
 },{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,peakDownVel=0,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
 function resetCar(){
   chassisBody.position.set(45,2,-76);
   chassisBody.quaternion.set(0,0,0,1);
@@ -383,7 +411,7 @@ function resetCar(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();
-  damage=0;wrecked=false;peakDownVel=0;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
+  damage=0;wrecked=false;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
   lapEl.textContent='READY';
   damageEl.style.width='0%';damageNumEl.textContent='0';
 }
@@ -419,18 +447,22 @@ function controls(dt){
     boost=Math.max(0,boost-23*dt);
   }
   if(wrecked)engine=0;
-  // Rear-wheel drive with a small front assist for reliable traction on banked/jump geometry.
+  // Rear-wheel drive. Front-wheel engine assist was removed because it could tug the car off-line at launch.
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
-  vehicle.applyEngineForce(engine*.22,0);
-  vehicle.applyEngineForce(engine*.22,1);
 
   // Launch assist prevents a raycast-contact hiccup from leaving the car stationary.
   // It fades away once the car is rolling, so normal wheel/suspension physics take over.
   if(go&&!wrecked&&v<8){
     const forward=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
-    const assist=5200*(1-v/8)*powerHealth;
-    chassisBody.applyForce(new CANNON.Vec3(forward.x*assist,forward.y*assist*.08,forward.z*assist),chassisBody.position);
+    const assist=5000*(1-v/8)*powerHealth;
+    chassisBody.applyForce(new CANNON.Vec3(forward.x*assist,forward.y*assist*.04,forward.z*assist),chassisBody.position);
+    // With no steering input, suppress tiny asymmetric contact forces while pulling away.
+    if(Math.abs(rawSteer)<.01){
+      chassisBody.angularVelocity.y*=Math.pow(.70,dt*60);
+      const lateral=chassisBody.velocity.x;
+      chassisBody.velocity.x-=lateral*Math.min(1,5*dt);
+    }
   }
   const brake=wrecked?70:(back&&v>3?34:0);
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
@@ -494,29 +526,47 @@ function updateVisuals(){
 function landingLogic(){
   const grounded=vehicle.wheelInfos.some(w=>w.isInContact);
   const now=performance.now();
+
   if(!grounded){
+    const upNow=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
+    airMinUp=Math.min(airMinUp,upNow.y);
+    if(upNow.y<.55)airUnstable=true; // rolled/flipped far enough that it was not a clean jump
     peakDownVel=Math.max(peakDownVel,Math.max(0,-chassisBody.velocity.y));
-    if(now-lastGrounded>140&&!airborne){airborne=true;airStart=now;peakDownVel=Math.max(0,-chassisBody.velocity.y);}
+
+    if(now-lastGrounded>140&&!airborne){
+      airborne=true;airStart=now;
+      peakDownVel=Math.max(0,-chassisBody.velocity.y);
+      airMinUp=upNow.y;
+      airUnstable=upNow.y<.55;
+    }
   }
+
   if(grounded){
     if(airborne){
       const air=(now-airStart)/1000;
       const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
       const hard=Math.max(0,peakDownVel-6.2)*4.8;
       const crooked=Math.max(0,.93-up.y)*105;
-      const hit=Math.max(0,hard+crooked);
-      if(hit>2){
+      const tumblePenalty=airUnstable?18:0;
+      const hit=Math.max(0,hard+crooked+tumblePenalty);
+
+      if(airUnstable || up.y<.72){
+        const added=Math.min(45,Math.max(8,Math.round(hit)));
+        damage=Math.min(100,damage+added);
+        flash('OUCH! STEADY DRIVER!  +'+added+'% DAMAGE');
+        if(damage>=100){wrecked=true;flash('WRECKED!  PRESS R');}
+      }else if(hit>2){
         const added=Math.min(45,Math.round(hit));
         damage=Math.min(100,damage+added);
         flash('HARD LANDING  +'+added+'% DAMAGE');
         if(damage>=100){wrecked=true;flash('WRECKED!  PRESS R');}
-      }else if(air>.35&&up.y>.78){
+      }else if(air>.35 && up.y>.88 && airMinUp>.72){
         const earned=Math.min(28,Math.round(7+air*7));
         boost=Math.min(100,boost+earned);
         flash('NICE LANDING  +'+earned+' BOOST');
       }
     }
-    airborne=false;peakDownVel=0;lastGrounded=now;
+    airborne=false;peakDownVel=0;airMinUp=1;airUnstable=false;lastGrounded=now;
   }
 }
 function lapLogic(){
