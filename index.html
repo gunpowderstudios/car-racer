@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v3.4</title>
+<title>Car Racer v4.0</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,8 +31,8 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v3.4 matches physics to the banked road, adds solid road sides, straightens launch behaviour and improves landing judgement.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v3.4</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.0 is a clean physics rebuild: smooth banked oval, simpler chassis, retuned suspension and steering.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.0</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -67,11 +67,12 @@ scene.add(sun);
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});
 world.broadphase=new CANNON.SAPBroadphase(world);
 world.allowSleep=true;
-world.solver.iterations=14;
+world.solver.iterations=10;
+world.solver.tolerance=.001;
 const roadPhys=new CANNON.Material('road');
 const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
-world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.65,restitution:0,contactEquationStiffness:1e8,contactEquationRelaxation:3}));
+world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.58,restitution:.06}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.25,restitution:.16}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
@@ -87,7 +88,7 @@ const roadTopMat=new THREE.MeshStandardMaterial({color:0x4c5054,roughness:.96,me
 const roadSideMat=new THREE.MeshStandardMaterial({color:0x202529,roughness:1,metalness:0});
 const centreMat=new THREE.LineBasicMaterial({color:0xe8dd3c});
 const trackSections=[];
-const BANK=THREE.MathUtils.degToRad(17);
+const BANK=THREE.MathUtils.degToRad(12);
 function p(x,y,z,bank=0){return [x,y,z,bank];}
 function edgeFrame(points,i){
   const q=points[i],a=points[Math.max(0,i-1)],b=points[Math.min(points.length-1,i+1)];
@@ -129,72 +130,52 @@ function addRoadVisual(points,width=16,depth=1.5){
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts),centreMat));
 }
 function addRoadCollision(points,width=16,depth=1.5){
-  // Smooth triangle-mesh skin for tyres and normal driving.
-  // Solid boxes remain underneath, recessed so their joins cannot form invisible kerbs.
-  const verts=[],indices=[],left=[],right=[];
+  // v4: one smooth driving skin only. No overlapping support boxes under the tyres.
+  const verts=[],indices=[];
   for(let i=0;i<points.length;i++){
     const q=points[i],e=edgeFrame(points,i),h=width/2;
-    // Collision follows the exact same banked left/right edge as the visible road.
-    const L=[q[0]+e.lx*h,q[1]+e.ly*h,q[2]+e.lz*h];
-    const R=[q[0]-e.lx*h,q[1]-e.ly*h,q[2]-e.lz*h];
-    left.push(L);right.push(R);verts.push(...L,...R);
+    verts.push(
+      q[0]+e.lx*h,q[1]+e.ly*h,q[2]+e.lz*h,
+      q[0]-e.lx*h,q[1]-e.ly*h,q[2]-e.lz*h
+    );
   }
   for(let i=0;i<points.length-1;i++){
     const a=i*2,b=a+1,c=a+2,d=a+3;
+    // Winding gives an upward-facing road surface for the wheel raycasts.
     indices.push(a,c,b,b,c,d);
   }
-  const skin=new CANNON.Body({mass:0,material:roadPhys});
-  skin.addShape(new CANNON.Trimesh(verts,indices));
+  const roadBody=new CANNON.Body({mass:0,material:roadPhys});
+  roadBody.addShape(new CANNON.Trimesh(verts,indices));
+  world.addBody(roadBody);
+}
 
-  // Solid vertical sides and underside matching the visible slab.
-  // These stop the chassis passing through the raised side of a banked corner.
-  const sideVerts=[],sideIdx=[],bottomVerts=[],bottomIdx=[];
-  const sideQuad=(a,b,c,d)=>{
-    const k=sideVerts.length/3;
-    sideVerts.push(...a,...b,...c,...d);
-    sideIdx.push(k,k+1,k+2,k,k+2,k+3,k+2,k+1,k,k+3,k+2);
-  };
+function addOuterWall(points,width=16){
+  const wallMat=new THREE.MeshStandardMaterial({color:0xe7e7df,roughness:.85});
   for(let i=0;i<points.length-1;i++){
-    const l0=left[i],l1=left[i+1],r0=right[i],r1=right[i+1];
-    const l0b=[l0[0],l0[1]-depth,l0[2]],l1b=[l1[0],l1[1]-depth,l1[2]];
-    const r0b=[r0[0],r0[1]-depth,r0[2]],r1b=[r1[0],r1[1]-depth,r1[2]];
-    sideQuad(l0,l1,l1b,l0b);
-    sideQuad(r1,r0,r0b,r1b);
-  }
-  for(let i=0;i<points.length;i++){
-    const L=left[i],R=right[i];
-    bottomVerts.push(L[0],L[1]-depth,L[2],R[0],R[1]-depth,R[2]);
-  }
-  for(let i=0;i<points.length-1;i++){
-    const a=i*2,b=a+1,c=a+2,d=a+3;
-    bottomIdx.push(a,b,d,a,d,c,d,b,a,c,d,a);
-  }
-  if(sideVerts.length)skin.addShape(new CANNON.Trimesh(sideVerts,sideIdx));
-  if(bottomVerts.length)skin.addShape(new CANNON.Trimesh(bottomVerts,bottomIdx));
-  world.addBody(skin);
-
-  // Recessed solid structure: catches the chassis at track edges but stays below the tyre surface.
-  for(let i=0;i<points.length-1;i++){
-    const a=points[i],b=points[i+1],dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
-    const horizontal=Math.hypot(dx,dz),length=Math.hypot(horizontal,dy);if(length<.01)continue;
-    const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horizontal),bank=((a[3]||0)+(b[3]||0))/2;
-    const supportDepth=Math.max(.8,depth-.18);
+    const a=points[i],b=points[i+1];
+    const ea=edgeFrame(points,i),eb=edgeFrame(points,i+1);
+    // Outer edge of our left-hand oval turns is the RIGHT edge.
+    const ax=a[0]-ea.lx*width/2, ay=a[1]-ea.ly*width/2, az=a[2]-ea.lz*width/2;
+    const bx=b[0]-eb.lx*width/2, by=b[1]-eb.ly*width/2, bz=b[2]-eb.lz*width/2;
+    const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz);
+    if(len<.01)continue;
+    const yaw=Math.atan2(dx,dz);
     const body=new CANNON.Body({mass:0,material:roadPhys});
-    body.addShape(new CANNON.Box(new CANNON.Vec3(width/2-.10,supportDepth/2,(length+.18)/2)));
-    body.position.set((a[0]+b[0])/2,(a[1]+b[1])/2-supportDepth/2-.16,(a[2]+b[2])/2);
-    const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qBank=new CANNON.Quaternion();
-    qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
-    qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
-    qBank.setFromAxisAngle(new CANNON.Vec3(0,0,1),bank);
-    const qp=new CANNON.Quaternion(),q=new CANNON.Quaternion();qYaw.mult(qPitch,qp);qp.mult(qBank,q);body.quaternion.copy(q);
+    body.addShape(new CANNON.Box(new CANNON.Vec3(.16,.55,(len+.15)/2)));
+    body.position.set((ax+bx)/2,(ay+by)/2+.55,(az+bz)/2);
+    body.quaternion.setFromEuler(0,yaw,0);
     world.addBody(body);
+
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,1.1,len+.15),wallMat);
+    mesh.position.set(body.position.x,body.position.y,body.position.z);
+    mesh.rotation.y=yaw;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
   }
 }
 function addTrack(points,width=16,depth=1.5){
   trackSections.push({points,width,depth});addRoadCollision(points,width,depth);addRoadVisual(points,width,depth);
 }
 function arcTurn(cz,startTheta,endTheta){
-  const pts=[],steps=28;
+  const pts=[],steps=36;
   for(let i=0;i<=steps;i++){
     const t=i/steps,th=startTheta+(endTheta-startTheta)*t;
     const bank=-BANK*Math.sin(Math.PI*t);
@@ -202,23 +183,23 @@ function arcTurn(cz,startTheta,endTheta){
   }
   return pts;
 }
-function ramp(x,z0,z1,y0,y1,steps=10){
-  const pts=[];
-  for(let i=0;i<=steps;i++){const t=i/steps,s=t*t*(3-2*t);pts.push(p(x,y0+(y1-y0)*s,z0+(z1-z0)*t,0));}
-  return pts;
-}
 
-// Complete one-lap oval: front straight, two banked turns, and a stunt back straight.
-addTrack([p(45,.65,-85),p(45,.65,85)],16,1.55);
-addTrack(arcTurn(85,0,Math.PI),16,1.55);
-addTrack([p(-45,.65,85),p(-45,.65,48)],16,1.55);
-addTrack(ramp(-45,48,18,.65,4.0,12),16,1.55);        // jump 1 takeoff
-addTrack(ramp(-45,-2,-15,3.15,.65,8),16,1.55);       // jump 1 landing
-addTrack([p(-45,.65,-15),p(-45,.65,-28)],16,1.55);
-addTrack(ramp(-45,-28,-42,.65,4.8,8),16,1.55);       // jump 2 takeoff
-addTrack(ramp(-45,-64,-78,3.85,.65,9),16,1.55);      // jump 2 landing
-addTrack([p(-45,.65,-78),p(-45,.65,-85)],16,1.55);
-addTrack(arcTurn(-85,Math.PI,Math.PI*2),16,1.55);
+// v4 baseline: ONE continuous oval road mesh.
+// No ramps, boxes, gaps or obstacles until the car feels right.
+const oval=[];
+for(let z=-85;z<=85;z+=10)oval.push(p(45,.65,z,0));
+
+const topTurn=arcTurn(85,0,Math.PI);
+for(let i=1;i<topTurn.length;i++)oval.push(topTurn[i]);
+
+for(let z=75;z>=-85;z-=10)oval.push(p(-45,.65,z,0));
+
+const bottomTurn=arcTurn(-85,Math.PI,Math.PI*2);
+for(let i=1;i<bottomTurn.length;i++)oval.push(bottomTurn[i]);
+
+addTrack(oval,18,1.5);
+addOuterWall(topTurn,18);
+addOuterWall(bottomTurn,18);
 
 const startLineZ=-60;
 const finishGroup=new THREE.Group();finishGroup.position.set(45,.65,startLineZ);scene.add(finishGroup);
@@ -269,8 +250,7 @@ function addBarrel(x,y,z){
   const item={mesh:group,body,start:new CANNON.Vec3(x,y,z),startQ:new CANNON.Quaternion(0,0,0,1)};
   barrels.push(item);group.position.set(x,y,z);
 }
-[[42,1.31,-34],[45,1.31,-30],[48,1.31,-26],[42.5,1.31,-14],[47.5,1.31,-8],[45,1.31,2]].forEach(p=>addBarrel(...p));
-[[-48,1.31,70],[-45,1.31,67],[-42,1.31,64]].forEach(p=>addBarrel(...p));
+// v4 physics baseline: obstacles disabled until the car/road feel is stable.
 function resetBarrels(){
   for(const b of barrels){
     b.body.position.copy(b.start);b.body.quaternion.copy(b.startQ);
@@ -288,37 +268,36 @@ function addCrate(x,y,z,size=1.15){
   const body=new CANNON.Body({mass:24,material:obstaclePhys,shape:new CANNON.Box(new CANNON.Vec3(size/2,size/2,size/2)),linearDamping:.08,angularDamping:.12});body.position.set(x,y,z);world.addBody(body);
   const item={mesh,body,start:new CANNON.Vec3(x,y,z),startQ:new CANNON.Quaternion()};crates.push(item);mesh.position.copy(body.position);return item;
 }
-[[-48,1.25,55],[-45,1.25,55],[-42,1.25,55],[-46.5,2.4,55],[-43.5,2.4,55],[-45,3.55,55]].forEach(p=>addCrate(...p));
+// Crates disabled in v4 baseline.
 function resetCrates(){for(const c of crates){c.body.position.copy(c.start);c.body.quaternion.copy(c.startQ);c.body.velocity.setZero();c.body.angularVelocity.setZero();c.body.force.setZero();c.body.torque.setZero();c.body.wakeUp();}}
 const sweeperMesh=new THREE.Group();scene.add(sweeperMesh);
 const sweepBar=new THREE.Mesh(new THREE.BoxGeometry(9,.45,.5),new THREE.MeshStandardMaterial({color:0xf2b51d,roughness:.65}));sweepBar.castShadow=true;sweeperMesh.add(sweepBar);
 const sweepHub=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,1.4,16),new THREE.MeshStandardMaterial({color:0x333333,roughness:.7}));sweepHub.position.y=-.3;sweepHub.castShadow=true;sweeperMesh.add(sweepHub);
-const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(45,1.55,34);sweeperBody.angularVelocity.set(0,.85,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);
+const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(999,-100,999);sweeperBody.collisionResponse=false;world.addBody(sweeperBody);sweeperMesh.visible=false;
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.04,.18,2.05)),new CANNON.Vec3(0,-.34,.08));
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.03,.34,1.95)),new CANNON.Vec3(0,.02,.10));
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(.82,.28,.92)),new CANNON.Vec3(0,.48,-.12));
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(.98,.18,.62)),new CANNON.Vec3(0,.22,1.63));
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(.98,.18,.52)),new CANNON.Vec3(0,.22,-1.68));
-chassisBody.position.set(45,2,-76);
-chassisBody.angularDamping=.5;
-chassisBody.linearDamping=.02;
+chassisBody.addShape(
+  new CANNON.Box(new CANNON.Vec3(1.02,.28,1.95)),
+  new CANNON.Vec3(0,-.06,.08)
+);
+chassisBody.position.set(45,1.72,-76);
+chassisBody.angularDamping=.58;
+chassisBody.linearDamping=.015;
 world.addBody(chassisBody);
 const vehicle=new CANNON.RaycastVehicle({chassisBody,indexRightAxis:0,indexUpAxis:1,indexForwardAxis:2});
 const wheelOpts={
   radius:.42,
   directionLocal:new CANNON.Vec3(0,-1,0),
-  suspensionStiffness:40,
-  suspensionRestLength:.44,
-  frictionSlip:4.5,
-  dampingRelaxation:2.3,
-  dampingCompression:4.5,
-  maxSuspensionForce:100000,
-  rollInfluence:.065,
+  suspensionStiffness:28,
+  suspensionRestLength:.40,
+  frictionSlip:5.2,
+  dampingRelaxation:2.8,
+  dampingCompression:4.4,
+  maxSuspensionForce:85000,
+  rollInfluence:.09,
   axleLocal:new CANNON.Vec3(-1,0,0),
   chassisConnectionPointLocal:new CANNON.Vec3(),
-  maxSuspensionTravel:.48,
-  customSlidingRotationalSpeed:-30,
+  maxSuspensionTravel:.30,
+  customSlidingRotationalSpeed:-28,
   useCustomSlidingRotationalSpeed:true
 };
 [[.96,0,1.42],[-.96,0,1.42],[.96,0,-1.42],[-.96,0,-1.42]].forEach((p,i)=>{
@@ -404,7 +383,7 @@ renderer.domElement.addEventListener('wheel',e=>{
 },{passive:false});
 let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76;
 function resetCar(){
-  chassisBody.position.set(45,2,-76);
+  chassisBody.position.set(45,1.72,-76);
   chassisBody.quaternion.set(0,0,0,1);
   chassisBody.velocity.setZero();
   chassisBody.angularVelocity.setZero();
@@ -424,72 +403,64 @@ function controls(dt){
   const frontOn=vehicle.wheelInfos[0].isInContact||vehicle.wheelInfos[1].isInContact;
   const rearOn=vehicle.wheelInfos[2].isInContact||vehicle.wheelInfos[3].isInContact;
   const grounded=frontOn||rearOn;
-  const airborneNow=!frontOn&&!rearOn;
+  const airborneNow=!grounded;
+
   const go=keys.KeyW||keys.ArrowUp;
   const back=grounded&&(keys.KeyS||keys.ArrowDown);
   const left=keys.KeyA||keys.ArrowLeft;
   const right=keys.KeyD||keys.ArrowRight;
+
   const v=chassisBody.velocity.length();
-  const steerHealth=Math.max(.68,1-damage*.0028);
-  const powerHealth=Math.max(.52,1-damage*.0048);
-  const steerMax=.47*Math.max(.34,1-v/58)*steerHealth;
+  const steerHealth=Math.max(.72,1-damage*.0025);
+  const powerHealth=Math.max(.55,1-damage*.0045);
+
+  // Gentle, progressive steering. Less angle as speed rises.
+  const steerMax=.38*Math.max(.42,1-v/48)*steerHealth;
   const rawSteer=(left?1:0)+(right?-1:0);
-  const steerResponse=1-Math.exp(-5.0*dt);
-  steerState+=(rawSteer-steerState)*steerResponse;
+  const response=1-Math.exp(-3.2*dt);
+  steerState+=(rawSteer-steerState)*response;
   vehicle.setSteeringValue(steerState*steerMax,0);
   vehicle.setSteeringValue(steerState*steerMax,1);
 
-  if(go||back)chassisBody.wakeUp();
-  let engine=go?-4100*powerHealth:0;
-  if(back)engine=2200*powerHealth;
+  let engine=go?-4400*powerHealth:0;
+  if(back)engine=2300*powerHealth;
   if(keys.Space&&boost>0&&go&&!wrecked){
-    engine=-7600*powerHealth;
-    boost=Math.max(0,boost-23*dt);
+    engine=-7200*powerHealth;
+    boost=Math.max(0,boost-22*dt);
   }
   if(wrecked)engine=0;
-  // Rear-wheel drive. Front-wheel engine assist was removed because it could tug the car off-line at launch.
+
+  // Pure rear-wheel drive; no direct chassis launch force.
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
 
-  // Launch assist prevents a raycast-contact hiccup from leaving the car stationary.
-  // It fades away once the car is rolling, so normal wheel/suspension physics take over.
-  if(go&&!wrecked&&v<8){
-    const forward=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
-    const assist=5000*(1-v/8)*powerHealth;
-    chassisBody.applyForce(new CANNON.Vec3(forward.x*assist,forward.y*assist*.04,forward.z*assist),chassisBody.position);
-    // With no steering input, suppress tiny asymmetric contact forces while pulling away.
-    if(Math.abs(rawSteer)<.01){
-      chassisBody.angularVelocity.y*=Math.pow(.70,dt*60);
-      const lateral=chassisBody.velocity.x;
-      chassisBody.velocity.x-=lateral*Math.min(1,5*dt);
-    }
-  }
-  const brake=wrecked?70:(back&&v>3?34:0);
+  const brake=wrecked?70:(back&&v>3?42:0);
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
 
   if(keys.KeyQ){manualOrbit=true;orbitYaw+=1.45*dt;}
   if(keys.KeyE){manualOrbit=true;orbitYaw-=1.45*dt;}
 
-  const rollTarget=grounded?-steerState*Math.min(1,v/15)*0.12:0;
-  bodyRoll+=(rollTarget-bodyRoll)*(1-Math.exp(-3.0*dt));
+  // Visual-only body roll.
+  const rollTarget=grounded?-steerState*Math.min(1,v/16)*0.08:0;
+  bodyRoll+=(rollTarget-bodyRoll)*(1-Math.exp(-3.5*dt));
   leanRoot.rotation.z=bodyRoll;
 
-  if(v>12&&frontOn&&rearOn){
-    chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.18,0),chassisBody.position);
+  // Mild aerodynamic load only with all four wheels effectively on the surface.
+  if(v>15&&frontOn&&rearOn){
+    chassisBody.applyForce(new CANNON.Vec3(0,-v*v*.10,0),chassisBody.position);
   }
 
-  // Separate landing controls: S = nose up, X = nose down.
-  // S still acts as brake/reverse while the wheels are on the road.
+  // Air landing control remains available for later jump tests.
   if(airborneNow&&!wrecked){
     let pitchInput=0;
-    if(keys.KeyS)pitchInput-=1;        // nose up
-    if(keys.KeyX)pitchInput+=1;        // nose down
+    if(keys.KeyS)pitchInput-=1; // nose up
+    if(keys.KeyX)pitchInput+=1; // nose down
     if(pitchInput){
       const axis=chassisBody.quaternion.vmult(new CANNON.Vec3(1,0,0));
-      const torque=2600*pitchInput;
+      const torque=2100*pitchInput;
       chassisBody.applyTorque(new CANNON.Vec3(axis.x*torque,axis.y*torque,axis.z*torque));
     }
-    chassisBody.angularVelocity.x*=Math.pow(.985,dt*60);
+    chassisBody.angularVelocity.x*=Math.pow(.992,dt*60);
   }
 }
 const fwd=new THREE.Vector3(),right3=new THREE.Vector3(),desired=new THREE.Vector3(),look=new THREE.Vector3();
@@ -597,7 +568,7 @@ function animate(now){
   last=now;
   if(started){
     controls(dt);
-    world.step(1/60,dt,5);
+    world.step(1/60,dt,3);
     landingLogic();
     lapLogic();
     if(chassisBody.position.y<-10)resetCar();
