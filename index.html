@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.2</title>
+<title>Car Racer v6.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.2 uses the real chicken cluck sound from sounds/cluck.mp3.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.3 adds real barrel-hit and boost sounds alongside the chicken cluck.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -84,13 +84,18 @@ const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),dama
 const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
 let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
-const cluckPool=Array.from({length:4},()=>{
-  const a=new Audio('sounds/cluck.mp3');
-  a.preload='auto';
-  a.volume=.82;
-  return a;
-});
-let cluckIndex=0;
+function makeAudioPool(src,count=3,volume=.8){
+  return Array.from({length:count},()=>{
+    const a=new Audio(src);
+    a.preload='auto';
+    a.volume=volume;
+    return a;
+  });
+}
+const cluckPool=makeAudioPool('sounds/cluck.mp3',4,.82);
+const barrelSoundPool=makeAudioPool('sounds/barrel.mp3',3,.82);
+const boostSoundPool=makeAudioPool('sounds/boost.mp3',2,.86);
+let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0,boostSoundHeld=false;
 let soundEnabled=true;
 function applySoundState(){
   soundBtn.textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';
@@ -98,7 +103,9 @@ function applySoundState(){
   if(audioCtx&&masterGain){
     masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
   }
-  for(const a of cluckPool)a.muted=!soundEnabled;
+  for(const pool of [cluckPool,barrelSoundPool,boostSoundPool]){
+    for(const a of pool)a.muted=!soundEnabled;
+  }
 }
 function initAudio(){
   if(audioCtx){
@@ -174,15 +181,26 @@ function playLandingSound(intensity=.5){
   toneSweep('triangle',82,38,.16,.035+Math.min(.10,intensity*.09));
   noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
 }
-function playCluckSound(){
-  if(!soundEnabled)return;
-  const a=cluckPool[cluckIndex++%cluckPool.length];
+function playPoolSound(pool,index,volume=1){
+  if(!soundEnabled||!pool.length)return index;
+  const a=pool[index%pool.length];
   try{
     a.muted=false;
+    a.volume=volume;
     a.currentTime=0;
     const p=a.play();
     if(p&&typeof p.catch==='function')p.catch(()=>{});
   }catch(_){}
+  return index+1;
+}
+function playCluckSound(){
+  cluckIndex=playPoolSound(cluckPool,cluckIndex,.82);
+}
+function playBarrelSound(){
+  barrelSoundIndex=playPoolSound(barrelSoundPool,barrelSoundIndex,.82);
+}
+function playBoostSound(){
+  boostSoundIndex=playPoolSound(boostSoundPool,boostSoundIndex,.86);
 }
 soundBtn.addEventListener('click',()=>{
   soundEnabled=!soundEnabled;
@@ -1450,7 +1468,11 @@ function carCollisionDamage(e){
     return;
   }else if(e.body?.material===barrelPhys){
     const barrel=barrelByBody.get(e.body);
-    if(barrel&&!barrel.scored){barrel.scored=true;addScore(25,'BARREL');}
+    if(barrel&&!barrel.scored){
+      barrel.scored=true;
+      addScore(25,'BARREL');
+      playBarrelSound();
+    }
     // Barrels are lightweight smash-through debris: launch the barrel,
     // preserve the player's momentum and avoid the strong recovery/stun response.
     if(speed>2){
@@ -1576,7 +1598,7 @@ function resetCar(){
   chassisBody.velocity.setZero();
   chassisBody.angularVelocity.setZero();
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
-  boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
+  boost=35;boostSoundHeld=false;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();resetTrafficCars();
   for(const chicken of chickens)resetChicken(chicken,true);
   score=0;chickenHits=0;refreshScore();
@@ -1644,9 +1666,14 @@ function controls(dt){
     }
   }
 
-  if((keys.Space||mobileBoost)&&boost>0&&go&&!back&&!wrecked){
+  const boostActive=(keys.Space||mobileBoost)&&boost>0&&go&&!back&&!wrecked;
+  if(boostActive){
+    if(!boostSoundHeld)playBoostSound();
+    boostSoundHeld=true;
     engine=-7200*powerHealth*powerRecovery;
     boost=Math.max(0,boost-22*dt);
+  }else{
+    boostSoundHeld=false;
   }
   if(wrecked){engine=0;brake=70;}
 
