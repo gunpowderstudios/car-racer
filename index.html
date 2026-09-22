@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v8.8</title>
+<title>Car Racer v8.9</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v8.8 smooths cornering with lighter rendering, frame-rate independent camera motion and leaner physics stepping.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v8.9 makes chickens burst into a small red splat on impact, with lightweight debris for smooth performance.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v8.8</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v8.9</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -1091,6 +1091,109 @@ function updateAIExplosions(dt){
     }
   }
 }
+const chickenSplats=[];
+function spawnChickenSplat(chicken){
+  const origin=new THREE.Vector3(
+    chicken.body.position.x,
+    chicken.body.position.y+.10,
+    chicken.body.position.z
+  );
+  const carVel=new THREE.Vector3(
+    chassisBody.velocity.x*.05,
+    0,
+    chassisBody.velocity.z*.05
+  );
+
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(.20,8,6),
+    new THREE.MeshBasicMaterial({
+      color:0xc91414,
+      transparent:true,
+      opacity:.92,
+      depthWrite:false
+    })
+  );
+  core.position.copy(origin);
+  core.castShadow=false;
+  core.receiveShadow=false;
+  scene.add(core);
+  chickenSplats.push({
+    mesh:core,
+    vel:new THREE.Vector3(),
+    life:.20,
+    maxLife:.20,
+    grow:3.5
+  });
+
+  for(let i=0;i<10;i++){
+    const color=i%4===0?0x690000:(i%3===0?0x8f0808:0xd61d1d);
+    const bit=new THREE.Mesh(
+      new THREE.BoxGeometry(
+        .035+Math.random()*.075,
+        .025+Math.random()*.055,
+        .035+Math.random()*.075
+      ),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent:true,
+        opacity:1
+      })
+    );
+    bit.position.copy(origin);
+    bit.castShadow=false;
+    bit.receiveShadow=false;
+    scene.add(bit);
+
+    const vel=new THREE.Vector3(
+      (Math.random()-.5)*3.2,
+      .8+Math.random()*2.7,
+      (Math.random()-.5)*3.2
+    ).add(carVel);
+
+    chickenSplats.push({
+      mesh:bit,
+      vel,
+      spin:new THREE.Vector3(
+        (Math.random()-.5)*9,
+        (Math.random()-.5)*9,
+        (Math.random()-.5)*9
+      ),
+      life:.55+Math.random()*.25,
+      maxLife:.80,
+      grow:0
+    });
+  }
+}
+
+function updateChickenSplats(dt){
+  for(let i=chickenSplats.length-1;i>=0;i--){
+    const p=chickenSplats[i];
+    p.life-=dt;
+    if(p.life<=0){
+      scene.remove(p.mesh);
+      p.mesh.geometry?.dispose?.();
+      p.mesh.material?.dispose?.();
+      chickenSplats.splice(i,1);
+      continue;
+    }
+
+    if(p.grow){
+      const sc=1+(p.maxLife-p.life)*p.grow;
+      p.mesh.scale.setScalar(sc);
+      p.mesh.material.opacity=Math.max(0,p.life/p.maxLife);
+    }else{
+      p.vel.y-=9.82*dt*.72;
+      p.mesh.position.addScaledVector(p.vel,dt);
+      if(p.spin){
+        p.mesh.rotation.x+=p.spin.x*dt;
+        p.mesh.rotation.y+=p.spin.y*dt;
+        p.mesh.rotation.z+=p.spin.z*dt;
+      }
+      p.mesh.material.opacity=Math.max(0,Math.min(1,p.life/.20));
+    }
+  }
+}
+
 function destroyAICar(car,jumpSmash=false){
   if(!car||car.destroyed)return;
   car.destroyed=true;
@@ -1188,6 +1291,8 @@ function makeChicken(){
 }
 function resetChicken(chicken,initial=false){
   chicken.hit=false;chicken.hitAt=0;
+  chicken.mesh.visible=true;
+  chicken.body.collisionResponse=true;
   chicken.body.type=CANNON.Body.KINEMATIC;chicken.body.mass=0;chicken.body.updateMassProperties();
   chicken.progress=70+Math.random()*Math.max(50,aiPathLength-125);
   chicken.dir=Math.random()<.5?1:-1;
@@ -1205,18 +1310,19 @@ function hitChicken(chicken){
   chickenHits++;
   addScore(100,'CHICKEN!');
   playCluckSound();
-  chicken.body.type=CANNON.Body.DYNAMIC;chicken.body.mass=1.2;chicken.body.updateMassProperties();
-  const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
-  const speed=Math.max(8,chassisBody.velocity.length());
-  chicken.body.velocity.set(f.x*Math.min(14,speed*.55)+(Math.random()-.5)*4,7+Math.random()*3,f.z*Math.min(14,speed*.55)+(Math.random()-.5)*4);
-  chicken.body.angularVelocity.set((Math.random()-.5)*14,(Math.random()-.5)*18,(Math.random()-.5)*14);
-  chicken.body.wakeUp();
+
+  spawnChickenSplat(chicken);
+
+  chicken.mesh.visible=false;
+  chicken.body.collisionResponse=false;
+  chicken.body.velocity.setZero();
+  chicken.body.angularVelocity.setZero();
+  chicken.body.position.y=-50;
 }
 function updateChickens(dt){
   for(const chicken of chickens){
     if(chicken.hit){
-      chicken.mesh.position.copy(chicken.body.position);chicken.mesh.quaternion.copy(chicken.body.quaternion);
-      if(performance.now()-chicken.hitAt>1800 || chicken.body.position.y<-4)resetChicken(chicken);
+      if(performance.now()-chicken.hitAt>1800)resetChicken(chicken);
       continue;
     }
     const old=sampleAIPath(chicken.progress,chicken.lane);
@@ -2275,6 +2381,7 @@ function animate(now){
   updateDamageFx(dt);
   updateAIExplosions(dt);
   updateAISmoke(dt);
+  updateChickenSplats(dt);
   updateEngineSound();
   renderer.render(scene,camera);
 }
