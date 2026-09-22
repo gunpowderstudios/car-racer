@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.9</title>
+<title>Car Racer v6.0</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.9 reinforces the front of your car for ramming: frontal impacts now cause much less damage.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.0 gives off-track crashes the same 3, 2, 1 recovery penalty as a flipped car.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.9</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.0</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -561,23 +561,30 @@ function nearestTrackDistanceSq(x,z){
   }
   return best;
 }
-let offTrackSince=0;
+let offTrackSince=0,lastOffTrackCount=0;
 function offTrackLogic(){
   const pos=chassisBody.position;
   const now=performance.now();
-  // Road half-width is 9m. Give the player plenty of grace outside both walls;
-  // reset only when the chassis is clearly away from the circuit, or has fallen away.
-  const tooFar=nearestTrackDistanceSq(pos.x,pos.z)>(15.5*15.5);
+
+  // Once the car is clearly out on the grass / beyond the circuit, make the
+  // recovery a time penalty just like being flipped: 3, 2, 1, then back in.
+  const tooFar=nearestTrackDistanceSq(pos.x,pos.z)>(12.5*12.5);
   const tooLow=pos.y<-3.5;
   if(tooFar||tooLow){
-    if(!offTrackSince)offTrackSince=now;
-    if(now-offTrackSince>650){
-      flash('OFF TRACK!  RESET');
-      resetCar();
-      offTrackSince=0;
+    if(!offTrackSince){offTrackSince=now;lastOffTrackCount=0;}
+    const elapsed=now-offTrackSince;
+    if(elapsed>=3000){
+      recoverCarToRoad();
+      offTrackSince=0;lastOffTrackCount=0;
+    }else{
+      const count=elapsed<1000?3:(elapsed<2000?2:1);
+      if(count!==lastOffTrackCount){
+        lastOffTrackCount=count;
+        flash(String(count));
+      }
     }
   }else{
-    offTrackSince=0;
+    offTrackSince=0;lastOffTrackCount=0;
   }
 }
 function makeAIHealthBar(){
@@ -1513,7 +1520,7 @@ function recoverCarToRoad(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   steerState=0;mobileSteer=0;mobileSteerTarget=0;steerKnob.style.left='50%';
   airborne=false;airUnstable=false;peakDownVel=0;airMinUp=1;lastGrounded=performance.now();
-  flippedSince=0;lastFlipCount=0;offTrackSince=0;
+  flippedSince=0;lastFlipCount=0;offTrackSince=0;lastOffTrackCount=0;
   chassisBody.wakeUp();
   flash('BACK IN THE GAME!');
 }
@@ -1552,7 +1559,7 @@ function resetCar(){
   mobileSteer=0;mobileSteerTarget=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
   steerKnob.style.left='50%';
   gasPedal.classList.remove('active');brakePedal.classList.remove('active');boostPedal.classList.remove('active');resetPedal.classList.remove('active');
-  damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;offTrackSince=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;flippedSince=0;lastFlipCount=0;
+  damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;offTrackSince=0;lastOffTrackCount=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;flippedSince=0;lastFlipCount=0;
   for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
   clearDamageDebris();
   if(carVisual)carVisual.visible=true;
