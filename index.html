@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v7.6</title>
+<title>Car Racer v7.7</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.6 keeps skid marks and crash debris on the circuit until a new/reset run, raises engine volume, and lowers background music.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.7 starts with music off and optimises persistent skid marks/debris for smoother mobile performance.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v7.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v7.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -201,7 +201,7 @@ const shuntSoundPool=makeAudioPool('sounds/shunt.mp3',3,.88);
 let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0;
 let crashSoundIndex=0,scrapeSoundIndex=0,jumpSoundIndex=0,landingSoundIndex=0,shuntSoundIndex=0;
 let boostSoundHeld=false,lastShuntSound=0;
-let soundEnabled=true,musicEnabled=true,started=false;
+let soundEnabled=true,musicEnabled=false,started=false;
 function applyMusicState(){
   musicBtn.textContent=musicEnabled?'🎵 MUSIC ON':'🎵 MUSIC OFF';
   musicBtn.setAttribute('aria-pressed',musicEnabled?'true':'false');
@@ -1237,25 +1237,35 @@ for(let i=0;i<4;i++){
 }
 
 // Persistent tyre marks and wreckage make the circuit build up visually during
-// a run. Both are capped and cleared only when the player starts/resets a run.
-const skidMarks=[];
+// a run. Skids are batched into ONE mesh for mobile performance.
+const MAX_SKID_SEGMENTS=700;
 const skidPrev=[null,null];
 const skidMatBase=new THREE.MeshBasicMaterial({
   color:0x151515,transparent:true,opacity:.56,depthWrite:false,side:THREE.DoubleSide
 });
+const skidPositions=new Float32Array(MAX_SKID_SEGMENTS*18);
+const skidGeometry=new THREE.BufferGeometry();
+const skidPositionAttr=new THREE.BufferAttribute(skidPositions,3);
+skidPositionAttr.setUsage(THREE.DynamicDrawUsage);
+skidGeometry.setAttribute('position',skidPositionAttr);
+skidGeometry.setDrawRange(0,0);
+const skidMesh=new THREE.Mesh(skidGeometry,skidMatBase);
+skidMesh.renderOrder=2;
+skidMesh.frustumCulled=false;
+scene.add(skidMesh);
+let skidSegmentCount=0;
+
 const persistentTrackDebris=[];
 let launchSkidActive=false,landingSkidFrames=0;
+
 function clearSkidTrail(){
   skidPrev[0]=null;skidPrev[1]=null;
 }
 function clearSkidMarks(){
   clearSkidTrail();
-  for(const m of skidMarks){
-    scene.remove(m.mesh);
-    m.mesh.geometry.dispose();
-    m.mesh.material.dispose();
-  }
-  skidMarks.length=0;
+  skidSegmentCount=0;
+  skidGeometry.setDrawRange(0,0);
+  skidPositionAttr.needsUpdate=true;
 }
 function clearPersistentTrackDebris(){
   for(const d of persistentTrackDebris){
@@ -1286,43 +1296,43 @@ function addPersistentTrackDebris(origin,color=0x3a3430,count=7){
     );
     mesh.position.set(x,road.y+.05+Math.random()*.05,z);
     mesh.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
-    mesh.castShadow=true;
+    mesh.castShadow=false;
     scene.add(mesh);
     persistentTrackDebris.push(mesh);
   }
-  while(persistentTrackDebris.length>100){
+  while(persistentTrackDebris.length>40){
     const old=persistentTrackDebris.shift();
     scene.remove(old);old.geometry.dispose();old.material.dispose();
   }
 }
-function addSkidSegment(a,b,sideIndex,opacity=.56){
+function addSkidSegment(a,b){
+  if(skidSegmentCount>=MAX_SKID_SEGMENTS)return false;
+
   const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
   const len=Math.hypot(dx,dy,dz);
-  if(len<.035||len>2.2)return;
+  // Don't create a mark every single frame. Let a little distance accumulate.
+  if(len<.18||len>2.2)return false;
 
   const f=new THREE.Vector3(dx,dy,dz).normalize();
   const up=new THREE.Vector3(0,1,0);
-  let side=new THREE.Vector3().crossVectors(up,f);
+  const side=new THREE.Vector3().crossVectors(up,f);
   if(side.lengthSq()<.001)side.set(1,0,0);
   side.normalize().multiplyScalar(.105);
 
-  const lift=new THREE.Vector3(0,.025,0);
-  const p0=new THREE.Vector3().copy(a).add(lift).add(side);
-  const p1=new THREE.Vector3().copy(a).add(lift).sub(side);
-  const p2=new THREE.Vector3().copy(b).add(lift).add(side);
-  const p3=new THREE.Vector3().copy(b).add(lift).sub(side);
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.Float32BufferAttribute([
-    p0.x,p0.y,p0.z,p1.x,p1.y,p1.z,p2.x,p2.y,p2.z,
-    p2.x,p2.y,p2.z,p1.x,p1.y,p1.z,p3.x,p3.y,p3.z
-  ],3));
-  const mat=skidMatBase.clone();mat.opacity=opacity;
-  const mesh=new THREE.Mesh(geo,mat);mesh.renderOrder=2;scene.add(mesh);
-  skidMarks.push({mesh});
-  if(skidMarks.length>420){
-    const old=skidMarks.shift();
-    scene.remove(old.mesh);old.mesh.geometry.dispose();old.mesh.material.dispose();
-  }
+  const lift=.025;
+  const verts=[
+    a.x+side.x,a.y+lift+side.y,a.z+side.z,
+    a.x-side.x,a.y+lift-side.y,a.z-side.z,
+    b.x+side.x,b.y+lift+side.y,b.z+side.z,
+    b.x+side.x,b.y+lift+side.y,b.z+side.z,
+    a.x-side.x,a.y+lift-side.y,a.z-side.z,
+    b.x-side.x,b.y+lift-side.y,b.z-side.z
+  ];
+  skidPositions.set(verts,skidSegmentCount*18);
+  skidSegmentCount++;
+  skidGeometry.setDrawRange(0,skidSegmentCount*6);
+  skidPositionAttr.needsUpdate=true;
+  return true;
 }
 function updateSkidMarks(dt){
   const active=launchSkidActive||landingSkidFrames>0;
@@ -1338,8 +1348,11 @@ function updateSkidMarks(dt){
       w.worldTransform.position.y-.40,
       w.worldTransform.position.z
     );
-    if(skidPrev[j])addSkidSegment(skidPrev[j],p,j,launchSkidActive?.58:.48);
-    skidPrev[j]=p;
+    if(!skidPrev[j]){
+      skidPrev[j]=p;
+      continue;
+    }
+    if(addSkidSegment(skidPrev[j],p))skidPrev[j]=p;
   }
 }
 const carRoot=new THREE.Group();scene.add(carRoot);
