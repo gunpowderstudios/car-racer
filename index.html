@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.6</title>
+<title>Car Racer v4.7</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -27,12 +27,43 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 button{border:0;border-radius:100px;background:#ff7a00;color:#111;font-weight:900;font-size:17px;padding:13px 28px;cursor:pointer}
 button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
+#soundBtn{position:fixed;left:18px;top:55px;z-index:20;pointer-events:auto;border:1px solid #ffffff77;background:#111b;color:#fff;font-size:11px;letter-spacing:.08em;padding:8px 12px;min-width:104px}
+#mobileControls{display:none;position:fixed;left:0;right:0;bottom:8px;z-index:8;pointer-events:none;align-items:flex-end;justify-content:space-between;padding:10px 14px}
+#steerPad{width:132px;height:132px;border-radius:50%;border:3px solid #ffffffaa;background:#0007;pointer-events:auto;touch-action:none;position:relative;box-shadow:inset 0 0 0 8px #ffffff10}
+#steerPad:before{content:"STEER";position:absolute;left:0;right:0;top:51px;text-align:center;font-size:10px;font-weight:900;letter-spacing:.16em;color:#fff9}
+#steerWheel{position:absolute;left:25px;top:25px;width:76px;height:76px;border:6px solid #fff;border-radius:50%;transform-origin:50% 50%;transition:transform .08s linear}
+#steerWheel:before{content:"";position:absolute;left:31px;top:-5px;width:6px;height:70px;background:#fff;border-radius:5px}
+#steerWheel:after{content:"";position:absolute;left:4px;right:4px;top:29px;height:6px;background:#fff;border-radius:5px}
+#pedals{display:flex;gap:10px;align-items:flex-end;pointer-events:none}
+.mobilePedal{pointer-events:auto;touch-action:none;border:2px solid #ffffffbb;color:#fff;text-shadow:0 2px 3px #000;background:#111b;border-radius:18px;font-size:13px;letter-spacing:.08em;font-weight:900;padding:0;width:78px;height:112px}
+#gasPedal{background:linear-gradient(#2f6d2fcc,#183a18dd)}
+#brakePedal{background:linear-gradient(#8d2828cc,#461414dd)}
+#boostPedal{width:64px;height:64px;border-radius:50%;background:#b86a16dd}
+.mobilePedal.active{transform:translateY(3px) scale(.97);filter:brightness(1.4)}
+@media (pointer:coarse), (max-width:760px){
+  #mobileControls{display:flex}
+  #help,#status{display:none}
+  #soundBtn{top:50px;left:12px}
+  #title{top:12px;left:12px;font-size:18px}
+  #speedBox{top:12px;right:10px;transform:scale(.78);transform-origin:top right}
+  #lapBox{top:12px;font-size:11px}
+  #msg{font-size:26px;top:16%}
+}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.6 adds arcade-style impact deflection: collisions preserve momentum, bounce the car clear and briefly reduce control while it recovers.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.6</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.7 adds traffic cars, touch steering and pedals, plus a sound on/off control.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<button id="soundBtn" type="button">🔊 SOUND ON</button>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.7</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="mobileControls" aria-label="Mobile driving controls">
+  <div id="steerPad" aria-label="Steering control"><div id="steerWheel"></div></div>
+  <div id="pedals">
+    <button id="boostPedal" class="mobilePedal" type="button">BOOST</button>
+    <button id="brakePedal" class="mobilePedal" type="button">BRAKE<br>REV</button>
+    <button id="gasPedal" class="mobilePedal" type="button">GO</button>
+  </div>
+</div>
 <div id="fatal"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -40,16 +71,29 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox');
+const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerWheel=$('steerWheel'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal');
 
-let audioCtx=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
+let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
+let soundEnabled=true;
+function applySoundState(){
+  soundBtn.textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';
+  soundBtn.setAttribute('aria-pressed',soundEnabled?'true':'false');
+  if(audioCtx&&masterGain){
+    masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
+  }
+}
 function initAudio(){
   if(audioCtx){
     if(audioCtx.state==='suspended')audioCtx.resume();
+    applySoundState();
     return;
   }
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)return;
   audioCtx=new AC();
+  masterGain=audioCtx.createGain();
+  masterGain.gain.value=soundEnabled?1:0;
+  masterGain.connect(audioCtx.destination);
 
   engineFilter=audioCtx.createBiquadFilter();
   engineFilter.type='lowpass';engineFilter.frequency.value=520;engineFilter.Q.value=.7;
@@ -61,14 +105,15 @@ function initAudio(){
 
   engineOsc.connect(engineFilter);
   engineOsc2.connect(g2).connect(engineFilter);
-  engineFilter.connect(engineGain).connect(audioCtx.destination);
+  engineFilter.connect(engineGain).connect(masterGain);
   engineOsc.start();engineOsc2.start();
+  applySoundState();
 }
 function updateEngineSound(){
   if(!audioCtx||!engineGain||audioCtx.state!=='running')return;
   const now=audioCtx.currentTime;
   const speed=chassisBody?chassisBody.velocity.length():0;
-  const throttle=(keys?.KeyW||keys?.ArrowUp||keys?.KeyS||keys?.ArrowDown)?1:0;
+  const throttle=(keys?.KeyW||keys?.ArrowUp||keys?.KeyS||keys?.ArrowDown||mobileGo||mobileBrake)?1:0;
   const rpm=48+Math.min(170,speed*5.3)+(throttle?25:0);
   engineOsc.frequency.setTargetAtTime(rpm,now,.07);
   engineOsc2.frequency.setTargetAtTime(rpm*2.02,now,.07);
@@ -77,7 +122,7 @@ function updateEngineSound(){
   engineGain.gain.setTargetAtTime(target,now,.09);
 }
 function noiseBurst(duration=.16,volume=.12,highpass=120){
-  if(!audioCtx||audioCtx.state!=='running')return;
+  if(!audioCtx||audioCtx.state!=='running'||!soundEnabled)return;
   const n=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
   const buffer=audioCtx.createBuffer(1,n,audioCtx.sampleRate),data=buffer.getChannelData(0);
   for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
@@ -85,17 +130,17 @@ function noiseBurst(duration=.16,volume=.12,highpass=120){
   filter.type='highpass';filter.frequency.value=highpass;
   gain.gain.setValueAtTime(volume,audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);
-  src.buffer=buffer;src.connect(filter).connect(gain).connect(audioCtx.destination);src.start();
+  src.buffer=buffer;src.connect(filter).connect(gain).connect(masterGain);src.start();
 }
 function toneSweep(type,start,end,duration,volume){
-  if(!audioCtx||audioCtx.state!=='running')return;
+  if(!audioCtx||audioCtx.state!=='running'||!soundEnabled)return;
   const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),now=audioCtx.currentTime;
   osc.type=type;osc.frequency.setValueAtTime(start,now);osc.frequency.exponentialRampToValueAtTime(Math.max(10,end),now+duration);
   gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
-  osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
+  osc.connect(gain).connect(masterGain);osc.start(now);osc.stop(now+duration+.02);
 }
 function playCrashSound(intensity=.5,scrape=false){
-  if(!audioCtx)return;
+  if(!audioCtx||!soundEnabled)return;
   const now=performance.now();
   if(now-lastCrashSound<(scrape?120:65))return;
   lastCrashSound=now;
@@ -111,6 +156,12 @@ function playLandingSound(intensity=.5){
   toneSweep('triangle',82,38,.16,.035+Math.min(.10,intensity*.09));
   noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
 }
+soundBtn.addEventListener('click',()=>{
+  soundEnabled=!soundEnabled;
+  if(soundEnabled)initAudio();
+  applySoundState();
+});
+applySoundState();
 
 window.addEventListener('error',e=>{
   $('fatal').style.display='block';
@@ -409,6 +460,109 @@ const sweeperMesh=new THREE.Group();scene.add(sweeperMesh);
 const sweepBar=new THREE.Mesh(new THREE.BoxGeometry(9,.45,.5),new THREE.MeshStandardMaterial({color:0xf2b51d,roughness:.65,metalness:.12}));sweepBar.castShadow=true;sweeperMesh.add(sweepBar);
 const sweepHub=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,1.4,16),new THREE.MeshStandardMaterial({color:0x333333,roughness:.7}));sweepHub.position.y=-.3;sweepHub.castShadow=true;sweeperMesh.add(sweepHub);
 const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(-45,1.55,57);sweeperBody.collisionResponse=true;sweeperBody.angularVelocity.set(0,.82,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.visible=true;
+
+// Lightweight traffic cars: visual cars with kinematic collision bodies following the oval.
+const aiCars=[];
+const aiPathDist=[0];
+for(let i=1;i<oval.length;i++){
+  const a=oval[i-1],b=oval[i];
+  aiPathDist[i]=aiPathDist[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+}
+const aiPathLength=aiPathDist[aiPathDist.length-1];
+
+function sampleAIPath(distance,lane=0){
+  let d=((distance%aiPathLength)+aiPathLength)%aiPathLength;
+  let i=1;
+  while(i<aiPathDist.length&&aiPathDist[i]<d)i++;
+  i=Math.min(i,oval.length-1);
+  const a=oval[i-1],b=oval[i];
+  const seg=Math.max(.001,aiPathDist[i]-aiPathDist[i-1]);
+  const t=Math.max(0,Math.min(1,(d-aiPathDist[i-1])/seg));
+  const x=a[0]+(b[0]-a[0])*t;
+  const y=a[1]+(b[1]-a[1])*t;
+  const z=a[2]+(b[2]-a[2])*t;
+  const bank=(a[3]||0)+((b[3]||0)-(a[3]||0))*t;
+  let tx=b[0]-a[0],ty=b[1]-a[1],tz=b[2]-a[2];
+  const tl=Math.hypot(tx,ty,tz)||1;tx/=tl;ty/=tl;tz/=tl;
+  const h=Math.hypot(tx,tz)||1;
+  const hx=tx/h,hz=tz/h,cb=Math.cos(bank),sb=Math.sin(bank);
+  const ex=-hz*cb,ey=sb,ez=hx*cb;
+  return {x:x+ex*lane,y:y+ey*lane,z:z+ez*lane,tx,ty,tz,bank};
+}
+function makeTrafficCar(color,phase,speed,lane){
+  const group=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color,roughness:.55,metalness:.08});
+  const dark=new THREE.MeshStandardMaterial({color:0x171717,roughness:.9});
+  const glass=new THREE.MeshStandardMaterial({color:0x253746,roughness:.25,metalness:.15});
+  const bodyMesh=new THREE.Mesh(new THREE.BoxGeometry(1.95,.55,3.85),mat);
+  bodyMesh.position.y=.02;bodyMesh.castShadow=true;group.add(bodyMesh);
+  const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.48,.48,1.65),glass);
+  cabin.position.set(0,.48,-.22);cabin.castShadow=true;group.add(cabin);
+  const bumperF=new THREE.Mesh(new THREE.BoxGeometry(1.85,.18,.18),dark);bumperF.position.set(0,-.05,1.98);group.add(bumperF);
+  const bumperR=bumperF.clone();bumperR.position.z=-1.98;group.add(bumperR);
+  const wg=new THREE.CylinderGeometry(.35,.35,.25,14);wg.rotateZ(Math.PI/2);
+  for(const [wx,wz] of [[-.98,1.22],[.98,1.22],[-.98,-1.20],[.98,-1.20]]){
+    const wheel=new THREE.Mesh(wg,dark);wheel.position.set(wx,-.25,wz);wheel.castShadow=true;group.add(wheel);
+  }
+  scene.add(group);
+
+  const body=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});
+  body.addShape(new CANNON.Box(new CANNON.Vec3(.98,.31,1.9)));
+  body.collisionResponse=true;
+  world.addBody(body);
+
+  const car={group,body,phase,progress:phase*aiPathLength,speed,lane};
+  aiCars.push(car);
+  return car;
+}
+function poseTrafficCar(car,dt=1/60){
+  const p=sampleAIPath(car.progress,car.lane);
+  const ahead=sampleAIPath(car.progress+Math.max(.35,car.speed*dt),car.lane);
+  const horiz=Math.hypot(p.tx,p.tz)||1;
+  const yaw=Math.atan2(p.tx,p.tz),pitch=Math.atan2(p.ty,horiz);
+
+  car.body.position.set(p.x,p.y+.73,p.z);
+  const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qRoll=new CANNON.Quaternion(),qp=new CANNON.Quaternion(),q=new CANNON.Quaternion();
+  qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+  qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
+  qRoll.setFromAxisAngle(new CANNON.Vec3(0,0,1),p.bank);
+  qYaw.mult(qPitch,qp);qp.mult(qRoll,q);car.body.quaternion.copy(q);
+
+  const step=Math.max(.006,dt);
+  car.body.velocity.set(
+    (ahead.x-p.x)/step,
+    (ahead.y-p.y)/step,
+    (ahead.z-p.z)/step
+  );
+  car.body.angularVelocity.setZero();
+  car.body.aabbNeedsUpdate=true;
+}
+function resetTrafficCars(){
+  for(const car of aiCars){
+    car.progress=car.phase*aiPathLength;
+    poseTrafficCar(car,1/60);
+    car.group.position.copy(car.body.position);
+    car.group.quaternion.copy(car.body.quaternion);
+  }
+}
+function updateTrafficCars(dt){
+  for(const car of aiCars){
+    car.progress=(car.progress+car.speed*dt)%aiPathLength;
+    poseTrafficCar(car,dt);
+  }
+}
+function syncTrafficVisuals(){
+  for(const car of aiCars){
+    car.group.position.copy(car.body.position);
+    car.group.quaternion.copy(car.body.quaternion);
+  }
+}
+makeTrafficCar(0xd92f28,.16,16.5,-2.6);
+makeTrafficCar(0x2877d9,.37,19.0,2.4);
+makeTrafficCar(0x33a857,.59,21.5,-.6);
+makeTrafficCar(0xf0bb24,.81,18.0,3.0);
+resetTrafficCars();
+
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});
 chassisBody.addShape(
   new CANNON.Box(new CANNON.Vec3(1.02,.28,1.95)),
@@ -509,6 +663,36 @@ async function loadCar(){
 }
 loadCar();
 const keys={};
+let mobileSteer=0,mobileGo=false,mobileBrake=false,mobileBoost=false;
+
+function setSteerFromPointer(e){
+  const r=steerPad.getBoundingClientRect();
+  const centre=r.left+r.width/2;
+  mobileSteer=THREE.MathUtils.clamp((e.clientX-centre)/(r.width*.38),-1,1);
+  steerWheel.style.transform='rotate('+(mobileSteer*72)+'deg)';
+}
+steerPad.addEventListener('pointerdown',e=>{
+  e.preventDefault();steerPad.setPointerCapture(e.pointerId);setSteerFromPointer(e);
+});
+steerPad.addEventListener('pointermove',e=>{if(steerPad.hasPointerCapture(e.pointerId))setSteerFromPointer(e);});
+function releaseSteer(e){
+  if(e&&steerPad.hasPointerCapture?.(e.pointerId))steerPad.releasePointerCapture(e.pointerId);
+  mobileSteer=0;steerWheel.style.transform='rotate(0deg)';
+}
+steerPad.addEventListener('pointerup',releaseSteer);
+steerPad.addEventListener('pointercancel',releaseSteer);
+
+function bindPedal(el,setter){
+  const down=e=>{e.preventDefault();setter(true);el.classList.add('active');if(audioCtx?.state==='suspended')audioCtx.resume();};
+  const up=e=>{e.preventDefault();setter(false);el.classList.remove('active');};
+  el.addEventListener('pointerdown',down);
+  el.addEventListener('pointerup',up);
+  el.addEventListener('pointercancel',up);
+  el.addEventListener('pointerleave',e=>{if(e.buttons===0)up(e);});
+}
+bindPedal(gasPedal,v=>mobileGo=v);
+bindPedal(brakePedal,v=>mobileBrake=v);
+bindPedal(boostPedal,v=>mobileBoost=v);
 let orbitYaw=0,orbitPitch=.38,orbitDist=10.5,manualOrbit=false,dragging=false,lastX=0,lastY=0;
 addEventListener('keydown',e=>{
   keys[e.code]=true;
@@ -805,7 +989,10 @@ function resetCar(){
   chassisBody.angularVelocity.setZero();
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
-  resetBarrels();resetCrates();
+  resetBarrels();resetCrates();resetTrafficCars();
+  mobileSteer=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
+  steerWheel.style.transform='rotate(0deg)';
+  gasPedal.classList.remove('active');brakePedal.classList.remove('active');boostPedal.classList.remove('active');
   damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
   for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
   clearDamageDebris();
@@ -826,10 +1013,9 @@ function controls(dt){
   const grounded=frontOn||rearOn;
   const airborneNow=!grounded;
 
-  const go=keys.KeyW||keys.ArrowUp;
-  const back=keys.ArrowDown||(grounded&&keys.KeyS);
-  const left=keys.KeyA||keys.ArrowLeft;
-  const right=keys.KeyD||keys.ArrowRight;
+  const go=keys.KeyW||keys.ArrowUp||mobileGo;
+  const back=keys.ArrowDown||(grounded&&keys.KeyS)||mobileBrake;
+  const keyboardSteer=(keys.KeyA||keys.ArrowLeft?1:0)+(keys.KeyD||keys.ArrowRight?-1:0);
 
   const v=chassisBody.velocity.length();
   const recoverLeft=Math.max(0,impactRecoverUntil-performance.now());
@@ -842,7 +1028,7 @@ function controls(dt){
   // Gentle, progressive steering. A collision briefly knocks steering authority down,
   // then it smoothly returns as the driver/car recovers.
   const steerMax=.38*Math.max(.42,1-v/48)*steerHealth*controlRecovery;
-  const rawSteer=(left?1:0)+(right?-1:0);
+  const rawSteer=THREE.MathUtils.clamp(keyboardSteer+mobileSteer,-1,1);
   const response=1-Math.exp(-3.2*dt);
   steerState+=(rawSteer-steerState)*response;
   vehicle.setSteeringValue(steerState*steerMax,0);
@@ -861,7 +1047,7 @@ function controls(dt){
     }
   }
 
-  if(keys.Space&&boost>0&&go&&!back&&!wrecked){
+  if((keys.Space||mobileBoost)&&boost>0&&go&&!back&&!wrecked){
     engine=-7200*powerHealth*powerRecovery;
     boost=Math.max(0,boost-22*dt);
   }
@@ -876,7 +1062,7 @@ function controls(dt){
 
   // Dedicated Down-arrow low-speed escape assist. This only acts when almost stationary,
   // and is there for cases where the chassis is perched on an obstacle and the tyres cannot grip.
-  if(keys.ArrowDown&&!wrecked&&v<2.2){
+  if((keys.ArrowDown||mobileBrake)&&!wrecked&&v<2.2){
     const reverseDir=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,-1));
     const assist=2300*(1-v/2.2);
     chassisBody.applyForce(
@@ -926,6 +1112,7 @@ function updateVisuals(){
   for(const b of barrels){b.mesh.position.copy(b.body.position);b.mesh.quaternion.copy(b.body.quaternion);}
   for(const c of crates){c.mesh.position.copy(c.body.position);c.mesh.quaternion.copy(c.body.quaternion);}
   sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.quaternion.copy(sweeperBody.quaternion);
+  syncTrafficVisuals();
   fwd.set(0,0,1).applyQuaternion(carRoot.quaternion);
   fwd.y=0;
   if(fwd.lengthSq()<.001)fwd.set(0,0,1);
@@ -1021,6 +1208,7 @@ function animate(now){
   last=now;
   if(started){
     controls(dt);
+    updateTrafficCars(dt);
     world.step(1/60,dt,3);
     landingLogic();
     lapLogic();
