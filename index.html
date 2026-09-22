@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.5</title>
+<title>Car Racer v6.6</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.5 makes the player car 20% larger visually while keeping the same handling and collision physics.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.6 adds MP3-ready crash, scrape, jump, landing and traffic-shunt sounds, with generated fallbacks until each file is uploaded.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -100,13 +100,23 @@ function makeAudioPool(src,count=3,volume=.8){
     const a=new Audio(src);
     a.preload='auto';
     a.volume=volume;
+    a._failed=false;
+    a.addEventListener('error',()=>a._failed=true);
+    a.addEventListener('loadeddata',()=>a._failed=false);
     return a;
   });
 }
 const cluckPool=makeAudioPool('sounds/cluck.mp3',4,.82);
 const barrelSoundPool=makeAudioPool('sounds/barrel.mp3',3,.82);
 const boostSoundPool=makeAudioPool('sounds/boost.mp3',2,.86);
-let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0,boostSoundHeld=false;
+const crashSoundPool=makeAudioPool('sounds/crash.mp3',3,.86);
+const scrapeSoundPool=makeAudioPool('sounds/scrape.mp3',2,.72);
+const jumpSoundPool=makeAudioPool('sounds/jump.mp3',2,.78);
+const landingSoundPool=makeAudioPool('sounds/landing.mp3',2,.84);
+const shuntSoundPool=makeAudioPool('sounds/shunt.mp3',3,.88);
+let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0;
+let crashSoundIndex=0,scrapeSoundIndex=0,jumpSoundIndex=0,landingSoundIndex=0,shuntSoundIndex=0;
+let boostSoundHeld=false,lastShuntSound=0;
 let soundEnabled=true;
 function applySoundState(){
   soundBtn.textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';
@@ -115,7 +125,7 @@ function applySoundState(){
     masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
   }
   engineAudio.muted=!soundEnabled;
-  for(const pool of [cluckPool,barrelSoundPool,boostSoundPool]){
+  for(const pool of [cluckPool,barrelSoundPool,boostSoundPool,crashSoundPool,scrapeSoundPool,jumpSoundPool,landingSoundPool,shuntSoundPool]){
     for(const a of pool)a.muted=!soundEnabled;
   }
 }
@@ -188,22 +198,82 @@ function toneSweep(type,start,end,duration,volume){
   gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
   osc.connect(gain).connect(masterGain);osc.start(now);osc.stop(now+duration+.02);
 }
-function playCrashSound(intensity=.5,scrape=false){
-  if(!audioCtx||!soundEnabled)return;
-  const now=performance.now();
-  if(now-lastCrashSound<(scrape?120:65))return;
-  lastCrashSound=now;
+function generatedCrashSound(intensity=.5,scrape=false){
   const v=Math.max(.03,Math.min(.24,.05+intensity*.18));
   noiseBurst(scrape?.11:.20,v,scrape?520:80);
   if(!scrape)toneSweep('triangle',95,42,.16,Math.min(.15,.045+intensity*.09));
 }
-function playJumpSound(){
+function generatedJumpSound(){
   toneSweep('sine',150,420,.28,.06);
   noiseBurst(.22,.035,650);
 }
-function playLandingSound(intensity=.5){
+function generatedLandingSound(intensity=.5){
   toneSweep('triangle',82,38,.16,.035+Math.min(.10,intensity*.09));
   noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
+}
+function playOptionalPoolSound(pool,index,volume,onFail){
+  if(!soundEnabled||!pool.length)return index;
+  const a=pool[index%pool.length];
+  const fail=()=>{if(typeof onFail==='function')onFail();};
+  if(a._failed){
+    fail();
+    return index+1;
+  }
+  try{
+    a.muted=false;
+    a.volume=volume;
+    a.currentTime=0;
+    const p=a.play();
+    if(p&&typeof p.catch==='function'){
+      p.catch(()=>{a._failed=true;fail();});
+    }
+  }catch(_){
+    a._failed=true;
+    fail();
+  }
+  return index+1;
+}
+function playCrashSound(intensity=.5,scrape=false){
+  if(!soundEnabled)return;
+  const now=performance.now();
+  if(now-lastCrashSound<(scrape?120:65))return;
+  lastCrashSound=now;
+  const vol=scrape
+    ?Math.min(.82,.42+intensity*.34)
+    :Math.min(1,.58+intensity*.36);
+  if(scrape){
+    scrapeSoundIndex=playOptionalPoolSound(
+      scrapeSoundPool,scrapeSoundIndex,vol,
+      ()=>generatedCrashSound(intensity,true)
+    );
+  }else{
+    crashSoundIndex=playOptionalPoolSound(
+      crashSoundPool,crashSoundIndex,vol,
+      ()=>generatedCrashSound(intensity,false)
+    );
+  }
+}
+function playJumpSound(){
+  jumpSoundIndex=playOptionalPoolSound(
+    jumpSoundPool,jumpSoundIndex,.78,
+    generatedJumpSound
+  );
+}
+function playLandingSound(intensity=.5){
+  landingSoundIndex=playOptionalPoolSound(
+    landingSoundPool,landingSoundIndex,Math.min(1,.58+intensity*.36),
+    ()=>generatedLandingSound(intensity)
+  );
+}
+function playShuntSound(intensity=.5){
+  if(!soundEnabled)return;
+  const now=performance.now();
+  if(now-lastShuntSound<120)return;
+  lastShuntSound=now;
+  shuntSoundIndex=playOptionalPoolSound(
+    shuntSoundPool,shuntSoundIndex,Math.min(1,.62+intensity*.30),
+    ()=>generatedCrashSound(Math.min(.75,intensity),false)
+  );
 }
 function playPoolSound(pool,index,volume=1){
   if(!soundEnabled||!pool.length)return index;
@@ -1444,6 +1514,7 @@ function shoveAICar(car,impact,playerSpeed){
   const now=performance.now();
   if(now-car.lastShoveAt<120)return;
   car.lastShoveAt=now;
+  playShuntSound(Math.min(1,.30+impact/12));
 
   // Move the AI car immediately down-track, then give it a short-lived speed boost.
   const shoveDistance=Math.min(7.0,Math.max(1.2,playerSpeed*.15+impact*.22));
