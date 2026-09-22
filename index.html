@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v4.8</title>
+<title>Car Racer v4.9</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -29,11 +29,11 @@ button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
 #soundBtn{position:fixed;left:18px;top:55px;z-index:20;pointer-events:auto;border:1px solid #ffffff77;background:#111b;color:#fff;font-size:11px;letter-spacing:.08em;padding:8px 12px;min-width:104px}
 #mobileControls{display:none;position:fixed;left:0;right:0;bottom:8px;z-index:8;pointer-events:none;align-items:flex-end;justify-content:space-between;padding:10px 14px}
-#steerPad{width:132px;height:132px;border-radius:50%;border:3px solid #ffffffaa;background:#0007;pointer-events:auto;touch-action:none;position:relative;box-shadow:inset 0 0 0 8px #ffffff10}
-#steerPad:before{content:"STEER";position:absolute;left:0;right:0;top:51px;text-align:center;font-size:10px;font-weight:900;letter-spacing:.16em;color:#fff9}
-#steerWheel{position:absolute;left:25px;top:25px;width:76px;height:76px;border:6px solid #fff;border-radius:50%;transform-origin:50% 50%;transition:transform .08s linear}
-#steerWheel:before{content:"";position:absolute;left:31px;top:-5px;width:6px;height:70px;background:#fff;border-radius:5px}
-#steerWheel:after{content:"";position:absolute;left:4px;right:4px;top:29px;height:6px;background:#fff;border-radius:5px}
+#steerPad{width:172px;height:86px;border-radius:18px;border:2px solid #ffffffaa;background:#0008;pointer-events:auto;touch-action:none;position:relative;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+.steerSide{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;user-select:none;-webkit-user-select:none}
+.steerSide+ .steerSide{border-left:1px solid #ffffff55}
+#steerPad.left #steerLeft,#steerPad.right #steerRight{background:#ffffff2a}
+#steerLabel{position:absolute;left:0;right:0;bottom:5px;text-align:center;font-size:9px;font-weight:900;letter-spacing:.14em;color:#ffffff99;pointer-events:none}
 #pedals{display:flex;gap:10px;align-items:flex-end;pointer-events:none}
 .mobilePedal{pointer-events:auto;touch-action:none;border:2px solid #ffffffbb;color:#fff;text-shadow:0 2px 3px #000;background:#111b;border-radius:18px;font-size:13px;letter-spacing:.08em;font-weight:900;padding:0;width:78px;height:112px}
 #gasPedal{background:linear-gradient(#2f6d2fcc,#183a18dd)}
@@ -41,10 +41,6 @@ button:hover{filter:brightness(1.1)}
 #boostPedal{width:64px;height:64px;border-radius:50%;background:#b86a16dd}
 #resetPedal{width:64px;height:64px;border-radius:50%;background:#333d;font-size:11px}
 .mobilePedal.active{transform:translateY(3px) scale(.97);filter:brightness(1.4)}
-#steerPad.left #steerWheel{transform:rotate(-62deg)}
-#steerPad.right #steerWheel{transform:rotate(62deg)}
-#steerPad.left{box-shadow:inset 28px 0 28px #ffffff19,inset 0 0 0 8px #ffffff10}
-#steerPad.right{box-shadow:inset -28px 0 28px #ffffff19,inset 0 0 0 8px #ffffff10}
 @media (pointer:coarse), (max-width:760px){
   #mobileControls{display:flex}
   #help,#status{display:none}
@@ -58,11 +54,15 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.8 simplifies mobile steering to clear left/right input, corrects its direction and adds a mobile reset button.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v4.9 gives mobile steering a simple left/right pad with slower, weighted response and adds more traffic.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v4.8</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v4.9</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
-  <div id="steerPad" aria-label="Steering control"><div id="steerWheel"></div></div>
+  <div id="steerPad" aria-label="Steering control">
+    <div id="steerLeft" class="steerSide" aria-label="Steer left">◀</div>
+    <div id="steerRight" class="steerSide" aria-label="Steer right">▶</div>
+    <div id="steerLabel">STEER</div>
+  </div>
   <div id="pedals">
     <button id="resetPedal" class="mobilePedal" type="button">RESET</button>
     <button id="boostPedal" class="mobilePedal" type="button">BOOST</button>
@@ -77,7 +77,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox');
-const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerWheel=$('steerWheel'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
+const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerLeft=$('steerLeft'),steerRight=$('steerRight'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
 let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
 let soundEnabled=true;
@@ -567,6 +567,9 @@ makeTrafficCar(0xd92f28,.16,16.5,-2.6);
 makeTrafficCar(0x2877d9,.37,19.0,2.4);
 makeTrafficCar(0x33a857,.59,21.5,-.6);
 makeTrafficCar(0xf0bb24,.81,18.0,3.0);
+makeTrafficCar(0x9a4fd8,.06,20.0,1.0);
+makeTrafficCar(0xf0782d,.48,17.2,-3.1);
+makeTrafficCar(0x20b8b0,.70,22.2,1.8);
 resetTrafficCars();
 
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});
@@ -669,25 +672,21 @@ async function loadCar(){
 }
 loadCar();
 const keys={};
-let mobileSteer=0,mobileGo=false,mobileBrake=false,mobileBoost=false;
+let mobileSteer=0,mobileSteerTarget=0,mobileGo=false,mobileBrake=false,mobileBoost=false;
 
 function setSteerFromPointer(e){
   const r=steerPad.getBoundingClientRect();
-  const x=(e.clientX-(r.left+r.width/2))/(r.width/2);
-  const dead=.16;
-
+  const centre=r.left+r.width/2;
   steerPad.classList.remove('left','right');
 
-  // Match keyboard convention: +1 = left, -1 = right.
-  // Steering is deliberately digital on mobile; thumb position only chooses direction.
-  if(x < -dead){
-    mobileSteer=1;
+  // Deliberately capped below full keyboard steering.
+  // The actual steering value eases toward this target in controls().
+  if(e.clientX < centre){
+    mobileSteerTarget=.72;
     steerPad.classList.add('left');
-  }else if(x > dead){
-    mobileSteer=-1;
-    steerPad.classList.add('right');
   }else{
-    mobileSteer=0;
+    mobileSteerTarget=-.72;
+    steerPad.classList.add('right');
   }
 }
 steerPad.addEventListener('pointerdown',e=>{
@@ -700,7 +699,7 @@ steerPad.addEventListener('pointermove',e=>{
 });
 function releaseSteer(e){
   if(e&&steerPad.hasPointerCapture?.(e.pointerId))steerPad.releasePointerCapture(e.pointerId);
-  mobileSteer=0;
+  mobileSteerTarget=0;
   steerPad.classList.remove('left','right');
 }
 steerPad.addEventListener('pointerup',releaseSteer);
@@ -1022,7 +1021,7 @@ function resetCar(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();resetTrafficCars();
-  mobileSteer=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
+  mobileSteer=0;mobileSteerTarget=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
   steerPad.classList.remove('left','right');
   gasPedal.classList.remove('active');brakePedal.classList.remove('active');boostPedal.classList.remove('active');resetPedal.classList.remove('active');
   damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
@@ -1060,6 +1059,13 @@ function controls(dt){
   // Gentle, progressive steering. A collision briefly knocks steering authority down,
   // then it smoothly returns as the driver/car recovers.
   const steerMax=.38*Math.max(.42,1-v/48)*steerHealth*controlRecovery;
+
+  // Mobile steering has extra weight: slower turn-in and a slightly quicker,
+  // still-smooth return toward centre when the thumb is released.
+  const mobileRate=Math.abs(mobileSteerTarget)>Math.abs(mobileSteer)?1.65:2.35;
+  const mobileResponse=1-Math.exp(-mobileRate*dt);
+  mobileSteer+=(mobileSteerTarget-mobileSteer)*mobileResponse;
+
   const rawSteer=THREE.MathUtils.clamp(keyboardSteer+mobileSteer,-1,1);
   const response=1-Math.exp(-3.2*dt);
   steerState+=(rawSteer-steerState)*response;
