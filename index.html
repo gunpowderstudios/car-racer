@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.9</title>
+<title>Car Racer v7.0</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -19,7 +19,7 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 #help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}
 .key{display:inline-block;border:1px solid #fff9;border-radius:4px;padding:0 5px;min-width:22px;text-align:center;background:#fff1}
 #status{position:absolute;right:18px;bottom:18px;font-size:11px;opacity:.88;text-align:right;max-width:48vw}
-#scoreBox{position:absolute;left:18px;top:100px;background:#0008;border:1px solid #ffffff55;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:900;letter-spacing:.10em;line-height:1.45}
+#scoreBox{position:absolute;left:18px;top:136px;background:#0008;border:1px solid #ffffff55;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:900;letter-spacing:.10em;line-height:1.45}
 #scoreNum{font-size:20px;margin-left:5px}
 #chickenCount{opacity:.88}
 #msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}
@@ -50,7 +50,7 @@ button:hover{filter:brightness(1.1)}
   #help,#status{display:none}
   #soundBtn{top:50px;left:12px}
   #musicBtn{top:86px;left:12px}
-  #scoreBox{left:12px;top:94px;font-size:10px;padding:6px 9px}
+  #scoreBox{left:12px;top:128px;font-size:10px;padding:6px 9px}
   #scoreNum{font-size:16px}
   #title{top:12px;left:12px;font-size:18px}
   #speedBox{top:12px;right:10px;transform:scale(.78);transform-origin:top right}
@@ -61,10 +61,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.9 keeps the enlarged player car visible above the road when it rolls onto its roof.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.0 moves the score clear of the audio controls and gives destroyed AI cars the same big debris-and-blast explosion style as the player.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.9</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v7.0</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -893,28 +893,70 @@ function updateAISmoke(dt){
   }
 }
 function spawnAIExplosion(car,jumpSmash=false){
-  const origin=new THREE.Vector3(car.body.position.x,car.body.position.y+.35,car.body.position.z);
+  // Capture the visible/world position BEFORE the destroyed car is hidden or
+  // moved out of the physics world. This keeps the explosion on the track.
+  const origin=car.group.position.clone();
+  origin.y+=.18;
+
+  // Match the player's expanding orange blast.
   const core=new THREE.Mesh(
-    new THREE.SphereGeometry(.75,12,8),
-    new THREE.MeshBasicMaterial({color:jumpSmash?0xffd34a:0xff7a00,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false})
+    new THREE.SphereGeometry(.65,16,10),
+    new THREE.MeshBasicMaterial({
+      color:jumpSmash?0xffd34a:0xff8a00,
+      transparent:true,
+      opacity:.95,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
+    })
   );
-  core.position.copy(origin);scene.add(core);
-  aiExplosions.push({mesh:core,vel:new THREE.Vector3(0,2.2,0),life:.48,maxLife:.48,grow:4.2});
-  for(let i=0;i<10;i++){
+  core.position.copy(origin);
+  scene.add(core);
+  aiExplosions.push({
+    mesh:core,
+    vel:new THREE.Vector3(0,0,0),
+    life:.55,maxLife:.55,
+    grow:4.0
+  });
+
+  // Same scale of breakup as the player explosion: lots of fragments rather
+  // than a small token burst. Retain a little of the AI car's travel velocity.
+  const carVel=new THREE.Vector3(car.body.velocity.x,car.body.velocity.y,car.body.velocity.z).multiplyScalar(.12);
+  const carColor=car.bodyMat?.color?.getHex?.() ?? 0xd84a20;
+  for(let i=0;i<28;i++){
+    const color=i%4===0?0x2d2927:(i%5===0?0xff5a20:carColor);
     const bit=new THREE.Mesh(
-      new THREE.BoxGeometry(.18+.18*Math.random(),.12+.18*Math.random(),.18+.25*Math.random()),
-      new THREE.MeshStandardMaterial({color:i%3===0?0x222222:0xd84a20,roughness:.75})
+      new THREE.BoxGeometry(
+        .08+Math.random()*.18,
+        .05+Math.random()*.13,
+        .10+Math.random()*.24
+      ),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:1})
     );
-    bit.position.copy(origin);bit.castShadow=true;scene.add(bit);
+    bit.position.copy(origin);
+    scene.add(bit);
+
+    const vel=new THREE.Vector3(
+      (Math.random()-.5)*10,
+      1.5+Math.random()*8,
+      (Math.random()-.5)*10
+    ).add(carVel);
+
     aiExplosions.push({
       mesh:bit,
-      vel:new THREE.Vector3((Math.random()-.5)*8,3+Math.random()*6,(Math.random()-.5)*8),
-      spin:new THREE.Vector3((Math.random()-.5)*10,(Math.random()-.5)*10,(Math.random()-.5)*10),
-      life:1.15+Math.random()*.55,maxLife:1.7,grow:0
+      vel,
+      spin:new THREE.Vector3(
+        (Math.random()-.5)*8,
+        (Math.random()-.5)*8,
+        (Math.random()-.5)*8
+      ),
+      life:2.4,
+      maxLife:2.4,
+      grow:0
     });
   }
-  toneSweep('sawtooth',180,45,.34,.13);
-  noiseBurst(.32,.18,70);
+
+  playCrashSound(1,false);
+  toneSweep('sine',72,24,.52,.18);
 }
 function updateAIExplosions(dt){
   for(let i=aiExplosions.length-1;i>=0;i--){
@@ -927,9 +969,11 @@ function updateAIExplosions(dt){
       p.mesh.rotation.x+=p.spin.x*dt;p.mesh.rotation.y+=p.spin.y*dt;p.mesh.rotation.z+=p.spin.z*dt;
     }
     if(p.grow){
-      const s=1+(p.maxLife-p.life)*p.grow;
-      p.mesh.scale.setScalar(s);
+      const sc=1+(p.maxLife-p.life)*p.grow;
+      p.mesh.scale.setScalar(sc);
       p.mesh.material.opacity=Math.max(0,p.life/p.maxLife);
+    }else if(p.mesh.material?.transparent){
+      p.mesh.material.opacity=Math.max(0,Math.min(1,p.life/.45));
     }
   }
 }
@@ -939,11 +983,14 @@ function destroyAICar(car,jumpSmash=false){
   car.health=0;
   updateAIHealthBar(car);
   car.respawnAt=performance.now()+5200;
+
+  // Explode at the car's current visible position before hiding/moving it.
+  spawnAIExplosion(car,jumpSmash);
+
   car.body.collisionResponse=false;
   car.body.velocity.setZero();car.body.angularVelocity.setZero();
-  car.body.position.y=-50;
   car.group.visible=false;
-  spawnAIExplosion(car,jumpSmash);
+  car.body.position.y=-50;
   addScore(jumpSmash?600:300,jumpSmash?'JUMP CRUSH!':'AI WRECKED!');
 }
 function damageAICar(car,amount,impact=0){
