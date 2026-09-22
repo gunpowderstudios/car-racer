@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.6</title>
+<title>Car Racer v6.7</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -30,7 +30,9 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 button{border:0;border-radius:100px;background:#ff7a00;color:#111;font-weight:900;font-size:17px;padding:13px 28px;cursor:pointer}
 button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
-#soundBtn{position:fixed;left:18px;top:55px;z-index:20;pointer-events:auto;border:1px solid #ffffff77;background:#111b;color:#fff;font-size:11px;letter-spacing:.08em;padding:8px 12px;min-width:104px}
+#soundBtn,#musicBtn{position:fixed;left:18px;z-index:20;pointer-events:auto;border:1px solid #ffffff77;background:#111b;color:#fff;font-size:11px;letter-spacing:.08em;padding:8px 12px;min-width:104px}
+#soundBtn{top:55px}
+#musicBtn{top:91px}
 #mobileControls{display:none;position:fixed;left:0;right:0;bottom:8px;z-index:8;pointer-events:none;align-items:flex-end;justify-content:space-between;padding:10px 14px}
 #steerPad{width:190px;height:60px;border-radius:32px;border:3px solid #111;background:#0007;pointer-events:auto;touch-action:none;position:relative;overflow:hidden;box-shadow:0 2px 8px #0006}
 #steerTrack{position:absolute;left:16px;right:16px;top:50%;height:4px;transform:translateY(-50%);background:#ffffff55;border-radius:4px;pointer-events:none}
@@ -47,6 +49,7 @@ button:hover{filter:brightness(1.1)}
   #mobileControls{display:flex}
   #help,#status{display:none}
   #soundBtn{top:50px;left:12px}
+  #musicBtn{top:86px;left:12px}
   #scoreBox{left:12px;top:94px;font-size:10px;padding:6px 9px}
   #scoreNum{font-size:16px}
   #title{top:12px;left:12px;font-size:18px}
@@ -58,9 +61,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.6 adds MP3-ready crash, scrape, jump, landing and traffic-shunt sounds, with generated fallbacks until each file is uploaded.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.7 adds looping background music with independent SOUND and MUSIC controls.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<button id="musicBtn" type="button">🎵 MUSIC ON</button>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -81,7 +85,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox'),scoreNumEl=$('scoreNum'),chickenCountEl=$('chickenCount');
-const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
+const soundBtn=$('soundBtn'),musicBtn=$('musicBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
 let audioCtx=null,masterGain=null,lastCrashSound=0;
 const engineAudio=new Audio('sounds/engine.mp3');
@@ -94,6 +98,11 @@ engineAudio.playbackRate=.72;
 if('preservesPitch' in engineAudio)engineAudio.preservesPitch=false;
 if('webkitPreservesPitch' in engineAudio)engineAudio.webkitPreservesPitch=false;
 if('mozPreservesPitch' in engineAudio)engineAudio.mozPreservesPitch=false;
+
+const musicAudio=new Audio('sounds/background-music.mp3');
+musicAudio.preload='auto';
+musicAudio.loop=true;
+musicAudio.volume=.32;
 
 function makeAudioPool(src,count=3,volume=.8){
   return Array.from({length:count},()=>{
@@ -117,7 +126,14 @@ const shuntSoundPool=makeAudioPool('sounds/shunt.mp3',3,.88);
 let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0;
 let crashSoundIndex=0,scrapeSoundIndex=0,jumpSoundIndex=0,landingSoundIndex=0,shuntSoundIndex=0;
 let boostSoundHeld=false,lastShuntSound=0;
-let soundEnabled=true;
+let soundEnabled=true,musicEnabled=true;
+function applyMusicState(){
+  musicBtn.textContent=musicEnabled?'🎵 MUSIC ON':'🎵 MUSIC OFF';
+  musicBtn.setAttribute('aria-pressed',musicEnabled?'true':'false');
+  musicAudio.muted=!musicEnabled;
+  if(musicEnabled&&started)ensureMusicPlaying();
+  if(!musicEnabled&&!musicAudio.paused)musicAudio.pause();
+}
 function applySoundState(){
   soundBtn.textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';
   soundBtn.setAttribute('aria-pressed',soundEnabled?'true':'false');
@@ -136,10 +152,18 @@ function ensureEnginePlaying(){
     if(p&&typeof p.catch==='function')p.catch(()=>{});
   }catch(_){}
 }
+function ensureMusicPlaying(){
+  if(!musicEnabled||!musicAudio.paused)return;
+  try{
+    const p=musicAudio.play();
+    if(p&&typeof p.catch==='function')p.catch(()=>{});
+  }catch(_){}
+}
 function initAudio(){
   // This function is called from the START ENGINE / sound-button user gesture,
   // so it is the right place to unlock both HTML audio and Web Audio.
   ensureEnginePlaying();
+  if(musicEnabled)ensureMusicPlaying();
 
   if(audioCtx){
     if(audioCtx.state==='suspended')audioCtx.resume();
@@ -301,7 +325,13 @@ soundBtn.addEventListener('click',()=>{
   if(soundEnabled)initAudio();
   applySoundState();
 });
+musicBtn.addEventListener('click',()=>{
+  musicEnabled=!musicEnabled;
+  if(musicEnabled)ensureMusicPlaying();
+  applyMusicState();
+});
 applySoundState();
+applyMusicState();
 
 window.addEventListener('error',e=>{
   $('fatal').style.display='block';
@@ -1953,6 +1983,7 @@ $('startBtn').addEventListener('click',()=>{
   initAudio();
   $('start').style.display='none';
   started=true;
+  if(musicEnabled)ensureMusicPlaying();
   last=performance.now();
   resetCar();
 });
