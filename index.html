@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v7.4</title>
+<title>Car Racer v7.5</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.4 makes mobile steering respond faster while keeping a small amount of smoothing.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.5 gives the player stronger acceleration and reverse, fixes reverse-speed braking, and adds fading rear-tyre skid marks on hard launches and landings.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v7.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v7.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -1234,6 +1234,75 @@ const tyreMat=new THREE.MeshStandardMaterial({color:0x161616,roughness:.9});
 for(let i=0;i<4;i++){
   const m=new THREE.Mesh(wheelGeo,tyreMat);m.castShadow=true;scene.add(m);wheelMeshes.push(m);
 }
+
+// Lightweight fading skid marks. Each rear tyre leaves short quad segments.
+// Old marks are removed automatically so this cannot grow forever.
+const skidMarks=[];
+const skidPrev=[null,null];
+const skidMatBase=new THREE.MeshBasicMaterial({
+  color:0x151515,transparent:true,opacity:.56,depthWrite:false,side:THREE.DoubleSide
+});
+let launchSkidActive=false,landingSkidFrames=0;
+function clearSkidTrail(){
+  skidPrev[0]=null;skidPrev[1]=null;
+}
+function addSkidSegment(a,b,sideIndex,opacity=.56){
+  const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
+  const len=Math.hypot(dx,dy,dz);
+  if(len<.035||len>2.2)return;
+
+  const f=new THREE.Vector3(dx,dy,dz).normalize();
+  const up=new THREE.Vector3(0,1,0);
+  let side=new THREE.Vector3().crossVectors(up,f);
+  if(side.lengthSq()<.001)side.set(1,0,0);
+  side.normalize().multiplyScalar(.105);
+
+  const lift=new THREE.Vector3(0,.025,0);
+  const p0=new THREE.Vector3().copy(a).add(lift).add(side);
+  const p1=new THREE.Vector3().copy(a).add(lift).sub(side);
+  const p2=new THREE.Vector3().copy(b).add(lift).add(side);
+  const p3=new THREE.Vector3().copy(b).add(lift).sub(side);
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute([
+    p0.x,p0.y,p0.z,p1.x,p1.y,p1.z,p2.x,p2.y,p2.z,
+    p2.x,p2.y,p2.z,p1.x,p1.y,p1.z,p3.x,p3.y,p3.z
+  ],3));
+  const mat=skidMatBase.clone();mat.opacity=opacity;
+  const mesh=new THREE.Mesh(geo,mat);mesh.renderOrder=2;scene.add(mesh);
+  skidMarks.push({mesh,life:8,maxLife:8});
+  if(skidMarks.length>180){
+    const old=skidMarks.shift();
+    scene.remove(old.mesh);old.mesh.geometry.dispose();old.mesh.material.dispose();
+  }
+}
+function updateSkidMarks(dt){
+  for(let i=skidMarks.length-1;i>=0;i--){
+    const m=skidMarks[i];
+    m.life-=dt;
+    m.mesh.material.opacity=.56*Math.max(0,Math.min(1,m.life/2.0));
+    if(m.life<=0){
+      scene.remove(m.mesh);m.mesh.geometry.dispose();m.mesh.material.dispose();
+      skidMarks.splice(i,1);
+    }
+  }
+
+  const active=launchSkidActive||landingSkidFrames>0;
+  if(!active){clearSkidTrail();return;}
+  if(landingSkidFrames>0)landingSkidFrames--;
+
+  for(let j=0;j<2;j++){
+    const wi=2+j;
+    const w=vehicle.wheelInfos[wi];
+    if(!w.isInContact){skidPrev[j]=null;continue;}
+    const p=new THREE.Vector3(
+      w.worldTransform.position.x,
+      w.worldTransform.position.y-.40,
+      w.worldTransform.position.z
+    );
+    if(skidPrev[j])addSkidSegment(skidPrev[j],p,j,launchSkidActive?.58:.48);
+    skidPrev[j]=p;
+  }
+}
 const carRoot=new THREE.Group();scene.add(carRoot);
 const leanRoot=new THREE.Group();carRoot.add(leanRoot);
 
@@ -1845,7 +1914,7 @@ function resetCar(){
   chassisBody.velocity.setZero();
   chassisBody.angularVelocity.setZero();
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
-  boost=35;boostSoundHeld=false;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
+  boost=35;boostSoundHeld=false;launchSkidActive=false;landingSkidFrames=0;clearSkidTrail();steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();resetTrafficCars();
   for(const chicken of chickens)resetChicken(chicken,true);
   score=0;chickenHits=0;refreshScore();
@@ -1877,6 +1946,11 @@ function controls(dt){
   const keyboardSteer=(keys.KeyA||keys.ArrowLeft?1:0)+(keys.KeyD||keys.ArrowRight?-1:0);
 
   const v=chassisBody.velocity.length();
+  const forwardVec=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  const signedForwardSpeed=
+    chassisBody.velocity.x*forwardVec.x+
+    chassisBody.velocity.y*forwardVec.y+
+    chassisBody.velocity.z*forwardVec.z;
   const recoverLeft=Math.max(0,impactRecoverUntil-performance.now());
   const recoverT=Math.min(1,recoverLeft/850);
   const controlRecovery=1-recoverT*.68;
@@ -1901,16 +1975,18 @@ function controls(dt){
   vehicle.setSteeringValue(steerState*steerMax,0);
   vehicle.setSteeringValue(steerState*steerMax,1);
 
-  let engine=go?-4400*powerHealth*powerRecovery:0;
+  // More powerful arcade drivetrain.
+  let engine=go?-6200*powerHealth*powerRecovery:0;
   let brake=0;
 
   if(back){
-    // If still rolling forwards, brake first. Once nearly stopped, engage a useful reverse.
-    if(v>2.2){
+    // Brake only while genuinely travelling forward. Once forward motion is
+    // gone, reverse remains powered instead of repeatedly braking itself.
+    if(signedForwardSpeed>1.8){
       engine=0;
-      brake=48;
+      brake=58;
     }else{
-      engine=3100*powerHealth*powerRecovery;
+      engine=4800*powerHealth*powerRecovery;
     }
   }
 
@@ -1918,11 +1994,14 @@ function controls(dt){
   if(boostActive){
     if(!boostSoundHeld)playBoostSound();
     boostSoundHeld=true;
-    engine=-7200*powerHealth*powerRecovery;
+    engine=-9000*powerHealth*powerRecovery;
     boost=Math.max(0,boost-22*dt);
   }else{
     boostSoundHeld=false;
   }
+
+  // Rear-wheel marks while the powerful car claws away from low speed.
+  launchSkidActive=go&&rearOn&&!back&&!wrecked&&v<10.5&&Math.abs(engine)>5600;
   if(wrecked){engine=0;brake=70;}
 
   if(recoverLeft>0 && !wrecked && !exploded && recoverLeft>500 && performance.now()-lastBounceAt<180){
@@ -1934,9 +2013,9 @@ function controls(dt){
 
   // Dedicated Down-arrow low-speed escape assist. This only acts when almost stationary,
   // and is there for cases where the chassis is perched on an obstacle and the tyres cannot grip.
-  if((keys.ArrowDown||mobileBrake)&&!wrecked&&v<2.2){
+  if((keys.ArrowDown||mobileBrake)&&!wrecked&&Math.abs(signedForwardSpeed)<3.0){
     const reverseDir=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,-1));
-    const assist=2300*(1-v/2.2);
+    const assist=3400*(1-Math.min(1,Math.abs(signedForwardSpeed)/3.0));
     chassisBody.applyForce(
       new CANNON.Vec3(reverseDir.x*assist,0,reverseDir.z*assist),
       chassisBody.position
@@ -2041,6 +2120,9 @@ function landingLogic(){
       const hit=Math.max(0,hard+crooked+tumblePenalty);
       const region=landingDamageRegion();
 
+      // A firm touchdown stamps both rear tyres for a few frames.
+      if(peakDownVel>4.5)landingSkidFrames=Math.max(landingSkidFrames,10);
+
       if(airUnstable || up.y<.72){
         const added=Math.min(45,Math.max(8,Math.round(hit)));
         if(region)addPartDamage(region,added,false);
@@ -2101,6 +2183,7 @@ function animate(now){
     lapLogic();
     offTrackLogic();
     updateVisuals();
+    updateSkidMarks(dt);
   }
   updateDamageFx(dt);
   updateAIExplosions(dt);
