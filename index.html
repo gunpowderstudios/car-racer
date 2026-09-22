@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.3</title>
+<title>Car Racer v5.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.3 adds thumb-slider steering, crossing chickens, clucks and an arcade points system.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.4 adds destructible AI traffic: ram them, wreck them, or crush them from a jump for a bigger bonus.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -518,6 +518,8 @@ const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:ob
 
 // Lightweight traffic cars: visual cars with kinematic collision bodies following the oval.
 const aiCars=[];
+const aiCarByBody=new Map();
+const aiExplosions=[];
 const aiPathDist=[0];
 for(let i=1;i<oval.length;i++){
   const a=oval[i-1],b=oval[i];
@@ -599,11 +601,13 @@ function makeTrafficCar(color,phase,speed,lane){
   body.collisionResponse=true;
   world.addBody(body);
 
-  const car={group,body,phase,progress:phase*aiPathLength,speed,lane};
+  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat};
+  aiCarByBody.set(body,car);
   aiCars.push(car);
   return car;
 }
 function poseTrafficCar(car,dt=1/60){
+  if(car.destroyed)return;
   const p=sampleAIPath(car.progress,car.lane);
   const ahead=sampleAIPath(car.progress+Math.max(.35,car.speed*dt),car.lane);
   const horiz=Math.hypot(p.tx,p.tz)||1;
@@ -629,19 +633,40 @@ function resetTrafficCars(){
   for(const car of aiCars){
     car.progress=car.phase*aiPathLength;
     car.lastPlayerDelta=null;
+    car.health=car.maxHealth;
+    car.destroyed=false;
+    car.respawnAt=0;
+    car.lastHitAt=0;
+    car.body.collisionResponse=true;
+    car.group.visible=true;
+    if(car.bodyMat){car.bodyMat.emissive?.setHex?.(0x000000);car.bodyMat.emissiveIntensity=0;}
     poseTrafficCar(car,1/60);
     car.group.position.copy(car.body.position);
     car.group.quaternion.copy(car.body.quaternion);
   }
 }
 function updateTrafficCars(dt){
+  const now=performance.now();
   for(const car of aiCars){
+    if(car.destroyed){
+      if(now>=car.respawnAt){
+        car.destroyed=false;
+        car.health=car.maxHealth;
+        car.progress=(car.progress+45+Math.random()*80)%aiPathLength;
+        car.body.collisionResponse=true;
+        car.group.visible=true;
+        if(car.bodyMat){car.bodyMat.emissive?.setHex?.(0x000000);car.bodyMat.emissiveIntensity=0;}
+        poseTrafficCar(car,dt);
+      }
+      continue;
+    }
     car.progress=(car.progress+car.speed*dt)%aiPathLength;
     poseTrafficCar(car,dt);
   }
 }
 function syncTrafficVisuals(){
   for(const car of aiCars){
+    if(car.destroyed)continue;
     car.group.position.copy(car.body.position);
     car.group.quaternion.copy(car.body.quaternion);
   }
@@ -654,6 +679,78 @@ makeTrafficCar(0x9a4fd8,.06,20.0,1.0);
 makeTrafficCar(0xf0782d,.48,17.2,-3.1);
 makeTrafficCar(0x20b8b0,.70,22.2,1.8);
 resetTrafficCars();
+
+function spawnAIExplosion(car,jumpSmash=false){
+  const origin=new THREE.Vector3(car.body.position.x,car.body.position.y+.35,car.body.position.z);
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(.75,12,8),
+    new THREE.MeshBasicMaterial({color:jumpSmash?0xffd34a:0xff7a00,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  core.position.copy(origin);scene.add(core);
+  aiExplosions.push({mesh:core,vel:new THREE.Vector3(0,2.2,0),life:.48,maxLife:.48,grow:4.2});
+  for(let i=0;i<10;i++){
+    const bit=new THREE.Mesh(
+      new THREE.BoxGeometry(.18+.18*Math.random(),.12+.18*Math.random(),.18+.25*Math.random()),
+      new THREE.MeshStandardMaterial({color:i%3===0?0x222222:0xd84a20,roughness:.75})
+    );
+    bit.position.copy(origin);bit.castShadow=true;scene.add(bit);
+    aiExplosions.push({
+      mesh:bit,
+      vel:new THREE.Vector3((Math.random()-.5)*8,3+Math.random()*6,(Math.random()-.5)*8),
+      spin:new THREE.Vector3((Math.random()-.5)*10,(Math.random()-.5)*10,(Math.random()-.5)*10),
+      life:1.15+Math.random()*.55,maxLife:1.7,grow:0
+    });
+  }
+  toneSweep('sawtooth',180,45,.34,.13);
+  noiseBurst(.32,.18,70);
+}
+function updateAIExplosions(dt){
+  for(let i=aiExplosions.length-1;i>=0;i--){
+    const p=aiExplosions[i];
+    p.life-=dt;
+    if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry?.dispose?.();p.mesh.material?.dispose?.();aiExplosions.splice(i,1);continue;}
+    p.vel.y-=9.82*dt*.65;
+    p.mesh.position.addScaledVector(p.vel,dt);
+    if(p.spin){
+      p.mesh.rotation.x+=p.spin.x*dt;p.mesh.rotation.y+=p.spin.y*dt;p.mesh.rotation.z+=p.spin.z*dt;
+    }
+    if(p.grow){
+      const s=1+(p.maxLife-p.life)*p.grow;
+      p.mesh.scale.setScalar(s);
+      p.mesh.material.opacity=Math.max(0,p.life/p.maxLife);
+    }
+  }
+}
+function destroyAICar(car,jumpSmash=false){
+  if(!car||car.destroyed)return;
+  car.destroyed=true;
+  car.health=0;
+  car.respawnAt=performance.now()+5200;
+  car.body.collisionResponse=false;
+  car.body.velocity.setZero();car.body.angularVelocity.setZero();
+  car.body.position.y=-50;
+  car.group.visible=false;
+  spawnAIExplosion(car,jumpSmash);
+  addScore(jumpSmash?600:300,jumpSmash?'JUMP CRUSH!':'AI WRECKED!');
+}
+function damageAICar(car,amount,impact=0){
+  if(!car||car.destroyed||amount<=0)return;
+  const now=performance.now();
+  if(now-car.lastHitAt<220)return;
+  car.lastHitAt=now;
+  car.health=Math.max(0,car.health-amount);
+  if(car.bodyMat){
+    const hurt=1-car.health/car.maxHealth;
+    car.bodyMat.emissive?.setHex?.(0x5a1200);
+    car.bodyMat.emissiveIntensity=.12+hurt*.65;
+  }
+  if(car.health<=0){
+    destroyAICar(car,false);
+  }else{
+    addScore(20,'RAM HIT');
+    flash('AI DAMAGE  '+Math.round(car.health)+' / '+car.maxHealth+'   +20');
+  }
+}
 
 let score=0,chickenHits=0;
 function refreshScore(){
@@ -680,6 +777,7 @@ function updateOvertakeScore(){
   if(!lapStarted||finished)return;
   const playerProgress=nearestAIProgress(chassisBody.position.x,chassisBody.position.z);
   for(const car of aiCars){
+    if(car.destroyed){car.lastPlayerDelta=null;continue;}
     let delta=((car.progress-playerProgress+aiPathLength*.5)%aiPathLength+aiPathLength)%aiPathLength-aiPathLength*.5;
     if(car.lastPlayerDelta!==null &&
        car.lastPlayerDelta>0 && delta<=0 &&
@@ -1253,7 +1351,23 @@ function carCollisionDamage(e){
       playCrashSound(.16,true);
     }
   }else if(e.body?.material===obstaclePhys){
-    // Sweeper, traffic cars and other solid obstacles still deflect the player.
+    const aiCar=aiCarByBody.get(e.body);
+    if(aiCar&&!aiCar.destroyed){
+      const playerAbove=chassisBody.position.y-aiCar.body.position.y>.65;
+      const descending=chassisBody.velocity.y<-1.8;
+      const jumpCrush=airborne&&playerAbove&&descending;
+      if(jumpCrush){
+        destroyAICar(aiCar,true);
+        chassisBody.velocity.y=Math.max(1.5,-chassisBody.velocity.y*.28);
+        playCrashSound(1,false);
+        return;
+      }
+      if(impact>1.6||speed>6){
+        const aiDamage=Math.min(26,Math.max(5,(Math.max(impact,speed*.16)-1.2)*3.0));
+        damageAICar(aiCar,aiDamage,impact);
+      }
+    }
+    // Sweeper and surviving traffic still deflect the player.
     if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
     if(impact>2.0 || speed>6){
       const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
@@ -1527,6 +1641,7 @@ function animate(now){
     updateVisuals();
   }
   updateDamageFx(dt);
+  updateAIExplosions(dt);
   updateEngineSound();
   renderer.render(scene,camera);
 }
