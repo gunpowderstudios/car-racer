@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.2</title>
+<title>Car Racer v5.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -19,6 +19,9 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 #help{position:absolute;left:18px;bottom:18px;background:#0008;border:1px solid #ffffff55;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.55}
 .key{display:inline-block;border:1px solid #fff9;border-radius:4px;padding:0 5px;min-width:22px;text-align:center;background:#fff1}
 #status{position:absolute;right:18px;bottom:18px;font-size:11px;opacity:.88;text-align:right;max-width:48vw}
+#scoreBox{position:absolute;left:18px;top:100px;background:#0008;border:1px solid #ffffff55;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:900;letter-spacing:.10em;line-height:1.45}
+#scoreNum{font-size:20px;margin-left:5px}
+#chickenCount{opacity:.88}
 #msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}
 #msg.show{opacity:1}
 #start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:radial-gradient(circle,#263b4bbb,#071018f5);color:#fff}
@@ -29,11 +32,10 @@ button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
 #soundBtn{position:fixed;left:18px;top:55px;z-index:20;pointer-events:auto;border:1px solid #ffffff77;background:#111b;color:#fff;font-size:11px;letter-spacing:.08em;padding:8px 12px;min-width:104px}
 #mobileControls{display:none;position:fixed;left:0;right:0;bottom:8px;z-index:8;pointer-events:none;align-items:flex-end;justify-content:space-between;padding:10px 14px}
-#steerPad{width:172px;height:86px;border-radius:18px;border:2px solid #ffffffaa;background:#0008;pointer-events:auto;touch-action:none;position:relative;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
-.steerSide{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;user-select:none;-webkit-user-select:none}
-.steerSide+ .steerSide{border-left:1px solid #ffffff55}
-#steerPad.left #steerLeft,#steerPad.right #steerRight{background:#ffffff2a}
-#steerLabel{position:absolute;left:0;right:0;bottom:5px;text-align:center;font-size:9px;font-weight:900;letter-spacing:.14em;color:#ffffff99;pointer-events:none}
+#steerPad{width:190px;height:60px;border-radius:32px;border:3px solid #111;background:#0007;pointer-events:auto;touch-action:none;position:relative;overflow:hidden;box-shadow:0 2px 8px #0006}
+#steerTrack{position:absolute;left:16px;right:16px;top:50%;height:4px;transform:translateY(-50%);background:#ffffff55;border-radius:4px;pointer-events:none}
+#steerKnob{position:absolute;top:4px;left:50%;width:46px;height:46px;border-radius:50%;background:#fff;border:2px solid #ffffffdd;box-shadow:0 2px 6px #0008;transform:translateX(-50%);pointer-events:none}
+#steerLabel{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:8px;font-weight:900;letter-spacing:.14em;color:#ffffffaa;pointer-events:none;text-shadow:0 1px 3px #000}
 #pedals{display:flex;gap:10px;align-items:flex-end;pointer-events:none}
 .mobilePedal{pointer-events:auto;touch-action:none;border:2px solid #ffffffbb;color:#fff;text-shadow:0 2px 3px #000;background:#111b;border-radius:18px;font-size:13px;letter-spacing:.08em;font-weight:900;padding:0;width:78px;height:112px}
 #gasPedal{background:linear-gradient(#2f6d2fcc,#183a18dd)}
@@ -45,6 +47,8 @@ button:hover{filter:brightness(1.1)}
   #mobileControls{display:flex}
   #help,#status{display:none}
   #soundBtn{top:50px;left:12px}
+  #scoreBox{left:12px;top:94px;font-size:10px;padding:6px 9px}
+  #scoreNum{font-size:16px}
   #title{top:12px;left:12px;font-size:18px}
   #speedBox{top:12px;right:10px;transform:scale(.78);transform-origin:top right}
   #lapBox{top:12px;font-size:11px}
@@ -54,13 +58,13 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.2 makes the circuit walls true slide barriers: no sticking or wall stun, with full drive-away control.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.3 adds thumb-slider steering, crossing chickens, clucks and an arcade points system.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.2</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
-  <div id="steerPad" aria-label="Steering control">
-    <div id="steerLeft" class="steerSide" aria-label="Steer left">◀</div>
-    <div id="steerRight" class="steerSide" aria-label="Steer right">▶</div>
+  <div id="steerPad" aria-label="Steering slider">
+    <div id="steerTrack"></div>
+    <div id="steerKnob"></div>
     <div id="steerLabel">STEER</div>
   </div>
   <div id="pedals">
@@ -76,8 +80,8 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
-const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox');
-const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerLeft=$('steerLeft'),steerRight=$('steerRight'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
+const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox'),scoreNumEl=$('scoreNum'),chickenCountEl=$('chickenCount');
+const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
 let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
 let soundEnabled=true;
@@ -162,6 +166,22 @@ function playLandingSound(intensity=.5){
   toneSweep('triangle',82,38,.16,.035+Math.min(.10,intensity*.09));
   noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
 }
+function playCluckSound(){
+  if(!audioCtx||!soundEnabled)return;
+  const now=audioCtx.currentTime;
+  for(const [delay,start,end,vol] of [[0,520,280,.09],[.075,430,220,.07]]){
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+    osc.type='square';
+    osc.frequency.setValueAtTime(start,now+delay);
+    osc.frequency.exponentialRampToValueAtTime(end,now+delay+.075);
+    gain.gain.setValueAtTime(.001,now+delay);
+    gain.gain.exponentialRampToValueAtTime(vol,now+delay+.008);
+    gain.gain.exponentialRampToValueAtTime(.001,now+delay+.09);
+    osc.connect(gain).connect(masterGain);
+    osc.start(now+delay);osc.stop(now+delay+.10);
+  }
+  noiseBurst(.055,.035,1000);
+}
 soundBtn.addEventListener('click',()=>{
   soundEnabled=!soundEnabled;
   if(soundEnabled)initAudio();
@@ -202,10 +222,13 @@ const roadPhys=new CANNON.Material('road');
 const wallPhys=new CANNON.Material('wall');
 const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
+const chickenPhys=new CANNON.Material('chicken');
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:0,restitution:.02,contactEquationStiffness:5e5,contactEquationRelaxation:9}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.42,restitution:.12}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.02,restitution:.32,contactEquationStiffness:4e5,contactEquationRelaxation:7}));
+world.addContactMaterial(new CANNON.ContactMaterial(chickenPhys,roadPhys,{friction:.25,restitution:.08}));
+world.addContactMaterial(new CANNON.ContactMaterial(chickenPhys,carPhys,{friction:0,restitution:.18,contactEquationStiffness:2e5,contactEquationRelaxation:8}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
 grass.rotation.x=-Math.PI/2;
 grass.position.y=-1.02;
@@ -423,6 +446,7 @@ for(const [cx,cz] of [[0,85],[0,-85]]){
   }
 }
 const barrels=[];
+const barrelByBody=new Map();
 const barrelRed=new THREE.MeshStandardMaterial({color:0xb62b20,roughness:.68,metalness:.25});
 const barrelBand=new THREE.MeshStandardMaterial({color:0xd7d7d2,roughness:.42,metalness:.65});
 const barrelGeo=new THREE.CylinderGeometry(.46,.46,1.1,18);
@@ -439,7 +463,8 @@ function addBarrel(x,y,z){
   body.addShape(new CANNON.Sphere(.43),new CANNON.Vec3(0,-.18,0));
   body.addShape(new CANNON.Sphere(.43),new CANNON.Vec3(0,.18,0));
   body.position.set(x,y,z);world.addBody(body);
-  const item={mesh:group,body,start:new CANNON.Vec3(x,y,z),startQ:new CANNON.Quaternion(0,0,0,1)};
+  const item={mesh:group,body,start:new CANNON.Vec3(x,y,z),startQ:new CANNON.Quaternion(0,0,0,1),scored:false};
+  barrelByBody.set(body,item);
   barrels.push(item);group.position.set(x,y,z);
 }
 // Barrel pool; positions are assigned from the live track path on each reset.
@@ -470,6 +495,7 @@ function resetBarrels(){
     b.body.force.setZero();
     b.body.torque.setZero();
     b.body.wakeUp();
+    b.scored=false;
     b.mesh.position.copy(b.start);
     b.mesh.quaternion.set(0,0,0,1);
   }
@@ -602,6 +628,7 @@ function poseTrafficCar(car,dt=1/60){
 function resetTrafficCars(){
   for(const car of aiCars){
     car.progress=car.phase*aiPathLength;
+    car.lastPlayerDelta=null;
     poseTrafficCar(car,1/60);
     car.group.position.copy(car.body.position);
     car.group.quaternion.copy(car.body.quaternion);
@@ -627,6 +654,114 @@ makeTrafficCar(0x9a4fd8,.06,20.0,1.0);
 makeTrafficCar(0xf0782d,.48,17.2,-3.1);
 makeTrafficCar(0x20b8b0,.70,22.2,1.8);
 resetTrafficCars();
+
+let score=0,chickenHits=0;
+function refreshScore(){
+  scoreNumEl.textContent=String(Math.round(score)).padStart(5,'0');
+  chickenCountEl.textContent='🐔 '+chickenHits;
+}
+function addScore(points,label=''){
+  score+=points;
+  refreshScore();
+  if(label)flash(label+'  +'+points);
+}
+function nearestAIProgress(x,z){
+  let best=Infinity,bestD=0;
+  for(let i=0;i<oval.length-1;i++){
+    const a=oval[i],b=oval[i+1];
+    const dx=b[0]-a[0],dz=b[2]-a[2],len2=dx*dx+dz*dz||1;
+    const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[2])*dz)/len2));
+    const px=a[0]+dx*t,pz=a[2]+dz*t,ex=x-px,ez=z-pz,d2=ex*ex+ez*ez;
+    if(d2<best){best=d2;bestD=aiPathDist[i]+Math.sqrt(len2)*t;}
+  }
+  return bestD;
+}
+function updateOvertakeScore(){
+  if(!lapStarted||finished)return;
+  const playerProgress=nearestAIProgress(chassisBody.position.x,chassisBody.position.z);
+  for(const car of aiCars){
+    let delta=((car.progress-playerProgress+aiPathLength*.5)%aiPathLength+aiPathLength)%aiPathLength-aiPathLength*.5;
+    if(car.lastPlayerDelta!==null &&
+       car.lastPlayerDelta>0 && delta<=0 &&
+       Math.abs(car.lastPlayerDelta)<18 && Math.abs(delta)<18 &&
+       chassisBody.velocity.length()>5){
+      addScore(50,'OVERTAKE');
+    }
+    car.lastPlayerDelta=delta;
+  }
+}
+
+const chickens=[];
+const chickenByBody=new Map();
+const chickenWhite=new THREE.MeshStandardMaterial({color:0xf5f2e8,roughness:.88});
+const chickenRed=new THREE.MeshStandardMaterial({color:0xd83227,roughness:.8});
+const chickenOrange=new THREE.MeshStandardMaterial({color:0xe8a125,roughness:.8});
+function makeChicken(){
+  const g=new THREE.Group();
+  const bodyMesh=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8),chickenWhite);bodyMesh.scale.set(1,.9,1.25);bodyMesh.castShadow=true;g.add(bodyMesh);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.19,9,7),chickenWhite);head.position.set(0,.30,.26);head.castShadow=true;g.add(head);
+  const comb=new THREE.Mesh(new THREE.SphereGeometry(.075,7,5),chickenRed);comb.scale.set(.75,1.4,.7);comb.position.set(0,.49,.24);g.add(comb);
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(.07,.18,6),chickenOrange);beak.rotation.x=Math.PI/2;beak.position.set(0,.30,.48);g.add(beak);
+  for(const x of[-.11,.11]){
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.28,5),chickenOrange);leg.position.set(x,-.35,.02);leg.castShadow=true;g.add(leg);
+  }
+  scene.add(g);
+  const body=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:chickenPhys,linearDamping:.05,angularDamping:.08});
+  body.addShape(new CANNON.Sphere(.34));
+  world.addBody(body);
+  const chicken={mesh:g,body,progress:0,lane:0,dir:1,speed:2,hit:false,hitAt:0};
+  chickens.push(chicken);chickenByBody.set(body,chicken);
+  resetChicken(chicken,true);
+}
+function resetChicken(chicken,initial=false){
+  chicken.hit=false;chicken.hitAt=0;
+  chicken.body.type=CANNON.Body.KINEMATIC;chicken.body.mass=0;chicken.body.updateMassProperties();
+  chicken.progress=70+Math.random()*Math.max(50,aiPathLength-125);
+  chicken.dir=Math.random()<.5?1:-1;
+  chicken.lane=-chicken.dir*(7.0+Math.random()*1.2);
+  chicken.speed=1.35+Math.random()*1.55;
+  chicken.body.velocity.setZero();chicken.body.angularVelocity.setZero();
+  const p=sampleAIPath(chicken.progress,chicken.lane);
+  chicken.body.position.set(p.x,p.y+.44,p.z);
+  chicken.mesh.position.copy(chicken.body.position);
+  if(initial) chicken.progress=(chicken.progress+Math.random()*aiPathLength)%aiPathLength;
+}
+function hitChicken(chicken){
+  if(!chicken||chicken.hit)return;
+  chicken.hit=true;chicken.hitAt=performance.now();
+  chickenHits++;
+  addScore(100,'CHICKEN!');
+  playCluckSound();
+  chicken.body.type=CANNON.Body.DYNAMIC;chicken.body.mass=1.2;chicken.body.updateMassProperties();
+  const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  const speed=Math.max(8,chassisBody.velocity.length());
+  chicken.body.velocity.set(f.x*Math.min(14,speed*.55)+(Math.random()-.5)*4,7+Math.random()*3,f.z*Math.min(14,speed*.55)+(Math.random()-.5)*4);
+  chicken.body.angularVelocity.set((Math.random()-.5)*14,(Math.random()-.5)*18,(Math.random()-.5)*14);
+  chicken.body.wakeUp();
+}
+function updateChickens(dt){
+  for(const chicken of chickens){
+    if(chicken.hit){
+      chicken.mesh.position.copy(chicken.body.position);chicken.mesh.quaternion.copy(chicken.body.quaternion);
+      if(performance.now()-chicken.hitAt>1800 || chicken.body.position.y<-4)resetChicken(chicken);
+      continue;
+    }
+    const old=sampleAIPath(chicken.progress,chicken.lane);
+    chicken.lane+=chicken.dir*chicken.speed*dt;
+    if(Math.abs(chicken.lane)>8.2){resetChicken(chicken);continue;}
+    const p=sampleAIPath(chicken.progress,chicken.lane);
+    chicken.body.position.set(p.x,p.y+.44,p.z);
+    const vx=(p.x-old.x)/Math.max(dt,.001),vz=(p.z-old.z)/Math.max(dt,.001);
+    chicken.body.velocity.set(vx,0,vz);
+    chicken.body.angularVelocity.setZero();
+    const yaw=Math.atan2(vx,vz);
+    chicken.body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+    chicken.body.aabbNeedsUpdate=true;
+    chicken.mesh.position.copy(chicken.body.position);chicken.mesh.quaternion.copy(chicken.body.quaternion);
+  }
+}
+for(let i=0;i<6;i++)makeChicken();
+refreshScore();
 
 const chassisBody=new CANNON.Body({mass:1350,material:carPhys});
 chassisBody.addShape(
@@ -732,18 +867,12 @@ let mobileSteer=0,mobileSteerTarget=0,mobileGo=false,mobileBrake=false,mobileBoo
 
 function setSteerFromPointer(e){
   const r=steerPad.getBoundingClientRect();
-  const centre=r.left+r.width/2;
-  steerPad.classList.remove('left','right');
-
-  // Deliberately capped below full keyboard steering.
-  // The actual steering value eases toward this target in controls().
-  if(e.clientX < centre){
-    mobileSteerTarget=.72;
-    steerPad.classList.add('left');
-  }else{
-    mobileSteerTarget=-.72;
-    steerPad.classList.add('right');
-  }
+  const knobRadius=23;
+  const usable=Math.max(1,r.width-knobRadius*2);
+  const px=Math.max(0,Math.min(usable,e.clientX-r.left-knobRadius));
+  const norm=px/usable*2-1;
+  mobileSteerTarget=-norm*.92;
+  steerKnob.style.left=(knobRadius+px)+'px';
 }
 steerPad.addEventListener('pointerdown',e=>{
   e.preventDefault();
@@ -756,7 +885,7 @@ steerPad.addEventListener('pointermove',e=>{
 function releaseSteer(e){
   if(e&&steerPad.hasPointerCapture?.(e.pointerId))steerPad.releasePointerCapture(e.pointerId);
   mobileSteerTarget=0;
-  steerPad.classList.remove('left','right');
+  steerKnob.style.left='50%';
 }
 steerPad.addEventListener('pointerup',releaseSteer);
 steerPad.addEventListener('pointercancel',releaseSteer);
@@ -1097,7 +1226,12 @@ function carCollisionDamage(e){
       addPartDamage(region,amount,false);
       playCrashSound(Math.min(.6,speed/28),true);
     }
+  }else if(e.body?.material===chickenPhys){
+    hitChicken(chickenByBody.get(e.body));
+    return;
   }else if(e.body?.material===barrelPhys){
+    const barrel=barrelByBody.get(e.body);
+    if(barrel&&!barrel.scored){barrel.scored=true;addScore(25,'BARREL');}
     // Barrels are lightweight smash-through debris: launch the barrel,
     // preserve the player's momentum and avoid the strong recovery/stun response.
     if(speed>2){
@@ -1152,8 +1286,10 @@ function resetCar(){
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
   resetBarrels();resetCrates();resetTrafficCars();
+  for(const chicken of chickens)resetChicken(chicken,true);
+  score=0;chickenHits=0;refreshScore();
   mobileSteer=0;mobileSteerTarget=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
-  steerPad.classList.remove('left','right');
+  steerKnob.style.left='50%';
   gasPedal.classList.remove('active');brakePedal.classList.remove('active');boostPedal.classList.remove('active');resetPedal.classList.remove('active');
   damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;offTrackSince=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;
   for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
@@ -1280,6 +1416,7 @@ function updateVisuals(){
   }
   for(const b of barrels){b.mesh.position.copy(b.body.position);b.mesh.quaternion.copy(b.body.quaternion);}
   for(const c of crates){c.mesh.position.copy(c.body.position);c.mesh.quaternion.copy(c.body.quaternion);}
+  for(const chicken of chickens){if(chicken.hit){chicken.mesh.position.copy(chicken.body.position);chicken.mesh.quaternion.copy(chicken.body.quaternion);}}
   sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.quaternion.copy(sweeperBody.quaternion);
   syncTrafficVisuals();
   fwd.set(0,0,1).applyQuaternion(carRoot.quaternion);
@@ -1343,7 +1480,8 @@ function landingLogic(){
       }else if(air>.35 && up.y>.88 && airMinUp>.72){
         const earned=Math.min(28,Math.round(7+air*7));
         boost=Math.min(100,boost+earned);
-        flash('NICE LANDING  +'+earned+' BOOST');
+        score+=25;refreshScore();
+        flash('NICE LANDING  +'+earned+' BOOST  +25 PTS');
       }
     }
     airborne=false;peakDownVel=0;airMinUp=1;airUnstable=false;lastGrounded=now;
@@ -1363,8 +1501,9 @@ function lapLogic(){
     }else if(checkpointStage===3){
       finished=true;
       const secs=(now-runStart)/1000;
+      score+=500;refreshScore();
       lapEl.textContent='FINISH  '+secs.toFixed(1)+'s';
-      flash('FINISH!  '+secs.toFixed(1)+'s');
+      flash('FINISH!  '+secs.toFixed(1)+'s  +500 PTS');
       boost=100;
     }
   }
@@ -1378,7 +1517,9 @@ function animate(now){
   if(started){
     controls(dt);
     updateTrafficCars(dt);
+    updateChickens(dt);
     world.step(1/60,dt,3);
+    updateOvertakeScore();
     keepCarFreeOfWalls();
     landingLogic();
     lapLogic();
