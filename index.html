@@ -1042,7 +1042,7 @@ function carCollisionDamage(e){
       addPartDamage(region,amount,false);
       playCrashSound(Math.min(.6,speed/28),true);
     }
-  }else if(e.body?.material===obstaclePhys){
+  }else if(e.body?.material===obstaclePhys||e.body?.material===barrelPhys){
     // Movable/kinematic obstacles deflect the car rather than acting like glue.
     if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
     // Spinner, crates or other physical obstacles can damage the actual side hit.
