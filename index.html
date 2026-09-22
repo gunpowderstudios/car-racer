@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v7.9</title>
+<title>Car Racer v8.0</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.9 fixes the bank angle sign so AI cars and recovered player cars lean with the road instead of against it.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v8.0 adds directional AI ramming: rear hits push forward, side hits shove cars across the track, and wall slams cause damage and rebound.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v7.9</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v8.0</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -850,7 +850,7 @@ function makeTrafficCar(color,phase,speed,lane){
   body.collisionResponse=true;
   world.addBody(body);
 
-  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0,shoveSpeed:0,lastShoveAt:0};
+  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0,shoveSpeed:0,lastShoveAt:0,ramLateral:0,ramLateralVel:0,ramYaw:0,lastWallHitAt:0};
   updateAIHealthBar(car);
   aiCarByBody.set(body,car);
   aiCars.push(car);
@@ -858,10 +858,11 @@ function makeTrafficCar(color,phase,speed,lane){
 }
 function poseTrafficCar(car,dt=1/60){
   if(car.destroyed)return;
-  const p=sampleAIPath(car.progress,car.lane);
-  const ahead=sampleAIPath(car.progress+Math.max(.35,car.speed*dt),car.lane);
+  const effectiveLane=car.lane+car.ramLateral;
+  const p=sampleAIPath(car.progress,effectiveLane);
+  const ahead=sampleAIPath(car.progress+Math.max(.35,car.speed*dt),effectiveLane);
   const horiz=Math.hypot(p.tx,p.tz)||1;
-  const yaw=Math.atan2(p.tx,p.tz),pitch=Math.atan2(p.ty,horiz);
+  const yaw=Math.atan2(p.tx,p.tz)+car.ramYaw,pitch=Math.atan2(p.ty,horiz);
 
   car.body.position.set(p.x,p.y+.73,p.z);
   const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qRoll=new CANNON.Quaternion(),qp=new CANNON.Quaternion(),q=new CANNON.Quaternion();
@@ -889,6 +890,10 @@ function resetTrafficCars(){
     car.lastHitAt=0;
     car.shoveSpeed=0;
     car.lastShoveAt=0;
+    car.ramLateral=0;
+    car.ramLateralVel=0;
+    car.ramYaw=0;
+    car.lastWallHitAt=0;
     car.body.collisionResponse=true;
     car.group.visible=true;
     car.smokeAt=0;
@@ -908,6 +913,10 @@ function updateTrafficCars(dt){
         car.health=car.maxHealth;
         car.shoveSpeed=0;
         car.lastShoveAt=0;
+        car.ramLateral=0;
+        car.ramLateralVel=0;
+        car.ramYaw=0;
+        car.lastWallHitAt=0;
         car.progress=(car.progress+45+Math.random()*80)%aiPathLength;
         car.body.collisionResponse=true;
         car.group.visible=true;
@@ -918,10 +927,40 @@ function updateTrafficCars(dt){
       }
       continue;
     }
-    // A ram gives the AI car a temporary extra forward speed that fades away.
-    // This keeps traffic moving and lets the player's momentum shove cars ahead.
+    // Ramming can now carry an AI car both down-track and sideways.
     car.shoveSpeed*=Math.exp(-2.25*dt);
     if(car.shoveSpeed<.05)car.shoveSpeed=0;
+
+    car.ramLateral+=car.ramLateralVel*dt;
+    car.ramLateralVel*=Math.exp(-1.75*dt);
+    car.ramYaw*=Math.exp(-2.8*dt);
+
+    // The road is 18m wide. With a ~2m-wide AI car, this is approximately
+    // where its side meets either wall. Treat that as a real secondary impact.
+    const effectiveLane=car.lane+car.ramLateral;
+    const wallLimit=7.65;
+    if(Math.abs(effectiveLane)>wallLimit && now-car.lastWallHitAt>420){
+      car.lastWallHitAt=now;
+      const wallSide=Math.sign(effectiveLane)||1;
+      const wallSpeed=Math.abs(car.ramLateralVel);
+      const wallDamage=Math.min(34,Math.max(7,7+wallSpeed*4.4));
+      car.health=Math.max(0,car.health-wallDamage);
+      updateAIHealthBar(car);
+      playCrashSound(Math.min(1,.35+wallSpeed/10),false);
+
+      // Clamp at the barrier and rebound inward with some yaw.
+      car.ramLateral=wallSide*wallLimit-car.lane;
+      car.ramLateralVel=-wallSide*Math.max(2.3,wallSpeed*.48);
+      car.ramYaw+=-wallSide*Math.min(.28,.08+wallSpeed*.025);
+
+      if(car.health<=0){
+        destroyAICar(car,false);
+        continue;
+      }else{
+        flash('AI WALL HIT  '+Math.round(car.health)+' / '+car.maxHealth);
+      }
+    }
+
     car.progress=(car.progress+(car.speed+car.shoveSpeed)*dt)%aiPathLength;
     poseTrafficCar(car,dt);
     spawnAISmoke(car);
@@ -1716,19 +1755,46 @@ function shoveAICar(car,impact,playerSpeed){
   car.lastShoveAt=now;
   playShuntSound(Math.min(1,.30+impact/12));
 
-  // Move the AI car immediately down-track, then give it a short-lived speed boost.
-  const shoveDistance=Math.min(7.0,Math.max(1.2,playerSpeed*.15+impact*.22));
-  car.progress=(car.progress+shoveDistance)%aiPathLength;
-  car.shoveSpeed=Math.max(car.shoveSpeed,Math.min(22,Math.max(5,playerSpeed*.68+impact*.40)));
+  // Work in the AI car's track frame so the same code works on left/right bends.
+  const p=sampleAIPath(car.progress,car.lane+car.ramLateral);
+  const tl=Math.hypot(p.tx,p.tz)||1;
+  const tx=p.tx/tl,tz=p.tz/tl;
+  const lx=-tz,lz=tx; // positive lane direction
 
-  // Preserve the player's forward momentum after the physics solver runs.
-  // A rear-end ram should feel like pushing a lighter car, not hitting a wall.
+  // Direction from the player's centre into the AI car. This distinguishes a
+  // rear shunt from a left/right side impact without relying on track direction.
+  let dx=car.body.position.x-chassisBody.position.x;
+  let dz=car.body.position.z-chassisBody.position.z;
+  const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;
+
+  const forwardHit=THREE.MathUtils.clamp(dx*tx+dz*tz,-1,1);
+  const sideHit=THREE.MathUtils.clamp(dx*lx+dz*lz,-1,1);
+  const strength=Math.min(1.6,.28+playerSpeed/24+impact/18);
+
+  // Rear hits transfer mostly forward momentum; side hits transfer sideways.
+  const forwardWeight=Math.max(.12,forwardHit);
+  const shoveDistance=Math.min(7.5,Math.max(.4,(playerSpeed*.14+impact*.20)*forwardWeight));
+  car.progress=(car.progress+shoveDistance)%aiPathLength;
+  car.shoveSpeed=Math.max(
+    car.shoveSpeed,
+    Math.min(23,Math.max(2.5,(playerSpeed*.64+impact*.38)*Math.max(.22,forwardWeight)))
+  );
+
+  const lateralKick=sideHit*(3.0+playerSpeed*.19+impact*.28)*strength;
+  car.ramLateralVel=THREE.MathUtils.clamp(car.ramLateralVel+lateralKick,-18,18);
+  car.ramYaw=THREE.MathUtils.clamp(
+    car.ramYaw-sideHit*(.08+Math.min(.26,Math.abs(lateralKick)*.018)),
+    -.42,.42
+  );
+
+  // Preserve most player momentum, especially for a clean rear-end shove.
   const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
   f.y=0;
   const fl=Math.hypot(f.x,f.z)||1;f.x/=fl;f.z/=fl;
+  const rearBias=Math.max(0,forwardHit);
   pendingAIRam={
     forward:new CANNON.Vec3(f.x,0,f.z),
-    targetForward:Math.max(0,playerSpeed*.88),
+    targetForward:Math.max(0,playerSpeed*(.72+.16*rearBias)),
     until:now+180
   };
 }
