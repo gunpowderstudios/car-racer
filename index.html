@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.6</title>
+<title>Car Racer v5.7</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.6 automatically recovers your car onto the road after it has been flipped for 3 seconds, while keeping its damage and score.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.7 makes AI traffic shoveable: ramming a car pushes it ahead instead of stopping you dead.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -624,7 +624,7 @@ function makeTrafficCar(color,phase,speed,lane){
   body.collisionResponse=true;
   world.addBody(body);
 
-  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0};
+  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0,shoveSpeed:0,lastShoveAt:0};
   updateAIHealthBar(car);
   aiCarByBody.set(body,car);
   aiCars.push(car);
@@ -661,6 +661,8 @@ function resetTrafficCars(){
     car.destroyed=false;
     car.respawnAt=0;
     car.lastHitAt=0;
+    car.shoveSpeed=0;
+    car.lastShoveAt=0;
     car.body.collisionResponse=true;
     car.group.visible=true;
     car.smokeAt=0;
@@ -678,6 +680,8 @@ function updateTrafficCars(dt){
       if(now>=car.respawnAt){
         car.destroyed=false;
         car.health=car.maxHealth;
+        car.shoveSpeed=0;
+        car.lastShoveAt=0;
         car.progress=(car.progress+45+Math.random()*80)%aiPathLength;
         car.body.collisionResponse=true;
         car.group.visible=true;
@@ -688,7 +692,11 @@ function updateTrafficCars(dt){
       }
       continue;
     }
-    car.progress=(car.progress+car.speed*dt)%aiPathLength;
+    // A ram gives the AI car a temporary extra forward speed that fades away.
+    // This keeps traffic moving and lets the player's momentum shove cars ahead.
+    car.shoveSpeed*=Math.exp(-2.25*dt);
+    if(car.shoveSpeed<.05)car.shoveSpeed=0;
+    car.progress=(car.progress+(car.speed+car.shoveSpeed)*dt)%aiPathLength;
     poseTrafficCar(car,dt);
     spawnAISmoke(car);
   }
@@ -1353,6 +1361,30 @@ function arcadeImpactBounce(contact,strength=1){
   // Brief loss of authority after the hit, then controls fade back in.
   impactRecoverUntil=Math.max(impactRecoverUntil,now+520+Math.min(360,beforeSpeed*12));
 }
+function shoveAICar(car,impact,playerSpeed){
+  if(!car||car.destroyed)return;
+  const now=performance.now();
+  if(now-car.lastShoveAt<120)return;
+  car.lastShoveAt=now;
+
+  // Move the AI car immediately down-track, then give it a short-lived speed boost.
+  const shoveDistance=Math.min(5.5,Math.max(.8,playerSpeed*.11+impact*.18));
+  car.progress=(car.progress+shoveDistance)%aiPathLength;
+  car.shoveSpeed=Math.max(car.shoveSpeed,Math.min(18,Math.max(4,playerSpeed*.55+impact*.35)));
+
+  // Preserve most of the player's forward momentum so the AI car feels light,
+  // not like an immovable wall.
+  const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  f.y=0;
+  const fl=Math.hypot(f.x,f.z)||1;f.x/=fl;f.z/=fl;
+  const v=chassisBody.velocity;
+  const forward=v.x*f.x+v.z*f.z;
+  const minForward=Math.min(26,playerSpeed*.84);
+  if(playerSpeed>4 && forward>0 && forward<minForward){
+    const add=minForward-forward;
+    v.x+=f.x*add;v.z+=f.z*add;
+  }
+}
 function carCollisionDamage(e){
   if(exploded)return;
   const c=e.contact;
@@ -1417,17 +1449,28 @@ function carCollisionDamage(e){
         playCrashSound(1,false);
         return;
       }
+
+      // Traffic is deliberately "light": ram it forward and keep most of the
+      // player's perpetual arcade momentum instead of bouncing off it like a wall.
+      shoveAICar(aiCar,impact,speed);
+
       if(impact>1.6||speed>6){
         const aiDamage=Math.min(26,Math.max(5,(Math.max(impact,speed*.16)-1.2)*3.0));
         damageAICar(aiCar,aiDamage,impact);
       }
-    }
-    // Sweeper and surviving traffic still deflect the player.
-    if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
-    if(impact>2.0 || speed>6){
-      const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
-      addPartDamage(region,amount,true);
-      playCrashSound(Math.min(1,Math.max(impact,speed*.18)/10),false);
+      if(impact>2.0 || speed>6){
+        const amount=Math.min(22,Math.max(1.5,(Math.max(impact,2)-1.6)*3.0));
+        addPartDamage(region,amount,true);
+        playCrashSound(Math.min(1,Math.max(impact,speed*.18)/10),false);
+      }
+    }else{
+      // The sweeper remains a proper obstacle.
+      if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
+      if(impact>2.0 || speed>6){
+        const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
+        addPartDamage(region,amount,true);
+        playCrashSound(Math.min(1,Math.max(impact,speed*.18)/10),false);
+      }
     }
   }else if(e.body?.material===roadPhys && up.y<.38 && impact>2.2){
     const amount=Math.min(32,Math.max(4,(impact-1.8)*5.5));
