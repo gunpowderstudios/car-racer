@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.0</title>
+<title>Car Racer v5.1</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -54,9 +54,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.0 brings back random barrel obstacles and automatically resets the car if it genuinely leaves the circuit.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.1 makes barrels lightweight smash-through obstacles that get knocked out of the car's path instead of stopping it.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.0</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.1</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering control">
     <div id="steerLeft" class="steerSide" aria-label="Steer left">◀</div>
@@ -204,8 +204,8 @@ const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:.025,restitution:.08,contactEquationStiffness:7e5,contactEquationRelaxation:6}));
-world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.58,restitution:.06}));
-world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.25,restitution:.16}));
+world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.42,restitution:.12}));
+world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.02,restitution:.32,contactEquationStiffness:4e5,contactEquationRelaxation:7}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
 grass.rotation.x=-Math.PI/2;
 grass.position.y=-1.02;
@@ -435,7 +435,7 @@ function addBarrel(x,y,z){
     ring.rotation.x=Math.PI/2;ring.position.y=yy;ring.castShadow=true;group.add(ring);
   }
   scene.add(group);
-  const body=new CANNON.Body({mass:32,material:barrelPhys,linearDamping:.08,angularDamping:.08,allowSleep:true,sleepSpeedLimit:.12,sleepTimeLimit:.7});
+  const body=new CANNON.Body({mass:8,material:barrelPhys,linearDamping:.035,angularDamping:.04,allowSleep:true,sleepSpeedLimit:.12,sleepTimeLimit:.7});
   body.addShape(new CANNON.Sphere(.43),new CANNON.Vec3(0,-.18,0));
   body.addShape(new CANNON.Sphere(.43),new CANNON.Vec3(0,.18,0));
   body.position.set(x,y,z);world.addBody(body);
@@ -1042,10 +1042,30 @@ function carCollisionDamage(e){
       addPartDamage(region,amount,false);
       playCrashSound(Math.min(.6,speed/28),true);
     }
-  }else if(e.body?.material===obstaclePhys||e.body?.material===barrelPhys){
-    // Movable/kinematic obstacles deflect the car rather than acting like glue.
+  }else if(e.body?.material===barrelPhys){
+    // Barrels are lightweight smash-through debris: launch the barrel,
+    // preserve the player's momentum and avoid the strong recovery/stun response.
+    if(speed>2){
+      const bv=e.body.velocity;
+      const cv=chassisBody.velocity;
+      bv.x=cv.x*.82;
+      bv.z=cv.z*.82;
+      bv.y=Math.max(bv.y,1.4+Math.min(2.8,speed*.07));
+      e.body.angularVelocity.x+=(Math.random()-.5)*7;
+      e.body.angularVelocity.y+=(Math.random()-.5)*9;
+      e.body.angularVelocity.z+=(Math.random()-.5)*7;
+      e.body.wakeUp();
+    }
+    if(impact>3.5){
+      const amount=Math.min(10,Math.max(1.5,(impact-3.2)*1.35));
+      addPartDamage(region,amount,false);
+      playCrashSound(Math.min(.55,impact/16),false);
+    }else if(speed>5){
+      playCrashSound(.16,true);
+    }
+  }else if(e.body?.material===obstaclePhys){
+    // Sweeper, traffic cars and other solid obstacles still deflect the player.
     if(impact>1.3||speed>5)arcadeImpactBounce(c,Math.min(1.25,.35+impact/11));
-    // Spinner, crates or other physical obstacles can damage the actual side hit.
     if(impact>2.0 || speed>6){
       const amount=Math.min(34,Math.max(2,(Math.max(impact,2)-1.6)*5.2));
       addPartDamage(region,amount,true);
