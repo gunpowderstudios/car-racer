@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.7</title>
+<title>Car Racer v6.8</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -61,10 +61,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.7 adds looping background music with independent SOUND and MUSIC controls.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.8 fixes startup after adding the independent looping music control.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.8</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -126,7 +126,7 @@ const shuntSoundPool=makeAudioPool('sounds/shunt.mp3',3,.88);
 let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0;
 let crashSoundIndex=0,scrapeSoundIndex=0,jumpSoundIndex=0,landingSoundIndex=0,shuntSoundIndex=0;
 let boostSoundHeld=false,lastShuntSound=0;
-let soundEnabled=true,musicEnabled=true;
+let soundEnabled=true,musicEnabled=true,started=false;
 function applyMusicState(){
   musicBtn.textContent=musicEnabled?'🎵 MUSIC ON':'🎵 MUSIC OFF';
   musicBtn.setAttribute('aria-pressed',musicEnabled?'true':'false');
@@ -1246,7 +1246,7 @@ renderer.domElement.addEventListener('wheel',e=>{
   orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);
   e.preventDefault();
 },{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),started=false,steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,impactRecoverUntil=0,lastBounceAt=0,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76,flippedSince=0,lastFlipCount=0;
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,impactRecoverUntil=0,lastBounceAt=0,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76,flippedSince=0,lastFlipCount=0;
 
 const damageParts={front:0,rear:0,left:0,right:0,top:0};
 const damageCooldown={front:0,rear:0,left:0,right:0,top:0};
