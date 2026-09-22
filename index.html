@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.1</title>
+<title>Car Racer v5.2</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -54,9 +54,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.1 makes barrels lightweight smash-through obstacles that get knocked out of the car's path instead of stopping it.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.2 makes the circuit walls true slide barriers: no sticking or wall stun, with full drive-away control.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.1</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.2</span></div><div id="lapBox">READY</div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering control">
     <div id="steerLeft" class="steerSide" aria-label="Steer left">◀</div>
@@ -203,7 +203,7 @@ const wallPhys=new CANNON.Material('wall');
 const carPhys=new CANNON.Material('car');
 const barrelPhys=new CANNON.Material('barrel');
 world.addContactMaterial(new CANNON.ContactMaterial(carPhys,roadPhys,{friction:.35,restitution:0,contactEquationStiffness:1e6,contactEquationRelaxation:4}));
-world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:.025,restitution:.08,contactEquationStiffness:7e5,contactEquationRelaxation:6}));
+world.addContactMaterial(new CANNON.ContactMaterial(carPhys,wallPhys,{friction:0,restitution:.02,contactEquationStiffness:5e5,contactEquationRelaxation:9}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,roadPhys,{friction:.42,restitution:.12}));
 world.addContactMaterial(new CANNON.ContactMaterial(barrelPhys,carPhys,{friction:.02,restitution:.32,contactEquationStiffness:4e5,contactEquationRelaxation:7}));
 const grass=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x527d3b,roughness:1}));
@@ -962,6 +962,60 @@ function preserveWallGlance(contact){
     );
   }
 }
+function wallOutwardNormal(contact){
+  if(!contact)return null;
+  const n=new CANNON.Vec3(contact.ni.x,contact.ni.y,contact.ni.z);
+
+  // ContactEquation.ni orientation depends on which body is bi/bj.
+  // We want a normal that always points from the wall toward the car.
+  if(contact.bi===chassisBody)n.negate(n);
+  else if(contact.bj!==chassisBody)return null;
+
+  n.y=0;
+  const len=Math.hypot(n.x,n.z);
+  if(len<.001)return null;
+  n.x/=len;n.z/=len;
+  return n;
+}
+function keepCarFreeOfWalls(){
+  // Run after each physics step so persistent contacts cannot pin the chassis.
+  // Remove only velocity going INTO a wall; retain along-wall and outward motion.
+  if(!world.contacts||exploded)return;
+  for(const c of world.contacts){
+    const isWallCar=
+      (c.bi===chassisBody&&c.bj?.material===wallPhys)||
+      (c.bj===chassisBody&&c.bi?.material===wallPhys);
+    if(!isWallCar)continue;
+
+    const n=wallOutwardNormal(c);
+    if(!n)continue;
+
+    const v=chassisBody.velocity;
+    const vn=v.x*n.x+v.z*n.z;
+
+    // Negative means movement into the wall. Strip it completely rather than
+    // letting the solver convert it into a sticky stop.
+    if(vn<0){
+      v.x-=n.x*vn;
+      v.z-=n.z*vn;
+    }
+
+    // Small continuous separation keeps the chassis off wall seams/corners.
+    v.x+=n.x*.045;
+    v.z+=n.z*.045;
+
+    // Do not let a wall collision kill useful along-track momentum.
+    const speedXZ=Math.hypot(v.x,v.z);
+    if(speedXZ<1.25 && chassisBody.velocity.length()>1.25){
+      const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+      f.y=0;
+      const fl=Math.hypot(f.x,f.z)||1;
+      v.x+=f.x/fl*.20;
+      v.z+=f.z/fl*.20;
+    }
+  }
+}
+
 function arcadeImpactBounce(contact,strength=1){
   if(!contact||exploded)return;
   const now=performance.now();
@@ -1027,8 +1081,9 @@ function carCollisionDamage(e){
   const region=local?classifyDamagePoint(local):'front';
 
   if(e.body?.material===wallPhys){
+    // Walls are slide barriers, not stun obstacles. Preserve motion and let
+    // the per-step wall assist continuously remove any into-wall velocity.
     preserveWallGlance(c);
-    if(impact>1.2||speed>4)arcadeImpactBounce(c,Math.min(1.5,.45+impact/10));
 
     // Initial strike damage.
     if(impact>2.8){
@@ -1324,6 +1379,7 @@ function animate(now){
     controls(dt);
     updateTrafficCars(dt);
     world.step(1/60,dt,3);
+    keepCarFreeOfWalls();
     landingLogic();
     lapLogic();
     offTrackLogic();
