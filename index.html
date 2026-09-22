@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.1</title>
+<title>Car Racer v6.2</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.1 makes rear-end ramming properly arcade-like: shove AI cars forward and keep going with only a slight slowdown.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.2 uses the real chicken cluck sound from sounds/cluck.mp3.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.1</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -84,6 +84,13 @@ const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),dama
 const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
 let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
+const cluckPool=Array.from({length:4},()=>{
+  const a=new Audio('sounds/cluck.mp3');
+  a.preload='auto';
+  a.volume=.82;
+  return a;
+});
+let cluckIndex=0;
 let soundEnabled=true;
 function applySoundState(){
   soundBtn.textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';
@@ -91,6 +98,7 @@ function applySoundState(){
   if(audioCtx&&masterGain){
     masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
   }
+  for(const a of cluckPool)a.muted=!soundEnabled;
 }
 function initAudio(){
   if(audioCtx){
@@ -167,20 +175,14 @@ function playLandingSound(intensity=.5){
   noiseBurst(.12,.025+Math.min(.10,intensity*.07),90);
 }
 function playCluckSound(){
-  if(!audioCtx||!soundEnabled)return;
-  const now=audioCtx.currentTime;
-  for(const [delay,start,end,vol] of [[0,520,280,.09],[.075,430,220,.07]]){
-    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-    osc.type='square';
-    osc.frequency.setValueAtTime(start,now+delay);
-    osc.frequency.exponentialRampToValueAtTime(end,now+delay+.075);
-    gain.gain.setValueAtTime(.001,now+delay);
-    gain.gain.exponentialRampToValueAtTime(vol,now+delay+.008);
-    gain.gain.exponentialRampToValueAtTime(.001,now+delay+.09);
-    osc.connect(gain).connect(masterGain);
-    osc.start(now+delay);osc.stop(now+delay+.10);
-  }
-  noiseBurst(.055,.035,1000);
+  if(!soundEnabled)return;
+  const a=cluckPool[cluckIndex++%cluckPool.length];
+  try{
+    a.muted=false;
+    a.currentTime=0;
+    const p=a.play();
+    if(p&&typeof p.catch==='function')p.catch(()=>{});
+  }catch(_){}
 }
 soundBtn.addEventListener('click',()=>{
   soundEnabled=!soundEnabled;
