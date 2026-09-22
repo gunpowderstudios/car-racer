@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v9.1</title>
+<title>Car Racer v9.2</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v9.1 adds speed-sensitive tyre screech in hard corners and makes chickens completely non-physical trigger targets.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v9.2 uses the uploaded tyre-screech.mp3 for speed-sensitive corner squeal while keeping chickens non-physical.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v9.1</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v9.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -179,6 +179,11 @@ musicAudio.preload='auto';
 musicAudio.loop=true;
 musicAudio.volume=.16;
 
+const tyreScreechAudio=new Audio('sounds/tyre-screech.mp3');
+tyreScreechAudio.preload='auto';
+tyreScreechAudio.loop=true;
+tyreScreechAudio.volume=0;
+
 function makeAudioPool(src,count=3,volume=.8){
   return Array.from({length:count},()=>{
     const a=new Audio(src);
@@ -201,7 +206,6 @@ const shuntSoundPool=makeAudioPool('sounds/shunt.mp3',3,.88);
 let cluckIndex=0,barrelSoundIndex=0,boostSoundIndex=0;
 let crashSoundIndex=0,scrapeSoundIndex=0,jumpSoundIndex=0,landingSoundIndex=0,shuntSoundIndex=0;
 let boostSoundHeld=false,lastShuntSound=0;
-let tyreScreechSource=null,tyreScreechFilter=null,tyreScreechGain=null;
 let soundEnabled=true,musicEnabled=false,started=false;
 function applyMusicState(){
   musicBtn.textContent=musicEnabled?'🎵 MUSIC ON':'🎵 MUSIC OFF';
@@ -217,9 +221,8 @@ function applySoundState(){
     masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
   }
   engineAudio.muted=!soundEnabled;
-  if(tyreScreechGain&&audioCtx){
-    tyreScreechGain.gain.setTargetAtTime(soundEnabled?tyreScreechGain.gain.value:0,audioCtx.currentTime,.02);
-  }
+  tyreScreechAudio.muted=!soundEnabled;
+  if(!soundEnabled)tyreScreechAudio.volume=0;
   for(const pool of [cluckPool,barrelSoundPool,boostSoundPool,crashSoundPool,scrapeSoundPool,jumpSoundPool,landingSoundPool,shuntSoundPool]){
     for(const a of pool)a.muted=!soundEnabled;
   }
@@ -244,6 +247,13 @@ function initAudio(){
   // so it is the right place to unlock both HTML audio and Web Audio.
   ensureEnginePlaying();
   if(musicEnabled)ensureMusicPlaying();
+  tyreScreechAudio.volume=0;
+  try{
+    const tp=tyreScreechAudio.play();
+    if(tp&&typeof tp.then==='function'){
+      tp.then(()=>{tyreScreechAudio.pause();tyreScreechAudio.currentTime=0;}).catch(()=>{});
+    }
+  }catch(_){}
 
   if(audioCtx){
     if(audioCtx.state==='suspended')audioCtx.resume();
@@ -261,43 +271,15 @@ function initAudio(){
   masterGain.connect(audioCtx.destination);
   applySoundState();
 }
-function ensureTyreScreech(){
-  if(!audioCtx||!masterGain||tyreScreechSource)return;
-
-  const seconds=1.0;
-  const buffer=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*seconds),audioCtx.sampleRate);
-  const data=buffer.getChannelData(0);
-  let last=0;
-  for(let i=0;i<data.length;i++){
-    const white=Math.random()*2-1;
-    last=last*.72+white*.28;
-    data[i]=white*.62+last*.38;
-  }
-
-  tyreScreechSource=audioCtx.createBufferSource();
-  tyreScreechSource.buffer=buffer;
-  tyreScreechSource.loop=true;
-
-  tyreScreechFilter=audioCtx.createBiquadFilter();
-  tyreScreechFilter.type='bandpass';
-  tyreScreechFilter.frequency.value=1650;
-  tyreScreechFilter.Q.value=1.15;
-
-  tyreScreechGain=audioCtx.createGain();
-  tyreScreechGain.gain.value=0;
-
-  tyreScreechSource.connect(tyreScreechFilter).connect(tyreScreechGain).connect(masterGain);
-  tyreScreechSource.start();
+function ensureTyreScreechPlaying(){
+  if(!soundEnabled||!started||!tyreScreechAudio.paused)return;
+  try{
+    const p=tyreScreechAudio.play();
+    if(p&&typeof p.catch==='function')p.catch(()=>{});
+  }catch(_){}
 }
 
 function updateTyreScreech(){
-  if(!audioCtx||!soundEnabled||!started||exploded||wrecked){
-    if(tyreScreechGain)tyreScreechGain.gain.setTargetAtTime(0,audioCtx?.currentTime||0,.04);
-    return;
-  }
-  ensureTyreScreech();
-  if(!tyreScreechGain)return;
-
   const grounded=vehicle.wheelInfos.some(w=>w.isInContact);
   const speed=chassisBody.velocity.length();
 
@@ -313,15 +295,20 @@ function updateTyreScreech(){
   const steerFactor=THREE.MathUtils.clamp((steer-.07)/.22,0,1);
   const slipFactor=THREE.MathUtils.clamp(lateralSpeed/5.5,0,1);
 
-  // Steering at speed starts the squeal; real sideways slip makes it louder.
-  const intensity=grounded
+  const intensity=(soundEnabled&&started&&!exploded&&!wrecked&&grounded)
     ?THREE.MathUtils.clamp(speedFactor*steerFactor*.72+slipFactor*.55,0,1)
     :0;
 
-  const now=audioCtx.currentTime;
-  tyreScreechGain.gain.setTargetAtTime(intensity*.16,now,intensity>.02?.035:.07);
-  tyreScreechFilter.frequency.setTargetAtTime(1250+intensity*1050,now,.05);
-  tyreScreechFilter.Q.setTargetAtTime(1.0+intensity*.9,now,.06);
+  const targetVolume=intensity*.42;
+  tyreScreechAudio.volume+=(targetVolume-tyreScreechAudio.volume)*(intensity>.02?.16:.10);
+  tyreScreechAudio.playbackRate=.94+intensity*.12;
+
+  if(intensity>.015){
+    ensureTyreScreechPlaying();
+  }else if(tyreScreechAudio.volume<.008&&!tyreScreechAudio.paused){
+    tyreScreechAudio.pause();
+    tyreScreechAudio.currentTime=0;
+  }
 }
 
 function updateEngineSound(){
