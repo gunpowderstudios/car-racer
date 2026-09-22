@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v7.5</title>
+<title>Car Racer v7.6</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.5 gives the player stronger acceleration and reverse, fixes reverse-speed braking, and adds fading rear-tyre skid marks on hard launches and landings.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v7.6 keeps skid marks and crash debris on the circuit until a new/reset run, raises engine volume, and lowers background music.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v7.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v7.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -166,7 +166,7 @@ let audioCtx=null,masterGain=null,lastCrashSound=0;
 const engineAudio=new Audio('sounds/engine.mp3');
 engineAudio.preload='auto';
 engineAudio.loop=true;
-engineAudio.volume=.10;
+engineAudio.volume=.18;
 engineAudio.playbackRate=.72;
 // Browsers often preserve pitch when playbackRate changes. Disable that so
 // the sample genuinely revs higher/lower with the car.
@@ -177,7 +177,7 @@ if('mozPreservesPitch' in engineAudio)engineAudio.mozPreservesPitch=false;
 const musicAudio=new Audio('sounds/background-music.mp3');
 musicAudio.preload='auto';
 musicAudio.loop=true;
-musicAudio.volume=.32;
+musicAudio.volume=.16;
 
 function makeAudioPool(src,count=3,volume=.8){
   return Array.from({length:count},()=>{
@@ -271,10 +271,10 @@ function updateEngineSound(){
   );
   engineAudio.playbackRate+=(targetRate-engineAudio.playbackRate)*.12;
 
-  // Slightly louder under load, but keep room for crashes/clucks/boost.
+  // Engine is now the dominant sound in the mix; music sits underneath it.
   const targetVolume=(!started||exploded||!soundEnabled)
     ?0
-    :Math.min(.24,.10+Math.min(.07,speed*.002)+(throttle?.045:0)+(boosting?.025:0));
+    :Math.min(.42,.18+Math.min(.10,speed*.003)+(throttle?.08:0)+(boosting?.04:0));
   engineAudio.volume+= (targetVolume-engineAudio.volume)*.10;
 
   if(started&&soundEnabled&&engineAudio.paused)ensureEnginePlaying();
@@ -1030,6 +1030,7 @@ function spawnAIExplosion(car,jumpSmash=false){
     });
   }
 
+  addPersistentTrackDebris(origin,carColor,jumpSmash?10:8);
   playCrashSound(1,false);
   toneSweep('sine',72,24,.52,.18);
 }
@@ -1235,16 +1236,64 @@ for(let i=0;i<4;i++){
   const m=new THREE.Mesh(wheelGeo,tyreMat);m.castShadow=true;scene.add(m);wheelMeshes.push(m);
 }
 
-// Lightweight fading skid marks. Each rear tyre leaves short quad segments.
-// Old marks are removed automatically so this cannot grow forever.
+// Persistent tyre marks and wreckage make the circuit build up visually during
+// a run. Both are capped and cleared only when the player starts/resets a run.
 const skidMarks=[];
 const skidPrev=[null,null];
 const skidMatBase=new THREE.MeshBasicMaterial({
   color:0x151515,transparent:true,opacity:.56,depthWrite:false,side:THREE.DoubleSide
 });
+const persistentTrackDebris=[];
 let launchSkidActive=false,landingSkidFrames=0;
 function clearSkidTrail(){
   skidPrev[0]=null;skidPrev[1]=null;
+}
+function clearSkidMarks(){
+  clearSkidTrail();
+  for(const m of skidMarks){
+    scene.remove(m.mesh);
+    m.mesh.geometry.dispose();
+    m.mesh.material.dispose();
+  }
+  skidMarks.length=0;
+}
+function clearPersistentTrackDebris(){
+  for(const d of persistentTrackDebris){
+    scene.remove(d);
+    d.geometry.dispose();
+    d.material.dispose();
+  }
+  persistentTrackDebris.length=0;
+}
+function addPersistentTrackDebris(origin,color=0x3a3430,count=7){
+  for(let i=0;i<count;i++){
+    const x=origin.x+(Math.random()-.5)*4.2;
+    const z=origin.z+(Math.random()-.5)*4.2;
+    const d=nearestAIProgress(x,z);
+    const road=sampleAIPath(d,0);
+    const mat=new THREE.MeshStandardMaterial({
+      color:i%4===0?0x1d1d1d:(i%5===0?0xb83218:color),
+      roughness:.88,
+      metalness:.08
+    });
+    const mesh=new THREE.Mesh(
+      new THREE.BoxGeometry(
+        .10+Math.random()*.30,
+        .05+Math.random()*.14,
+        .12+Math.random()*.38
+      ),
+      mat
+    );
+    mesh.position.set(x,road.y+.05+Math.random()*.05,z);
+    mesh.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+    mesh.castShadow=true;
+    scene.add(mesh);
+    persistentTrackDebris.push(mesh);
+  }
+  while(persistentTrackDebris.length>100){
+    const old=persistentTrackDebris.shift();
+    scene.remove(old);old.geometry.dispose();old.material.dispose();
+  }
 }
 function addSkidSegment(a,b,sideIndex,opacity=.56){
   const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -1269,23 +1318,13 @@ function addSkidSegment(a,b,sideIndex,opacity=.56){
   ],3));
   const mat=skidMatBase.clone();mat.opacity=opacity;
   const mesh=new THREE.Mesh(geo,mat);mesh.renderOrder=2;scene.add(mesh);
-  skidMarks.push({mesh,life:8,maxLife:8});
-  if(skidMarks.length>180){
+  skidMarks.push({mesh});
+  if(skidMarks.length>420){
     const old=skidMarks.shift();
     scene.remove(old.mesh);old.mesh.geometry.dispose();old.mesh.material.dispose();
   }
 }
 function updateSkidMarks(dt){
-  for(let i=skidMarks.length-1;i>=0;i--){
-    const m=skidMarks[i];
-    m.life-=dt;
-    m.mesh.material.opacity=.56*Math.max(0,Math.min(1,m.life/2.0));
-    if(m.life<=0){
-      scene.remove(m.mesh);m.mesh.geometry.dispose();m.mesh.material.dispose();
-      skidMarks.splice(i,1);
-    }
-  }
-
   const active=launchSkidActive||landingSkidFrames>0;
   if(!active){clearSkidTrail();return;}
   if(landingSkidFrames>0)landingSkidFrames--;
@@ -1535,8 +1574,13 @@ function explodeCar(region){
   );
   blast.position.set(chassisBody.position.x,chassisBody.position.y,chassisBody.position.z);
   scene.add(blast);blastLife=.55;
+  addPersistentTrackDebris(
+    new THREE.Vector3(chassisBody.position.x,chassisBody.position.y,chassisBody.position.z),
+    0x3b3330,
+    10
+  );
   flash('BOOM!  '+region.toUpperCase()+' DESTROYED');
-  setTimeout(()=>{if(exploded)resetCar();},2300);
+  setTimeout(()=>{if(exploded)resetCar(false);},2300);
 }
 function addPartDamage(region,amount,showMessage=true){
   if(exploded||!damageParts.hasOwnProperty(region)||amount<=0)return;
@@ -1908,7 +1952,11 @@ function flippedCarLogic(){
   }
 }
 
-function resetCar(){
+function resetCar(clearTrack=true){
+  if(clearTrack){
+    clearSkidMarks();
+    clearPersistentTrackDebris();
+  }
   chassisBody.position.set(45,1.72,-76);
   chassisBody.quaternion.set(0,0,0,1);
   chassisBody.velocity.setZero();
