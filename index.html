@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v5.4</title>
+<title>Car Racer v5.5</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.4 adds destructible AI traffic: ram them, wreck them, or crush them from a jump for a bigger bonus.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v5.5 makes AI damage visible with floating health bars and smoke from badly damaged cars.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v5.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v5.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -520,6 +520,7 @@ const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:ob
 const aiCars=[];
 const aiCarByBody=new Map();
 const aiExplosions=[];
+const aiSmoke=[];
 const aiPathDist=[0];
 for(let i=1;i<oval.length;i++){
   const a=oval[i-1],b=oval[i];
@@ -579,6 +580,27 @@ function offTrackLogic(){
     offTrackSince=0;
   }
 }
+function makeAIHealthBar(){
+  const canvas=document.createElement('canvas');canvas.width=128;canvas.height=32;
+  const ctx=canvas.getContext('2d');
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false});
+  const sprite=new THREE.Sprite(mat);sprite.scale.set(2.6,.65,1);sprite.position.set(0,1.55,0);sprite.renderOrder=20;
+  return {canvas,ctx,tex,sprite};
+}
+function updateAIHealthBar(car){
+  const h=car.health/car.maxHealth,bar=car.healthBar;
+  if(!bar)return;
+  const ctx=bar.ctx;
+  ctx.clearRect(0,0,128,32);
+  ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(3,5,122,22);
+  ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=3;ctx.strokeRect(3,5,122,22);
+  const hue=Math.max(0,Math.min(120,h*120));
+  ctx.fillStyle='hsl('+hue+',90%,48%)';ctx.fillRect(7,9,114*h,14);
+  ctx.fillStyle='#fff';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(Math.ceil(car.health)+' / '+car.maxHealth,64,16);
+  bar.tex.needsUpdate=true;
+}
 function makeTrafficCar(color,phase,speed,lane){
   const group=new THREE.Group();
   const mat=new THREE.MeshStandardMaterial({color,roughness:.55,metalness:.08});
@@ -594,6 +616,7 @@ function makeTrafficCar(color,phase,speed,lane){
   for(const [wx,wz] of [[-.98,1.22],[.98,1.22],[-.98,-1.20],[.98,-1.20]]){
     const wheel=new THREE.Mesh(wg,dark);wheel.position.set(wx,-.25,wz);wheel.castShadow=true;group.add(wheel);
   }
+  const healthBar=makeAIHealthBar();group.add(healthBar.sprite);
   scene.add(group);
 
   const body=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});
@@ -601,7 +624,8 @@ function makeTrafficCar(color,phase,speed,lane){
   body.collisionResponse=true;
   world.addBody(body);
 
-  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat};
+  const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0};
+  updateAIHealthBar(car);
   aiCarByBody.set(body,car);
   aiCars.push(car);
   return car;
@@ -639,6 +663,8 @@ function resetTrafficCars(){
     car.lastHitAt=0;
     car.body.collisionResponse=true;
     car.group.visible=true;
+    car.smokeAt=0;
+    updateAIHealthBar(car);
     if(car.bodyMat){car.bodyMat.emissive?.setHex?.(0x000000);car.bodyMat.emissiveIntensity=0;}
     poseTrafficCar(car,1/60);
     car.group.position.copy(car.body.position);
@@ -655,6 +681,8 @@ function updateTrafficCars(dt){
         car.progress=(car.progress+45+Math.random()*80)%aiPathLength;
         car.body.collisionResponse=true;
         car.group.visible=true;
+        car.smokeAt=0;
+        updateAIHealthBar(car);
         if(car.bodyMat){car.bodyMat.emissive?.setHex?.(0x000000);car.bodyMat.emissiveIntensity=0;}
         poseTrafficCar(car,dt);
       }
@@ -662,6 +690,7 @@ function updateTrafficCars(dt){
     }
     car.progress=(car.progress+car.speed*dt)%aiPathLength;
     poseTrafficCar(car,dt);
+    spawnAISmoke(car);
   }
 }
 function syncTrafficVisuals(){
@@ -680,6 +709,30 @@ makeTrafficCar(0xf0782d,.48,17.2,-3.1);
 makeTrafficCar(0x20b8b0,.70,22.2,1.8);
 resetTrafficCars();
 
+function spawnAISmoke(car){
+  if(!car||car.destroyed)return;
+  const now=performance.now();
+  const healthRatio=car.health/car.maxHealth;
+  if(healthRatio>.52||now-car.smokeAt<Math.max(90,260*healthRatio))return;
+  car.smokeAt=now;
+  const smoke=new THREE.Mesh(
+    new THREE.SphereGeometry(.16+.10*Math.random(),7,5),
+    new THREE.MeshBasicMaterial({color:healthRatio<.25?0x151515:0x444444,transparent:true,opacity:.42,depthWrite:false})
+  );
+  smoke.position.set(car.body.position.x+(Math.random()-.5)*.5,car.body.position.y+1.0,car.body.position.z+(Math.random()-.5)*.5);
+  scene.add(smoke);
+  aiSmoke.push({mesh:smoke,vel:new THREE.Vector3((Math.random()-.5)*.25,.7+Math.random()*.55,(Math.random()-.5)*.25),life:.7+Math.random()*.5,maxLife:1.2});
+}
+function updateAISmoke(dt){
+  for(let i=aiSmoke.length-1;i>=0;i--){
+    const p=aiSmoke[i];p.life-=dt;
+    if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();aiSmoke.splice(i,1);continue;}
+    p.mesh.position.addScaledVector(p.vel,dt);
+    const age=1-p.life/p.maxLife;
+    p.mesh.scale.setScalar(1+age*2.5);
+    p.mesh.material.opacity=Math.max(0,.42*(p.life/p.maxLife));
+  }
+}
 function spawnAIExplosion(car,jumpSmash=false){
   const origin=new THREE.Vector3(car.body.position.x,car.body.position.y+.35,car.body.position.z);
   const core=new THREE.Mesh(
@@ -725,6 +778,7 @@ function destroyAICar(car,jumpSmash=false){
   if(!car||car.destroyed)return;
   car.destroyed=true;
   car.health=0;
+  updateAIHealthBar(car);
   car.respawnAt=performance.now()+5200;
   car.body.collisionResponse=false;
   car.body.velocity.setZero();car.body.angularVelocity.setZero();
@@ -739,6 +793,7 @@ function damageAICar(car,amount,impact=0){
   if(now-car.lastHitAt<220)return;
   car.lastHitAt=now;
   car.health=Math.max(0,car.health-amount);
+  updateAIHealthBar(car);
   if(car.bodyMat){
     const hurt=1-car.health/car.maxHealth;
     car.bodyMat.emissive?.setHex?.(0x5a1200);
@@ -1642,6 +1697,7 @@ function animate(now){
   }
   updateDamageFx(dt);
   updateAIExplosions(dt);
+  updateAISmoke(dt);
   updateEngineSound();
   renderer.render(scene,camera);
 }
