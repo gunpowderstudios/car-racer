@@ -106,12 +106,12 @@ function initAudio(){
   masterGain.connect(audioCtx.destination);
 
   engineFilter=audioCtx.createBiquadFilter();
-  engineFilter.type='lowpass';engineFilter.frequency.value=520;engineFilter.Q.value=.7;
+  engineFilter.type='lowpass';engineFilter.frequency.value=320;engineFilter.Q.value=.35;
 
   engineGain=audioCtx.createGain();engineGain.gain.value=.0001;
   engineOsc=audioCtx.createOscillator();engineOsc.type='triangle';engineOsc.frequency.value=52;
-  engineOsc2=audioCtx.createOscillator();engineOsc2.type='sawtooth';engineOsc2.frequency.value=104;
-  const g2=audioCtx.createGain();g2.gain.value=.14;
+  engineOsc2=audioCtx.createOscillator();engineOsc2.type='triangle';engineOsc2.frequency.value=104;
+  const g2=audioCtx.createGain();g2.gain.value=.045;
 
   engineOsc.connect(engineFilter);
   engineOsc2.connect(g2).connect(engineFilter);
@@ -127,8 +127,8 @@ function updateEngineSound(){
   const rpm=48+Math.min(170,speed*5.3)+(throttle?25:0);
   engineOsc.frequency.setTargetAtTime(rpm,now,.07);
   engineOsc2.frequency.setTargetAtTime(rpm*2.02,now,.07);
-  engineFilter.frequency.setTargetAtTime(360+speed*24+(throttle?180:0),now,.08);
-  const target=(!started||exploded)?.0001:(.018+Math.min(.055,speed*.0022)+(throttle?.025:0));
+  engineFilter.frequency.setTargetAtTime(230+speed*10+(throttle?70:0),now,.10);
+  const target=(!started||exploded)?.0001:(.005+Math.min(.018,speed*.0008)+(throttle?.007:0));
   engineGain.gain.setTargetAtTime(target,now,.09);
 }
 function noiseBurst(duration=.16,volume=.12,highpass=120){
