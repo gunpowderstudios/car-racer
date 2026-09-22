@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v9.3</title>
+<title>Car Racer v9.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v9.3 uses explosion.mp3 for the player's car explosion, with the generated blast sound kept as a fallback.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v9.4 strengthens road penetration protection for side and roof landings without changing the smooth road surface.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v9.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v9.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -498,7 +498,7 @@ scene.add(sun);
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});
 world.broadphase=new CANNON.SAPBroadphase(world);
 world.allowSleep=true;
-world.solver.iterations=8;
+world.solver.iterations=9;
 world.solver.tolerance=.001;
 const roadPhys=new CANNON.Material('road');
 const wallPhys=new CANNON.Material('wall');
@@ -2146,23 +2146,37 @@ function flippedCarLogic(){
   const up=chassisBody.quaternion.vmult(new CANNON.Vec3(0,1,0));
   const now=performance.now();
   const clearlyFlipped=up.y<.18 && chassisBody.position.y<4.5;
-  if(clearlyFlipped){
-    // The road uses a one-sided triangle skin and the chassis collider is quite
-    // shallow. A hard roof-first impact can otherwise push the physics body
-    // through the surface. Keep only overturned cars above the local road skin.
-    if(nearestTrackDistanceSq(chassisBody.position.x,chassisBody.position.z)<(9.2*9.2)){
-      const road=roadSurfaceAt(chassisBody.position.x,chassisBody.position.z);
-      const minY=road.y+.46;
-      if(chassisBody.position.y<minY){
-        chassisBody.position.y=minY;
-        if(chassisBody.velocity.y<0)chassisBody.velocity.y=Math.max(0,-chassisBody.velocity.y*.08);
-        chassisBody.angularVelocity.x=THREE.MathUtils.clamp(chassisBody.angularVelocity.x,-2.4,2.4);
-        chassisBody.angularVelocity.z=THREE.MathUtils.clamp(chassisBody.angularVelocity.z,-2.4,2.4);
-        chassisBody.aabbNeedsUpdate=true;
-        chassisBody.wakeUp();
-      }
-    }
+  const badlyTilted=up.y<.58 && chassisBody.position.y<4.8;
 
+  // Protect side/roof landings before the chassis centre manages to pass
+  // through the road skin. This does not run during ordinary upright driving.
+  if(badlyTilted &&
+     nearestTrackDistanceSq(chassisBody.position.x,chassisBody.position.z)<(9.2*9.2)){
+    const road=roadSurfaceAt(chassisBody.position.x,chassisBody.position.z);
+    const minY=road.y+.48;
+
+    if(chassisBody.position.y<minY){
+      const penetration=minY-chassisBody.position.y;
+      chassisBody.position.y=minY;
+
+      // Remove only downward motion caused by penetration. Keep horizontal
+      // crash momentum so the car can still tumble and slide naturally.
+      if(chassisBody.velocity.y<0){
+        chassisBody.velocity.y=penetration>.18
+          ?Math.max(.35,-chassisBody.velocity.y*.06)
+          :Math.max(0,-chassisBody.velocity.y*.03);
+      }
+
+      // Very high roll/pitch speeds can force a thin collider through the
+      // mesh again on the next step, so cap only those extreme cases.
+      chassisBody.angularVelocity.x=THREE.MathUtils.clamp(chassisBody.angularVelocity.x,-2.8,2.8);
+      chassisBody.angularVelocity.z=THREE.MathUtils.clamp(chassisBody.angularVelocity.z,-2.8,2.8);
+      chassisBody.aabbNeedsUpdate=true;
+      chassisBody.wakeUp();
+    }
+  }
+
+  if(clearlyFlipped){
     if(!flippedSince){flippedSince=now;lastFlipCount=0;}
     const elapsed=now-flippedSince;
     if(elapsed>=3000){
