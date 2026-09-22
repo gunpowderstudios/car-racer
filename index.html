@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v6.3</title>
+<title>Car Racer v6.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -58,9 +58,9 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.3 adds real barrel-hit and boost sounds alongside the chicken cluck.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v6.4 uses the real engine.mp3 as a looping engine note whose pitch and volume rise with speed and throttle.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v6.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v6.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -83,7 +83,18 @@ const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox'),scoreNumEl=$('scoreNum'),chickenCountEl=$('chickenCount');
 const soundBtn=$('soundBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 
-let audioCtx=null,masterGain=null,engineOsc=null,engineOsc2=null,engineGain=null,engineFilter=null,lastCrashSound=0;
+let audioCtx=null,masterGain=null,lastCrashSound=0;
+const engineAudio=new Audio('sounds/engine.mp3');
+engineAudio.preload='auto';
+engineAudio.loop=true;
+engineAudio.volume=.10;
+engineAudio.playbackRate=.72;
+// Browsers often preserve pitch when playbackRate changes. Disable that so
+// the sample genuinely revs higher/lower with the car.
+if('preservesPitch' in engineAudio)engineAudio.preservesPitch=false;
+if('webkitPreservesPitch' in engineAudio)engineAudio.webkitPreservesPitch=false;
+if('mozPreservesPitch' in engineAudio)engineAudio.mozPreservesPitch=false;
+
 function makeAudioPool(src,count=3,volume=.8){
   return Array.from({length:count},()=>{
     const a=new Audio(src);
@@ -103,48 +114,61 @@ function applySoundState(){
   if(audioCtx&&masterGain){
     masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.025);
   }
+  engineAudio.muted=!soundEnabled;
   for(const pool of [cluckPool,barrelSoundPool,boostSoundPool]){
     for(const a of pool)a.muted=!soundEnabled;
   }
 }
+function ensureEnginePlaying(){
+  if(!engineAudio.paused)return;
+  try{
+    const p=engineAudio.play();
+    if(p&&typeof p.catch==='function')p.catch(()=>{});
+  }catch(_){}
+}
 function initAudio(){
+  // This function is called from the START ENGINE / sound-button user gesture,
+  // so it is the right place to unlock both HTML audio and Web Audio.
+  ensureEnginePlaying();
+
   if(audioCtx){
     if(audioCtx.state==='suspended')audioCtx.resume();
     applySoundState();
     return;
   }
   const AC=window.AudioContext||window.webkitAudioContext;
-  if(!AC)return;
+  if(!AC){
+    applySoundState();
+    return;
+  }
   audioCtx=new AC();
   masterGain=audioCtx.createGain();
   masterGain.gain.value=soundEnabled?1:0;
   masterGain.connect(audioCtx.destination);
-
-  engineFilter=audioCtx.createBiquadFilter();
-  engineFilter.type='lowpass';engineFilter.frequency.value=320;engineFilter.Q.value=.35;
-
-  engineGain=audioCtx.createGain();engineGain.gain.value=.0001;
-  engineOsc=audioCtx.createOscillator();engineOsc.type='triangle';engineOsc.frequency.value=52;
-  engineOsc2=audioCtx.createOscillator();engineOsc2.type='triangle';engineOsc2.frequency.value=104;
-  const g2=audioCtx.createGain();g2.gain.value=.045;
-
-  engineOsc.connect(engineFilter);
-  engineOsc2.connect(g2).connect(engineFilter);
-  engineFilter.connect(engineGain).connect(masterGain);
-  engineOsc.start();engineOsc2.start();
   applySoundState();
 }
 function updateEngineSound(){
-  if(!audioCtx||!engineGain||audioCtx.state!=='running')return;
-  const now=audioCtx.currentTime;
+  if(!engineAudio)return;
+
   const speed=chassisBody?chassisBody.velocity.length():0;
   const throttle=(keys?.KeyW||keys?.ArrowUp||keys?.KeyS||keys?.ArrowDown||mobileGo||mobileBrake)?1:0;
-  const rpm=48+Math.min(170,speed*5.3)+(throttle?25:0);
-  engineOsc.frequency.setTargetAtTime(rpm,now,.07);
-  engineOsc2.frequency.setTargetAtTime(rpm*2.02,now,.07);
-  engineFilter.frequency.setTargetAtTime(230+speed*10+(throttle?70:0),now,.10);
-  const target=(!started||exploded)?.0001:(.005+Math.min(.018,speed*.0008)+(throttle?.007:0));
-  engineGain.gain.setTargetAtTime(target,now,.09);
+  const boosting=(keys?.Space||mobileBoost)&&boost>0&&throttle;
+
+  // One looping sample covers idle through high revs. Speed does most of the
+  // pitch movement; throttle adds an immediate rev lift and boost adds a little more.
+  const targetRate=THREE.MathUtils.clamp(
+    .72 + Math.min(.68,speed*.022) + (throttle?.09:0) + (boosting?.14:0),
+    .68,1.68
+  );
+  engineAudio.playbackRate+=(targetRate-engineAudio.playbackRate)*.12;
+
+  // Slightly louder under load, but keep room for crashes/clucks/boost.
+  const targetVolume=(!started||exploded||!soundEnabled)
+    ?0
+    :Math.min(.24,.10+Math.min(.07,speed*.002)+(throttle?.045:0)+(boosting?.025:0));
+  engineAudio.volume+= (targetVolume-engineAudio.volume)*.10;
+
+  if(started&&soundEnabled&&engineAudio.paused)ensureEnginePlaying();
 }
 function noiseBurst(duration=.16,volume=.12,highpass=120){
   if(!audioCtx||audioCtx.state!=='running'||!soundEnabled)return;
