@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v8.7</title>
+<title>Car Racer v8.8</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v8.7 adds an overturned-car physics safety floor so the chassis cannot sink through the road while upside down.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v8.8 smooths cornering with lighter rendering, frame-rate independent camera motion and leaner physics stepping.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> S nose up &nbsp; X nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v8.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v8.8</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">S</span> NOSE UP &nbsp; <span class="key">X</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -414,8 +414,9 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8fc4e8);
 scene.fog=new THREE.Fog(0x8fc4e8,170,520);
 const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,1000);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+const coarsePointer=matchMedia('(pointer:coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio,coarsePointer?1.25:1.5));
 renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -427,13 +428,13 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x4f6038,2.35));
 const sun=new THREE.DirectionalLight(0xffffff,2.5);
 sun.position.set(45,70,-30);
 sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
+sun.shadow.mapSize.set(1024,1024);
 sun.shadow.camera.left=-180;sun.shadow.camera.right=180;sun.shadow.camera.top=180;sun.shadow.camera.bottom=-180;
 scene.add(sun);
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});
 world.broadphase=new CANNON.SAPBroadphase(world);
 world.allowSleep=true;
-world.solver.iterations=10;
+world.solver.iterations=8;
 world.solver.tolerance=.001;
 const roadPhys=new CANNON.Material('road');
 const wallPhys=new CANNON.Material('wall');
@@ -2137,7 +2138,7 @@ function controls(dt){
   }
 }
 const fwd=new THREE.Vector3(),right3=new THREE.Vector3(),desired=new THREE.Vector3(),look=new THREE.Vector3(),visualUp=new THREE.Vector3();
-function updateVisuals(){
+function updateVisuals(dt=1/60){
   carRoot.position.copy(chassisBody.position);
   carRoot.quaternion.copy(chassisBody.quaternion);
 
@@ -2170,7 +2171,11 @@ function updateVisuals(){
     .addScaledVector(right3,Math.sin(yaw)*horiz)
     .addScaledVector(fwd,-Math.cos(yaw)*horiz);
   desired.y+=1.0+Math.sin(pitch)*orbitDist;
-  camera.position.lerp(desired,manualOrbit?.16:.09);
+  // Frame-rate independent camera smoothing prevents visible corner judder
+  // when rendering momentarily dips below 60fps.
+  const cameraRate=manualOrbit?10.5:5.7;
+  const cameraBlend=1-Math.exp(-cameraRate*Math.min(.05,dt));
+  camera.position.lerp(desired,cameraBlend);
   look.copy(carRoot.position);look.y+=.5;
   camera.lookAt(look);
   speedEl.textContent=Math.round(chassisBody.velocity.length()*2.23694);
@@ -2257,7 +2262,7 @@ function animate(now){
     controls(dt);
     updateTrafficCars(dt);
     updateChickens(dt);
-    world.step(1/60,dt,3);
+    world.step(1/60,dt,2);
     applyAIRamMomentum();
     updateOvertakeScore();
     keepCarFreeOfWalls();
@@ -2265,7 +2270,7 @@ function animate(now){
     flippedCarLogic();
     lapLogic();
     offTrackLogic();
-    updateVisuals();
+    updateVisuals(dt);
   }
   updateDamageFx(dt);
   updateAIExplosions(dt);
@@ -2289,7 +2294,7 @@ addEventListener('resize',()=>{
 });
 camera.position.set(45,7,-90);
 camera.lookAt(0,0,5);
-updateVisuals();
+updateVisuals(1/60);
 </script>
 </body>
 </html>
