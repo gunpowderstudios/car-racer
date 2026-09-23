@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.0</title>
+<title>Car Racer v10.1</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -136,10 +136,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.0 gives AI-car impacts real directional momentum transfer, so side, rear and off-centre hits physically move and rotate the player car.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.1 makes low-speed forward/reverse manoeuvring smooth and car-like, including natural steering while reversing.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.0</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.1</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -2215,7 +2215,7 @@ function resetCar(clearTrack=true){
   mobileSteer=0;mobileSteerTarget=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
   steerKnob.style.left='50%';
   gasPedal.classList.remove('active');brakePedal.classList.remove('active');boostPedal.classList.remove('active');resetPedal.classList.remove('active');
-  damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;pendingAIRam=null;offTrackSince=0;lastOffTrackCount=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;flippedSince=0;lastFlipCount=0;
+  damage=0;wrecked=false;exploded=false;impactRecoverUntil=0;lastBounceAt=0;offTrackSince=0;lastOffTrackCount=0;peakDownVel=0;airMinUp=1;airUnstable=false;finished=false;checkpointStage=0;lapStarted=false;runStart=0;prevFinishZ=-76;flippedSince=0;lastFlipCount=0;
   for(const k of Object.keys(damageParts)){damageParts[k]=0;damageCooldown[k]=0;}
   clearDamageDebris();
   if(carVisual)carVisual.visible=true;
@@ -2254,7 +2254,8 @@ function controls(dt){
 
   // Gentle, progressive steering. A collision briefly knocks steering authority down,
   // then it smoothly returns as the driver/car recovers.
-  const steerMax=.38*Math.max(.42,1-v/48)*steerHealth*controlRecovery;
+  const lowSpeedSteer=THREE.MathUtils.lerp(.50,.38,THREE.MathUtils.clamp(v/10,0,1));
+  const steerMax=lowSpeedSteer*Math.max(.42,1-v/48)*steerHealth*controlRecovery;
 
   // Faster mobile response: still eased, but with much less delay than before.
   const mobileRate=Math.abs(mobileSteerTarget)>Math.abs(mobileSteer)?3.4:4.6;
@@ -2269,19 +2270,28 @@ function controls(dt){
   vehicle.setSteeringValue(steerState*steerMax,0);
   vehicle.setSteeringValue(steerState*steerMax,1);
 
-  // More powerful arcade drivetrain.
-  let engine=go?-6200*powerHealth*powerRecovery:0;
+  // Normal car-like drivetrain: changing direction first brakes the car,
+  // then smoothly feeds in power once it is nearly stopped.
+  let engine=0;
   let brake=0;
 
-  if(back){
-    // Brake only while genuinely travelling forward. Once forward motion is
-    // gone, reverse remains powered instead of repeatedly braking itself.
-    if(signedForwardSpeed>1.8){
-      engine=0;
-      brake=58;
+  if(go&&!back){
+    if(signedForwardSpeed<-.75){
+      brake=42;
     }else{
-      engine=4800*powerHealth*powerRecovery;
+      const launch=THREE.MathUtils.clamp((signedForwardSpeed+.75)/2.25,0,1);
+      engine=-6200*powerHealth*powerRecovery*(.45+.55*launch);
     }
+  }else if(back&&!go){
+    if(signedForwardSpeed>.75){
+      brake=42;
+    }else{
+      const reverseBuild=THREE.MathUtils.clamp((.75-signedForwardSpeed)/2.25,0,1);
+      engine=3200*powerHealth*powerRecovery*(.38+.62*reverseBuild);
+    }
+  }else if(go&&back){
+    // Opposing pedals cancel power rather than fighting each other.
+    brake=28;
   }
 
   const boostActive=(keys.Space||mobileBoost)&&boost>0&&go&&!back&&!wrecked;
@@ -2302,17 +2312,6 @@ function controls(dt){
 
   vehicle.applyEngineForce(engine,2);
   vehicle.applyEngineForce(engine,3);
-
-  // Dedicated Down-arrow low-speed escape assist. This only acts when almost stationary,
-  // and is there for cases where the chassis is perched on an obstacle and the tyres cannot grip.
-  if((keys.ArrowDown||mobileBrake)&&!wrecked&&Math.abs(signedForwardSpeed)<3.0){
-    const reverseDir=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,-1));
-    const assist=3400*(1-Math.min(1,Math.abs(signedForwardSpeed)/3.0));
-    chassisBody.applyForce(
-      new CANNON.Vec3(reverseDir.x*assist,0,reverseDir.z*assist),
-      chassisBody.position
-    );
-  }
 
   for(let i=0;i<4;i++)vehicle.setBrake(brake,i);
 
