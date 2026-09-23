@@ -10,7 +10,7 @@
 <header>
   <div>
     <h1>CAR RACER <span>TRACK DESIGNER</span></h1>
-    <p>Use <b>DRAW ROAD</b> to click out a route or click-and-drag to sketch it. Then use SELECT / DRAG to tidy the control points.</p>
+    <p><b>DRAW ROAD:</b> click anywhere to place the first point, then keep clicking to add the next points. The road joins them automatically. You can also click-drag to sketch.</p>
   </div>
   <div class="top-actions">
     <a class="btn ghost" href="../">← GAME</a>
@@ -30,13 +30,14 @@
 
     <h2>Tools</h2>
     <div class="tool-grid">
-      <button class="tool active" data-tool="select">SELECT / DRAG</button>
-      <button class="tool" data-tool="draw">✏ DRAW ROAD</button>
+      <button class="tool" data-tool="select">SELECT / DRAG</button>
+      <button class="tool active" data-tool="draw">✏ DRAW ROAD</button>
       <button class="tool" data-tool="barrel">🛢 BARREL</button>
       <button class="tool" data-tool="chicken">🐔 CHICKEN</button>
       <button class="tool" data-tool="spinner">⚙ SPINNER</button>
       <button class="tool" data-tool="bus">🚌 BUS</button>
     </div>
+    <button id="blankRoadBtn" class="btn wide">START NEW BLANK ROAD</button>
     <button id="deletePointBtn" class="danger wide">DELETE SELECTED POINT</button>
     <button id="clearObjectsBtn" class="ghost wide">CLEAR OBJECTS</button>
 
@@ -67,7 +68,7 @@
       <g id="objectLayer"></g>
       <g id="pointLayer"></g>
     </svg>
-    <div class="canvas-help">DRAW ROAD: click points or click-drag to sketch · SELECT: drag orange points · Wheel = zoom · drag empty space = pan</div>
+    <div class="canvas-help"><b>DRAW ROAD:</b> each click adds the next control point and joins the road · click-drag = sketch · SELECT = reshape points</div>
   </section>
 
   <aside class="panel right-panel">
@@ -96,7 +97,7 @@
 
 <footer>
   <span id="status">Ready</span>
-  <span>Designer v0.2 · draw-road mode · JSON track format</span>
+  <span>Designer v0.3 · click-to-draw road mode · JSON track format</span>
 </footer>
 
 <script type="module" src="app.js"></script>
