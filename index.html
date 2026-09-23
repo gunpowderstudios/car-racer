@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.5</title>
+<title>Car Racer v10.6</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -140,10 +140,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.5 makes AI cars trigger-only for physics so player-initiated shunts keep forward momentum instead of stopping dead.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.6 scales AI shunts from true relative impact speed, so gentle taps nudge and hard hits shove much further.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.6</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -2000,11 +2000,15 @@ function shoveAICar(car,impact,playerSpeed,contact){
   // aiTowardPlayer is positive when the AI is moving from AI -> player.
   const playerTowardAI=Math.max(0,-(pv.x*nx+pv.z*nz));
   const aiTowardPlayer=Math.max(0,av.x*nx+av.z*nz);
+  // True closing speed between the two cars along the collision line.
+  // This is what matters for shunt strength: 50 mph into a 45 mph car is a
+  // small hit, while 50 mph into a slow/stationary car is a large one.
+  const relativeClosing=Math.max(0,-((pv.x-av.x)*nx+(pv.z-av.z)*nz));
   const totalClosing=playerTowardAI+aiTowardPlayer;
   const playerInitiated=playerTowardAI>aiTowardPlayer+.55;
   const aiInitiated=aiTowardPlayer>playerTowardAI+.55;
 
-  const hitSpeed=Math.max(totalClosing,impact);
+  const hitSpeed=Math.max(relativeClosing,impact);
   playShuntSound(THREE.MathUtils.clamp(hitSpeed/15,0,1));
 
   // Only feed a large impulse INTO the player when the AI is the one doing
@@ -2072,19 +2076,32 @@ function shoveAICar(car,impact,playerSpeed,contact){
 
   const forwardHit=THREE.MathUtils.clamp(dx*tx+dz*tz,-1,1);
   const sideHit=THREE.MathUtils.clamp(dx*lx+dz*lz,-1,1);
-  const ramSpeed=Math.max(playerSpeed,playerTowardAI,aiTowardPlayer,impact);
-  const strength=Math.min(1.7,.28+ramSpeed/22+impact/18);
+  // Scale the AI reaction from RELATIVE impact speed rather than the player's
+  // road speed. This makes taps, bumps and big rams visibly different.
+  const impactSpeed=Math.max(.15,hitSpeed);
+  const impact01=THREE.MathUtils.clamp(impactSpeed/18,0,1);
+  const strength=.35+impact01*1.35;
 
   const forwardWeight=Math.max(.12,forwardHit);
-  const attackerBoost=playerInitiated?1.28:1;
-  const shoveDistance=Math.min(8.5,Math.max(.25,(playerSpeed*.13+hitSpeed*.17)*forwardWeight*attackerBoost));
-  car.progress=(car.progress+shoveDistance)%aiPathLength;
-  car.shoveSpeed=Math.max(
-    car.shoveSpeed,
-    Math.min(23,Math.max(1.5,(playerSpeed*.52+hitSpeed*.32)*Math.max(.20,forwardWeight)*attackerBoost))
-  );
+  const attackerBoost=playerInitiated?1.18:1;
 
-  const lateralKick=sideHit*(2.5+ramSpeed*.17+impact*.22)*strength*attackerBoost;
+  // Low-speed tap: only a small nudge. Hard relative impact: several metres
+  // of shove plus a much larger temporary speed increase.
+  const shoveDistance=THREE.MathUtils.clamp(
+    (.12+impactSpeed*.20+impactSpeed*impactSpeed*.010)*forwardWeight*attackerBoost,
+    .10,9.5
+  );
+  car.progress=(car.progress+shoveDistance)%aiPathLength;
+
+  const shoveVelocity=THREE.MathUtils.clamp(
+    (.6+impactSpeed*.72+impactSpeed*impactSpeed*.020)*
+    Math.max(.20,forwardWeight)*attackerBoost,
+    .6,25
+  );
+  car.shoveSpeed=Math.max(car.shoveSpeed,shoveVelocity);
+
+  // Sideways displacement and spin also grow with impact severity.
+  const lateralKick=sideHit*(.7+impactSpeed*.34+impactSpeed*impactSpeed*.018)*strength*attackerBoost;
   car.ramLateralVel=THREE.MathUtils.clamp(car.ramLateralVel+lateralKick,-18,18);
   car.ramYaw=THREE.MathUtils.clamp(
     car.ramYaw-sideHit*(.07+Math.min(.26,Math.abs(lateralKick)*.017)),
