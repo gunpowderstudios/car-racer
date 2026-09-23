@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Car Racer Track Designer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>CAR RACER <span>TRACK DESIGNER</span></h1>
+    <p>Drag the centre-line points to shape the circuit. Select a point to edit height, banking and jump gaps.</p>
+  </div>
+  <div class="top-actions">
+    <a class="btn ghost" href="../">← GAME</a>
+    <button id="newBtn" class="btn ghost">NEW</button>
+    <button id="saveBtn" class="btn">SAVE</button>
+    <button id="exportBtn" class="btn">EXPORT JSON</button>
+    <label class="btn ghost fileBtn">IMPORT JSON<input id="importInput" type="file" accept=".json,application/json"></label>
+  </div>
+</header>
+
+<main>
+  <aside class="panel left-panel">
+    <h2>Track</h2>
+    <label>Track name<input id="trackName" type="text" value="New Track"></label>
+    <label>Road width <span id="widthOut">18 m</span><input id="roadWidth" type="range" min="8" max="28" step="1" value="18"></label>
+    <label class="check"><input id="closedLoop" type="checkbox" checked> Closed loop</label>
+
+    <h2>Tools</h2>
+    <div class="tool-grid">
+      <button class="tool active" data-tool="select">SELECT / DRAG</button>
+      <button class="tool" data-tool="add">ADD POINT</button>
+      <button class="tool" data-tool="barrel">🛢 BARREL</button>
+      <button class="tool" data-tool="chicken">🐔 CHICKEN</button>
+      <button class="tool" data-tool="spinner">⚙ SPINNER</button>
+      <button class="tool" data-tool="bus">🚌 BUS</button>
+    </div>
+    <button id="deletePointBtn" class="danger wide">DELETE SELECTED POINT</button>
+    <button id="clearObjectsBtn" class="ghost wide">CLEAR OBJECTS</button>
+
+    <h2>View</h2>
+    <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
+    <label class="check"><input id="showHeights" type="checkbox" checked> Height labels</label>
+    <label class="check"><input id="showDirection" type="checkbox" checked> Direction arrows</label>
+    <button id="fitBtn" class="ghost wide">FIT TRACK</button>
+  </aside>
+
+  <section class="canvas-wrap">
+    <svg id="editor" viewBox="-120 -120 240 240" aria-label="Top down track editor">
+      <defs>
+        <pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M 10 0 L 0 0 0 10" class="grid-small"/>
+        </pattern>
+        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+          <rect width="50" height="50" fill="url(#smallGrid)"/>
+          <path d="M 50 0 L 0 0 0 50" class="grid-big"/>
+        </pattern>
+        <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" class="arrow-head"/>
+        </marker>
+      </defs>
+      <rect id="gridBg" x="-1000" y="-1000" width="2000" height="2000" fill="url(#grid)"/>
+      <g id="roadLayer"></g>
+      <g id="directionLayer"></g>
+      <g id="objectLayer"></g>
+      <g id="pointLayer"></g>
+    </svg>
+    <div class="canvas-help">Wheel = zoom · drag empty space = pan · drag orange points = reshape</div>
+  </section>
+
+  <aside class="panel right-panel">
+    <h2>Selected point</h2>
+    <div id="noSelection">Select an orange point.</div>
+    <div id="pointControls" hidden>
+      <div class="xy-row">
+        <label>X<input id="pointX" type="number" step="1"></label>
+        <label>Z<input id="pointZ" type="number" step="1"></label>
+      </div>
+      <label>Height <span id="heightOut">0.65 m</span><input id="pointY" type="range" min="0" max="30" step=".25"></label>
+      <label>Bank <span id="bankOut">0°</span><input id="pointBank" type="range" min="-25" max="25" step="1"></label>
+      <label class="check"><input id="gapAfter" type="checkbox"> Jump gap after this point</label>
+      <p class="hint">A gap removes the road between this point and the next point. The path still joins logically for lap progress.</p>
+    </div>
+
+    <h2>Objects</h2>
+    <div id="objectSummary" class="summary"></div>
+    <p class="hint">Choose an object tool on the left and click the map. Click an existing object to remove it.</p>
+
+    <h2>Track data</h2>
+    <textarea id="jsonPreview" readonly spellcheck="false"></textarea>
+    <button id="copyBtn" class="ghost wide">COPY JSON</button>
+  </aside>
+</main>
+
+<footer>
+  <span id="status">Ready</span>
+  <span>Designer v0.1 · JSON track format</span>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
