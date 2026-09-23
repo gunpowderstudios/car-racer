@@ -28,7 +28,7 @@ let track={
     {type:'bus',x:-7,z:15},{type:'bus',x:-3,z:15},{type:'bus',x:1,z:15},{type:'bus',x:5,z:15}
   ]
 };
-let selected=-1,tool='select',draggingPoint=false,panning=false,lastPointer=null;
+let selected=-1,tool='select',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
 let view={x:-120,y:-120,w:240,h:240};
 
 function el(name,attrs={}){
@@ -104,7 +104,9 @@ function updateJSON(){
 }
 function setTool(next){
   tool=next;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
-  setStatus(tool==='select'?'Select / drag mode':tool.toUpperCase()+' tool');
+  if(tool==='select')setStatus('Select / drag mode');
+  else if(tool==='draw')setStatus('DRAW ROAD: click points or drag to sketch');
+  else setStatus(tool.toUpperCase()+' tool');
 }
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 
@@ -118,10 +120,16 @@ svg.addEventListener('pointerdown',e=>{
     selected=Number(point);draggingPoint=true;svg.setPointerCapture(e.pointerId);draw();return;
   }
   const w=screenToWorld(e);
-  if(tool==='add'){
-    const insertAt=selected>=0?selected+1:track.points.length;
-    track.points.splice(insertAt,0,{x:Math.round(w.x),y:.65,z:Math.round(w.z),bank:0,gapAfter:false});
-    selected=insertAt;draw();return;
+  if(tool==='draw'){
+    const p={x:Math.round(w.x*2)/2,y:.65,z:Math.round(w.z*2)/2,bank:0,gapAfter:false};
+    // Draw mode always extends the route in travel order.
+    track.points.push(p);
+    selected=track.points.length-1;
+    drawingRoad=true;
+    lastDrawPoint={x:p.x,z:p.z};
+    svg.setPointerCapture(e.pointerId);
+    draw();
+    return;
   }
   if(['barrel','chicken','spinner','bus'].includes(tool)){
     track.objects.push({type:tool,x:Math.round(w.x),z:Math.round(w.z)});draw();return;
@@ -129,7 +137,17 @@ svg.addEventListener('pointerdown',e=>{
   panning=true;lastPointer={x:e.clientX,y:e.clientY};svg.setPointerCapture(e.pointerId);
 });
 svg.addEventListener('pointermove',e=>{
-  if(draggingPoint&&selected>=0){
+  if(drawingRoad&&tool==='draw'){
+    const w=screenToWorld(e);
+    const x=Math.round(w.x*2)/2,z=Math.round(w.z*2)/2;
+    const last=lastDrawPoint||track.points.at(-1);
+    if(!last||Math.hypot(x-last.x,z-last.z)>=7){
+      track.points.push({x,y:.65,z,bank:0,gapAfter:false});
+      selected=track.points.length-1;
+      lastDrawPoint={x,z};
+      draw();
+    }
+  }else if(draggingPoint&&selected>=0){
     const w=screenToWorld(e),p=track.points[selected];p.x=Math.round(w.x*2)/2;p.z=Math.round(w.z*2)/2;draw();
   }else if(panning&&lastPointer){
     const scale=view.w/svg.clientWidth;
@@ -137,7 +155,7 @@ svg.addEventListener('pointermove',e=>{
     lastPointer={x:e.clientX,y:e.clientY};syncView();
   }
 });
-const stopPointer=e=>{draggingPoint=false;panning=false;lastPointer=null;if(svg.hasPointerCapture?.(e.pointerId))svg.releasePointerCapture(e.pointerId)};
+const stopPointer=e=>{draggingPoint=false;drawingRoad=false;panning=false;lastPointer=null;lastDrawPoint=null;if(svg.hasPointerCapture?.(e.pointerId))svg.releasePointerCapture(e.pointerId)};
 svg.addEventListener('pointerup',stopPointer);svg.addEventListener('pointercancel',stopPointer);
 svg.addEventListener('wheel',e=>{
   e.preventDefault();
@@ -160,7 +178,7 @@ bind('gapAfter','change',e=>{if(track.points[selected])track.points[selected].ga
 bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
 bind('clearObjectsBtn','click',()=>{track.objects=[];draw()});
 bind('saveBtn','click',()=>{localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));setStatus('Saved in this browser')});
-bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){track={version:1,name:'New Track',width:18,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack()}});
+bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){track={version:1,name:'New Track',width:18,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
 bind('copyBtn','click',async()=>{await navigator.clipboard.writeText(JSON.stringify(track,null,2));setStatus('JSON copied')});
 bind('exportBtn','click',()=>{
   const blob=new Blob([JSON.stringify(track,null,2)],{type:'application/json'});
@@ -184,6 +202,7 @@ bind('fitBtn','click',fitTrack);
 addEventListener('keydown',e=>{
   if((e.key==='Delete'||e.key==='Backspace')&&document.activeElement.tagName!=='INPUT'&&selected>=0){e.preventDefault();$('deletePointBtn').click()}
   if(e.key==='Escape')setTool('select');
+  if((e.key==='d'||e.key==='D')&&document.activeElement.tagName!=='INPUT')setTool('draw');
 });
 const saved=localStorage.getItem('carRacerTrackDraft');
 if(saved){try{track=JSON.parse(saved);track.objects=track.objects||[]}catch(_){}}
