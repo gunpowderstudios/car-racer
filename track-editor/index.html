@@ -9,8 +9,8 @@
 <body>
 <header>
   <div>
-    <h1>CAR RACER <span>SNAP TRACK DESIGNER</span></h1>
-    <p>Build the circuit from standard pieces. Every new piece snaps exactly onto the end of the previous one.</p>
+    <h1>CAR RACER <span>MODULAR TRACK DESIGNER</span></h1>
+    <p>1 unit = 10 metres. Drag a piece to a glowing connector; it cannot be placed anywhere else.</p>
   </div>
   <div class="top-actions">
     <a class="btn ghost" href="../">← GAME</a>
@@ -24,26 +24,28 @@
 
 <main>
   <aside class="panel palette">
-    <h2>Track Pieces</h2>
-    <p class="hint">Click a piece to add it after the selected piece. With nothing selected, it adds to the end.</p>
+    <h2>Drag Track Pieces</h2>
+    <p class="hint">Grab a piece and drag it to the orange END connector. If you select an existing section first, the snap point moves to the end of that section.</p>
 
     <div class="piece-list">
-      <button class="pieceBtn" data-piece="short"><b>SHORT STRAIGHT</b><span>24 m</span></button>
-      <button class="pieceBtn" data-piece="long"><b>LONG STRAIGHT</b><span>52 m</span></button>
-      <button class="pieceBtn" data-piece="tight"><b>TIGHT CURVE</b><span>90° · R22</span></button>
-      <button class="pieceBtn" data-piece="wide"><b>WIDE CURVE</b><span>90° · R38</span></button>
-      <button class="pieceBtn" data-piece="sweep"><b>SWEEP CURVE</b><span>45° · R65</span></button>
-      <button class="pieceBtn" data-piece="sbend"><b>S-BEND</b><span>smooth offset</span></button>
-      <button class="pieceBtn" data-piece="up"><b>UPHILL</b><span>36 m · +7 m</span></button>
-      <button class="pieceBtn" data-piece="down"><b>DOWNHILL</b><span>36 m · −7 m</span></button>
-      <button class="pieceBtn" data-piece="jump"><b>JUMP</b><span>ramp · gap · landing</span></button>
+      <button class="pieceBtn" data-piece="straight1"><b>STRAIGHT ×1</b><span>1 unit</span></button>
+      <button class="pieceBtn" data-piece="straight2"><b>STRAIGHT ×2</b><span>2 units</span></button>
+      <button class="pieceBtn" data-piece="straight4"><b>STRAIGHT ×4</b><span>4 units</span></button>
+      <button class="pieceBtn" data-piece="straight8"><b>STRAIGHT ×8</b><span>8 units</span></button>
+      <button class="pieceBtn" data-piece="tight90"><b>TIGHT CURVE</b><span>90° · 2×2</span></button>
+      <button class="pieceBtn" data-piece="wide90"><b>WIDE CURVE</b><span>90° · 4×4</span></button>
+      <button class="pieceBtn" data-piece="sweep45"><b>SWEEP CURVE</b><span>45° · 2×4</span></button>
+      <button class="pieceBtn" data-piece="sbend"><b>S-BEND</b><span>6×2</span></button>
+      <button class="pieceBtn" data-piece="up"><b>UPHILL</b><span>4 units</span></button>
+      <button class="pieceBtn" data-piece="down"><b>DOWNHILL</b><span>4 units</span></button>
+      <button class="pieceBtn" data-piece="jump"><b>JUMP</b><span>6 units</span></button>
     </div>
 
-    <label class="flip"><input id="reversePiece" type="checkbox"> FLIP CURVES LEFT</label>
-    <p class="hint">Unticked = right-hand curve. Ticked = left-hand curve. S-bends flip too.</p>
+    <label class="flip"><input id="reversePiece" type="checkbox"> FLIP LEFT</label>
+    <p class="hint">For curves and S-bends: unticked = right, ticked = left.</p>
 
     <h2>Selected Piece</h2>
-    <div id="selectedInfo" class="summary">No piece selected.</div>
+    <div id="selectedInfo" class="summary">Nothing selected — snapping to the track END.</div>
     <div class="button-row">
       <button id="flipSelectedBtn" class="ghost">FLIP</button>
       <button id="deletePieceBtn" class="danger">DELETE</button>
@@ -56,23 +58,24 @@
   </aside>
 
   <section class="canvas-wrap">
-    <svg id="editor" viewBox="-130 -120 260 240" aria-label="Snap together track editor">
+    <svg id="editor" viewBox="-150 -130 300 260" aria-label="Snap together track editor">
       <defs>
-        <pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-          <path d="M 10 0 L 0 0 0 10" class="grid-small"/>
+        <pattern id="unitGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M 10 0 L 0 0 0 10" class="grid-unit"/>
         </pattern>
-        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-          <rect width="50" height="50" fill="url(#smallGrid)"/>
-          <path d="M 50 0 L 0 0 0 50" class="grid-big"/>
+        <pattern id="majorGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <rect width="40" height="40" fill="url(#unitGrid)"/>
+          <path d="M 40 0 L 0 0 0 40" class="grid-major"/>
         </pattern>
       </defs>
-      <rect id="gridBg" x="-1200" y="-1200" width="2400" height="2400" fill="url(#grid)"/>
+      <rect id="gridBg" x="-1500" y="-1500" width="3000" height="3000" fill="url(#majorGrid)"/>
       <g id="roadLayer"></g>
       <g id="pieceLayer"></g>
       <g id="objectLayer"></g>
       <g id="markerLayer"></g>
+      <g id="dragLayer"></g>
     </svg>
-    <div class="canvas-help">Click a road section to select it · new pieces snap after the selection · wheel = zoom · drag empty ground = pan</div>
+    <div class="canvas-help"><b>DRAG</b> pieces from the left → orange connector · green = valid snap · red = cannot place · click road section to insert after it</div>
   </section>
 
   <aside class="panel right-panel">
@@ -88,10 +91,9 @@
     </div>
     <button id="objectOffBtn" class="ghost wide">POINTER / PAN</button>
     <button id="clearObjectsBtn" class="ghost wide">CLEAR OBJECTS</button>
-    <p class="hint">Choose an object then click the map. Click an existing object to remove it.</p>
 
     <h2>View</h2>
-    <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
+    <label class="check"><input id="showGrid" type="checkbox" checked> 1-unit grid</label>
     <button id="fitBtn" class="ghost wide">FIT TRACK</button>
 
     <h2>Track Data</h2>
@@ -105,8 +107,8 @@
 </main>
 
 <footer>
-  <span id="status">Ready</span>
-  <span>Designer v1.0 · snap-together track kit</span>
+  <span id="status">Drag a piece to the orange connector</span>
+  <span>Designer v1.1 · 1-unit drag & snap system</span>
 </footer>
 
 <script type="module" src="app.js"></script>
