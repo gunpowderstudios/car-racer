@@ -14,8 +14,10 @@
   </div>
   <div class="top-actions">
     <a class="btn ghost" href="../">← GAME</a>
+    <button id="undoBtn" class="btn ghost" disabled>↶ UNDO</button>
     <button id="newBtn" class="btn ghost">NEW</button>
     <button id="saveBtn" class="btn">SAVE</button>
+    <button id="testBtn" class="btn">▶ TEST DRIVE</button>
     <button id="exportBtn" class="btn">EXPORT JSON</button>
     <label class="btn ghost fileBtn">IMPORT JSON<input id="importInput" type="file" accept=".json,application/json"></label>
   </div>
@@ -97,7 +99,7 @@
 
 <footer>
   <span id="status">Ready</span>
-  <span>Designer v0.3 · click-to-draw road mode · JSON track format</span>
+  <span>Designer v0.4 · undo + test drive · JSON track format</span>
 </footer>
 
 <script type="module" src="app.js"></script>
