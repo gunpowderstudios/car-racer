@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v11.3</title>
+<title>Car Racer v11.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -150,10 +150,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.3 adds smooth thick designer roads, start markers and a live 2D track map.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.4 makes designer test drives quicker off the line and removes unwanted road and wall seams.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v11.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="miniMap"><svg viewBox="0 0 100 100" aria-label="Track map"><polyline id="miniTrack"/><circle id="miniStart" r="3"/><circle id="miniCar" r="3.3"/></svg></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v11.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="miniMap"><svg viewBox="0 0 100 100" aria-label="Track map"><polyline id="miniTrack"/><circle id="miniStart" r="3"/><circle id="miniCar" r="3.3"/></svg></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -635,7 +635,7 @@ function addOuterWall(points,width=16){
     if(len<.01)continue;
     const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horiz);
     const body=new CANNON.Body({mass:0,material:wallPhys});
-    body.addShape(new CANNON.Box(new CANNON.Vec3(.42,.85,(len+.55)/2)));
+    body.addShape(new CANNON.Box(new CANNON.Vec3(.46,.85,(len+1.35)/2)));
     body.position.set((ax+bx)/2,(ay+by)/2+.78,(az+bz)/2);
     const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qWall=new CANNON.Quaternion();
     qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
@@ -643,7 +643,7 @@ function addOuterWall(points,width=16){
     qYaw.mult(qPitch,qWall);body.quaternion.copy(qWall);
     world.addBody(body);
 
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,1.1,len+.15),wallMat);
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.36,1.1,len+1.05),wallMat);
     mesh.position.set(body.position.x,body.position.y,body.position.z);
     mesh.rotation.order='YXZ';mesh.rotation.y=yaw;mesh.rotation.x=-pitch;
     mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
@@ -664,7 +664,7 @@ function addInnerWall(points,width=16){
 
     const yaw=Math.atan2(dx,dz),pitch=Math.atan2(dy,horiz);
     const body=new CANNON.Body({mass:0,material:wallPhys});
-    body.addShape(new CANNON.Box(new CANNON.Vec3(.42,.85,(len+.55)/2)));
+    body.addShape(new CANNON.Box(new CANNON.Vec3(.46,.85,(len+1.35)/2)));
     body.position.set((ax+bx)/2,(ay+by)/2+.78,(az+bz)/2);
 
     const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qWall=new CANNON.Quaternion();
@@ -674,7 +674,7 @@ function addInnerWall(points,width=16){
     body.quaternion.copy(qWall);
     world.addBody(body);
 
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,1.1,len+.15),wallMat);
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(.36,1.1,len+1.05),wallMat);
     mesh.position.set(body.position.x,body.position.y,body.position.z);
     mesh.rotation.order='YXZ';
     mesh.rotation.y=yaw;
@@ -743,12 +743,15 @@ function smoothControlRun(run,steps=10){
 }
 
 if(designerTrack){
+  const designerHasJump=Array.isArray(designerTrack.pieces)&&designerTrack.pieces.some(pc=>pc?.type==='jump');
   const rawPts=designerTrack.points.map(q=>({
     x:Number(q.x)||0,
     y:Number.isFinite(Number(q.y))?Number(q.y):.65,
     z:Number(q.z)||0,
     bank:Number(q.bank)||0,
-    gapAfter:!!q.gapAfter
+    // Modular tracks without a Jump piece are always a single continuous road.
+    // This also clears stale gap flags from older editor drafts.
+    gapAfter:designerHasJump&&!!q.gapAfter
   }));
   if(designerTrack.closed){
     const a=rawPts[0],b=rawPts[rawPts.length-1];
@@ -771,12 +774,24 @@ if(designerTrack){
   if(controlRun.length>=2)runs.push(controlRun);
 
   const smoothness=Math.max(6,Math.min(18,Number(designerTrack.smoothness)||10));
-  for(const run of runs){
-    const smooth=smoothControlRun(run,smoothness);
-    for(const q of smooth){
-      if(!oval.length || Math.hypot(q[0]-oval.at(-1)[0],q[1]-oval.at(-1)[1],q[2]-oval.at(-1)[2])>.001)oval.push(q);
+  const designerWidth=Math.max(20,Number(designerTrack.width)||22);
+
+  if(!designerHasJump && runs.length===1){
+    // One unbroken ribbon and one continuous pair of walls: no piece seams.
+    const smooth=smoothControlRun(runs[0],smoothness);
+    for(const q of smooth)oval.push(q);
+    addTrack(smooth,designerWidth,1.5);
+    addOuterWall(smooth,designerWidth);
+    addInnerWall(smooth,designerWidth);
+  }else{
+    // Genuine jump gaps remain separate road runs.
+    for(const run of runs){
+      const smooth=smoothControlRun(run,smoothness);
+      for(const q of smooth){
+        if(!oval.length || Math.hypot(q[0]-oval.at(-1)[0],q[1]-oval.at(-1)[1],q[2]-oval.at(-1)[2])>.001)oval.push(q);
+      }
+      addTrackSegment(smooth,designerWidth,1.5);
     }
-    addTrackSegment(smooth,Math.max(20,Number(designerTrack.width)||22),1.5);
   }
 
 }else if(trackMode===1){
@@ -2620,7 +2635,7 @@ function resetCar(clearTrack=true){
     qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
     qRoll.setFromAxisAngle(new CANNON.Vec3(0,0,1),-(sp.bank||0));
     qYaw.mult(qPitch,qp);qp.mult(qRoll,q);
-    chassisBody.position.set(sp.x,sp.y+1.07,sp.z);
+    chassisBody.position.set(sp.x,sp.y+1.72,sp.z);
     chassisBody.quaternion.copy(q);
     prevTrackProgress=0;
   }else if(trackMode===1){
@@ -2718,7 +2733,9 @@ function controls(dt){
       brake=42;
     }else{
       const launch=THREE.MathUtils.clamp((signedForwardSpeed+.75)/2.25,0,1);
-      engine=-6200*powerHealth*powerRecovery*(.45+.55*launch);
+      const driveForce=designerTrack?8600:6200;
+      const launchFloor=designerTrack?.72:.45;
+      engine=-driveForce*powerHealth*powerRecovery*(launchFloor+(1-launchFloor)*launch);
     }
   }else if(back&&!go){
     if(signedForwardSpeed>.75){
@@ -2736,7 +2753,7 @@ function controls(dt){
   if(boostActive){
     if(!boostSoundHeld)playBoostSound();
     boostSoundHeld=true;
-    engine=-9000*powerHealth*powerRecovery;
+    engine=-(designerTrack?11200:9000)*powerHealth*powerRecovery;
     boost=Math.max(0,boost-22*dt);
   }else{
     boostSoundHeld=false;
