@@ -9,108 +9,86 @@
 <body>
 <header>
   <div>
-    <h1>CAR RACER <span>MODULAR TRACK DESIGNER</span></h1>
-    <p>1 unit = 10 metres. Drag a piece to a glowing connector; it cannot be placed anywhere else.</p>
+    <h1>CAR RACER <span>TRACK DESIGNER v2</span></h1>
+    <p>Pick a shape, drag the big blue handles, then test drive it. The loop always stays smooth and joined.</p>
   </div>
   <div class="top-actions">
     <a class="btn ghost" href="../">← GAME</a>
     <button id="undoBtn" class="btn ghost" disabled>↶ UNDO</button>
-    <button id="newBtn" class="btn ghost">NEW BASIC LOOP</button>
-    <button id="blankBtn" class="btn ghost">NEW BLANK</button>
+    <button id="resetBtn" class="btn ghost">RESET SHAPE</button>
     <button id="saveBtn" class="btn">SAVE</button>
     <a id="testBtn" class="btn" href="../?designerTest=1" target="_blank" rel="noopener">▶ TEST DRIVE</a>
   </div>
 </header>
 
 <main>
-  <aside class="panel palette">
-    <h2>Drag Track Pieces</h2>
-    <p class="hint">Grab a piece and drag it to the orange END connector. If you select an existing section first, the snap point moves to the end of that section.</p>
-
-    <div class="piece-list">
-      <button class="pieceBtn" data-piece="straight1"><b>STRAIGHT ×1</b><span>1 unit</span></button>
-      <button class="pieceBtn" data-piece="straight2"><b>STRAIGHT ×2</b><span>2 units</span></button>
-      <button class="pieceBtn" data-piece="straight4"><b>STRAIGHT ×4</b><span>4 units</span></button>
-      <button class="pieceBtn" data-piece="straight8"><b>STRAIGHT ×8</b><span>8 units</span></button>
-      <button class="pieceBtn" data-piece="tight90"><b>TIGHT CURVE</b><span>90° · 2×2</span></button>
-      <button class="pieceBtn" data-piece="wide90"><b>WIDE CURVE</b><span>90° · 4×4</span></button>
-      <button class="pieceBtn" data-piece="sweep45"><b>SWEEP CURVE</b><span>45° · 2×4</span></button>
-      <button class="pieceBtn" data-piece="sbend"><b>S-BEND</b><span>6×2</span></button>
-      <button class="pieceBtn" data-piece="up"><b>UPHILL</b><span>4 units</span></button>
-      <button class="pieceBtn" data-piece="down"><b>DOWNHILL</b><span>4 units</span></button>
-      <button class="pieceBtn" data-piece="jump"><b>JUMP</b><span>6 units</span></button>
+  <aside class="panel">
+    <h2>1. Choose a shape</h2>
+    <div class="templates">
+      <button class="template active" data-template="oval"><b>OVAL</b><span>simple & fast</span></button>
+      <button class="template" data-template="kidney"><b>KIDNEY</b><span>flowing bends</span></button>
+      <button class="template" data-template="technical"><b>TECHNICAL</b><span>more corners</span></button>
+      <button class="template" data-template="long"><b>LONG CIRCUIT</b><span>big straights</span></button>
     </div>
 
-    <label class="flip"><input id="reversePiece" type="checkbox"> FLIP LEFT</label>
-    <p class="hint">For curves and S-bends: unticked = right, ticked = left.</p>
-
-    <h2>Selected Piece</h2>
-    <div id="selectedInfo" class="summary">Nothing selected — snapping to the track END.</div>
-    <div class="button-row">
-      <button id="flipSelectedBtn" class="ghost">FLIP</button>
-      <button id="deletePieceBtn" class="danger">DELETE</button>
-    </div>
-
-    <h2>Track</h2>
-    <label>Track name<input id="trackName" type="text" value="Basic Loop"></label>
+    <h2>2. Track settings</h2>
     <label>Road width <span id="widthOut">22 m</span><input id="roadWidth" type="range" min="18" max="34" step="1" value="22"></label>
-    <div id="loopStatus" class="loop-status"></div>
+    <label>Curve softness <span id="smoothOut">12</span><input id="smoothness" type="range" min="6" max="20" step="1" value="12"></label>
+    <label>Track name<input id="trackName" type="text" value="My Track"></label>
+
+    <h2>3. Add a feature</h2>
+    <div class="feature-grid">
+      <button id="hillBtn" class="ghost">RAISE HILL</button>
+      <button id="lowerBtn" class="ghost">LOWER</button>
+      <button id="jumpBtn" class="ghost">JUMP GAP</button>
+      <button id="flatBtn" class="ghost">FLATTEN</button>
+    </div>
+    <p class="hint">Select a blue handle first. Features apply around that part of the circuit.</p>
+
+    <div id="selectedInfo" class="summary">Drag any blue handle to reshape the circuit.</div>
   </aside>
 
   <section class="canvas-wrap">
-    <svg id="editor" viewBox="-150 -130 300 260" aria-label="Snap together track editor">
+    <svg id="editor" viewBox="-120 -100 240 200" aria-label="Smooth track editor">
       <defs>
-        <pattern id="unitGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-          <path d="M 10 0 L 0 0 0 10" class="grid-unit"/>
-        </pattern>
-        <pattern id="majorGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <rect width="40" height="40" fill="url(#unitGrid)"/>
-          <path d="M 40 0 L 0 0 0 40" class="grid-major"/>
+        <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M 10 0 L 0 0 0 10" class="grid"/>
         </pattern>
       </defs>
-      <rect id="gridBg" x="-1500" y="-1500" width="3000" height="3000" fill="url(#majorGrid)"/>
+      <rect x="-1000" y="-1000" width="2000" height="2000" fill="url(#grid)"/>
       <g id="roadLayer"></g>
-      <g id="pieceLayer"></g>
-      <g id="objectLayer"></g>
+      <g id="handleLayer"></g>
       <g id="markerLayer"></g>
-      <g id="dragLayer"></g>
     </svg>
-    <div class="canvas-help"><b>DRAG</b> pieces from the left → orange connector · green = valid snap · red = cannot place · click road section to insert after it</div>
+    <div class="canvas-help"><b>Drag the blue handles.</b> That’s all you need to shape the track. Wheel = zoom · drag green area = pan</div>
   </section>
 
   <aside class="panel right-panel">
-    <h2>Piece Sequence</h2>
-    <div id="sequence" class="sequence"></div>
-
-    <h2>Scenery / Hazards</h2>
-    <div class="tool-grid">
-      <button class="objectTool" data-object="barrel">🛢 BARREL</button>
-      <button class="objectTool" data-object="chicken">🐔 CHICKEN</button>
-      <button class="objectTool" data-object="spinner">⚙ SPINNER</button>
-      <button class="objectTool" data-object="bus">🚌 BUS</button>
+    <h2>How it works</h2>
+    <div class="summary">
+      <b>START</b> is always the first handle.<br>
+      The road automatically curves smoothly through every handle.<br>
+      The last section automatically joins back to START.
     </div>
-    <button id="objectOffBtn" class="ghost wide">POINTER / PAN</button>
-    <button id="clearObjectsBtn" class="ghost wide">CLEAR OBJECTS</button>
+
+    <h2>Selected handle</h2>
+    <div id="handleInfo" class="summary">None selected</div>
+    <button id="deleteHandleBtn" class="danger wide">DELETE HANDLE</button>
+    <button id="addHandleBtn" class="ghost wide">ADD HANDLE AFTER</button>
 
     <h2>View</h2>
-    <label class="check"><input id="showGrid" type="checkbox" checked> 1-unit grid</label>
     <button id="fitBtn" class="ghost wide">FIT TRACK</button>
+    <label class="check"><input id="showHandles" type="checkbox" checked> Show handles</label>
 
     <h2>Track Data</h2>
-    <textarea id="jsonPreview" readonly spellcheck="false"></textarea>
-    <div class="button-row">
-      <button id="copyBtn" class="ghost">COPY JSON</button>
-      <button id="exportBtn" class="ghost">EXPORT</button>
-    </div>
-    <label class="btn ghost fileBtn wide">IMPORT JSON<input id="importInput" type="file" accept=".json,application/json"></label>
+    <textarea id="jsonPreview" readonly></textarea>
   </aside>
 </main>
 
 <footer>
-  <span id="status">Drag a piece to the orange connector</span>
-  <span>Designer v1.1 · 1-unit drag & snap system</span>
+  <span id="status">Ready — drag a blue handle</span>
+  <span>Designer v2.0 · smooth closed-loop editor</span>
 </footer>
-
 <script type="module" src="app.js"></script>
 </body>
 </html>
