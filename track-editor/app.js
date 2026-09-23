@@ -5,7 +5,7 @@ const NS='http://www.w3.org/2000/svg';
 let track={
   version:1,
   name:'Mega Jump Draft',
-  width:18,
+  width:22,
   closed:true,
   points:[
     {x:0,y:18,z:-95,bank:0,gapAfter:false},
@@ -30,6 +30,31 @@ let track={
 };
 let selected=-1,tool='draw',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
 let view={x:-120,y:-120,w:240,h:240};
+
+function catmull(a,b,c,d,t){
+  const t2=t*t,t3=t2*t;
+  return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);
+}
+function sampleSegment(i,steps){
+  const pts=track.points,n=pts.length;
+  const p1=pts[i],p2=pts[i+1];
+  if(!p1||!p2)return [];
+  const p0=pts[Math.max(0,i-1)]||p1;
+  const p3=pts[Math.min(n-1,i+2)]||p2;
+  const out=[];
+  for(let s=0;s<=steps;s++){
+    const t=s/steps;
+    out.push({
+      x:catmull(p0.x,p1.x,p2.x,p3.x,t),
+      z:catmull(p0.z,p1.z,p2.z,p3.z,t)
+    });
+  }
+  return out;
+}
+function segmentPathPoints(i){
+  const steps=Number($('curveSmoothness')?.value||10);
+  return sampleSegment(i,steps).map(q=>`${q.x},${q.z}`).join(' ');
+}
 const history=[];
 const MAX_HISTORY=60;
 function snapshot(){return JSON.stringify(track)}
@@ -70,16 +95,17 @@ function pointsForSegment(i){
 function draw(){
   roadLayer.replaceChildren();pointLayer.replaceChildren();objectLayer.replaceChildren();directionLayer.replaceChildren();
   $('gridBg').style.display=$('showGrid').checked?'':'none';
-  const edgeW=track.width+2.2;
+  const edgeW=track.width+3;
   for(let i=0;i<track.points.length-1;i++){
     const seg=pointsForSegment(i);if(!seg)continue;
+    const smoothPoints=segmentPathPoints(i);
     if(track.points[i].gapAfter){
-      roadLayer.append(el('polyline',{points:seg.join(' '),class:'gap-line'}));
+      roadLayer.append(el('polyline',{points:smoothPoints,class:'gap-line'}));
       continue;
     }
-    roadLayer.append(el('polyline',{points:seg.join(' '),class:'road-edge','stroke-width':edgeW}));
-    roadLayer.append(el('polyline',{points:seg.join(' '),class:'road','stroke-width':track.width}));
-    roadLayer.append(el('polyline',{points:seg.join(' '),class:'centre'}));
+    roadLayer.append(el('polyline',{points:smoothPoints,class:'road-edge','stroke-width':edgeW}));
+    roadLayer.append(el('polyline',{points:smoothPoints,class:'road','stroke-width':track.width}));
+    roadLayer.append(el('polyline',{points:smoothPoints,class:'centre'}));
     if($('showDirection').checked&&i%2===0){
       const a=track.points[i],b=track.points[i+1],mx=(a.x+b.x)/2,mz=(a.z+b.z)/2;
       const dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1;
@@ -103,10 +129,16 @@ function draw(){
       t.textContent=`${i} · ${Number(p.y).toFixed(1)}m`;pointLayer.append(t);
     }
   });
+  if(track.points.length){
+    const s=track.points[0];
+    pointLayer.append(el('line',{x1:s.x-4,y1:s.z+7,x2:s.x-4,y2:s.z-7,class:'start-pole'}));
+    pointLayer.append(el('path',{d:`M ${s.x-4} ${s.z-7} L ${s.x+7} ${s.z-3} L ${s.x-4} ${s.z+1} Z`,class:'start-flag'}));
+    const st=el('text',{x:s.x+8,y:s.z-3,class:'start-label'});st.textContent='START';pointLayer.append(st);
+  }
   updatePanel();updateJSON();
 }
 function updatePanel(){
-  $('trackName').value=track.name;$('roadWidth').value=track.width;$('widthOut').textContent=track.width+' m';$('closedLoop').checked=track.closed;
+  $('trackName').value=track.name;$('roadWidth').value=track.width;$('widthOut').textContent=track.width+' m';$('smoothOut').textContent=$('curveSmoothness').value;$('closedLoop').checked=track.closed;
   const p=track.points[selected];
   $('noSelection').hidden=!!p;$('pointControls').hidden=!p;
   if(p){
@@ -120,6 +152,7 @@ function updatePanel(){
   $('objectSummary').innerHTML=`🛢 Barrels: ${counts.barrel}<br>🐔 Chickens: ${counts.chicken}<br>⚙ Spinners: ${counts.spinner}<br>🚌 Buses: ${counts.bus}`;
 }
 function updateJSON(){
+  track.smoothness=Number($('curveSmoothness')?.value||10);
   $('jsonPreview').value=JSON.stringify(track,null,2);
 }
 function setTool(next){
@@ -193,6 +226,7 @@ svg.addEventListener('wheel',e=>{
 function bind(id,event,fn){$(id).addEventListener(event,fn)}
 bind('trackName','input',e=>{track.name=e.target.value;updateJSON()});
 bind('roadWidth','input',e=>{track.width=Number(e.target.value);draw()});
+bind('curveSmoothness','input',e=>{$('smoothOut').textContent=e.target.value;draw()});
 bind('closedLoop','change',e=>{track.closed=e.target.checked;updateJSON()});
 bind('showGrid','change',draw);bind('showHeights','change',draw);bind('showDirection','change',draw);
 bind('pointX','change',e=>{if(track.points[selected])track.points[selected].x=Number(e.target.value);draw()});
@@ -217,7 +251,7 @@ bind('testBtn','click',()=>{
 bind('blankRoadBtn','click',()=>{
   if(track.points.length&& !confirm('Clear this track and start a new blank road?'))return;
   pushHistory();
-  track={version:1,name:'New Track',width:Number($('roadWidth').value)||18,closed:true,points:[],objects:[]};
+  track={version:1,name:'New Track',width:Number($('roadWidth').value)||22,closed:true,points:[],objects:[]};
   selected=-1;
   setTool('draw');
   draw();
@@ -227,7 +261,7 @@ bind('blankRoadBtn','click',()=>{
 bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){pushHistory();track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
 bind('clearObjectsBtn','click',()=>{if(track.objects.length){pushHistory();track.objects=[];draw()}});
 bind('saveBtn','click',()=>{localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));setStatus('Saved in this browser')});
-bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){pushHistory();track={version:1,name:'New Track',width:18,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
+bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){pushHistory();track={version:1,name:'New Track',width:22,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
 bind('copyBtn','click',async()=>{await navigator.clipboard.writeText(JSON.stringify(track,null,2));setStatus('JSON copied')});
 bind('exportBtn','click',()=>{
   const blob=new Blob([JSON.stringify(track,null,2)],{type:'application/json'});
@@ -256,5 +290,5 @@ addEventListener('keydown',e=>{
   if((e.key==='d'||e.key==='D')&&!editing)setTool('draw');
 });
 const saved=localStorage.getItem('carRacerTrackDraft');
-if(saved){try{track=JSON.parse(saved);track.objects=track.objects||[]}catch(_){}}
+if(saved){try{track=JSON.parse(saved);track.objects=track.objects||[];if(!track.width||track.width<20)track.width=22}catch(_){}}
 syncView();draw();requestAnimationFrame(fitTrack);
