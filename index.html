@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.7</title>
+<title>Car Racer v10.8</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -31,6 +31,10 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 .trackChoice{display:inline-block;text-decoration:none;color:#fff;background:#ffffff16;border:1px solid #ffffff55;border-radius:999px;padding:10px 16px;font-weight:900;font-size:13px;letter-spacing:.05em}
 .trackChoice:hover{background:#ffffff26}
 .trackChoice.selected{background:#ff7a00;color:#111;border-color:#ffb15d}
+#hazardOptions{display:none;justify-content:center;gap:10px;flex-wrap:wrap;margin:-4px 0 16px}
+#hazardOptions.show{display:flex}
+.hazardToggle{display:flex;align-items:center;gap:7px;background:#ffffff12;border:1px solid #ffffff44;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:900;letter-spacing:.04em;cursor:pointer}
+.hazardToggle input{accent-color:#ff7a00;width:16px;height:16px}
 button{border:0;border-radius:100px;background:#ff7a00;color:#111;font-weight:900;font-size:17px;padding:13px 28px;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
@@ -140,10 +144,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.7 adds Track 3: a high-start mega stunt jump with a long run-up and London-style double-decker buses.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a><a id="trackChoice3" class="trackChoice" href="?track=3">TRACK 3 · MEGA JUMP</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.8 rebuilds Track 3 as a continuous stunt loop and adds optional chickens, spinners and barrels — off by default on the stunt track.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a><a id="trackChoice3" class="trackChoice" href="?track=3">TRACK 3 · MEGA JUMP</a></div><div id="hazardOptions"><label class="hazardToggle"><input id="hazardChickens" type="checkbox"> 🐔 CHICKENS</label><label class="hazardToggle"><input id="hazardSpinner" type="checkbox"> ⚙ SPINNERS</label><label class="hazardToggle"><input id="hazardBarrels" type="checkbox"> 🛢 BARRELS</label></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.7</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.8</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -169,6 +173,18 @@ const trackParam=new URLSearchParams(location.search).get('track');
 const trackMode=trackParam==='3'?3:(trackParam==='2'?2:1);
 const trackName=trackMode===3?'MEGA JUMP':(trackMode===2?'FIGURE 8':'OVAL');
 $('trackChoice'+trackMode)?.classList.add('selected');
+const hazardOptions=$('hazardOptions');
+const hazardChickensEl=$('hazardChickens'),hazardSpinnerEl=$('hazardSpinner'),hazardBarrelsEl=$('hazardBarrels');
+let hazardChickens=trackMode!==3;
+let hazardSpinner=trackMode!==3;
+let hazardBarrels=trackMode!==3;
+if(trackMode===3)hazardOptions.classList.add('show');
+hazardChickensEl.checked=hazardChickens;
+hazardSpinnerEl.checked=hazardSpinner;
+hazardBarrelsEl.checked=hazardBarrels;
+hazardChickensEl.addEventListener('change',()=>hazardChickens=hazardChickensEl.checked);
+hazardSpinnerEl.addEventListener('change',()=>hazardSpinner=hazardSpinnerEl.checked);
+hazardBarrelsEl.addEventListener('change',()=>hazardBarrels=hazardBarrelsEl.checked);
 
 let audioCtx=null,masterGain=null,lastCrashSound=0;
 const engineAudio=new Audio('sounds/engine-loop-loud.ogg');
@@ -742,72 +758,103 @@ if(trackMode===1){
   addInnerWall(oval,18);
 
 }else{
-  // Track 3: high-start stunt course. The road is deliberately split into
-  // separate sections around the jump so there is NO invisible collision
-  // surface across the bus gap.
-  const W=18;
+  // TRACK 3 · MEGA JUMP
+  // One continuous circuit: high start -> long downhill -> huge bus jump ->
+  // long landing straight -> return loop -> under the high road -> climb to top.
+  // The jump itself is the ONLY deliberate break in the driving surface.
+  const W=18,baseY=.65,topY=18,backX=-80;
 
-  // High starting platform / long downhill run-up on the main straight.
-  for(let z=-170;z<=-35;z+=5){
-    const t=(z+170)/135;
-    const y=18.0-(17.35*smooth01(t));
-    oval.push(p(0,y,z,0));
+  // 1) High start platform.
+  for(let z=-245;z<=-220;z+=5)oval.push(p(0,topY,z,0));
+
+  // 2) Long downhill run-up.
+  for(let z=-215;z<=-35;z+=5){
+    const t=(z+215)/180;
+    oval.push(p(0,topY-(topY-baseY)*smooth01(t),z,0));
   }
 
-  // Big launch ramp.
+  // 3) Huge launch ramp.
   for(let z=-30;z<=0;z+=3){
     const t=(z+30)/30;
-    const y=.65+7.25*smooth01(t);
-    oval.push(p(0,y,z,0));
+    oval.push(p(0,baseY+7.25*smooth01(t),z,0));
   }
-  stuntGapStart=oval.length-1; // lip
+  stuntGapStart=oval.length-1;
 
-  // Flight guide only — these points drive AI/path calculations but are NOT
-  // given road collision or road graphics.
-  for(let z=6;z<=48;z+=6){
-    const t=z/48;
-    const arc=7.9+5.8*Math.sin(Math.PI*t);
-    oval.push(p(0,arc,z,0));
+  // 4) Flight guide ONLY. These points help lap/progress calculations but are
+  // intentionally excluded from visible/collision road geometry.
+  for(let z=6;z<=54;z+=4){
+    const t=z/54;
+    oval.push(p(0,7.9+6.3*Math.sin(Math.PI*t)-1.15*t,z,0));
   }
-  stuntGapEnd=oval.length; // first landing-road point will be appended next
+  stuntGapEnd=oval.length;
 
-  // Landing ramp, sloping back to ground.
-  for(let z=54;z<=112;z+=4){
-    const t=(z-54)/58;
-    const y=6.4-(5.75*smooth01(t));
-    oval.push(p(0,y,z,0));
+  // 5) Landing ramp.
+  for(let z=62;z<=112;z+=4){
+    const t=(z-62)/50;
+    oval.push(p(0,6.7-(6.7-baseY)*smooth01(t),z,0));
   }
 
-  // Wide right-hand return loop.
-  const r=42,cx=-42,cz=112;
-  for(let i=1;i<=18;i++){
-    const a=(i/18)*(Math.PI/2);
-    oval.push(p(cx+r*Math.cos(a),.65,cz+r*Math.sin(a),-BANK*.65));
-  }
-  for(let z=154;z>=-154;z-=6)oval.push(p(-84,.65,z,0));
+  // 6) Long straight after landing.
+  for(let z=118;z<=220;z+=6)oval.push(p(0,baseY,z,0));
 
-  // Climb back toward the elevated start.
-  for(let i=1;i<=18;i++){
-    const a=Math.PI/2+(i/18)*(Math.PI/2);
-    const x=-42+r*Math.cos(a),z=-154+r*Math.sin(a);
-    const t=i/18;
-    oval.push(p(x,.65+17.35*smooth01(t),z,BANK*.55));
-  }
-  for(let x=-42;x<=0;x+=4){
-    const t=(x+42)/42;
-    oval.push(p(x,18,-170,0));
+  // 7) Broad 180° return hairpin from x=0 to x=-80.
+  {
+    const cx=backX/2,cz=220,r=Math.abs(backX/2);
+    for(let i=1;i<=24;i++){
+      const a=(i/24)*Math.PI;
+      const x=cx+r*Math.cos(a);
+      const z=cz+r*Math.sin(a);
+      oval.push(p(x,baseY,z,-BANK*.70*Math.sin(a)));
+    }
   }
 
-  // Close the AI/path loop at the start.
-  oval.push(p(0,18,-170,0));
+  // 8) Long return straight heading back toward the high structure.
+  for(let z=214;z>=-170;z-=6)oval.push(p(backX,baseY,z,0));
 
-  // Approach and launch road.
+  // 9) Sweep across underneath the elevated downhill road.
+  // At x=0 the upper road is ~15m high here, giving generous clearance.
+  for(let i=1;i<=24;i++){
+    const t=i/24;
+    const x=backX+(115*t); // -80 -> +35
+    const z=-170+10*Math.sin(Math.PI*t);
+    oval.push(p(x,baseY,z,BANK*.55*Math.sin(Math.PI*t)));
+  }
+
+  // 10) Long climbing return from the far side back to the high start.
+  // It rises gradually and meets the first start point exactly.
+  for(let i=1;i<=30;i++){
+    const t=i/30;
+    const eased=smooth01(t);
+    const x=35*(1-t)+12*Math.sin(Math.PI*t);
+    const z=-170-75*t;
+    const y=baseY+(topY-baseY)*eased;
+    oval.push(p(x,y,z,-BANK*.45*Math.sin(Math.PI*t)));
+  }
+
+  // Close the complete path precisely at the high start.
+  oval.push(p(0,topY,-245,0));
+
+  // Automatic banking on ground-level bends. Elevated ramp/climb sections are
+  // kept flatter for stability.
+  const unique=oval.length-1;
+  for(let i=0;i<unique;i++){
+    const a=oval[(i-1+unique)%unique],b=oval[i],c=oval[(i+1)%unique];
+    let ax=b[0]-a[0],az=b[2]-a[2],al=Math.hypot(ax,az)||1;ax/=al;az/=al;
+    let bx=c[0]-b[0],bz=c[2]-b[2],bl=Math.hypot(bx,bz)||1;bx/=bl;bz/=bl;
+    const turn=ax*bz-az*bx;
+    let bank=THREE.MathUtils.clamp(-turn*3.5,-BANK,BANK);
+    if(b[1]>2)bank*=.30;
+    // Preserve any deliberately authored return-loop banking.
+    if(Math.abs(b[3]||0)<.01)b[3]=bank;
+  }
+  oval[unique][3]=oval[0][3];
+
+  // Build two road pieces around the real jump gap. Together they join into
+  // one continuous loop everywhere else.
   const approach=oval.slice(0,stuntGapStart+1);
-  // Landing and complete return road.
-  const landing=oval.slice(stuntGapEnd);
-
+  const landingAndReturn=oval.slice(stuntGapEnd);
   addTrackSegment(approach,W,1.5);
-  addTrackSegment(landing,W,1.5);
+  addTrackSegment(landingAndReturn,W,1.5);
 }
 
 // London-style double-decker bus row beneath Track 3's gap.
@@ -906,6 +953,16 @@ function addBarrel(x,y,z){
 for(let i=0;i<12;i++)addBarrel(0,-20-i,0);
 
 function resetBarrels(){
+  if(!hazardBarrels){
+    for(const b of barrels){
+      b.mesh.visible=false;
+      b.body.position.set(0,-100,0);
+      b.body.velocity.setZero();b.body.angularVelocity.setZero();
+      b.body.sleep();
+      b.scored=false;
+    }
+    return;
+  }
   // New layout each race. Keep a clear zone around the start and avoid clustering.
   const used=[];
   for(let i=0;i<barrels.length;i++){
@@ -915,12 +972,14 @@ function resetBarrels(){
       p=sampleAIPath(d,(Math.random()*2-1)*5.3);
       tries++;
     }while(
-      tries<24 &&
-      used.some(u=>Math.abs(u-d)<18)
+      tries<30 &&
+      (used.some(u=>Math.abs(u-d)<18) ||
+       (trackMode===3&&p&&Math.abs(p.x)<14&&p.z>-8&&p.z<68))
     );
     used.push(d);
 
     const b=barrels[i];
+    b.mesh.visible=true;
     b.start.set(p.x,p.y+.66,p.z);
     b.startQ.set(0,0,0,1);
     b.body.position.copy(b.start);
@@ -959,7 +1018,11 @@ if(trackMode===1){
   const sw=oval[Math.floor((oval.length-1)*.72)];
   sweeperBody.position.set(sw[0],sw[1]+.9,sw[2]);
 }
-sweeperBody.collisionResponse=true;sweeperBody.angularVelocity.set(0,.82,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.visible=true;
+sweeperBody.collisionResponse=hazardSpinner;
+sweeperBody.angularVelocity.set(0,hazardSpinner?.82:0,0);
+world.addBody(sweeperBody);
+sweeperMesh.position.copy(sweeperBody.position);
+sweeperMesh.visible=hazardSpinner;
 
 // Lightweight traffic cars: visual cars with kinematic collision bodies following the oval.
 const aiCars=[];
@@ -1539,6 +1602,13 @@ function makeChicken(){
 }
 function resetChicken(chicken,initial=false){
   chicken.hit=false;chicken.hitAt=0;
+  if(!hazardChickens){
+    chicken.mesh.visible=false;
+    chicken.body.collisionResponse=false;
+    chicken.body.velocity.setZero();chicken.body.angularVelocity.setZero();
+    chicken.body.position.set(0,-100,0);
+    return;
+  }
   chicken.mesh.visible=true;
   chicken.body.collisionResponse=false; // keep chicken as a non-physical trigger
   chicken.body.type=CANNON.Body.KINEMATIC;chicken.body.mass=0;chicken.body.updateMassProperties();
@@ -1547,7 +1617,11 @@ function resetChicken(chicken,initial=false){
   chicken.lane=-chicken.dir*(7.0+Math.random()*1.2);
   chicken.speed=1.35+Math.random()*1.55;
   chicken.body.velocity.setZero();chicken.body.angularVelocity.setZero();
-  const p=sampleAIPath(chicken.progress,chicken.lane);
+  let p=sampleAIPath(chicken.progress,chicken.lane);
+  if(trackMode===3&&Math.abs(p.x)<14&&p.z>-8&&p.z<68){
+    chicken.progress=(chicken.progress+95)%aiPathLength;
+    p=sampleAIPath(chicken.progress,chicken.lane);
+  }
   chicken.body.position.set(p.x,p.y+.44,p.z);
   chicken.mesh.position.copy(chicken.body.position);
   if(initial) chicken.progress=(chicken.progress+Math.random()*aiPathLength)%aiPathLength;
@@ -1568,6 +1642,7 @@ function hitChicken(chicken){
   chicken.body.position.y=-50;
 }
 function updateChickens(dt){
+  if(!hazardChickens)return;
   for(const chicken of chickens){
     if(chicken.hit){
       if(performance.now()-chicken.hitAt>1800)resetChicken(chicken);
@@ -2430,6 +2505,16 @@ function flippedCarLogic(){
   }
 }
 
+function applyHazardOptions(){
+  sweeperMesh.visible=hazardSpinner;
+  sweeperBody.collisionResponse=hazardSpinner;
+  sweeperBody.angularVelocity.set(0,hazardSpinner?.82:0,0);
+  if(hazardSpinner)sweeperBody.wakeUp();
+
+  resetBarrels();
+  for(const chicken of chickens)resetChicken(chicken,true);
+}
+
 function resetCar(clearTrack=true){
   if(clearTrack){
     clearPersistentTrackDebris();
@@ -2457,8 +2542,8 @@ function resetCar(clearTrack=true){
   chassisBody.angularVelocity.setZero();
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
   boost=35;boostSoundHeld=false;steerState=0;bodyRoll=0;leanRoot.rotation.z=0;
-  resetBarrels();resetCrates();resetTrafficCars();
-  for(const chicken of chickens)resetChicken(chicken,true);
+  resetCrates();resetTrafficCars();
+  applyHazardOptions();
   score=0;chickenHits=0;refreshScore();
   mobileSteer=0;mobileSteerTarget=0;mobileGo=false;mobileBrake=false;mobileBoost=false;
   steerKnob.style.left='50%';
@@ -2764,6 +2849,11 @@ function animate(now){
 }
 requestAnimationFrame(animate);
 $('startBtn').addEventListener('click',()=>{
+  if(trackMode===3){
+    hazardChickens=hazardChickensEl.checked;
+    hazardSpinner=hazardSpinnerEl.checked;
+    hazardBarrels=hazardBarrelsEl.checked;
+  }
   initAudio();
   $('start').style.display='none';
   started=true;
