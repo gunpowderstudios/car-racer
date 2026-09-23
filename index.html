@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.3</title>
+<title>Car Racer v10.4</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -140,10 +140,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.3 adds Track 2: a bridged figure-of-eight circuit, while keeping the original oval as Track 1.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.4 fixes AI ram momentum so the car that initiates the hit supplies the shove, and resets always realign the car and chase camera with the road.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -1982,8 +1982,7 @@ function shoveAICar(car,impact,playerSpeed,contact){
   if(now-car.lastShoveAt<120)return;
   car.lastShoveAt=now;
 
-  // Direction from the AI car into the player car. This is the direction
-  // momentum should transfer regardless of which way the player is facing.
+  // Unit normal from the AI car toward the player car.
   let nx=chassisBody.position.x-car.body.position.x;
   let nz=chassisBody.position.z-car.body.position.z;
   let nl=Math.hypot(nx,nz);
@@ -1993,21 +1992,29 @@ function shoveAICar(car,impact,playerSpeed,contact){
   }
   nx/=nl;nz/=nl;
 
-  // Relative closing speed along the impact direction. A stationary player
-  // hit by a fast AI therefore receives a strong shove; matched-speed traffic
-  // only produces a small bump.
-  const rvx=car.body.velocity.x-chassisBody.velocity.x;
-  const rvz=car.body.velocity.z-chassisBody.velocity.z;
-  const closing=Math.max(0,rvx*nx+rvz*nz);
-  const hitSpeed=Math.max(closing,impact);
-  const soundIntensity=THREE.MathUtils.clamp(hitSpeed/15,0,1);
-  playShuntSound(soundIntensity);
+  const pv=chassisBody.velocity;
+  const av=car.body.velocity;
 
-  if(hitSpeed>.25){
-    // Treat the traffic car as roughly comparable in mass to the player, but
-    // soften the transfer a little for playability. Apply at the actual contact
-    // point so off-centre hits naturally create yaw/roll.
-    const deltaV=Math.min(9.5,hitSpeed*.42);
+  // Work out who is actually driving INTO whom.
+  // playerTowardAI is positive when the player is moving from player -> AI.
+  // aiTowardPlayer is positive when the AI is moving from AI -> player.
+  const playerTowardAI=Math.max(0,-(pv.x*nx+pv.z*nz));
+  const aiTowardPlayer=Math.max(0,av.x*nx+av.z*nz);
+  const totalClosing=playerTowardAI+aiTowardPlayer;
+  const playerInitiated=playerTowardAI>aiTowardPlayer+.55;
+  const aiInitiated=aiTowardPlayer>playerTowardAI+.55;
+
+  const hitSpeed=Math.max(totalClosing,impact);
+  playShuntSound(THREE.MathUtils.clamp(hitSpeed/15,0,1));
+
+  // Only feed a large impulse INTO the player when the AI is the one doing
+  // the hitting. If the player rams the AI, preserve the player's momentum
+  // instead of creating the old stop-and-bounce-back behaviour.
+  if(!playerInitiated && hitSpeed>.25){
+    const aiShare=totalClosing>.05
+      ?THREE.MathUtils.clamp(aiTowardPlayer/totalClosing,.28,1)
+      :(aiInitiated?1:.5);
+    const deltaV=Math.min(9.5,hitSpeed*.42*aiShare);
     const impulseMag=chassisBody.mass*deltaV;
     const impulse=new CANNON.Vec3(nx*impulseMag,0,nz*impulseMag);
 
@@ -2015,31 +2022,45 @@ function shoveAICar(car,impact,playerSpeed,contact){
     const local=getLocalContact(contact);
     if(local){
       relPoint=chassisBody.quaternion.vmult(local);
-      // Keep extreme mesh-edge contacts from generating absurd leverage.
       relPoint.x=THREE.MathUtils.clamp(relPoint.x,-1.15,1.15);
       relPoint.y=THREE.MathUtils.clamp(relPoint.y,-.45,.55);
       relPoint.z=THREE.MathUtils.clamp(relPoint.z,-2.05,2.05);
     }
 
     chassisBody.applyImpulse(impulse,relPoint);
-
-    // Tiny separation prevents repeated overlap without cancelling the impact.
     chassisBody.position.x+=nx*.025;
     chassisBody.position.z+=nz*.025;
 
-    // Retain real rotation, only limiting pathological solver spikes.
     chassisBody.angularVelocity.x=THREE.MathUtils.clamp(chassisBody.angularVelocity.x,-4.2,4.2);
     chassisBody.angularVelocity.y=THREE.MathUtils.clamp(chassisBody.angularVelocity.y,-5.0,5.0);
     chassisBody.angularVelocity.z=THREE.MathUtils.clamp(chassisBody.angularVelocity.z,-4.2,4.2);
     chassisBody.velocity.y=THREE.MathUtils.clamp(chassisBody.velocity.y,-12,3.2);
     chassisBody.wakeUp();
 
-    // A solid hit briefly reduces steering authority while the car reacts.
-    impactRecoverUntil=Math.max(impactRecoverUntil,now+260+Math.min(420,hitSpeed*22));
+    impactRecoverUntil=Math.max(impactRecoverUntil,now+220+Math.min(380,hitSpeed*20));
+  }else if(playerInitiated){
+    // The player is the rammer: keep almost all existing velocity and let the
+    // AI car absorb the visible shove. Never reverse the player's velocity.
+    const f=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+    f.y=0;
+    const fl=Math.hypot(f.x,f.z)||1;f.x/=fl;f.z/=fl;
+    const forwardBefore=pv.x*f.x+pv.z*f.z;
+
+    // Mild energy loss makes a heavy ram readable without killing momentum.
+    pv.x*=.97;
+    pv.z*=.97;
+
+    const forwardAfter=pv.x*f.x+pv.z*f.z;
+    if(forwardBefore>0&&forwardAfter<forwardBefore*.90){
+      const add=forwardBefore*.90-forwardAfter;
+      pv.x+=f.x*add;
+      pv.z+=f.z*add;
+    }
+    chassisBody.wakeUp();
   }
 
-  // Give the AI car a visible opposite reaction as well. AI cars remain
-  // kinematic so they can continue following the circuit after the collision.
+  // AI reaction. Kinematic traffic cannot receive a true Cannon impulse,
+  // so carry the opposite effect into its path/lateral motion.
   const p=sampleAIPath(car.progress,car.lane+car.ramLateral);
   const tl=Math.hypot(p.tx,p.tz)||1;
   const tx=p.tx/tl,tz=p.tz/tl;
@@ -2051,21 +2072,23 @@ function shoveAICar(car,impact,playerSpeed,contact){
 
   const forwardHit=THREE.MathUtils.clamp(dx*tx+dz*tz,-1,1);
   const sideHit=THREE.MathUtils.clamp(dx*lx+dz*lz,-1,1);
-  const strength=Math.min(1.6,.28+Math.max(playerSpeed,hitSpeed)/24+impact/18);
+  const ramSpeed=Math.max(playerSpeed,playerTowardAI,aiTowardPlayer,impact);
+  const strength=Math.min(1.7,.28+ramSpeed/22+impact/18);
 
   const forwardWeight=Math.max(.12,forwardHit);
-  const shoveDistance=Math.min(7.5,Math.max(.25,(playerSpeed*.12+hitSpeed*.16)*forwardWeight));
+  const attackerBoost=playerInitiated?1.28:1;
+  const shoveDistance=Math.min(8.5,Math.max(.25,(playerSpeed*.13+hitSpeed*.17)*forwardWeight*attackerBoost));
   car.progress=(car.progress+shoveDistance)%aiPathLength;
   car.shoveSpeed=Math.max(
     car.shoveSpeed,
-    Math.min(20,Math.max(1.5,(playerSpeed*.48+hitSpeed*.30)*Math.max(.20,forwardWeight)))
+    Math.min(23,Math.max(1.5,(playerSpeed*.52+hitSpeed*.32)*Math.max(.20,forwardWeight)*attackerBoost))
   );
 
-  const lateralKick=sideHit*(2.5+Math.max(playerSpeed,hitSpeed)*.16+impact*.22)*strength;
-  car.ramLateralVel=THREE.MathUtils.clamp(car.ramLateralVel+lateralKick,-16,16);
+  const lateralKick=sideHit*(2.5+ramSpeed*.17+impact*.22)*strength*attackerBoost;
+  car.ramLateralVel=THREE.MathUtils.clamp(car.ramLateralVel+lateralKick,-18,18);
   car.ramYaw=THREE.MathUtils.clamp(
-    car.ramYaw-sideHit*(.07+Math.min(.24,Math.abs(lateralKick)*.017)),
-    -.40,.40
+    car.ramYaw-sideHit*(.07+Math.min(.26,Math.abs(lateralKick)*.017)),
+    -.42,.42
   );
 }
 
@@ -2178,6 +2201,29 @@ function landingDamageRegion(){
   return null;
 }
 
+function snapCameraToChase(){
+  manualOrbit=false;
+  orbitYaw=0;
+  orbitPitch=.38;
+  orbitDist=10.5;
+
+  const cf=chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+  let fx=cf.x,fz=cf.z;
+  const fl=Math.hypot(fx,fz)||1;fx/=fl;fz/=fl;
+  const horiz=Math.cos(orbitPitch)*orbitDist;
+
+  camera.position.set(
+    chassisBody.position.x-fx*horiz,
+    chassisBody.position.y+1.0+Math.sin(orbitPitch)*orbitDist,
+    chassisBody.position.z-fz*horiz
+  );
+  camera.lookAt(
+    chassisBody.position.x,
+    chassisBody.position.y+.5,
+    chassisBody.position.z
+  );
+}
+
 function recoverCarToRoad(){
   const d=nearestAIProgress(chassisBody.position.x,chassisBody.position.z,chassisBody.position.y);
   const p=sampleAIPath(d,0);
@@ -2198,6 +2244,7 @@ function recoverCarToRoad(){
   airborne=false;airUnstable=false;peakDownVel=0;airMinUp=1;lastGrounded=performance.now();
   flippedSince=0;lastFlipCount=0;offTrackSince=0;lastOffTrackCount=0;
   chassisBody.wakeUp();
+  snapCameraToChase();
   flash('BACK IN THE GAME!');
 }
 function roadSurfaceAt(x,z,y=null){
@@ -2301,6 +2348,7 @@ function resetCar(clearTrack=true){
   damageGroup.visible=true;
   refreshDamageVisuals();
   chassisBody.wakeUp();
+  snapCameraToChase();
   lapEl.textContent='READY · '+trackName;
 }
 function flash(t){
