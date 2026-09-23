@@ -30,6 +30,26 @@ let track={
 };
 let selected=-1,tool='draw',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
 let view={x:-120,y:-120,w:240,h:240};
+const history=[];
+const MAX_HISTORY=60;
+function snapshot(){return JSON.stringify(track)}
+function pushHistory(){
+  history.push(snapshot());
+  if(history.length>MAX_HISTORY)history.shift();
+  $('undoBtn').disabled=history.length===0;
+}
+function undo(){
+  if(!history.length)return;
+  try{
+    track=JSON.parse(history.pop());
+    track.objects=track.objects||[];
+    selected=-1;
+    draw();
+    fitTrack();
+    setStatus('Undone');
+  }catch(_){}
+  $('undoBtn').disabled=history.length===0;
+}
 
 function el(name,attrs={}){
   const n=document.createElementNS(NS,name);
@@ -114,13 +134,17 @@ svg.addEventListener('pointerdown',e=>{
   const point=e.target.dataset.point;
   const object=e.target.dataset.object;
   if(object!==undefined){
+    pushHistory();
     track.objects.splice(Number(object),1);draw();setStatus('Object removed');return;
   }
   if(point!==undefined){
-    selected=Number(point);draggingPoint=true;svg.setPointerCapture(e.pointerId);draw();return;
+    selected=Number(point);
+    pushHistory();
+    draggingPoint=true;svg.setPointerCapture(e.pointerId);draw();return;
   }
   const w=screenToWorld(e);
   if(tool==='draw'){
+    pushHistory();
     const p={x:Math.round(w.x*2)/2,y:.65,z:Math.round(w.z*2)/2,bank:0,gapAfter:false};
     // Draw mode always extends the route in travel order.
     track.points.push(p);
@@ -132,6 +156,7 @@ svg.addEventListener('pointerdown',e=>{
     return;
   }
   if(['barrel','chicken','spinner','bus'].includes(tool)){
+    pushHistory();
     track.objects.push({type:tool,x:Math.round(w.x),z:Math.round(w.z)});draw();return;
   }
   panning=true;lastPointer={x:e.clientX,y:e.clientY};svg.setPointerCapture(e.pointerId);
@@ -175,8 +200,16 @@ bind('pointZ','change',e=>{if(track.points[selected])track.points[selected].z=Nu
 bind('pointY','input',e=>{if(track.points[selected])track.points[selected].y=Number(e.target.value);draw()});
 bind('pointBank','input',e=>{if(track.points[selected])track.points[selected].bank=Number(e.target.value);draw()});
 bind('gapAfter','change',e=>{if(track.points[selected])track.points[selected].gapAfter=e.target.checked;draw()});
+bind('undoBtn','click',undo);
+bind('testBtn','click',()=>{
+  if(track.points.length<2){alert('Draw at least two road points first.');return;}
+  localStorage.setItem('carRacerTrackTest',JSON.stringify(track));
+  setStatus('Opening test drive…');
+  window.open('../?designerTest=1','_blank');
+});
 bind('blankRoadBtn','click',()=>{
   if(track.points.length&& !confirm('Clear this track and start a new blank road?'))return;
+  pushHistory();
   track={version:1,name:'New Track',width:Number($('roadWidth').value)||18,closed:true,points:[],objects:[]};
   selected=-1;
   setTool('draw');
@@ -184,10 +217,10 @@ bind('blankRoadBtn','click',()=>{
   fitTrack();
   setStatus('DRAW ROAD: click to place the first point, then keep clicking');
 });
-bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
-bind('clearObjectsBtn','click',()=>{track.objects=[];draw()});
+bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){pushHistory();track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
+bind('clearObjectsBtn','click',()=>{if(track.objects.length){pushHistory();track.objects=[];draw()}});
 bind('saveBtn','click',()=>{localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));setStatus('Saved in this browser')});
-bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){track={version:1,name:'New Track',width:18,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
+bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){pushHistory();track={version:1,name:'New Track',width:18,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
 bind('copyBtn','click',async()=>{await navigator.clipboard.writeText(JSON.stringify(track,null,2));setStatus('JSON copied')});
 bind('exportBtn','click',()=>{
   const blob=new Blob([JSON.stringify(track,null,2)],{type:'application/json'});
@@ -209,9 +242,11 @@ function fitTrack(){
 }
 bind('fitBtn','click',fitTrack);
 addEventListener('keydown',e=>{
-  if((e.key==='Delete'||e.key==='Backspace')&&document.activeElement.tagName!=='INPUT'&&selected>=0){e.preventDefault();$('deletePointBtn').click()}
+  const editing=['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!editing){e.preventDefault();undo();return;}
+  if((e.key==='Delete'||e.key==='Backspace')&&!editing&&selected>=0){e.preventDefault();$('deletePointBtn').click()}
   if(e.key==='Escape')setTool('select');
-  if((e.key==='d'||e.key==='D')&&document.activeElement.tagName!=='INPUT')setTool('draw');
+  if((e.key==='d'||e.key==='D')&&!editing)setTool('draw');
 });
 const saved=localStorage.getItem('carRacerTrackDraft');
 if(saved){try{track=JSON.parse(saved);track.objects=track.objects||[]}catch(_){}}
