@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v11.2</title>
+<title>Car Racer v11.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -22,6 +22,12 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 #scoreBox{position:absolute;left:18px;top:136px;background:#0008;border:1px solid #ffffff55;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:900;letter-spacing:.10em;line-height:1.45}
 #scoreNum{font-size:20px;margin-left:5px}
 #chickenCount{opacity:.88}
+#miniMap{position:absolute;left:18px;top:220px;width:150px;height:150px;background:#0008;border:1px solid #ffffff66;border-radius:12px;padding:8px}
+#miniMap svg{width:100%;height:100%;display:block;overflow:visible}
+#miniTrack{fill:none;stroke:#f2f2ea;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+#miniStart{fill:#ff7a00;stroke:#fff;stroke-width:1.5}
+#miniCar{fill:#ff7a00;stroke:#fff;stroke-width:1.5}
+@media (pointer:coarse), (max-width:760px){#miniMap{left:12px;top:258px;width:112px;height:112px;padding:6px}}
 #msg{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:42px;font-weight:1000;letter-spacing:.06em;white-space:nowrap;opacity:0;transition:opacity .18s}
 #msg.show{opacity:1}
 #start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:radial-gradient(circle,#263b4bbb,#071018f5);color:#fff}
@@ -144,10 +150,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.2 adds Track Designer test-drive mode and editor undo support.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.3 adds smooth thick designer roads, start markers and a live 2D track map.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v11.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v11.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="miniMap"><svg viewBox="0 0 100 100" aria-label="Track map"><polyline id="miniTrack"/><circle id="miniStart" r="3"/><circle id="miniCar" r="3.3"/></svg></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -713,6 +719,29 @@ function jumpHeight(z,crest,travelDir,rise,drop,height){
 const oval=[];
 let stuntGapStart=-1,stuntGapEnd=-1;
 
+function catmullTrack(a,b,c,d,t){
+  const t2=t*t,t3=t2*t;
+  return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);
+}
+function smoothControlRun(run,steps=10){
+  if(run.length<2)return run.map(q=>p(q.x,q.y,q.z,THREE.MathUtils.degToRad(q.bank||0)));
+  const out=[];
+  for(let i=0;i<run.length-1;i++){
+    const a=run[Math.max(0,i-1)],b=run[i],c=run[i+1],d=run[Math.min(run.length-1,i+2)];
+    for(let s=0;s<steps;s++){
+      const t=s/steps;
+      out.push(p(
+        catmullTrack(a.x,b.x,c.x,d.x,t),
+        catmullTrack(a.y,b.y,c.y,d.y,t),
+        catmullTrack(a.z,b.z,c.z,d.z,t),
+        THREE.MathUtils.degToRad(catmullTrack(a.bank||0,b.bank||0,c.bank||0,d.bank||0,t))
+      ));
+    }
+  }
+  const q=run.at(-1);out.push(p(q.x,q.y,q.z,THREE.MathUtils.degToRad(q.bank||0)));
+  return out;
+}
+
 if(designerTrack){
   const rawPts=designerTrack.points.map(q=>({
     x:Number(q.x)||0,
@@ -727,19 +756,28 @@ if(designerTrack){
       rawPts.push({...a,gapAfter:false});
     }
   }
-  for(const q of rawPts)oval.push(p(q.x,q.y,q.z,THREE.MathUtils.degToRad(q.bank)));
 
-  // Build each continuous piece separately so editor jump gaps are real gaps.
-  let segment=[oval[0]];
-  for(let i=0;i<oval.length-1;i++){
+  // Split at jump gaps first, then spline each solid run independently.
+  const runs=[];
+  let controlRun=[rawPts[0]];
+  for(let i=0;i<rawPts.length-1;i++){
     if(rawPts[i]?.gapAfter){
-      if(segment.length>=2)addTrackSegment(segment,designerTrack.width||18,1.5);
-      segment=[oval[i+1]];
+      if(controlRun.length>=2)runs.push(controlRun);
+      controlRun=[rawPts[i+1]];
     }else{
-      segment.push(oval[i+1]);
+      controlRun.push(rawPts[i+1]);
     }
   }
-  if(segment.length>=2)addTrackSegment(segment,designerTrack.width||18,1.5);
+  if(controlRun.length>=2)runs.push(controlRun);
+
+  const smoothness=Math.max(6,Math.min(18,Number(designerTrack.smoothness)||10));
+  for(const run of runs){
+    const smooth=smoothControlRun(run,smoothness);
+    for(const q of smooth){
+      if(!oval.length || Math.hypot(q[0]-oval.at(-1)[0],q[1]-oval.at(-1)[1],q[2]-oval.at(-1)[2])>.001)oval.push(q);
+    }
+    addTrackSegment(smooth,Math.max(20,Number(designerTrack.width)||22),1.5);
+  }
 
 }else if(trackMode===1){
   for(let z=-85;z<=85;z+=5){
@@ -887,6 +925,28 @@ if(designerTrack){
   addTrackSegment(approach,W,1.5);
   addTrackSegment(landingAndReturn,W,1.5);
 }
+
+// Build the 2D HUD map from the final path.
+const miniTrackEl=$('miniTrack'),miniStartEl=$('miniStart'),miniCarEl=$('miniCar');
+let miniMapTransform=null;
+function buildMiniMap(){
+  if(!oval.length||!miniTrackEl)return;
+  const xs=oval.map(q=>q[0]),zs=oval.map(q=>q[2]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
+  const spanX=Math.max(1,maxX-minX),spanZ=Math.max(1,maxZ-minZ);
+  const scale=Math.min(82/spanX,82/spanZ);
+  const ox=50-(minX+maxX)*.5*scale,oz=50-(minZ+maxZ)*.5*scale;
+  miniMapTransform={scale,ox,oz};
+  miniTrackEl.setAttribute('points',oval.map(q=>`${(q[0]*scale+ox).toFixed(2)},${(q[2]*scale+oz).toFixed(2)}`).join(' '));
+  miniStartEl.setAttribute('cx',(oval[0][0]*scale+ox).toFixed(2));
+  miniStartEl.setAttribute('cy',(oval[0][2]*scale+oz).toFixed(2));
+}
+function updateMiniMapCar(){
+  if(!miniMapTransform||!miniCarEl)return;
+  miniCarEl.setAttribute('cx',(chassisBody.position.x*miniMapTransform.scale+miniMapTransform.ox).toFixed(2));
+  miniCarEl.setAttribute('cy',(chassisBody.position.z*miniMapTransform.scale+miniMapTransform.oz).toFixed(2));
+}
+buildMiniMap();
 
 // London-style double-decker bus row beneath Track 3's gap.
 function addStuntBus(x,y,z){
@@ -2762,6 +2822,7 @@ function updateVisuals(dt=1/60){
   camera.lookAt(look);
   speedEl.textContent=Math.round(chassisBody.velocity.length()*2.23694);
   boostEl.style.width=boost+'%';
+  updateMiniMapCar();
 }
 function landingLogic(){
   const grounded=vehicle.wheelInfos.some(w=>w.isInContact);
