@@ -4,30 +4,40 @@ const NS='http://www.w3.org/2000/svg';
 
 let track={
   version:1,
-  name:'Mega Jump Draft',
+  name:'Simple Loop',
   width:22,
+  smoothness:10,
   closed:true,
   points:[
-    {x:0,y:18,z:-95,bank:0,gapAfter:false},
-    {x:0,y:18,z:-78,bank:0,gapAfter:false},
-    {x:0,y:10,z:-48,bank:0,gapAfter:false},
-    {x:0,y:.65,z:-22,bank:0,gapAfter:false},
-    {x:0,y:7.5,z:0,bank:0,gapAfter:true},
-    {x:0,y:6.4,z:38,bank:0,gapAfter:false},
+    {x:0,y:.65,z:-70,bank:0,gapAfter:false},
+    {x:48,y:.65,z:-48,bank:0,gapAfter:false},
+    {x:62,y:.65,z:0,bank:0,gapAfter:false},
+    {x:48,y:.65,z:48,bank:0,gapAfter:false},
     {x:0,y:.65,z:70,bank:0,gapAfter:false},
-    {x:0,y:.65,z:105,bank:0,gapAfter:false},
-    {x:-48,y:.65,z:112,bank:-8,gapAfter:false},
-    {x:-82,y:.65,z:78,bank:-8,gapAfter:false},
-    {x:-82,y:.65,z:-58,bank:0,gapAfter:false},
-    {x:-35,y:.65,z:-72,bank:7,gapAfter:false},
-    {x:32,y:.65,z:-58,bank:7,gapAfter:false},
-    {x:25,y:8,z:-82,bank:0,gapAfter:false},
-    {x:0,y:18,z:-95,bank:0,gapAfter:false}
+    {x:-48,y:.65,z:48,bank:0,gapAfter:false},
+    {x:-62,y:.65,z:0,bank:0,gapAfter:false},
+    {x:-48,y:.65,z:-48,bank:0,gapAfter:false},
+    {x:0,y:.65,z:-70,bank:0,gapAfter:false}
   ],
-  objects:[
-    {type:'bus',x:-7,z:15},{type:'bus',x:-3,z:15},{type:'bus',x:1,z:15},{type:'bus',x:5,z:15}
-  ]
-};
+  objects:[]
+}
+function makeSimpleLoop(){
+  return {
+    version:1,name:'Simple Loop',width:22,smoothness:10,closed:true,
+    points:[
+      {x:0,y:.65,z:-70,bank:0,gapAfter:false},
+      {x:48,y:.65,z:-48,bank:0,gapAfter:false},
+      {x:62,y:.65,z:0,bank:0,gapAfter:false},
+      {x:48,y:.65,z:48,bank:0,gapAfter:false},
+      {x:0,y:.65,z:70,bank:0,gapAfter:false},
+      {x:-48,y:.65,z:48,bank:0,gapAfter:false},
+      {x:-62,y:.65,z:0,bank:0,gapAfter:false},
+      {x:-48,y:.65,z:-48,bank:0,gapAfter:false},
+      {x:0,y:.65,z:-70,bank:0,gapAfter:false}
+    ],
+    objects:[]
+  };
+}
 let selected=-1,tool='draw',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
 let view={x:-120,y:-120,w:240,h:240};
 
@@ -235,14 +245,18 @@ bind('pointY','input',e=>{if(track.points[selected])track.points[selected].y=Num
 bind('pointBank','input',e=>{if(track.points[selected])track.points[selected].bank=Number(e.target.value);draw()});
 bind('gapAfter','change',e=>{if(track.points[selected])track.points[selected].gapAfter=e.target.checked;draw()});
 bind('undoBtn','click',undo);
-bind('testBtn','click',()=>{
-  if(track.points.length<2){alert('Draw at least two road points first.');return;}
+bind('testBtn','click',e=>{
+  if(track.points.length<2){
+    e.preventDefault();
+    alert('Draw at least two road points first.');
+    return;
+  }
   try{
     localStorage.setItem('carRacerTrackTest',JSON.stringify(track));
     localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));
-    setStatus('Opening test drive…');
-    location.href='../?designerTest=1';
+    setStatus('Opening test drive in a new tab…');
   }catch(err){
+    e.preventDefault();
     console.error(err);
     setStatus('Could not start test drive');
     alert('Could not start the test drive: '+err.message);
@@ -261,7 +275,7 @@ bind('blankRoadBtn','click',()=>{
 bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){pushHistory();track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
 bind('clearObjectsBtn','click',()=>{if(track.objects.length){pushHistory();track.objects=[];draw()}});
 bind('saveBtn','click',()=>{localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));setStatus('Saved in this browser')});
-bind('newBtn','click',()=>{if(confirm('Start a new blank track?')){pushHistory();track={version:1,name:'New Track',width:22,closed:true,points:[],objects:[]};selected=-1;draw();fitTrack();setTool('draw')}});
+bind('newBtn','click',()=>{if(confirm('Reset to a new simple closed loop?')){pushHistory();track=makeSimpleLoop();selected=-1;draw();fitTrack();setTool('select');setStatus('Simple loop ready — drag the orange points to reshape it')}});
 bind('copyBtn','click',async()=>{await navigator.clipboard.writeText(JSON.stringify(track,null,2));setStatus('JSON copied')});
 bind('exportBtn','click',()=>{
   const blob=new Blob([JSON.stringify(track,null,2)],{type:'application/json'});
