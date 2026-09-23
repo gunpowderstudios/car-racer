@@ -28,7 +28,7 @@ let track={
     {type:'bus',x:-7,z:15},{type:'bus',x:-3,z:15},{type:'bus',x:1,z:15},{type:'bus',x:5,z:15}
   ]
 };
-let selected=-1,tool='select',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
+let selected=-1,tool='draw',draggingPoint=false,drawingRoad=false,panning=false,lastPointer=null,lastDrawPoint=null;
 let view={x:-120,y:-120,w:240,h:240};
 
 function el(name,attrs={}){
@@ -175,6 +175,15 @@ bind('pointZ','change',e=>{if(track.points[selected])track.points[selected].z=Nu
 bind('pointY','input',e=>{if(track.points[selected])track.points[selected].y=Number(e.target.value);draw()});
 bind('pointBank','input',e=>{if(track.points[selected])track.points[selected].bank=Number(e.target.value);draw()});
 bind('gapAfter','change',e=>{if(track.points[selected])track.points[selected].gapAfter=e.target.checked;draw()});
+bind('blankRoadBtn','click',()=>{
+  if(track.points.length&& !confirm('Clear this track and start a new blank road?'))return;
+  track={version:1,name:'New Track',width:Number($('roadWidth').value)||18,closed:true,points:[],objects:[]};
+  selected=-1;
+  setTool('draw');
+  draw();
+  fitTrack();
+  setStatus('DRAW ROAD: click to place the first point, then keep clicking');
+});
 bind('deletePointBtn','click',()=>{if(selected>=0&&track.points.length>2){track.points.splice(selected,1);selected=Math.min(selected,track.points.length-1);draw()}});
 bind('clearObjectsBtn','click',()=>{track.objects=[];draw()});
 bind('saveBtn','click',()=>{localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));setStatus('Saved in this browser')});
