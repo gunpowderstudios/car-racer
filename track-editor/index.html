@@ -27,7 +27,8 @@
   <aside class="panel left-panel">
     <h2>Track</h2>
     <label>Track name<input id="trackName" type="text" value="New Track"></label>
-    <label>Road width <span id="widthOut">18 m</span><input id="roadWidth" type="range" min="8" max="28" step="1" value="18"></label>
+    <label>Road width <span id="widthOut">22 m</span><input id="roadWidth" type="range" min="14" max="36" step="1" value="22"></label>
+    <label>Curve smoothness <span id="smoothOut">10</span><input id="curveSmoothness" type="range" min="4" max="18" step="1" value="10"></label>
     <label class="check"><input id="closedLoop" type="checkbox" checked> Closed loop</label>
 
     <h2>Tools</h2>
@@ -99,7 +100,7 @@
 
 <footer>
   <span id="status">Ready</span>
-  <span>Designer v0.4 · undo + test drive · JSON track format</span>
+  <span>Designer v0.5 · smooth roads + start flag · JSON track format</span>
 </footer>
 
 <script type="module" src="app.js"></script>
