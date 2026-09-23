@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.4</title>
+<title>Car Racer v10.5</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -140,10 +140,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.4 fixes AI ram momentum so the car that initiates the hit supplies the shove, and resets always realign the car and chase camera with the road.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.5 makes AI cars trigger-only for physics so player-initiated shunts keep forward momentum instead of stopping dead.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.4</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.5</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -973,7 +973,7 @@ function makeTrafficCar(color,phase,speed,lane){
 
   const body=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});
   body.addShape(new CANNON.Box(new CANNON.Vec3(.98,.31,1.9)));
-  body.collisionResponse=true;
+  body.collisionResponse=false; // detect contact, but use custom shunt physics
   world.addBody(body);
 
   const car={group,body,phase,progress:phase*aiPathLength,speed,lane,health:50,maxHealth:50,destroyed:false,respawnAt:0,lastHitAt:0,lastPlayerDelta:null,bodyMat:mat,healthBar,smokeAt:0,shoveSpeed:0,lastShoveAt:0,ramLateral:0,ramLateralVel:0,ramYaw:0,lastWallHitAt:0};
@@ -1020,7 +1020,7 @@ function resetTrafficCars(){
     car.ramLateralVel=0;
     car.ramYaw=0;
     car.lastWallHitAt=0;
-    car.body.collisionResponse=true;
+    car.body.collisionResponse=false;
     car.group.visible=true;
     car.smokeAt=0;
     updateAIHealthBar(car);
@@ -1044,7 +1044,7 @@ function updateTrafficCars(dt){
         car.ramYaw=0;
         car.lastWallHitAt=0;
         car.progress=(car.progress+45+Math.random()*80)%aiPathLength;
-        car.body.collisionResponse=true;
+        car.body.collisionResponse=false;
         car.group.visible=true;
         car.smokeAt=0;
         updateAIHealthBar(car);
@@ -2047,8 +2047,8 @@ function shoveAICar(car,impact,playerSpeed,contact){
     const forwardBefore=pv.x*f.x+pv.z*f.z;
 
     // Mild energy loss makes a heavy ram readable without killing momentum.
-    pv.x*=.97;
-    pv.z*=.97;
+    pv.x*=.985;
+    pv.z*=.985;
 
     const forwardAfter=pv.x*f.x+pv.z*f.z;
     if(forwardBefore>0&&forwardAfter<forwardBefore*.90){
@@ -2159,9 +2159,9 @@ function carCollisionDamage(e){
         return;
       }
 
-      // AI bodies are kinematic, so Cannon's default response would behave like
-      // an infinite-mass wall. Disable that response and apply our own mass-like
-      // directional impulse at the real contact point instead.
+      // AI traffic is trigger-only in Cannon. All momentum transfer is handled
+      // here, so player-initiated shunts cannot be stopped by an infinite-mass
+      // kinematic collision response.
       if(c)c.enabled=false;
       shoveAICar(aiCar,impact,speed,c);
 
