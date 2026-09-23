@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v10.2</title>
+<title>Car Racer v10.3</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -27,6 +27,10 @@ canvas{display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing
 #start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:radial-gradient(circle,#263b4bbb,#071018f5);color:#fff}
 #card{width:min(720px,90vw);text-align:center;background:#0009;border:1px solid #ffffff33;border-radius:16px;padding:30px;box-shadow:0 30px 90px #0009}
 #card h1{font-size:clamp(38px,8vw,68px);margin:0 0 8px}#card p{line-height:1.5;opacity:.85}
+#trackSelect{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0}
+.trackChoice{display:inline-block;text-decoration:none;color:#fff;background:#ffffff16;border:1px solid #ffffff55;border-radius:999px;padding:10px 16px;font-weight:900;font-size:13px;letter-spacing:.05em}
+.trackChoice:hover{background:#ffffff26}
+.trackChoice.selected{background:#ff7a00;color:#111;border-color:#ffb15d}
 button{border:0;border-radius:100px;background:#ff7a00;color:#111;font-weight:900;font-size:17px;padding:13px 28px;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button:hover{filter:brightness(1.1)}
 #fatal{display:none;position:fixed;inset:0;z-index:99;background:#1b0000;color:#fff;padding:25px;font:14px monospace;white-space:pre-wrap;overflow:auto}
@@ -136,10 +140,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.2 matches the player car's horizontal collision footprint to its 20% larger visible body, reducing wall clipping.</p><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v10.3 adds Track 2: a bridged figure-of-eight circuit, while keeping the original oval as Track 1.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice" href="?track=1">TRACK 1 · OVAL</a><a id="trackChoice2" class="trackChoice" href="?track=2">TRACK 2 · FIGURE 8</a></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v10.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v10.3</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -161,6 +165,9 @@ import * as CANNON from 'cannon-es';
 const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox'),scoreNumEl=$('scoreNum'),chickenCountEl=$('chickenCount');
 const soundBtn=$('soundBtn'),musicBtn=$('musicBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
+const trackMode=new URLSearchParams(location.search).get('track')==='2'?2:1;
+const trackName=trackMode===2?'FIGURE 8':'OVAL';
+$('trackChoice'+trackMode)?.classList.add('selected');
 
 let audioCtx=null,masterGain=null,lastCrashSound=0;
 const engineAudio=new Audio('sounds/engine-loop-loud.ogg');
@@ -676,32 +683,74 @@ function jumpHeight(z,crest,travelDir,rise,drop,height){
 }
 
 const oval=[];
-for(let z=-85;z<=85;z+=5){
-  // Front straight travels north (+Z): smaller jump.
-  const y=.65+jumpHeight(z,8,1,20,8,1.75);
-  oval.push(p(45,y,z,0));
+if(trackMode===1){
+  for(let z=-85;z<=85;z+=5){
+    // Front straight travels north (+Z): smaller jump.
+    const y=.65+jumpHeight(z,8,1,20,8,1.75);
+    oval.push(p(45,y,z,0));
+  }
+
+  const topTurn=arcTurn(85,0,Math.PI);
+  for(let i=1;i<topTurn.length;i++)oval.push(topTurn[i]);
+
+  for(let z=80;z>=-85;z-=5){
+    // Back straight travels south (-Z): larger jump.
+    const y=.65+jumpHeight(z,-12,-1,23,9,2.45);
+    oval.push(p(-45,y,z,0));
+  }
+
+  const bottomTurn=arcTurn(-85,Math.PI,Math.PI*2);
+  for(let i=1;i<bottomTurn.length;i++)oval.push(bottomTurn[i]);
+}else{
+  // Track 2: a Gerono-style figure 8. One centre crossing rises into a
+  // proper bridge, leaving the other crossing safely underneath.
+  const steps=180;
+  const t0=Math.PI/2; // start on the outside of the right-hand loop
+  for(let i=0;i<=steps;i++){
+    const t=t0+(i/steps)*Math.PI*2;
+    const x=62*Math.sin(t);
+    const z=48*Math.sin(2*t);
+
+    // Distance from the "upper" centre crossing at t = 2π (mod 2π).
+    // A long smooth ramp gives useful clearance without a sudden jump.
+    const crossingPhase=Math.abs(Math.atan2(Math.sin(t),Math.cos(t)));
+    const bridgeBlend=crossingPhase<.50
+      ?smooth01(1-crossingPhase/.50)
+      :0;
+    const y=.65+bridgeBlend*6.25;
+    oval.push(p(x,y,z,0));
+  }
+
+  // Automatic mixed left/right banking from the change in path tangent.
+  const unique=oval.length-1;
+  for(let i=0;i<unique;i++){
+    const a=oval[(i-1+unique)%unique],b=oval[i],c=oval[(i+1)%unique];
+    let ax=b[0]-a[0],az=b[2]-a[2],al=Math.hypot(ax,az)||1;ax/=al;az/=al;
+    let bx=c[0]-b[0],bz=c[2]-b[2],bl=Math.hypot(bx,bz)||1;bx/=bl;bz/=bl;
+    const turn=ax*bz-az*bx;
+    let bank=THREE.MathUtils.clamp(-turn*3.8,-BANK,BANK);
+    if(b[1]>1.3)bank*=.45; // keep the bridge/ramp calmer
+    b[3]=bank;
+  }
+  oval[unique][3]=oval[0][3];
 }
-
-const topTurn=arcTurn(85,0,Math.PI);
-for(let i=1;i<topTurn.length;i++)oval.push(topTurn[i]);
-
-for(let z=80;z>=-85;z-=5){
-  // Back straight travels south (-Z): larger jump.
-  const y=.65+jumpHeight(z,-12,-1,23,9,2.45);
-  oval.push(p(-45,y,z,0));
-}
-
-const bottomTurn=arcTurn(-85,Math.PI,Math.PI*2);
-for(let i=1;i<bottomTurn.length;i++)oval.push(bottomTurn[i]);
 
 addTrack(oval,18,1.5);
 
-// Matching safety walls on both the outside and inside edges of the complete oval.
+// Matching safety walls on both edges of whichever circuit is selected.
 addOuterWall(oval,18);
 addInnerWall(oval,18);
 
 const startLineZ=-60;
-const finishGroup=new THREE.Group();finishGroup.position.set(45,.65,startLineZ);scene.add(finishGroup);
+const finishGroup=new THREE.Group();
+if(trackMode===1){
+  finishGroup.position.set(45,.65,startLineZ);
+}else{
+  const fs=oval[0],fn=oval[1];
+  finishGroup.position.set(fs[0],fs[1],fs[2]);
+  finishGroup.rotation.y=Math.atan2(fn[0]-fs[0],fn[2]-fs[2]);
+}
+scene.add(finishGroup);
 const black=new THREE.MeshBasicMaterial({color:0x111111}),white=new THREE.MeshBasicMaterial({color:0xffffff});
 for(let i=0;i<8;i++)for(let j=0;j<2;j++){
   const tile=new THREE.Mesh(new THREE.BoxGeometry(2,.05,1.0),(i+j)%2?black:white);
@@ -724,12 +773,14 @@ const checkpointBack=new THREE.Vector3(-45,.65,0);
 const checkpointBottom=new THREE.Vector3(0,.65,-130);
 
 const postMat=new THREE.MeshStandardMaterial({color:0xf4e8cb,roughness:.85});
-for(const [cx,cz] of [[0,85],[0,-85]]){
-  for(let i=0;i<14;i++){
-    const th=(i/13)*Math.PI;
-    const a=cz===85?th:Math.PI+th;
-    const x=54*Math.cos(a),z=cz+54*Math.sin(a);
-    const q=new THREE.Mesh(new THREE.BoxGeometry(.55,4,.55),postMat);q.position.set(x,1,z);q.castShadow=true;scene.add(q);
+if(trackMode===1){
+  for(const [cx,cz] of [[0,85],[0,-85]]){
+    for(let i=0;i<14;i++){
+      const th=(i/13)*Math.PI;
+      const a=cz===85?th:Math.PI+th;
+      const x=54*Math.cos(a),z=cz+54*Math.sin(a);
+      const q=new THREE.Mesh(new THREE.BoxGeometry(.55,4,.55),postMat);q.position.set(x,1,z);q.castShadow=true;scene.add(q);
+    }
   }
 }
 const barrels=[];
@@ -801,7 +852,14 @@ function resetCrates(){for(const c of crates){c.body.position.copy(c.start);c.bo
 const sweeperMesh=new THREE.Group();scene.add(sweeperMesh);
 const sweepBar=new THREE.Mesh(new THREE.BoxGeometry(9,.45,.5),new THREE.MeshStandardMaterial({color:0xf2b51d,roughness:.65,metalness:.12}));sweepBar.castShadow=true;sweeperMesh.add(sweepBar);
 const sweepHub=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,1.4,16),new THREE.MeshStandardMaterial({color:0x333333,roughness:.7}));sweepHub.position.y=-.3;sweepHub.castShadow=true;sweeperMesh.add(sweepHub);
-const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));sweeperBody.position.set(-45,1.55,57);sweeperBody.collisionResponse=true;sweeperBody.angularVelocity.set(0,.82,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.visible=true;
+const sweeperBody=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,material:obstaclePhys});sweeperBody.addShape(new CANNON.Box(new CANNON.Vec3(4.5,.225,.25)));
+if(trackMode===1){
+  sweeperBody.position.set(-45,1.55,57);
+}else{
+  const sw=oval[Math.floor((oval.length-1)*.56)];
+  sweeperBody.position.set(sw[0],sw[1]+.9,sw[2]);
+}
+sweeperBody.collisionResponse=true;sweeperBody.angularVelocity.set(0,.82,0);world.addBody(sweeperBody);sweeperMesh.position.copy(sweeperBody.position);sweeperMesh.visible=true;
 
 // Lightweight traffic cars: visual cars with kinematic collision bodies following the oval.
 const aiCars=[];
@@ -1323,20 +1381,24 @@ function addScore(points,label=''){
   refreshScore();
   if(label)flash(label+'  +'+points);
 }
-function nearestAIProgress(x,z){
+function nearestAIProgress(x,z,y=null){
   let best=Infinity,bestD=0;
   for(let i=0;i<oval.length-1;i++){
     const a=oval[i],b=oval[i+1];
     const dx=b[0]-a[0],dz=b[2]-a[2],len2=dx*dx+dz*dz||1;
     const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[2])*dz)/len2));
-    const px=a[0]+dx*t,pz=a[2]+dz*t,ex=x-px,ez=z-pz,d2=ex*ex+ez*ez;
+    const px=a[0]+dx*t,pz=a[2]+dz*t;
+    const py=a[1]+(b[1]-a[1])*t;
+    const ex=x-px,ez=z-pz,ey=y===null?0:y-py;
+    // Height matters on Track 2 so the overpass and underpass are not confused.
+    const d2=ex*ex+ez*ez+(y===null?0:ey*ey*2.2);
     if(d2<best){best=d2;bestD=aiPathDist[i]+Math.sqrt(len2)*t;}
   }
   return bestD;
 }
 function updateOvertakeScore(){
   if(!lapStarted||finished)return;
-  const playerProgress=nearestAIProgress(chassisBody.position.x,chassisBody.position.z);
+  const playerProgress=nearestAIProgress(chassisBody.position.x,chassisBody.position.z,chassisBody.position.y);
   for(const car of aiCars){
     if(car.destroyed){car.lastPlayerDelta=null;continue;}
     let delta=((car.progress-playerProgress+aiPathLength*.5)%aiPathLength+aiPathLength)%aiPathLength-aiPathLength*.5;
@@ -1560,7 +1622,7 @@ async function loadCar(){
     holder.rotation.y=Math.PI/2;
     leanRoot.add(holder);
     wheelMeshes.forEach(w=>w.visible=false);
-    status.textContent=`${source} loaded • ${textured}/${materials} material${materials===1?'':'s'} with colour texture${textured===1?'':'s'}`+(textured===0?' — no colour bitmap texture detected':'');
+    status.textContent=trackName+' • '+`${source} loaded • ${textured}/${materials} material${materials===1?'':'s'} with colour texture${textured===1?'':'s'}`+(textured===0?' — no colour bitmap texture detected':'');
   }catch(e){
     status.textContent='Could not load cars/car.gltf or cars/car.glb — orange test body in use';
     console.warn(e);
@@ -1639,7 +1701,7 @@ renderer.domElement.addEventListener('wheel',e=>{
   orbitDist=THREE.MathUtils.clamp(orbitDist+e.deltaY*.01,5.5,20);
   e.preventDefault();
 },{passive:false});
-let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,impactRecoverUntil=0,lastBounceAt=0,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76,flippedSince=0,lastFlipCount=0;
+let boost=35,airborne=false,airStart=0,lastGrounded=performance.now(),steerState=0,bodyRoll=0,finished=false,damage=0,wrecked=false,exploded=false,impactRecoverUntil=0,lastBounceAt=0,peakDownVel=0,airMinUp=1,airUnstable=false,checkpointStage=0,lapStarted=false,runStart=0,prevFinishZ=-76,prevTrackProgress=0,flippedSince=0,lastFlipCount=0;
 
 const damageParts={front:0,rear:0,left:0,right:0,top:0};
 const damageCooldown={front:0,rear:0,left:0,right:0,top:0};
@@ -2117,7 +2179,7 @@ function landingDamageRegion(){
 }
 
 function recoverCarToRoad(){
-  const d=nearestAIProgress(chassisBody.position.x,chassisBody.position.z);
+  const d=nearestAIProgress(chassisBody.position.x,chassisBody.position.z,chassisBody.position.y);
   const p=sampleAIPath(d,0);
   const yaw=Math.atan2(p.tx,p.tz);
   const horiz=Math.hypot(p.tx,p.tz)||1;
@@ -2138,8 +2200,8 @@ function recoverCarToRoad(){
   chassisBody.wakeUp();
   flash('BACK IN THE GAME!');
 }
-function roadSurfaceAt(x,z){
-  const d=nearestAIProgress(x,z);
+function roadSurfaceAt(x,z,y=null){
+  const d=nearestAIProgress(x,z,y);
   const centre=sampleAIPath(d,0);
   const h=Math.hypot(centre.tx,centre.tz)||1;
   const lx=-centre.tz/h,lz=centre.tx/h;
@@ -2158,7 +2220,7 @@ function flippedCarLogic(){
   // through the road skin. This does not run during ordinary upright driving.
   if(badlyTilted &&
      nearestTrackDistanceSq(chassisBody.position.x,chassisBody.position.z)<(9.2*9.2)){
-    const road=roadSurfaceAt(chassisBody.position.x,chassisBody.position.z);
+    const road=roadSurfaceAt(chassisBody.position.x,chassisBody.position.z,chassisBody.position.y);
     const minY=road.y+.48;
 
     if(chassisBody.position.y<minY){
@@ -2203,8 +2265,25 @@ function resetCar(clearTrack=true){
   if(clearTrack){
     clearPersistentTrackDebris();
   }
-  chassisBody.position.set(45,1.72,-76);
-  chassisBody.quaternion.set(0,0,0,1);
+  if(trackMode===1){
+    chassisBody.position.set(45,1.72,-76);
+    chassisBody.quaternion.set(0,0,0,1);
+    prevTrackProgress=0;
+  }else{
+    const startD=Math.max(0,aiPathLength-7);
+    const sp=sampleAIPath(startD,0);
+    const yaw=Math.atan2(sp.tx,sp.tz);
+    const horiz=Math.hypot(sp.tx,sp.tz)||1;
+    const pitch=Math.atan2(sp.ty,horiz);
+    const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qRoll=new CANNON.Quaternion(),qp=new CANNON.Quaternion(),q=new CANNON.Quaternion();
+    qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+    qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
+    qRoll.setFromAxisAngle(new CANNON.Vec3(0,0,1),-(sp.bank||0));
+    qYaw.mult(qPitch,qp);qp.mult(qRoll,q);
+    chassisBody.position.set(sp.x,sp.y+1.07,sp.z);
+    chassisBody.quaternion.copy(q);
+    prevTrackProgress=startD;
+  }
   chassisBody.velocity.setZero();
   chassisBody.angularVelocity.setZero();
   vehicle.wheelInfos.forEach(w=>{w.engineForce=0;w.brake=0;w.steering=0;});
@@ -2222,7 +2301,7 @@ function resetCar(clearTrack=true){
   damageGroup.visible=true;
   refreshDamageVisuals();
   chassisBody.wakeUp();
-  lapEl.textContent='READY';
+  lapEl.textContent='READY · '+trackName;
 }
 function flash(t){
   msg.textContent=t;msg.classList.add('show');
@@ -2438,14 +2517,44 @@ function landingLogic(){
 function lapLogic(){
   if(finished)return;
   const pos=chassisBody.position,now=performance.now();
-  if(checkpointStage===0&&Math.hypot(pos.x-checkpointTop.x,pos.z-checkpointTop.z)<22)checkpointStage=1;
-  else if(checkpointStage===1&&Math.hypot(pos.x-checkpointBack.x,pos.z-checkpointBack.z)<20)checkpointStage=2;
-  else if(checkpointStage===2&&Math.hypot(pos.x-checkpointBottom.x,pos.z-checkpointBottom.z)<22)checkpointStage=3;
 
-  const crossing=Math.abs(pos.x-45)<11&&prevFinishZ<startLineZ&&pos.z>=startLineZ;
-  if(crossing){
+  if(trackMode===1){
+    if(checkpointStage===0&&Math.hypot(pos.x-checkpointTop.x,pos.z-checkpointTop.z)<22)checkpointStage=1;
+    else if(checkpointStage===1&&Math.hypot(pos.x-checkpointBack.x,pos.z-checkpointBack.z)<20)checkpointStage=2;
+    else if(checkpointStage===2&&Math.hypot(pos.x-checkpointBottom.x,pos.z-checkpointBottom.z)<22)checkpointStage=3;
+
+    const crossing=Math.abs(pos.x-45)<11&&prevFinishZ<startLineZ&&pos.z>=startLineZ;
+    if(crossing){
+      if(!lapStarted){
+        lapStarted=true;runStart=now;lapEl.textContent='LAP 1 / 1 · OVAL';flash('GO!');
+      }else if(checkpointStage===3){
+        finished=true;
+        const secs=(now-runStart)/1000;
+        score+=500;refreshScore();
+        lapEl.textContent='FINISH  '+secs.toFixed(1)+'s';
+        flash('FINISH!  '+secs.toFixed(1)+'s  +500 PTS');
+        boost=100;
+      }
+    }
+    prevFinishZ=pos.z;
+    return;
+  }
+
+  // Figure 8 uses progress around the full 3D path. Height-aware nearest
+  // progress keeps the bridge and underpass separate at the centre crossing.
+  const progress=nearestAIProgress(pos.x,pos.z,pos.y);
+  const wrapped=prevTrackProgress>aiPathLength*.84&&progress<aiPathLength*.16;
+
+  if(lapStarted){
+    if(checkpointStage===0&&progress>aiPathLength*.18&&progress<aiPathLength*.40)checkpointStage=1;
+    else if(checkpointStage===1&&progress>aiPathLength*.43&&progress<aiPathLength*.64)checkpointStage=2;
+    else if(checkpointStage===2&&progress>aiPathLength*.68&&progress<aiPathLength*.84)checkpointStage=3;
+  }
+
+  if(wrapped){
     if(!lapStarted){
-      lapStarted=true;runStart=now;lapEl.textContent='LAP 1 / 1';flash('GO!');
+      lapStarted=true;runStart=now;checkpointStage=0;
+      lapEl.textContent='LAP 1 / 1 · FIGURE 8';flash('GO!');
     }else if(checkpointStage===3){
       finished=true;
       const secs=(now-runStart)/1000;
@@ -2455,7 +2564,7 @@ function lapLogic(){
       boost=100;
     }
   }
-  prevFinishZ=pos.z;
+  prevTrackProgress=progress;
 }
 let last=performance.now();
 function animate(now){
