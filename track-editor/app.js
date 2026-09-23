@@ -203,9 +203,16 @@ bind('gapAfter','change',e=>{if(track.points[selected])track.points[selected].ga
 bind('undoBtn','click',undo);
 bind('testBtn','click',()=>{
   if(track.points.length<2){alert('Draw at least two road points first.');return;}
-  localStorage.setItem('carRacerTrackTest',JSON.stringify(track));
-  setStatus('Opening test drive…');
-  window.open('../?designerTest=1','_blank');
+  try{
+    localStorage.setItem('carRacerTrackTest',JSON.stringify(track));
+    localStorage.setItem('carRacerTrackDraft',JSON.stringify(track));
+    setStatus('Opening test drive…');
+    location.href='../?designerTest=1';
+  }catch(err){
+    console.error(err);
+    setStatus('Could not start test drive');
+    alert('Could not start the test drive: '+err.message);
+  }
 });
 bind('blankRoadBtn','click',()=>{
   if(track.points.length&& !confirm('Clear this track and start a new blank road?'))return;
