@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Car Racer v11.1</title>
+<title>Car Racer v11.2</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fc4e8;font-family:Arial,Helvetica,sans-serif}
@@ -144,10 +144,10 @@ button:hover{filter:brightness(1.1)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 </head>
 <body>
-<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.1 fixes game startup after removing the experimental track options.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
+<div id="start"><div id="card"><h1>CAR RACER</h1><p>v11.2 adds Track Designer test-drive mode and editor undo support.</p><div id="trackSelect"><a id="trackChoice1" class="trackChoice selected" href="?track=1">TRACK 1 · OVAL</a><a class="trackChoice" href="track-editor/">✎ TRACK DESIGNER</a></div><div id="hazardOptions"></div><p><b>W / ↑</b> accelerate &nbsp; <b>S / ↓</b> brake/reverse &nbsp; <b>A D / ← →</b> steer<br><b>SPACE</b> boost &nbsp; <b>R</b> reset &nbsp; <b>drag</b> 360° camera &nbsp; <b>wheel</b> zoom &nbsp; <b>C</b> chase<br><b>AIRBORNE:</b> W nose up &nbsp; S nose down</p><button id="startBtn">START ENGINE</button></div></div>
 <button id="soundBtn" type="button">🔊 SOUND ON</button>
 <button id="musicBtn" type="button">🎵 MUSIC ON</button>
-<div id="hud"><div id="title">CAR RACER <span id="version">v11.1</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
+<div id="hud"><div id="title">CAR RACER <span id="version">v11.2</span></div><div id="lapBox">READY</div><div id="scoreBox">SCORE <span id="scoreNum">0</span><br><span id="chickenCount">🐔 0</span></div><div id="speedBox"><div class="speed" id="speed">0</div><div class="unit">MPH</div><div class="boostText">BOOST</div><div class="bar"><div class="fill" id="boost"></div></div><div class="damageText">DAMAGE <span id="damageNum">0</span>%</div><div class="bar"><div class="damageFill" id="damage"></div></div><div id="partDamage">F 0 · L 0 · R 0 · REAR 0 · TOP 0</div></div><div id="msg">NICE LANDING!</div><div id="help"><span class="key">W</span>/<span class="key">↑</span> GO &nbsp; <span class="key">S</span>/<span class="key">↓</span> BRAKE / REVERSE<br><span class="key">A</span><span class="key">D</span> STEER &nbsp; <span class="key">SPACE</span> BOOST &nbsp; <span class="key">R</span> RESET<br>DRAG = 360° CAMERA &nbsp; WHEEL = ZOOM &nbsp; <span class="key">Q</span><span class="key">E</span> ORBIT &nbsp; <span class="key">C</span> CHASE<br>AIRBORNE: <span class="key">W</span> NOSE UP &nbsp; <span class="key">S</span> NOSE DOWN</div><div id="status">Loading textured cars/car.gltf…</div></div>
 <div id="mobileControls" aria-label="Mobile driving controls">
   <div id="steerPad" aria-label="Steering slider">
     <div id="steerTrack"></div>
@@ -170,12 +170,24 @@ const $=id=>document.getElementById(id);
 const status=$('status'),msg=$('msg'),speedEl=$('speed'),boostEl=$('boost'),damageEl=$('damage'),damageNumEl=$('damageNum'),partDamageEl=$('partDamage'),lapEl=$('lapBox'),scoreNumEl=$('scoreNum'),chickenCountEl=$('chickenCount');
 const soundBtn=$('soundBtn'),musicBtn=$('musicBtn'),steerPad=$('steerPad'),steerKnob=$('steerKnob'),gasPedal=$('gasPedal'),brakePedal=$('brakePedal'),boostPedal=$('boostPedal'),resetPedal=$('resetPedal');
 const trackMode=1;
-const trackName='OVAL';
-// Track 1 keeps the normal hazards enabled. Optional hazard UI only applies
-// to future custom tracks and is deliberately absent from the current start screen.
-let hazardChickens=true;
-let hazardSpinner=true;
-let hazardBarrels=true;
+const designerTest=new URLSearchParams(location.search).get('designerTest')==='1';
+let designerTrack=null;
+if(designerTest){
+  try{
+    const raw=JSON.parse(localStorage.getItem('carRacerTrackTest')||'null');
+    if(raw&&Array.isArray(raw.points)&&raw.points.length>=2)designerTrack=raw;
+  }catch(_){}
+}
+const trackName=designerTrack?(designerTrack.name||'DESIGNER TEST'):'OVAL';
+if(designerTrack){
+  const p=document.querySelector('#card p');
+  if(p)p.textContent='TEST DRIVE · '+trackName+' — road generated from the Track Designer draft.';
+  const ts=$('trackSelect');if(ts)ts.innerHTML='<a class="trackChoice selected" href="track-editor/">← BACK TO TRACK DESIGNER</a>';
+}
+// Test-drive mode starts clean so you can judge the road itself.
+let hazardChickens=!designerTrack;
+let hazardSpinner=!designerTrack;
+let hazardBarrels=!designerTrack;
 
 let audioCtx=null,masterGain=null,lastCrashSound=0;
 const engineAudio=new Audio('sounds/engine-loop-loud.ogg');
@@ -701,7 +713,35 @@ function jumpHeight(z,crest,travelDir,rise,drop,height){
 const oval=[];
 let stuntGapStart=-1,stuntGapEnd=-1;
 
-if(trackMode===1){
+if(designerTrack){
+  const rawPts=designerTrack.points.map(q=>({
+    x:Number(q.x)||0,
+    y:Number.isFinite(Number(q.y))?Number(q.y):.65,
+    z:Number(q.z)||0,
+    bank:Number(q.bank)||0,
+    gapAfter:!!q.gapAfter
+  }));
+  if(designerTrack.closed){
+    const a=rawPts[0],b=rawPts[rawPts.length-1];
+    if(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)>.01){
+      rawPts.push({...a,gapAfter:false});
+    }
+  }
+  for(const q of rawPts)oval.push(p(q.x,q.y,q.z,THREE.MathUtils.degToRad(q.bank)));
+
+  // Build each continuous piece separately so editor jump gaps are real gaps.
+  let segment=[oval[0]];
+  for(let i=0;i<oval.length-1;i++){
+    if(rawPts[i]?.gapAfter){
+      if(segment.length>=2)addTrackSegment(segment,designerTrack.width||18,1.5);
+      segment=[oval[i+1]];
+    }else{
+      segment.push(oval[i+1]);
+    }
+  }
+  if(segment.length>=2)addTrackSegment(segment,designerTrack.width||18,1.5);
+
+}else if(trackMode===1){
   for(let z=-85;z<=85;z+=5){
     const y=.65+jumpHeight(z,8,1,20,8,1.75);
     oval.push(p(45,y,z,0));
@@ -1253,7 +1293,7 @@ function syncTrafficVisuals(){
     car.group.quaternion.copy(car.body.quaternion);
   }
 }
-if(trackMode!==3){
+if(trackMode!==3&&!designerTrack){
   makeTrafficCar(0xd92f28,.16,16.5,-2.6);
   makeTrafficCar(0x2877d9,.37,19.0,2.4);
   makeTrafficCar(0x33a857,.59,21.5,-.6);
@@ -2510,7 +2550,20 @@ function resetCar(clearTrack=true){
   if(clearTrack){
     clearPersistentTrackDebris();
   }
-  if(trackMode===1){
+  if(designerTrack){
+    const sp=sampleAIPath(0,0);
+    const yaw=Math.atan2(sp.tx,sp.tz);
+    const horiz=Math.hypot(sp.tx,sp.tz)||1;
+    const pitch=Math.atan2(sp.ty,horiz);
+    const qYaw=new CANNON.Quaternion(),qPitch=new CANNON.Quaternion(),qRoll=new CANNON.Quaternion(),qp=new CANNON.Quaternion(),q=new CANNON.Quaternion();
+    qYaw.setFromAxisAngle(new CANNON.Vec3(0,1,0),yaw);
+    qPitch.setFromAxisAngle(new CANNON.Vec3(1,0,0),-pitch);
+    qRoll.setFromAxisAngle(new CANNON.Vec3(0,0,1),-(sp.bank||0));
+    qYaw.mult(qPitch,qp);qp.mult(qRoll,q);
+    chassisBody.position.set(sp.x,sp.y+1.07,sp.z);
+    chassisBody.quaternion.copy(q);
+    prevTrackProgress=0;
+  }else if(trackMode===1){
     chassisBody.position.set(45,1.72,-76);
     chassisBody.quaternion.set(0,0,0,1);
     prevTrackProgress=0;
@@ -2761,6 +2814,10 @@ function landingLogic(){
   }
 }
 function lapLogic(){
+  if(designerTrack){
+    lapEl.textContent='TEST DRIVE · '+trackName;
+    return;
+  }
   if(finished)return;
   const pos=chassisBody.position,now=performance.now();
 
