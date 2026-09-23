@@ -1199,13 +1199,15 @@ function syncTrafficVisuals(){
     car.group.quaternion.copy(car.body.quaternion);
   }
 }
-makeTrafficCar(0xd92f28,.16,16.5,-2.6);
-makeTrafficCar(0x2877d9,.37,19.0,2.4);
-makeTrafficCar(0x33a857,.59,21.5,-.6);
-makeTrafficCar(0xf0bb24,.81,18.0,3.0);
-makeTrafficCar(0x9a4fd8,.06,20.0,1.0);
-makeTrafficCar(0xf0782d,.48,17.2,-3.1);
-makeTrafficCar(0x20b8b0,.70,22.2,1.8);
+if(trackMode!==3){
+  makeTrafficCar(0xd92f28,.16,16.5,-2.6);
+  makeTrafficCar(0x2877d9,.37,19.0,2.4);
+  makeTrafficCar(0x33a857,.59,21.5,-.6);
+  makeTrafficCar(0xf0bb24,.81,18.0,3.0);
+  makeTrafficCar(0x9a4fd8,.06,20.0,1.0);
+  makeTrafficCar(0xf0782d,.48,17.2,-3.1);
+  makeTrafficCar(0x20b8b0,.70,22.2,1.8);
+}
 resetTrafficCars();
 
 function spawnAISmoke(car){
@@ -2449,7 +2451,7 @@ function resetCar(clearTrack=true){
     qYaw.mult(qPitch,qp);qp.mult(qRoll,q);
     chassisBody.position.set(sp.x,sp.y+1.07,sp.z);
     chassisBody.quaternion.copy(q);
-    prevTrackProgress=startD;
+    prevTrackProgress=trackMode===3?aiPathLength*.99:startD;
   }
   chassisBody.velocity.setZero();
   chassisBody.angularVelocity.setZero();
