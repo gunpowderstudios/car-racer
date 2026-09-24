@@ -108,7 +108,7 @@ export function buildTrackGeometry(track) {
       const k0 = Math.max(KERB_W, apron);                   // with walls the bank starts behind them
       const e = out(i, sg, k0);
       const yEnd = e[1];
-      const kEnd = yEnd > 0.02 ? yEnd / EMBANKMENT : 0.05;
+      const kEnd = solid[i] ? 0 : (yEnd > 0.02 ? yEnd / EMBANKMENT : 0.05);   // beside a jump: drop straight to the ground
       const q = out(i, sg, k0 + kEnd);
       const nn = [track.lx[i] * sg * EMBANKMENT, 1, track.lz[i] * sg * EMBANKMENT];
       const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
@@ -162,7 +162,7 @@ export function buildTrackGeometry(track) {
       for (const sg of [1, -1]) {
         // embankment: fill the wedge between the verge slope and the ground
         const k0 = Math.max(KERB_W, apron), e = out(i, sg, k0);
-        const kEnd = e[1] > 0.02 ? e[1] / EMBANKMENT : 0.05, q = out(i, sg, k0 + kEnd);
+        const kEnd = solid[i] ? 0 : (e[1] > 0.02 ? e[1] / EMBANKMENT : 0.05), q = out(i, sg, k0 + kEnd);
         const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
         const gc = [C_GRASS[0] * shade * 0.8, C_GRASS[1] * shade * 0.8, C_GRASS[2] * shade * 0.8];
         if (e[1] > 0.02) { const i0 = bank.vert(e[0], e[1], e[2], nn[0], nn[1], nn[2], gc), i1 = bank.vert(q[0], 0, q[2], nn[0], nn[1], nn[2], gc), i2 = bank.vert(e[0], 0, e[2], nn[0], nn[1], nn[2], gc); bank.idx.push(i0, i1, i2); }
