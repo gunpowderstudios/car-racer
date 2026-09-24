@@ -125,6 +125,46 @@ export function buildTrackGeometry(track) {
     }
   }
 
+  // ---- end caps: where the road stops at a jump, close the open ends so the slab, barriers and
+  // embankment look as solid as the sides of the road (otherwise you see straight into a hollow shell).
+  const quad = (buf, a, b, c, d, nn, col) => {
+    const i0 = buf.vert(a[0], a[1], a[2], nn[0], nn[1], nn[2], col);
+    const i1 = buf.vert(b[0], b[1], b[2], nn[0], nn[1], nn[2], col);
+    const i2 = buf.vert(c[0], c[1], c[2], nn[0], nn[1], nn[2], col);
+    const i3 = buf.vert(d[0], d[1], d[2], nn[0], nn[1], nn[2], col);
+    buf.idx.push(i0, i1, i2, i0, i2, i3);
+  };
+  for (let i = 0; i < n; i++) {
+    if (track.gap[i]) continue;
+    const fwd = track.gap[(i + 1) % n], back = track.gap[(i - 1 + n) % n];
+    if (!fwd && !back) continue;
+    const tl = Math.hypot(track.tx[i], track.tz[i]) || 1;
+    const dirs = [];
+    if (fwd) dirs.push(1);
+    if (back) dirs.push(-1);
+    for (const d of dirs) {
+      const nn = [track.tx[i] / tl * d, 0, track.tz[i] / tl * d];
+      // slab end face
+      const l = edge(i, 1), r = edge(i, -1);
+      quad(slab, l, r, [r[0], r[1] - SLAB, r[2]], [l[0], l[1] - SLAB, l[2]], nn, C_ROAD_SIDE);
+      for (const sg of [1, -1]) {
+        // embankment: fill the wedge between the verge slope and the ground
+        const k0 = Math.max(KERB_W, apron), e = out(i, sg, k0);
+        const kEnd = e[1] > 0.02 ? e[1] / EMBANKMENT : 0.05, q = out(i, sg, k0 + kEnd);
+        const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
+        const gc = [C_GRASS[0] * shade * 0.8, C_GRASS[1] * shade * 0.8, C_GRASS[2] * shade * 0.8];
+        if (e[1] > 0.02) { const i0 = bank.vert(e[0], e[1], e[2], nn[0], nn[1], nn[2], gc), i1 = bank.vert(q[0], 0, q[2], nn[0], nn[1], nn[2], gc), i2 = bank.vert(e[0], 0, e[2], nn[0], nn[1], nn[2], gc); bank.idx.push(i0, i1, i2); }
+        // barrier end
+        if (walls) {
+          const top = Math.min(WALL_HEIGHT - 0.2, 1.05), ee = edge(i, sg);
+          const ib = out(i, sg, WALL_GAP), ob = out(i, sg, WALL_GAP + WALL_T), yt = ee[1] + top;
+          const c = Math.floor(i / 7) % 2 ? C_WALL_A : C_WALL_B;
+          quad(wall, [ib[0], ib[1] - 0.1, ib[2]], [ib[0], yt, ib[2]], [ob[0], yt, ob[2]], [ob[0], ob[1] - 0.1, ob[2]], nn, c);
+        }
+      }
+    }
+  }
+
   // ---- pillars under raised road, lamp posts, start gantry data
   const pillars = [], lamps = [];
   for (let i = 0; i < n; i += 24) {
