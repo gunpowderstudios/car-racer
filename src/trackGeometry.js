@@ -3,7 +3,7 @@
 // plane, a verge that falls away at EMBANKMENT m/m, and walls with their face WALL_GAP
 // outside the road edge.
 
-import { SURF, WALL_GAP, WALL_HEIGHT, WALL_T, EMBANKMENT, Track } from './track.js';
+import { SURF, WALL_GAP, WALL_HEIGHT, WALL_T, EMBANKMENT, Track, takeoffRamp } from './track.js';
 
 const KERB_W = 0.6;
 const SLAB = 0.7;                 // visible thickness of the road slab (matters on bridges)
@@ -71,11 +71,23 @@ export function buildTrackGeometry(track) {
     return [{ p: l, n: nn, u: 0 }, { p: r, n: nn, u: 1 }];
   }, 2, sv);
 
+  // Ramps and landings beside a jump are built as solid earthworks: their sides drop to the ground.
+  const solid = new Uint8Array(n), LANDING_SPAN = 10;
+  track.def.handles.forEach((h, hi) => {
+    if (!h.gap) return;
+    const c = track.handleS[hi], half = h.gap / 2, ramp = takeoffRamp(h);
+    for (let i = 0; i < n; i++) {
+      let d = track.s[i] - c; if (d > L / 2) d -= L; if (d < -L / 2) d += L;
+      if ((d < -half && d > -half - ramp.len - 1) || (d > half && d < half + LANDING_SPAN + 1)) solid[i] = 1;
+    }
+  });
+  const depth = (i, e) => (solid[i] ? Math.max(SLAB, e[1]) : SLAB);
+
   // ---- slab sides + underside (dark concrete) so raised road has thickness
   for (const sg of [1, -1]) {
     strip(slab, (i) => {
       const e = edge(i, sg), nl = [track.lx[i] * sg, 0, track.lz[i] * sg];
-      return [{ p: e, n: nl, c: C_ROAD_SIDE }, { p: [e[0], e[1] - SLAB, e[2]], n: nl, c: C_ROAD_SIDE }];
+      return [{ p: e, n: nl, c: C_ROAD_SIDE }, { p: [e[0], e[1] - depth(i, e), e[2]], n: nl, c: C_ROAD_SIDE }];
     }, 2, sv);
   }
   strip(slab, (i) => {
@@ -146,7 +158,7 @@ export function buildTrackGeometry(track) {
       const nn = [track.tx[i] / tl * d, 0, track.tz[i] / tl * d];
       // slab end face
       const l = edge(i, 1), r = edge(i, -1);
-      quad(slab, l, r, [r[0], r[1] - SLAB, r[2]], [l[0], l[1] - SLAB, l[2]], nn, C_ROAD_SIDE);
+      quad(slab, l, r, [r[0], r[1] - depth(i, r), r[2]], [l[0], l[1] - depth(i, l), l[2]], nn, C_ROAD_SIDE);   // solid down to the ground
       for (const sg of [1, -1]) {
         // embankment: fill the wedge between the verge slope and the ground
         const k0 = Math.max(KERB_W, apron), e = out(i, sg, k0);
