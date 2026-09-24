@@ -22,6 +22,8 @@ export class EditorPreview {
     this.edgeMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.75 });
     this.postMat = new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity: 0.55 });
     this.gapMat = new THREE.LineBasicMaterial({ color: RED });
+    this.propMat = new THREE.MeshLambertMaterial({ color: 0xff9d3a });
+    this.props = [];
     this.group = new THREE.Group(); this.scene.add(this.group);
     this.grid = null;
 
@@ -40,6 +42,8 @@ export class EditorPreview {
 
   /** Call with the latest Track; the mesh rebuilds on the next frame (coalesced). */
   setTrack(track) { this.track = track; this.dirty = true; }
+  /** Barrels (or other props) to show as little markers on the road. */
+  setProps(list) { this.props = list || []; this.dirty = true; }
   setSelected(k) { this.sel = k; this._placeMarker(); }
   /** Re-frame the camera on the whole track (used by Fit). */
   fit() { this.zoom = 1; this._frame(); }
@@ -106,7 +110,7 @@ export class EditorPreview {
     const topY = Math.max(1, ...t.py);
     const ex = this.ex = Math.round(Math.min(4, Math.max(1, (this.radius * 0.12) / topY)) * 2) / 2;
     this.onScale?.(ex);
-    for (const o of [...this.group.children]) { o.geometry.dispose(); this.group.remove(o); }
+    for (const o of [...this.group.children]) { o.geometry.dispose(); o.dispose?.(); this.group.remove(o); }
 
     const V = 3;                                    // 3 m spacing is plenty for a preview
     const maxY = Math.max(6, ...t.py);
@@ -151,6 +155,14 @@ export class EditorPreview {
     this.group.add(new THREE.LineSegments(geo(edges), this.edgeMat));
     if (posts.length) this.group.add(new THREE.LineSegments(geo(posts), this.postMat));
     if (gaps.length) this.group.add(new THREE.LineSegments(geo(gaps), this.gapMat));
+
+    // props: a little drum standing on the road for each barrel, sized up when the track is big
+    if (this.props.length) {
+      const k = Math.max(1, this.radius / 140);
+      const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.32 * k, 0.32 * k, 0.9 * k, 10), this.propMat, this.props.length), m = new THREE.Matrix4();
+      this.props.forEach((p, i) => { const g = t.groundAt(p.x, p.z, p.y + 0.5, undefined, true); m.makeTranslation(p.x, (g.y + 0.45 * k) * ex, p.z); im.setMatrixAt(i, m); });
+      im.frustumCulled = false; this.group.add(im);
+    }
 
     // ground grid sized to the track
     const size = Math.ceil((this.radius * 2.6) / 50) * 50;

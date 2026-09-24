@@ -10,7 +10,7 @@
 
 import { clamp, lerp, smoothstep, wrapPi } from './math.js';
 
-export const TRACK_VERSION = 5;
+export const TRACK_VERSION = 6;
 export const SURF = { ROAD: 0, VERGE: 1, BASE: 2 };
 export const GROUND_Y = 0;          // flat terrain height far from the road
 export const WALL_GAP = 0.6;        // wall face sits this far outside the road edge
@@ -49,9 +49,30 @@ export function takeoffRamp(h) {
   return { len, rise: H, angle: kick, at: (x) => H * Math.pow(clamp(x / len, 0, 1), p) };
 }
 
+// ---------------------------------------------------------------- props
+
+/** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
+ *  y is the ground height where it was placed and is only a hint for picking the right level
+ *  on a bridge; the game re-reads the real ground when the track loads. */
+export const PROP_TYPES = ['barrel'];
+export const MAX_PROPS = 400;
+
+export function normalizeProps(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const p of list) {
+    if (out.length >= MAX_PROPS) break;
+    if (!p || !PROP_TYPES.includes(p.type)) continue;
+    const x = Number(p.x), z = Number(p.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
+    out.push({ type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- definition
 
-/** Fill defaults, migrate legacy (v4) editor data, and clamp values. */
+/** Fill defaults, migrate legacy (v4, v5) editor data, and clamp values. */
 export function normalizeTrack(input) {
   const src = input || {};
   const width = clamp(Number(src.width) || 22, 12, 40);
@@ -72,6 +93,7 @@ export function normalizeTrack(input) {
     width,
     walls: src.walls !== false,
     handles,
+    props: normalizeProps(src.props),
   };
 }
 
@@ -315,6 +337,17 @@ export class Track {
       out.nx = Nx / l; out.ny = Ny / l; out.nz = Nz / l;
     }
     return yc;
+  }
+
+  /**
+   * Ground under (x, z) for something that sits near height yHint (a prop, a barrel, a chicken).
+   * Same rules as query(). With `top` set, if nothing is found at that level it falls back to the
+   * highest surface there, which is what you want when the road has been raised since yHint was saved.
+   */
+  groundAt(x, z, yHint, out = Track.newQuery(), top = false) {
+    this.query(x, yHint, z, out, 0.9);
+    if (top && out.idx < 0) this.query(x, 1e4, z, out, 1);
+    return out;
   }
 
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */

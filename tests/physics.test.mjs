@@ -52,7 +52,8 @@ test('legacy editor data is migrated', () => {
   const def = normalizeTrack({ name: 'old', width: 22, handles: [
     { x: 0, y: 1, z: 0 }, { x: 100, y: 1, z: 0, gapAfter: true }, { x: 100, y: 1, z: 100 }, { x: 0, y: 1, z: 100 }] });
   assert.equal(def.handles[1].gap, 14);
-  assert.equal(def.version, 5);
+  assert.equal(def.version, 6);
+  assert.deepEqual(def.props, []);
 });
 
 test('analysis flags self-crossings at the same height but not bridges', () => {

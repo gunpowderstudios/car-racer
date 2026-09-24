@@ -527,6 +527,16 @@ export class Vehicle {
     this.angVel.add(tmpA);
   }
 
+  // ------------------------------------------- hooks for things the car can hit
+  /** Recompute the body axes from the current rotation (they are otherwise one step stale after step()). */
+  refreshFrame() { this._axes(); }
+  /** Apply impulse j (N s) along unit vector u at world point p. */
+  impulseAt(u, j, p) { this._impulse(u, j, tmpC.copy(p).sub(this.pos)); }
+  /** 1 / effective mass for a push along unit vector u at world point p (translation and spin). */
+  invMassAt(u, p) { return this._kAt(tmpC.copy(p).sub(this.pos), u); }
+  /** Velocity of the body at world point p. */
+  velocityAt(p, out) { return this._velAt(tmpC.copy(p).sub(this.pos), out); }
+
   // ----------------------------------------------------------- helpers
   /** World-space up vector y component: 1 = upright, -1 = on the roof. */
   get uprightness() { return this.ay.y; }

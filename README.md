@@ -43,11 +43,14 @@ Draw a closed circuit by dragging points. The editor and the game share the same
 - Drag the markers in the **height strip** at the bottom to build hills. Steep sections turn red.
 - **Auto-bank** leans every corner into the turn. **Reverse** drives the loop the other way.
 - Tight corners and roads that cross at the same height are flagged. Raise one crossing by about 5 m to make a bridge.
+- **Barrels**: press **B** (or the Barrels button) and click the map to drop an explosive barrel. Drag one to move it and press Delete
+  to remove it; the side panel has *Remove all barrels*. Barrels sit on the road surface (bridges included), and are nudged clear of the
+  barriers. They are drawn as little drums in the 3D view.
 - Save keeps the track in your browser. Export writes a `.json` file; import it from the menu.
 
-Track format (`version: 5`): `{ name, width, walls, handles: [{ x, y, z, w, bank, gap, lip, kick }] }` in metres and degrees.
+Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank, gap, lip, kick }], props: [{ type, x, z, y }] }` in metres and degrees.
 `lip` (ramp height, default 0.5) and `kick` (lip angle, default 0) only matter on points with a `gap`; older files load unchanged.
-`y` is the height of the lowest edge of the road. `bank > 0` lifts the left edge. Old editor files (v4) are migrated on load.
+`y` is the height of the lowest edge of the road. `bank > 0` lifts the left edge. Old editor files (v4, v5) are migrated on load. `props` are things dropped on the track (`type: "barrel"` for now) at world position `x`, `z`; `y` is the ground height where they were placed and only tells a bridge from the road under it.
 
 ## How it works
 
@@ -58,7 +61,11 @@ Track format (`version: 5`): `{ name, width, walls, handles: [{ x, y, z, w, bank
 | `src/trackGeometry.js` | Road, kerb, barrier and embankment meshes built to match the physics surface exactly (no three.js needed, so it is tested in Node). |
 | `src/editor.js` | The blueprint editor and height strip. |
 | `src/main.js` | Game loop (fixed 120 Hz physics, interpolated rendering), laps, respawn, menu. |
-| `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks and smoke. |
+| `src/props.js` | Barrels: rigid bodies that rest on the same analytic ground as the car, get pushed by an impulse from the car's hull, explode above a closing speed, throw their neighbours (chain reaction), shove the car and scatter scrap. No three.js, so it is tested in Node. **Tuning lives in `BARREL` and `BLAST` at the top.** |
+| `src/propsView.js` | Draws the barrels and scrap as instanced meshes. |
+| `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks, smoke, explosions and scorch marks. |
+
+Barrels: `BARREL.explodeSpeed` is the closing speed (m/s) at which a hit sets one off (slower hits just knock it over), `BLAST.carPush` is how hard an explosion shoves the car, and `BLAST.chainRadius` decides which neighbours go off too.
 
 Tuning the feel: in `CAR.tyre` lower `muFront` and `muRear` for a slidier car; in `CAR.susp` change the spring rates for more or less body roll; `CAR.engine` holds the torque curve and gear ratios.
 If the model's nose points the wrong way, set `MODEL.flip = true` in `src/carVisual.js`.
@@ -66,9 +73,9 @@ If the model's nose points the wrong way, set `MODEL.flip = true` in `src/carVis
 ## Migrating from the old version
 
 This replaces the single-file `index.html` and the `track-editor/` folder. You can delete `track-editor/`, `cars/car.gltf` (22 MB, the game uses `cars/car.glb`),
-and the sounds `boost`, `barrel`, `cluck`, `explosion` and `engine.mp3`, which are no longer used.
+and the sounds `boost` and `engine.mp3`, which are no longer used. Keep `barrel.mp3` and `explosion.mp3` (the barrels use them) and `cluck.mp3` (for the chickens, coming next).
 There are also Dropbox-style "conflicted copy" files inside `.git`, which are worth removing before they confuse git.
 
 ## Ideas for next
 
-Opponent cars, a damage model, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.
+Chickens (they go splat), scattered debris such as cones, crates and tyres, opponent cars, a damage model, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.

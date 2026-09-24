@@ -2,6 +2,7 @@
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
 import { makeTemplate, TEMPLATE_KEYS } from './templates.js';
+import { placeProp, BARREL } from './props.js';
 import { clamp, lerp } from './math.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,6 +19,7 @@ export class Editor {
     this.pc = $('ed-profile'); this.pg = this.pc.getContext('2d');
     this.def = null; this.track = null; this.analysis = { tight: [], crossings: [] };
     this.sel = -1; this.hover = -1;
+    this.tool = 'road'; this.selProp = -1; this.hoverProp = -1; this._ghost = null;   // tool: 'road' edits points, 'barrel' drops barrels
     this.view = { x: 0, z: 0, scale: 0.5 };
     this.undoStack = []; this.redoStack = [];
     this.drag = null; this.visible = false; this._raf = 0; this._analyzeT = 0;
@@ -31,7 +33,7 @@ export class Editor {
   // ------------------------------------------------------------- lifecycle
   open(def) {
     this.def = normalizeTrack(def);
-    this.undoStack = []; this.redoStack = []; this.sel = -1;
+    this.undoStack = []; this.redoStack = []; this.sel = -1; this.selProp = -1; this._setTool('road');
     this.visible = true;
     $('ed-name').value = this.def.name;
     this._resize(); this._resizeProfile();
@@ -55,16 +57,17 @@ export class Editor {
   _restore(str) {
     this.def = normalizeTrack(JSON.parse(str));
     if (this.sel >= this.def.handles.length) this.sel = -1;
+    this.selProp = -1;
     $('ed-name').value = this.def.name;
     this.rebuild(true); this.updateUI(); this.draw();
   }
   undo() { if (!this.undoStack.length) return; this.redoStack.push(JSON.stringify(this.def)); this._restore(this.undoStack.pop()); this._buttons(); }
   redo() { if (!this.redoStack.length) return; this.undoStack.push(JSON.stringify(this.def)); this._restore(this.redoStack.pop()); this._buttons(); }
-  _buttons() { $('ed-undo').disabled = !this.undoStack.length; $('ed-redo').disabled = !this.redoStack.length; $('ed-del').disabled = this.sel < 0 || this.def.handles.length <= 4; }
+  _buttons() { $('ed-undo').disabled = !this.undoStack.length; $('ed-redo').disabled = !this.redoStack.length; $('ed-del').disabled = this.selProp >= 0 ? false : (this.sel < 0 || this.def.handles.length <= 4); }
 
   rebuild(analyseNow = false) {
     try { this.track = new Track(this.def); } catch (e) { return; }
-    this.preview?.setTrack(this.track);
+    this.preview?.setTrack(this.track); this.preview?.setProps(this.def.props);
     clearTimeout(this._analyzeT);
     const run = () => { this.analysis = analyzeTrack(this.track); this.updateIssues(); this.draw(); };
     if (analyseNow) run(); else this._analyzeT = setTimeout(run, 140);
@@ -209,6 +212,9 @@ export class Editor {
       const [x, y] = this.toScreen(c.x, c.z); g.beginPath(); g.moveTo(x - 9, y - 9); g.lineTo(x + 9, y + 9); g.moveTo(x + 9, y - 9); g.lineTo(x - 9, y + 9); g.stroke();
     }
 
+    // props
+    this._drawProps(g);
+
     // handles
     this.def.handles.forEach((h, k) => {
       const [x, y] = this.toScreen(h.x, h.z), on = k === this.sel, hov = k === this.hover;
@@ -241,6 +247,23 @@ export class Editor {
       for (let x = Math.floor(x0 / step) * step; x <= x1; x += step) { const [sx] = this.toScreen(x, 0); g.moveTo(Math.round(sx) + 0.5, 0); g.lineTo(Math.round(sx) + 0.5, this.h); }
       for (let z = Math.floor(z0 / step) * step; z <= z1; z += step) { const [, sy] = this.toScreen(0, z); g.moveTo(0, Math.round(sy) + 0.5); g.lineTo(this.w, Math.round(sy) + 0.5); }
       g.stroke();
+    }
+  }
+
+  _drawProps(g) {
+    const S = this.view.scale, R = Math.max(4.5, BARREL.radius * S * 1.7);
+    const icon = (x, y, on, ghost) => {
+      g.globalAlpha = ghost ? 0.5 : 1;
+      g.beginPath(); g.arc(x, y, R, 0, 7); g.fillStyle = '#ff9d3a'; g.fill();
+      g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke();
+      g.beginPath(); g.arc(x, y, R * 0.45, 0, 7); g.fillStyle = '#7a2e0c'; g.fill();
+      g.globalAlpha = 1;
+    };
+    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false); });
+    if (this.tool === 'barrel' && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true);
+    if (this.selProp >= 0 && this.def.props[this.selProp]) {
+      const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z);
+      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText('Barrel', x + R + 6, y + 4);
     }
   }
 
@@ -292,7 +315,13 @@ export class Editor {
     $('ed-walls').checked = d.walls;
     this.updateInspector(); this.updateIssues(); this._buttons();
   }
+  updateProps() {
+    const n = this.def.props.length;
+    $('ed-props-count').textContent = n ? `${n} barrel${n === 1 ? '' : 's'} on the track.` : 'No barrels yet.';
+    $('ed-props-clear').disabled = !n;
+  }
   updateInspector() {
+    this.updateProps();
     const h = this.def.handles[this.sel];
     $('ed-none').hidden = !!h; $('ed-inspector').hidden = !h;
     this._buttons();
@@ -362,6 +391,30 @@ export class Editor {
     this.def.handles.forEach((h, k) => { const [x, y] = this.toScreen(h.x, h.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
     return best;
   }
+  _hitProp(sx, sy, r = 12) {
+    let best = -1, bd = r * r;
+    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
+    return best;
+  }
+  _setTool(t) {
+    this.tool = t; this._ghost = null;
+    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel'));
+    if (this.c) this.c.style.cursor = t === 'barrel' ? 'copy' : 'crosshair';
+  }
+  propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
+  addBarrel(sx, sy) {
+    if (!this.track) return;
+    const [wx, wz] = this.toWorld(sx, sy);
+    if (this.def.props.length >= 400) { this.cb.toast('That is enough barrels (400).'); return; }
+    const p = placeProp(this.track, wx, wz);
+    this.snapshot();
+    this.def.props.push({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
+    this.selProp = this.def.props.length - 1; this.sel = -1; this.updateInspector(); this.propsChanged();
+  }
+  removeProp() {
+    if (this.selProp < 0) return;
+    this.snapshot(); this.def.props.splice(this.selProp, 1); this.selProp = -1; this.propsChanged();
+  }
   _nearestSample(sx, sy, r = 14) {
     const t = this.track; let best = -1, bd = r * r;
     for (let i = 0; i < t.n; i++) { const [x, y] = this.toScreen(t.px[i], t.pz[i]), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = i; } }
@@ -381,6 +434,7 @@ export class Editor {
     this.insertAt(i);
   }
   removeSelected() {
+    if (this.selProp >= 0) { this.removeProp(); return; }
     if (this.sel < 0) return;
     if (this.def.handles.length <= 4) { this.cb.toast('A circuit needs at least 4 points.'); return; }
     this.snapshot(); this.def.handles.splice(this.sel, 1); this.sel = -1;
@@ -391,14 +445,28 @@ export class Editor {
     const c = this.c, pos = (e) => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     c.addEventListener('pointerdown', (e) => {
       const [sx, sy] = pos(e); c.setPointerCapture(e.pointerId);
-      const k = e.button === 0 ? this._hit(sx, sy) : -1;
-      if (k >= 0) { this.sel = k; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
-      else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false };
+      const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
+      if (k >= 0) { this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
+      else if (pk >= 0) { this.selProp = pk; this.sel = -1; this.drag = { type: 'prop', k: pk, moved: false }; this.updateInspector(); this.draw(); }
+      else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false, button: e.button };
     });
     c.addEventListener('pointermove', (e) => {
       const [sx, sy] = pos(e), d = this.drag;
-      if (!d) { const k = this._hit(sx, sy); if (k !== this.hover) { this.hover = k; c.style.cursor = k >= 0 ? 'grab' : 'crosshair'; this.draw(); } return; }
-      if (d.type === 'handle') {
+      if (!d) {
+        const k = this._hit(sx, sy), pk = k < 0 ? this._hitProp(sx, sy) : -1;
+        if (this.tool === 'barrel') this._ghost = pk < 0 && k < 0 ? [sx, sy] : null;
+        if (k !== this.hover || pk !== this.hoverProp || this.tool === 'barrel') {
+          this.hover = k; this.hoverProp = pk;
+          c.style.cursor = k >= 0 || pk >= 0 ? 'grab' : this.tool === 'barrel' ? 'copy' : 'crosshair'; this.draw();
+        }
+        return;
+      }
+      if (d.type === 'prop') {
+        if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
+        const [wx, wz] = this.toWorld(sx, sy), p = this.def.props[d.k], q = placeProp(this.track, wx, wz);
+        p.x = Math.round(q.x * 100) / 100; p.z = Math.round(q.z * 100) / 100; p.y = Math.round(q.y * 100) / 100;
+        this.propsChanged();
+      } else if (d.type === 'handle') {
         if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
         const [wx, wz] = this.toWorld(sx, sy), snap = e.altKey ? 0.1 : 2, h = this.def.handles[d.k];
         h.x = Math.round(wx / snap) * snap; h.z = Math.round(wz / snap) * snap;
@@ -409,13 +477,17 @@ export class Editor {
       }
     });
     const end = () => {
-      const d = this.drag; this.drag = null; c.style.cursor = 'crosshair';
-      if (d?.type === 'pan' && !d.moved) { this.sel = -1; this.updateInspector(); this.draw(); }
+      const d = this.drag; this.drag = null; c.style.cursor = this.tool === 'barrel' ? 'copy' : 'crosshair';
+      if (d?.type === 'pan' && !d.moved) {
+        if (this.tool === 'barrel' && d.button === 0) this.addBarrel(d.sx, d.sy);
+        else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
+      }
       if (d?.type === 'handle' && d.moved) this.rebuild(true);
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
     c.addEventListener('dblclick', (e) => {
-      const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0) return;
+      if (this.tool !== 'road') return;
+      const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
       const i = this._nearestSample(sx, sy); if (i >= 0) this.insertAt(i);
     });
     // Wheel / trackpad / Magic Mouse. Zoom follows how far you actually scrolled (so the stream of
@@ -432,6 +504,7 @@ export class Editor {
       const [sx, sy] = pos(e);
       this.zoomAt(sx, sy, Math.exp(clamp(-dy * k, -0.08, 0.08)));
     }, { passive: false });
+    c.addEventListener('pointerleave', () => { if (this._ghost) { this._ghost = null; this.draw(); } });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // elevation strip
@@ -461,6 +534,8 @@ export class Editor {
     // toolbar
     $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
+    $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All barrels removed.'); };
     $('ed-bank').onclick = () => {
       if (!this.track) return; this.snapshot();
       const banks = suggestBanks(this.track, 12); this.def.handles.forEach((h, i) => { h.bank = banks[i]; });
@@ -518,9 +593,10 @@ export class Editor {
       if (typing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'b' || e.key === 'B') { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); }
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
       else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }
-      else if (e.key === 'Escape') { this.sel = -1; this.updateInspector(); this.draw(); }
+      else if (e.key === 'Escape') { if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; } this.updateInspector(); this.draw(); }
       else if (e.key === '[' || e.key === ']') { const n = this.def.handles.length; this.sel = (((this.sel < 0 ? 0 : this.sel) + (e.key === ']' ? 1 : -1)) + n) % n; this.updateInspector(); this.draw(); }
     });
   }

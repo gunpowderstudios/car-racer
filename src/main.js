@@ -6,7 +6,9 @@ import { V3 } from './math.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
 import { CarVisual, ChaseCamera } from './carVisual.js';
-import { SkidMarks, Particles } from './effects.js';
+import { SkidMarks, Particles, Scorch } from './effects.js';
+import { Props } from './props.js';
+import { PropsView } from './propsView.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
 import { Hud, fmtTime } from './hud.js';
@@ -43,6 +45,9 @@ visual.load();
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
 const particles = new Particles(stage.scene);
+const scorch = new Scorch(stage.scene);
+const props = new Props();
+const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
 
@@ -97,11 +102,12 @@ function loadTrack(newDef) {
   track = new Track(def);
   stage.setTrack(track);
   hud.buildMap(track);
-  skid.clear(); particles.clear();
+  skid.clear(); particles.clear(); scorch.clear();
+  props.load(track, def.props); propsView.build(props);
   race.best = store.get('cr.best', {})[bestKey(track)] ?? null;
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
-  window.__game = { car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn };
+  window.__game = { car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -129,7 +135,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
-  skid.clear(); particles.clear();
+  skid.clear(); particles.clear(); scorch.clear(); props.reset();
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   hud.banner('Get to the start line', 1400);
@@ -147,7 +153,7 @@ function sim(seconds, inp) {
   const full = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false, ...inp };
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
-    car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track); simTime += DT; car.events.length = 0;
+    car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track); props.step(DT, car); simTime += DT; car.events.length = 0; props.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);
   }
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ); chase.snap(); acc = 0;
@@ -205,7 +211,9 @@ function stepPhysics(dt) {
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
+    props.step(DT, car);
     syncPose(); acc -= DT; n++; simTime += DT;
+    if (props.events.length) { propEvents(); }
     if (car.events.length) {
       for (const e of car.events) {
         sound.hit(e.speed, e.type); chase.impact(e.speed);
@@ -216,6 +224,19 @@ function stepPhysics(dt) {
   }
   if (n === 6) acc = 0;
   updateRace(dt);
+}
+
+/** Turn what the props did this step into noise, fire and shaking. */
+function propEvents() {
+  for (const e of props.events) {
+    if (e.type === 'blast') {
+      particles.blast(e.x, e.y, e.z);
+      if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
+      sound.explode(e.dist);
+      chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
+    } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
+  }
+  props.events.length = 0;
 }
 
 const boostLocal = new V3(), boostPos = new THREE.Vector3();
@@ -275,6 +296,7 @@ function frame(now) {
     sound.update(car, 0, false);
   }
   visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
+  propsView.update(props);
   stage.update(drawPos, camera.position);
   renderer.render(stage.scene, camera);
 }

@@ -20,6 +20,7 @@ export class Sound {
     await Promise.all([
       load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
+      load('explosion', 'sounds/explosion.mp3'), load('barrel', 'sounds/barrel.mp3'),
       load('music', 'sounds/background-music.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -96,4 +97,21 @@ export class Sound {
     s.buffer = b; s.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = Math.min(1, 0.25 + speed / 18) * (kind === 'ground' ? 0.7 : 1);
     s.connect(g).connect(this.sfx); s.start();
   }
+
+  /** One-shot sample. `dist` (m) fades it with distance; `cut` trims a long tail. */
+  _shot(name, gain, rate, dist = 0, cut = 0) {
+    if (!this.ready || !this.sfxOn) return;
+    const b = this.buf[name]; if (!b) return;
+    const g = gain * clamp01(1 - dist / 90); if (g < 0.02) return;
+    const s = this.ctx.createBufferSource(), gn = this.ctx.createGain(), t = this.ctx.currentTime;
+    s.buffer = b; s.playbackRate.value = rate; gn.gain.setValueAtTime(g, t);
+    if (cut) gn.gain.setTargetAtTime(0, t + cut, cut * 0.35);
+    s.connect(gn).connect(this.sfx); s.start(t); if (cut) s.stop(t + cut * 2.5);
+  }
+  /** A barrel going off. */
+  explode(dist = 0) { this._shot('explosion', 1, 0.92 + Math.random() * 0.16, dist); }
+  /** A drum being knocked about: a clang whose loudness follows how hard it was hit. */
+  clang(speed, dist = 0) { this._shot('barrel', Math.min(1, 0.4 + speed / 12), 0.85 + Math.random() * 0.4, dist, 0.6); }
 }
+
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
