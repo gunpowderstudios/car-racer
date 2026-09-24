@@ -15,6 +15,11 @@ export const SURF = { ROAD: 0, VERGE: 1, BASE: 2 };
 export const GROUND_Y = 0;          // flat terrain height far from the road
 export const WALL_GAP = 0.6;        // wall face sits this far outside the road edge
 export const WALL_HEIGHT = 1.25;
+export const WALL_T = 0.5;          // wall thickness
+// With walls, the strip between the road edge and the back of the wall is a flat kerb at
+// road height; the embankment only starts falling away behind the wall. (If the ground
+// sloped down into the wall face, cars dropped into a gutter and leaned on the wall.)
+export const APRON = WALL_GAP + WALL_T;
 export const SAMPLE_SPACING = 1.0;  // metres between road samples
 export const EMBANKMENT = 0.8;             // verge falls away this many metres per metre
 const CELL = 8;
@@ -99,6 +104,7 @@ function densePolyline(def) {
 export class Track {
   constructor(input) {
     this.def = normalizeTrack(input);
+    this.apron = this.def.walls ? APRON : 0;
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
   }
@@ -269,7 +275,7 @@ export class Track {
     } else {
       const sg = d < 0 ? -1 : 1;
       yEdge = Cy - (Nx * Lx * hw * sg + Nz * Lz * hw * sg) / Ny;
-      yc = Math.max(GROUND_Y, yEdge - (ad - hw) * EMBANKMENT);
+      yc = Math.max(GROUND_Y, yEdge - Math.max(0, ad - hw - this.apron) * EMBANKMENT);
     }
     if (out) {
       out.d = d; out.hw = hw; out.lx = Lx; out.lz = Lz; out.edgeY = yEdge; out.y = yc;
@@ -277,7 +283,9 @@ export class Track {
         out.surface = SURF.ROAD;
       } else {
         out.surface = SURF.VERGE;
-        if (yc > GROUND_Y + 1e-6) {           // sloping embankment: normal tilts away from the road
+        if (ad - hw <= this.apron) {          // flat kerb in front of / under the wall
+          Nx = 0; Ny = 1; Nz = 0;
+        } else if (yc > GROUND_Y + 1e-6) {    // sloping embankment: normal tilts away from the road
           const sg = d < 0 ? -1 : 1;
           Nx = Lx * sg * EMBANKMENT; Ny = 1; Nz = Lz * sg * EMBANKMENT;
         } else { Nx = 0; Ny = 1; Nz = 0; }

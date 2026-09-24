@@ -3,10 +3,9 @@
 // plane, a verge that falls away at EMBANKMENT m/m, and walls with their face WALL_GAP
 // outside the road edge.
 
-import { SURF, WALL_GAP, WALL_HEIGHT, EMBANKMENT, Track } from './track.js';
+import { SURF, WALL_GAP, WALL_HEIGHT, WALL_T, EMBANKMENT, Track } from './track.js';
 
 const KERB_W = 0.6;
-const WALL_T = 0.5;
 const SLAB = 0.7;                 // visible thickness of the road slab (matters on bridges)
 const C_ROAD_SIDE = [0.42, 0.41, 0.4];
 const C_KERB_A = [0.86, 0.2, 0.16], C_KERB_B = [0.93, 0.9, 0.84];
@@ -31,6 +30,7 @@ class Buf {
 export function buildTrackGeometry(track) {
   const n = track.n, L = track.length, hwAt = (i) => track.hw[i];
   const walls = track.def.walls;
+  const apron = track.apron;                                // flat kerb width before the verge falls away
   const road = new Buf(), kerb = new Buf(), bank = new Buf(), slab = new Buf(), wall = new Buf();
 
   // Surface point on the road plane at the edge (sg = +1 left, -1 right)
@@ -40,10 +40,10 @@ export function buildTrackGeometry(track) {
     const y = track.py[i] - (track.nx[i] * track.lx[i] * hw * sg + track.nz[i] * track.lz[i] * hw * sg) / track.ny[i];
     return [x, y, z];
   };
-  // A point k metres outside the edge on the verge (falls away at EMBANKMENT)
+  // A point k metres outside the edge on the verge (flat for `apron` m, then falls away at EMBANKMENT)
   const out = (i, sg, k) => {
     const e = edge(i, sg);
-    return [e[0] + track.lx[i] * sg * k, Math.max(0, e[1] - EMBANKMENT * k), e[2] + track.lz[i] * sg * k];
+    return [e[0] + track.lx[i] * sg * k, Math.max(0, e[1] - EMBANKMENT * Math.max(0, k - apron)), e[2] + track.lz[i] * sg * k];
   };
   const vgrid = L / Math.max(1, Math.round(L / 20));       // texture repeat length that divides the loop exactly
 
@@ -88,15 +88,16 @@ export function buildTrackGeometry(track) {
     const blockCol = (i, a, b) => (Math.floor(i / 5) % 2 ? a : b);
     strip(kerb, (i) => {
       const p0 = out(i, sg, 0), p1 = out(i, sg, KERB_W);
-      const nn = [track.lx[i] * sg * EMBANKMENT * 0.5, 1, track.lz[i] * sg * EMBANKMENT * 0.5];
+      const nn = walls ? [0, 1, 0] : [track.lx[i] * sg * EMBANKMENT * 0.5, 1, track.lz[i] * sg * EMBANKMENT * 0.5];
       const c = blockCol(i, C_KERB_A, C_KERB_B);
       return [{ p: p0, n: nn, c }, { p: p1, n: nn, c }];
     }, 2, sv);
     strip(bank, (i) => {
-      const e = out(i, sg, KERB_W);
+      const k0 = Math.max(KERB_W, apron);                   // with walls the bank starts behind them
+      const e = out(i, sg, k0);
       const yEnd = e[1];
       const kEnd = yEnd > 0.02 ? yEnd / EMBANKMENT : 0.05;
-      const q = out(i, sg, KERB_W + kEnd);
+      const q = out(i, sg, k0 + kEnd);
       const nn = [track.lx[i] * sg * EMBANKMENT, 1, track.lz[i] * sg * EMBANKMENT];
       const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
       const c = [C_GRASS[0] * shade, C_GRASS[1] * shade, C_GRASS[2] * shade];

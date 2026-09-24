@@ -44,6 +44,7 @@ export const CAR = {
   },
   brakeTotal: 1.4 * 1450 * G,   // N, before tyre limits
   brakeBias: 0.62,              // front share
+  wallBounce: 0.3,              // restitution against barriers on a solid hit
   aero: { drag: 0.55, down: 0.33 },   // 0.5*rho*CdA and 0.5*rho*ClA
   steer: { max: 0.55, rate: 4.2, returnRate: 6.5 },
   // Body outline used for ground and wall contact (local coords: x left, y up, z forward)
@@ -482,7 +483,8 @@ export class Vehicle {
         if (pass === 0 && pen > corrPen) { corrPen = pen; corrN = n.clone(); }
         if (vn >= 0) continue;
         const rr = r.clone(), nn = n.clone();
-        const e = -vn > 3 ? 0.22 : 0;
+        // restitution ramps in with impact speed: a resting nudge doesn't bounce, a real hit does
+        const e = this.spec.wallBounce * clamp((-vn - 0.5) / 2.5, 0, 1);
         const j = -(1 + e) * vn / this._kAt(rr, nn);
         this._impulse(nn, j, rr);
         if (pass === 0 && -vn > worstV) { worstV = -vn; wx = p.x; wy = p.y; wz = p.z; }
