@@ -1,14 +1,18 @@
 // Visual car (glTF model aligned to the physics wheels) and the chase camera.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
 import { Track } from './track.js';
 
 // Measurements of cars/car.glb (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
+// cars/car-textured.glb is the textured car.gltf, baked into the same position and scale,
+// so these numbers fit both. Models that carry their own textures keep their materials;
+// untextured ones get the paint colour from the menu.
 export const MODEL = {
-  url: 'cars/car.glb',
+  url: 'cars/car-textured.glb',
   frontAxleX: -62, rearAxleX: 45,
   centerZ: 3.5845, groundY: -9.3037,
   flip: false,            // set true if your model's nose points the other way
@@ -38,14 +42,28 @@ export class CarVisual {
 
   setPaint(hex) { this.material.color.set(hex); }
 
+  /** True once a model with its own texture is showing (the paint colour no longer applies). */
+  get textured() { return this.hasTexture === true; }
+
   async load(url = MODEL.url) {
     try {
-      const gltf = await new GLTFLoader().loadAsync(url);
+      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
       const model = gltf.scene;
+      this.hasTexture = false;
       model.traverse((o) => {
         if (!o.isMesh) return;
         if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
-        o.material = this.material; o.castShadow = false; o.receiveShadow = false;
+        o.castShadow = false; o.receiveShadow = false;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        if (mats.some((m) => m && m.map)) {
+          this.hasTexture = true;
+          for (const m of mats) {
+            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = 8;
+            m.envMapIntensity = 0.8;
+          }
+        } else {
+          o.material = this.material;
+        }
       });
       const wb = CAR.wheelbase;
       const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
@@ -61,6 +79,7 @@ export class CarVisual {
       this.holder.remove(this.placeholder);
       this.holder.add(model);
       this.loaded = true;
+      this.onLoad?.(this);
     } catch (e) {
       console.warn('Could not load car model, using a box.', e);
     }

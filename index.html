@@ -21,6 +21,15 @@
     <div id="lap-best">No best lap yet</div>
   </div>
   <canvas id="minimap" width="220" height="220" aria-label="Track map"></canvas>
+  <div id="sound-ctl">
+    <button id="cog" type="button" aria-label="Sound settings" aria-expanded="false" aria-controls="sound-pop" title="Sound">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="3.38 3.38"/><circle cx="12" cy="12" r="5.4" fill="none" stroke="currentColor" stroke-width="3.4"/></svg>
+    </button>
+    <div id="sound-pop" hidden>
+      <label><input id="hud-sfx" type="checkbox"> Sound effects</label>
+      <label><input id="hud-music" type="checkbox"> Music</label>
+    </div>
+  </div>
   <div id="banner" role="status" aria-live="polite"></div>
   <div id="speed-plate">
     <div id="rpm" aria-hidden="true"></div>

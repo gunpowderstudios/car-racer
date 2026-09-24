@@ -37,6 +37,7 @@ stage.setShadows(opts.shadow);
 const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
 visual.setPaint(PAINTS[opts.paint][1]);
+visual.onLoad = (v) => { $('swatches').hidden = v.textured; };   // a textured car brings its own paint
 visual.load();
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
@@ -60,8 +61,22 @@ const input = new Input({
   onMenu: () => (mode === 'drive' ? showMenu() : null),
   onEditor: () => mode === 'drive' && openEditor(def),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
-  onMusic: () => { sound.setEnabled('music', !sound.musicOn); $('opt-music').checked = sound.musicOn; },
+  onMusic: () => { sound.setEnabled('music', !sound.musicOn); syncSoundUI(); },
 });
+
+// ------------------------------------------------------------ in-game sound cog
+function syncSoundUI() {
+  $('opt-sfx').checked = $('hud-sfx').checked = sound.sfxOn;
+  $('opt-music').checked = $('hud-music').checked = sound.musicOn;
+  $('cog').classList.toggle('off', !sound.sfxOn && !sound.musicOn);
+}
+function setSoundPop(open) { $('sound-pop').hidden = !open; $('cog').setAttribute('aria-expanded', String(open)); }
+$('cog').addEventListener('click', (e) => { e.stopPropagation(); setSoundPop($('sound-pop').hidden); e.currentTarget.blur(); });
+for (const [id, kind] of [['hud-sfx', 'sfx'], ['hud-music', 'music']]) {
+  $(id).addEventListener('change', (e) => { sound.setEnabled(kind, e.target.checked); syncSoundUI(); e.target.blur(); });   // blur so Space stays the handbrake
+}
+addEventListener('pointerdown', (e) => { if (!$('sound-ctl').contains(e.target)) setSoundPop(false); });
+syncSoundUI();
 
 // --------------------------------------------------------------------- track
 function loadTrack(newDef) {
@@ -243,6 +258,7 @@ function debugText() {
 
 // --------------------------------------------------------------------- modes
 function setMode(m) {
+  if (m !== 'drive') setSoundPop(false);
   mode = m; document.body.className = 'mode-' + m;
   $('hud').hidden = m !== 'drive';
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
@@ -309,8 +325,8 @@ function bindMenu() {
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
-  bindOpt('opt-sfx', 'sfx', (v) => sound.setEnabled('sfx', v));
-  bindOpt('opt-music', 'music', (v) => sound.setEnabled('music', v));
+  bindOpt('opt-sfx', 'sfx', (v) => { sound.setEnabled('sfx', v); syncSoundUI(); });
+  bindOpt('opt-music', 'music', (v) => { sound.setEnabled('music', v); syncSoundUI(); });
   const sw = $('swatches');
   PAINTS.forEach(([name, hex], i) => {
     const b = document.createElement('button'); b.type = 'button'; b.title = name; b.setAttribute('role', 'radio'); b.setAttribute('aria-label', name);
