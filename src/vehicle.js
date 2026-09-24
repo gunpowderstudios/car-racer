@@ -33,7 +33,7 @@ export const CAR = {
     arbFront: 18000, arbRear: 12000, bump: 200000, bumpDamp: 9000,
   },
   tyre: {
-    muFront: 1.04, muRear: 1.08, B: 9.5, C: 1.45, E: 0,
+    muFront: 1.15, muRear: 1.2, B: 11, C: 1.25, E: 0,
     loadSens: 0.07, nominalLoad: 3700, maxTyreLoad: 8500, slideMu: 0.8, rolling: 0.014,
   },
   engine: {
