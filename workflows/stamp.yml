@@ -1,0 +1,24 @@
+name: stamp build
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  stamp:
+    # ignore the stamp commit itself
+    if: "!contains(github.event.head_commit.message, '[stamp]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write build stamp
+        run: |
+          STAMP="$(git rev-parse --short HEAD) $(TZ=Europe/London date '+%-d %b %H:%M')"
+          sed -i "s|^export const BUILD = .*|export const BUILD = '${STAMP}';|" src/version.js
+          cat src/version.js
+      - name: Commit stamp
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/version.js
+          git diff --cached --quiet || (git commit -m "[stamp] build stamp" && git push)
