@@ -3,15 +3,16 @@ import * as THREE from 'three';
 import { BARREL } from './props.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
+const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
 
 /** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
 function drumGeometry() {
-  const r = BARREL.radius, h = BARREL.height / 2;
-  const prof = [[0, -h], [r * 0.9, -h], [r, -h + 0.03], [r, -0.17], [r * 0.95, -0.15], [r, -0.13], [r, 0.13], [r * 0.95, 0.15], [r, 0.17], [r, h - 0.03], [r * 0.9, h], [0, h]];
+  const r = BARREL.radius, h = BARREL.height / 2, k = BARREL.height / 0.9;       // details scale with the drum
+  const prof = [[0, -h], [r * 0.9, -h], [r, -h + 0.03 * k], [r, -0.17 * k], [r * 0.95, -0.15 * k], [r, -0.13 * k], [r, 0.13 * k], [r * 0.95, 0.15 * k], [r, 0.17 * k], [r, h - 0.03 * k], [r * 0.9, h], [0, h]];
   const g = new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 18);
   const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
-    const y = Math.abs(pos.getY(i)), end = y > h - 0.06 ? 0.55 : 1, ring = Math.abs(y - 0.15) < 0.025 ? 0.82 : 1;
+    const y = Math.abs(pos.getY(i)), end = y > h - 0.06 * k ? 0.55 : 1, ring = Math.abs(y - 0.15 * k) < 0.025 * k ? 0.82 : 1;
     col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = end * ring;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -51,14 +52,19 @@ export class PropsView {
     const im = this.drums;
     if (im) {
       let dirty = force;
+      let paint = false;
       props.barrels.forEach((b, i) => {
-        const settled = !b.alive || b.asleep;                                  // hasn't moved since it was last drawn
+        // a lit drum blinks white-hot, faster and faster is not needed: the fuse is short
+        const want = b.alive && b.fuse >= 0 && Math.floor(b.fuse * 12) % 2 === 0 ? 1 : 0;
+        if (b._col !== want) { im.setColorAt(i, want ? HOT : PAINT[b.paint]); b._col = want; paint = true; }
+        const settled = (!b.alive || b.asleep) && b.fuse < 0;                  // hasn't moved since it was last drawn
         if (!force && settled && b._drawn) return;
         if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(i, this._m); }
         else im.setMatrixAt(i, this._zero);
         b._drawn = settled; dirty = true;
       });
       if (dirty) im.instanceMatrix.needsUpdate = true;
+      if (paint && im.instanceColor) im.instanceColor.needsUpdate = true;
     }
     const bm = this.bits;
     if (bm) {

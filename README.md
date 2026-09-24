@@ -61,11 +61,11 @@ Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank
 | `src/trackGeometry.js` | Road, kerb, barrier and embankment meshes built to match the physics surface exactly (no three.js needed, so it is tested in Node). |
 | `src/editor.js` | The blueprint editor and height strip. |
 | `src/main.js` | Game loop (fixed 120 Hz physics, interpolated rendering), laps, respawn, menu. |
-| `src/props.js` | Barrels: rigid bodies that rest on the same analytic ground as the car, get pushed by an impulse from the car's hull, explode above a closing speed, throw their neighbours (chain reaction), shove the car and scatter scrap. No three.js, so it is tested in Node. **Tuning lives in `BARREL` and `BLAST` at the top.** |
+| `src/props.js` | Barrels: rigid bodies that rest on the same analytic ground as the car, get pushed by an impulse from the car's hull, light a fuse when hit and explode after a short delay, throw their neighbours (chain reaction), shove the car and scatter scrap. No three.js, so it is tested in Node. **Tuning lives in `BARREL` and `BLAST` at the top.** |
 | `src/propsView.js` | Draws the barrels and scrap as instanced meshes. |
 | `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks, smoke, explosions and scorch marks. |
 
-Barrels: `BARREL.explodeSpeed` is the closing speed (m/s) at which a hit sets one off (slower hits just knock it over), `BLAST.carPush` is how hard an explosion shoves the car, and `BLAST.chainRadius` decides which neighbours go off too.
+Barrels: `BARREL.lightSpeed` is the closing speed (m/s) at which a hit lights the fuse (slower nudges just knock it about), `BARREL.fuse` is the delay before it goes off, `BARREL.bounce` how lively it is, `BARREL.radius`/`height` its size, `BLAST.carPush` is how hard an explosion shoves the car, and `BLAST.chainRadius` decides which neighbours go off too.
 
 Tuning the feel: in `CAR.tyre` lower `muFront` and `muRear` for a slidier car; in `CAR.susp` change the spring rates for more or less body roll; `CAR.engine` holds the torque curve and gear ratios.
 If the model's nose points the wrong way, set `MODEL.flip = true` in `src/carVisual.js`.

@@ -2,6 +2,7 @@
 // the Track samples (road ribbon, elevation curtains, supports), so it can rebuild on every
 // drag without stalling. The game itself still uses trackGeometry.js.
 import * as THREE from 'three';
+import { BARREL } from './props.js';
 
 const INK = 0xeaf6ff, AMBER = 0xffc857, PAPER = 0x10335f, LINE = 0x7fb8e6, RED = 0xff6b5e;
 
@@ -159,8 +160,8 @@ export class EditorPreview {
     // props: a little drum standing on the road for each barrel, sized up when the track is big
     if (this.props.length) {
       const k = Math.max(1, this.radius / 140);
-      const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.32 * k, 0.32 * k, 0.9 * k, 10), this.propMat, this.props.length), m = new THREE.Matrix4();
-      this.props.forEach((p, i) => { const g = t.groundAt(p.x, p.z, p.y + 0.5, undefined, true); m.makeTranslation(p.x, (g.y + 0.45 * k) * ex, p.z); im.setMatrixAt(i, m); });
+      const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(BARREL.radius * k, BARREL.radius * k, BARREL.height * k, 10), this.propMat, this.props.length), m = new THREE.Matrix4();
+      this.props.forEach((p, i) => { const g = t.groundAt(p.x, p.z, p.y + 0.5, undefined, true); m.makeTranslation(p.x, (g.y + BARREL.height / 2 * k) * ex, p.z); im.setMatrixAt(i, m); });
       im.frustumCulled = false; this.group.add(im);
     }
 

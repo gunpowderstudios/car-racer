@@ -17,12 +17,15 @@ const G = 9.81;
 const UP = new V3(0, 1, 0);
 
 export const BARREL = {
-  radius: 0.30, height: 0.90, mass: 65,
-  reach: 0.33, step: 0.27,       // three spheres this far apart along the axis stand in for the cylinder
+  radius: 0.36, height: 1.08, mass: 100,
+  reach: 0.396, step: 0.324,     // three spheres this far apart along the axis stand in for the cylinder
   mu: 0.7,                       // tyre-on-tarmac-ish friction of a steel rim
-  bounce: 0.25,                  // restitution for a proper knock (soft touches don't bounce)
-  explodeSpeed: 12,              // closing speed (m/s) with the car that sets a barrel off
-  chainSpeed: 14,                // barrel-on-barrel or barrel-on-wall, same idea
+  bounce: 0.5,                   // how lively it is: 0 = dead thud, 1 = perfect rubber ball
+  bounceAbove: 1.5,              // impacts softer than this (m/s) don't bounce, so resting barrels stay put
+  lightSpeed: 3,                 // a hit from the car at this closing speed (m/s) lights the fuse
+  chainSpeed: 8,                 // barrel-on-barrel or barrel-on-wall, same idea
+  fuse: 0.7,                     // seconds between being lit and going off
+  clangSpeed: 1.5,               // impacts at least this hard make the clang sound
 };
 export const BLAST = {
   radius: 10,                    // barrels and the car feel it this far away
@@ -183,9 +186,11 @@ export class Props {
   }
 
   _wake(b) { b.asleep = false; b.still = 0; }
+  /** Light the fuse (or shorten it, never lengthen it): the barrel goes off after `delay` seconds. */
+  _light(b, delay) { if (b.alive && (b.fuse < 0 || b.fuse > delay)) b.fuse = delay; }
 
   _emitClang(b, speed, x, y, z) {
-    if (b.clang > 0 || speed < 2) return;
+    if (b.clang > 0 || speed < BARREL.clangSpeed) return;
     b.clang = 0.18;
     this.events.push({ type: 'clang', speed, x, y, z, dist: this._carDist(x, y, z) });
   }
@@ -217,7 +222,7 @@ export class Props {
       const rel = (vB.x - vC.x) * n.x + (vB.y - vC.y) * n.y + (vB.z - vC.z) * n.z;
       if (rel >= 0) continue;
       const rn = sX.cross(r, n), invB = 1 / BARREL.mass + rn.lengthSq() / INERTIA, invC = car.invMassAt(n, p);
-      const e = -rel > 2.5 ? BARREL.bounce : 0;
+      const e = -rel > BARREL.bounceAbove ? BARREL.bounce : 0;
       const j = -(1 + e) * rel / (invB + invC);
       b.vel.addScaled(n, j / BARREL.mass); b.w.addScaled(rn, j / INERTIA);
       car.impulseAt(n, -j, p);
@@ -228,8 +233,8 @@ export class Props {
         const rt = sX.cross(r, vt), jt = Math.min(0.35 * j, vtl / (1 / BARREL.mass + rt.lengthSq() / INERTIA));
         b.vel.addScaled(vt, -jt / BARREL.mass); b.w.addScaled(rt, -jt / INERTIA);
       }
-      if (-rel >= BARREL.explodeSpeed) b.boom = true;
-      else this._emitClang(b, -rel, p.x, p.y, p.z);
+      if (-rel >= BARREL.lightSpeed) this._light(b, BARREL.fuse);
+      this._emitClang(b, -rel, p.x, p.y, p.z);
     }
   }
 
@@ -248,7 +253,7 @@ export class Props {
     // ground: a plane through the ground point under the drum, with the local surface normal
     T.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.6, g);
     const gx = b.pos.x, gy = g.y, gz = b.pos.z, nx = g.nx, ny = g.ny, nz = g.nz;
-    let contacts = 0, maxPen = 0;
+    let contacts = 0, maxPen = 0, impact = 0;
     const rx = this._rx || (this._rx = new Float64Array(72)), dist = this._dist || (this._dist = new Float64Array(24));
     for (let k = 0; k < 24; k++) {
       sV.set(RIM[k * 3], RIM[k * 3 + 1], RIM[k * 3 + 2]); b.q.rotate(sV, sX);
@@ -257,15 +262,23 @@ export class Props {
       if (dist[k] < 0 && -dist[k] > maxPen) maxPen = -dist[k];
     }
     if (maxPen > 0) {
-      const n = sN.set(nx, ny, nz);
+      const n = sN.set(nx, ny, nz), tgt = this._tgt || (this._tgt = new Float64Array(24));
+      // Bounce: decide how fast each touching point should leave from how fast it arrived (before any
+      // impulse is applied), so a barrel that lands on several rim points still rebounds as one body.
+      for (let k = 0; k < 24; k++) {
+        tgt[k] = 0;
+        if (dist[k] >= 0.004) continue;
+        const r = sR.set(rx[k * 3], rx[k * 3 + 1], rx[k * 3 + 2]), vn0 = sVa.cross(b.w, r).add(b.vel).dot(n);
+        if (-vn0 > BARREL.bounceAbove) { tgt[k] = -vn0 * BARREL.bounce; if (-vn0 > impact) impact = -vn0; }
+      }
       for (let it = 0; it < 3; it++) {
         for (let k = 0; k < 24; k++) {
           if (dist[k] >= 0.004) continue;
           const r = sR.set(rx[k * 3], rx[k * 3 + 1], rx[k * 3 + 2]);
           const vp = sVa.cross(b.w, r).add(b.vel), vn = vp.dot(n);
-          if (vn >= 0) continue;
+          if (vn >= tgt[k]) continue;
           const rn = sX.cross(r, n), inv = 1 / BARREL.mass + rn.lengthSq() / INERTIA;
-          const e = -vn > 2.5 ? BARREL.bounce : 0, j = -(1 + e) * vn / inv;
+          const j = (tgt[k] - vn) / inv;
           b.vel.addScaled(n, j / BARREL.mass); b.w.addScaled(rn, j / INERTIA);
           const vp2 = sVa.cross(b.w, r).add(b.vel), vn2 = vp2.dot(n);
           const vt = sT.set(vp2.x - n.x * vn2, vp2.y - n.y * vn2, vp2.z - n.z * vn2), vtl = vt.length();
@@ -280,6 +293,7 @@ export class Props {
       const push = Math.min(Math.max(0, maxPen - 0.002), 0.15) * 0.8;
       b.pos.x += nx * push; b.pos.y += ny * push; b.pos.z += nz * push;
     }
+    if (impact >= BARREL.clangSpeed) this._emitClang(b, impact, b.pos.x, b.pos.y - BARREL.height / 2, b.pos.z);
     // rolling resistance on the ground, hardly any in the air
     if (contacts > 0) { b.vel.scale(Math.exp(-0.3 * dt)); b.w.scale(Math.exp(-1.0 * dt)); }
     else b.w.scale(Math.exp(-0.1 * dt));
@@ -307,9 +321,10 @@ export class Props {
     b.pos.x += dx * pen; b.pos.z += dz * pen;
     const vn = b.vel.x * dx + b.vel.z * dz;
     if (vn < 0) {
-      b.vel.x -= (1.35) * vn * dx; b.vel.z -= (1.35) * vn * dz;
-      if (-vn >= BARREL.chainSpeed) b.boom = true;
-      else this._emitClang(b, -vn, b.pos.x, b.pos.y, b.pos.z);
+      const k = 1 + BARREL.bounce;
+      b.vel.x -= k * vn * dx; b.vel.z -= k * vn * dz;
+      if (-vn >= BARREL.chainSpeed) this._light(b, BARREL.fuse);
+      this._emitClang(b, -vn, b.pos.x, b.pos.y, b.pos.z);
     }
   }
 
@@ -323,7 +338,7 @@ export class Props {
         const c = bs[j]; if (!c.alive) continue;
         if (!c.asleep && j < i) continue;                                   // two awake ones: do the pair once
         const dx = c.pos.x - a.pos.x, dy = c.pos.y - a.pos.y, dz = c.pos.z - a.pos.z;
-        if (dx * dx + dy * dy + dz * dz > 3.24) continue;
+        if (dx * dx + dy * dy + dz * dz > 4.84) continue;
         this._pair(a, c);
       }
     }
@@ -350,12 +365,12 @@ export class Props {
     if (rel >= 0) return;
     const rna = sT.cross(ra, n), rnc = sV.cross(rc, n);
     const inv = 2 / BARREL.mass + (rna.lengthSq() + rnc.lengthSq()) / INERTIA;
-    const e = -rel > 2.5 ? 0.3 : 0, j = -(1 + e) * rel / inv;
+    const e = -rel > BARREL.bounceAbove ? BARREL.bounce : 0, j = -(1 + e) * rel / inv;
     a.vel.addScaled(n, -j / BARREL.mass); a.w.addScaled(rna, -j / INERTIA);
     c.vel.addScaled(n, j / BARREL.mass); c.w.addScaled(rnc, j / INERTIA);
     if (-rel > 0.3) this._wake(c);
-    if (-rel >= BARREL.chainSpeed) { a.boom = true; c.boom = true; }
-    else this._emitClang(a, -rel, p.x, p.y, p.z);
+    if (-rel >= BARREL.chainSpeed) { this._light(a, BARREL.fuse); this._light(c, BARREL.fuse); }
+    this._emitClang(a, -rel, p.x, p.y, p.z);
   }
 
   // ------------------------------------------------------- explosions
@@ -390,7 +405,7 @@ export class Props {
       o.vel.y += BLAST.lift * (0.4 + k);
       o.w.set((rnd() - 0.5) * 16 * k, (rnd() - 0.5) * 16 * k, (rnd() - 0.5) * 16 * k);
       this._wake(o);
-      if (d <= BLAST.chainRadius && o.fuse < 0) o.fuse = 0.07 + d * 0.045;
+      if (d <= BLAST.chainRadius) this._light(o, 0.07 + d * 0.045);
     }
 
     // the car feels it too: pushed away from the blast and given a bump

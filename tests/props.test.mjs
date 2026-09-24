@@ -21,14 +21,15 @@ function setup(points, base = DRAG_DEF) {
 /** Drive straight at `speed` (holding it), stepping the barrels too. Returns what happened. */
 function drive(track, props, speed, seconds, z0 = -385) {
   const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, z0), 0, speed);
-  const log = { blasts: [], clangs: 0, slowest: speed };
+  const log = { blasts: [], clangs: 0, clangTimes: [], slowest: speed, minUp: 1 };
   for (let i = 0; i < seconds / DT; i++) {
     const err = speed - car.speed;
     car.step(DT, { throttle: Math.max(0, Math.min(1, err / 3 + 0.15)), brake: 0, steer: 0, handbrake: false }, track);
     props.step(DT, car);
-    for (const e of props.events) { if (e.type === 'blast') log.blasts.push({ t: i * DT, dist: e.dist }); else if (e.type === 'clang') log.clangs++; }
+    for (const e of props.events) { if (e.type === 'blast') log.blasts.push({ t: i * DT, dist: e.dist }); else if (e.type === 'clang') { log.clangs++; log.clangTimes.push(i * DT); } }
     props.events.length = 0;
-    log.slowest = Math.min(log.slowest, car.speed);
+    if (!log.blasts.length) log.slowest = Math.min(log.slowest, car.speed);          // before any blast: what the drum itself cost
+    log.minUp = Math.min(log.minUp, props.barrels[0].axis.y);
   }
   return { car, log };
 }
@@ -86,39 +87,66 @@ test('barrels settle upright, fall asleep, and do not creep on banks and hills',
 
 // ------------------------------------------------------------ hitting
 
-test('a gentle knock moves a barrel without setting it off; a hard hit explodes it', () => {
+test('a soft nudge does not light a barrel; a proper hit does, and it goes off a moment later', () => {
   {
     const { track, props } = setup([[0, -350]]);
-    const { log } = drive(track, props, 9, 8);
-    assert.equal(log.blasts.length, 0, 'should not explode at 9 m/s');
-    assert.ok(log.clangs > 0, 'should clang');
+    const { log } = drive(track, props, 2, 45 / 2 + 5);
+    assert.equal(log.blasts.length, 0, 'a 2 m/s nudge should not set it off');
     assert.ok(props.barrels[0].alive);
-    assert.ok(props.barrels[0].pos.z > -345, 'was pushed along');
   }
-  for (const v of [14, 25, 45]) {
+  for (const v of [5, 9, 20, 45]) {
     const { track, props } = setup([[0, -350]]);
-    const { car, log } = drive(track, props, v, 6);
+    const { log } = drive(track, props, v, 45 / v + 5);
     assert.equal(log.blasts.length, 1, `one blast at ${v} m/s`);
-    assert.ok(log.blasts[0].dist < 4, 'the car was right next to it');
-    assert.ok(!props.barrels[0].alive);
+    assert.ok(log.clangs > 0, 'the hit clangs');
+    const delay = log.blasts[0].t - log.clangTimes[0];
+    assert.ok(delay > BARREL.fuse - 0.15 && delay < BARREL.fuse + 0.15, `blast came ${delay.toFixed(2)} s after the hit, fuse is ${BARREL.fuse}`);
     assert.ok(props.bits.some((p) => p.life > 0), 'scrap was thrown');
-    assert.ok(v - log.slowest < 9, `the blast slows the car by a few m/s, not ${v - log.slowest}`);
-    assert.ok(car.ay.y > 0.9, 'the car stays the right way up');
   }
 });
 
-test('the car pushes a drum with a real impulse: a 65 kg barrel barely dents a 1450 kg car', () => {
+test('a lit barrel keeps flying and bouncing during the delay, and the fuse counts down on it', () => {
   const { track, props } = setup([[0, -350]]);
-  const { log } = drive(track, props, 9, 8);
-  assert.ok(9 - log.slowest < 1.5, `lost ${9 - log.slowest} m/s to one drum`);
+  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -385), 0, 15);
+  let lit = null, moved = 0;
+  for (let i = 0; i < 4 / DT; i++) {
+    car.step(DT, { throttle: 0.4, brake: 0, steer: 0, handbrake: false }, track); props.step(DT, car); props.events.length = 0;
+    const b = props.barrels[0];
+    if (lit === null && b.fuse >= 0) lit = { z: b.pos.z, fuse: b.fuse };
+    if (lit && b.alive) moved = Math.max(moved, b.pos.z - lit.z);
+  }
+  assert.ok(lit && lit.fuse <= BARREL.fuse + 1e-9, 'fuse was lit');
+  assert.ok(moved > 3, `it travelled ${moved.toFixed(1)} m with the fuse burning`);
 });
 
-test('a knocked drum tumbles over instead of sliding along upright', () => {
+test('barrels are 20% bigger than the first version', () => {
+  assert.ok(Math.abs(BARREL.height / 0.9 - 1.2) < 1e-9 && Math.abs(BARREL.radius / 0.3 - 1.2) < 1e-9);
+});
+
+test('a dropped barrel bounces, and clangs when it lands', () => {
+  const { props } = setup([[0, 0]]);
+  const b = props.barrels[0]; b.asleep = false; b.pos.y += 3;
+  const impacts = []; let vLand = 0, vUp = 0, landed = false;
+  for (let i = 0; i < 300; i++) {
+    const vBefore = b.vel.y;
+    props.step(DT, null);
+    for (const e of props.events) if (e.type === 'clang') impacts.push(e.speed);
+    props.events.length = 0;
+    if (!landed && b.vel.y > 0 && vBefore < 0) { landed = true; vLand = -vBefore; vUp = b.vel.y; }
+  }
+  assert.ok(landed && vLand > 6, 'it fell fast enough to matter: ' + vLand.toFixed(1));
+  assert.ok(vUp > 0.25 * vLand, `it rebounded at ${vUp.toFixed(1)} m/s after landing at ${vLand.toFixed(1)}`);
+  assert.ok(impacts.length >= 2 && impacts[0] > 5, 'clang on landing, and again on the bounce: ' + impacts.map((v) => v.toFixed(1)));
+  for (let i = 0; i < 480; i++) props.step(DT, null);
+  assert.ok(b.asleep, 'and it comes to rest');
+});
+
+test('a hit at 9 m/s costs the car very little, and a drum tumbles rather than sliding along upright', () => {
   for (const v of [9, 11]) {
     const { track, props } = setup([[0, -350]]);
-    drive(track, props, v, 45 / v + 3);
-    assert.ok(props.barrels[0].alive);
-    assert.ok(props.barrels[0].axis.y < 0.5, `at ${v} m/s it ended with axis.y ${props.barrels[0].axis.y.toFixed(2)}`);
+    const { log } = drive(track, props, v, 45 / v + 3);
+    assert.ok(v - log.slowest < 2, `lost ${(v - log.slowest).toFixed(1)} m/s to one drum at ${v}`);
+    assert.ok(log.minUp < 0.5, `at ${v} m/s it went over (min axis.y ${log.minUp.toFixed(2)})`);
   }
 });
 
@@ -133,16 +161,18 @@ test('an explosion sets off the barrels beside it, one after another, and throws
   assert.ok(Math.hypot(far.pos.x, far.pos.z + 300) < 6, 'and has hardly moved');
 });
 
-test('a barrel thrown by a blast is really thrown', () => {
-  const { track, props } = setup([[0, -350], [6, -350]]);
-  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -385), 0, 25);
-  let maxUp = 0, maxSpeed = 0;
-  for (let i = 0; i < 4 / DT; i++) {
-    car.step(DT, { throttle: 0.3, brake: 0, steer: 0, handbrake: false }, track); props.step(DT, car); props.events.length = 0;
-    const b = props.barrels[1];
-    if (b.alive) { maxUp = Math.max(maxUp, b.pos.y - 1.1); maxSpeed = Math.max(maxSpeed, b.vel.length()); }
+test('a barrel next to one that goes off is thrown clear and set off in turn', () => {
+  const { props } = setup([[0, 0], [2.5, 0], [30, 0]]);
+  props._light(props.barrels[0], 0.1);
+  let thrown = 0, blasts = 0;
+  for (let i = 0; i < 3 / DT; i++) {
+    props.step(DT, null);
+    blasts += props.events.filter((e) => e.type === 'blast').length; props.events.length = 0;
+    thrown = Math.max(thrown, props.barrels[1].vel.length());
   }
-  assert.ok(maxSpeed > 3, 'flung at ' + maxSpeed.toFixed(1) + ' m/s');
+  assert.ok(thrown > 4, 'flung at ' + thrown.toFixed(1) + ' m/s');
+  assert.equal(blasts, 2, 'the neighbour went off too');
+  assert.ok(props.barrels[2].alive, 'the one 30 m away did not');
 });
 
 // -------------------------------------------------------------- walls
@@ -189,6 +219,6 @@ test('a pile of 60 barrels hit at 40 m/s stays finite, quick and leaves the car 
 });
 
 test('constants stay sane', () => {
-  assert.ok(BARREL.explodeSpeed > 5 && BARREL.explodeSpeed < BARREL.chainSpeed);
+  assert.ok(BARREL.lightSpeed < BARREL.chainSpeed && BARREL.fuse > 0.2 && BARREL.fuse < 2);
   assert.ok(BLAST.chainRadius < BLAST.radius);
 });
