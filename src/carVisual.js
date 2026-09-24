@@ -8,7 +8,7 @@ import { Track } from './track.js';
 // Measurements of cars/car.glb (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
 export const MODEL = {
-  url: '../cars/car.glb',
+  url: 'cars/car.glb',
   frontAxleX: -62, rearAxleX: 45,
   centerZ: 3.5845, groundY: -9.3037,
   flip: false,            // set true if your model's nose points the other way

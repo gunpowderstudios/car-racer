@@ -18,9 +18,9 @@ export class Sound {
     this.music = c.createGain(); this.music.gain.value = this.musicOn ? 0.22 : 0; this.music.connect(this.master);
     const load = async (name, url) => { try { const r = await fetch(url); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); } catch { /* optional */ } };
     await Promise.all([
-      load('engine', '../sounds/engine-loop-loud.ogg'), load('screech', '../sounds/tyre-screech.mp3'),
-      load('crash', '../sounds/crash.mp3'), load('shunt', '../sounds/shunt.mp3'), load('scrape', '../sounds/scrape.mp3'),
-      load('music', '../sounds/background-music.mp3'),
+      load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
+      load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
+      load('music', 'sounds/background-music.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
     this.screech = this._loop('screech', this.sfx, 0);
