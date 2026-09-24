@@ -1,11 +1,11 @@
 # Car Racer
 
-A 3D racing game with heavy, slidey 70s muscle-car handling (think the original *Driver*) and a track
-editor built into the same page. No build step: open it through any static web server.
+A 3D racing game with heavy, slidey 70s muscle-car handling (think the original *Driver*), a destruction derby
+against rival cars, and a track editor built into the same page. No build step: open it through any static web server.
 
 ```
 npm start            # then open http://localhost:8080
-npm test             # physics, track and geometry tests (Node 20+, no dependencies)
+npm test             # physics, track, barrel and derby tests (Node 20+, no dependencies)
 ```
 
 Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump straight in, and `&edit=1` to open the editor.
@@ -19,7 +19,7 @@ Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump st
 | Space | boost: a nitro push while held. The meter under the speedo drains in about 3 s and refills in about 9 s |
 | Shift | handbrake: locks the rear wheels for handbrake turns |
 | R | put the car back on the road (also happens automatically if you flip or fall off) |
-| Backspace | restart: back to the start line with a fresh lap and a full boost tank |
+| Backspace | restart: back to the start line with a fresh lap, a full boost tank and (in the derby) a new set of rivals and a repaired car |
 | C | camera: chase, high, bumper |
 | E | open the track editor with the current track |
 | Esc | menu, M music, F3 telemetry |
@@ -27,6 +27,33 @@ Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump st
 Gamepad (right trigger, left trigger, left stick, A or X boost, B or RB handbrake, Y reset, Back restart) and touch controls also work.
 The controls bar along the bottom of the screen shows the keys; its buttons (Restart, Back on road, Camera, Edit, Menu) can be clicked too.
 The menu has a **drift assist** option that counter-steers when the rear axle slides.
+
+## Destruction derby
+
+Rival cars share the track with you. Wreck as many as you can before your own car goes up. It is on by default; the menu's
+Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10).
+
+- **Damage is per zone.** Every car has four: front, back, left and right, each with its own hit points. A crash damages the zone that was
+  actually touched, in proportion to how hard the hit was (closing speed and the mass of both cars); a nudge under about 3 m/s does nothing.
+  A hit also crumples the two zones either side of it a little. **The first zone to run out wrecks the car.**
+- **Your car is a banger built for the job.** It is tougher than a rival everywhere, and the front has extra plate welded on: lots of hit
+  points *and* it soaks half of every hit. The rear and sides are much easier to kill, so keep your tail out of the way. The chart at the left
+  of the screen shows all four zones (green to red, flashing when hit); when one hits zero you explode and the game is over.
+- **Score.** Wrecking a rival that you hit within the last 6 seconds is a *Takedown*, worth 100. That includes rivals caught in the blast of
+  one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
+- **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners and traffic, take the jump, and
+  reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost).
+  A wrecked rival burns for a while as an obstacle, then a fresh one is dropped on the road far from you.
+- **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
+  barrels beside it. Lay barrels in the editor to build a proper killing ground.
+
+Everything you would want to tune is in the open at the top of `src/damage.js` (`ARMOUR`, `DAMAGE`, `SPECS`), `src/derby.js` (`DERBY`, `POINTS`)
+and `src/ai.js` (`AI`).
+
+**Adding another way to score** is one line: put a new entry in `POINTS` in `src/derby.js` (for example `landing: 50`) and call
+`derby.award('landing')` from wherever the event is detected. `award(kind, mult, label)` adds the points, shows "+50 Landing" in the points
+feed and does nothing once you are wrecked. A good jump landing would go in `main.js` where `car.airTime` drops back to zero; a barrel
+scoring would go where `propEvents()` sees a `blast`.
 
 ## The track editor
 
@@ -63,7 +90,11 @@ Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank
 | `src/main.js` | Game loop (fixed 120 Hz physics, interpolated rendering), laps, respawn, menu. |
 | `src/props.js` | Barrels: rigid bodies that rest on the same analytic ground as the car, get pushed by an impulse from the car's hull, light a fuse when hit and explode after a short delay, throw their neighbours (chain reaction), shove the car and scatter scrap. No three.js, so it is tested in Node. **Tuning lives in `BARREL` and `BLAST` at the top.** |
 | `src/propsView.js` | Draws the barrels and scrap as instanced meshes. |
-| `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks, smoke, explosions and scorch marks. |
+| `src/derby.js` | The derby: rivals, car-against-car collisions (five spheres per car, impulses at the point of contact), damage, wrecks, replacements and `award()` for scoring. No three.js. |
+| `src/damage.js` | Zones, hit points, armour and the crash / wall / blast damage formulas. No three.js. |
+| `src/ai.js` | The rival driver: follows the road, avoids traffic, takes jumps, hunts you. Produces the same throttle / brake / steer a person would. No three.js. |
+| `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks, smoke, explosions and scorch marks. `carVisual.js` also paints the rival cars: the model's texture is hue-shifted once per colour and shared. |
+| `src/hud.js` | The DOM heads-up display, including the derby score, damage chart, points feed and game-over card. |
 
 Barrels: `BARREL.lightSpeed` is the closing speed (m/s) at which a hit lights the fuse (slower nudges just knock it about), `BARREL.fuse` is the delay before it goes off, `BARREL.bounce` how lively it is, `BARREL.radius`/`height` its size, `BLAST.carPush` is how hard an explosion shoves the car, and `BLAST.chainRadius` decides which neighbours go off too.
 
@@ -78,4 +109,4 @@ There are also Dropbox-style "conflicted copy" files inside `.git`, which are wo
 
 ## Ideas for next
 
-Chickens (they go splat), scattered debris such as cones, crates and tyres, opponent cars, a damage model, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.
+Chickens (they go splat), scattered debris such as cones, crates and tyres, points for clean jump landings and barrels, difficulty that ramps up with your score, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.

@@ -19,6 +19,54 @@ export const MODEL = {
   paint: 0xd9482b,
 };
 
+// Paint jobs for the rival cars. `rot` turns the hue of the model's (orange) texture; `sat` washes it out.
+// Each look is made once, the first time a rival wears it, and shared by every car with that look.
+export const RIVAL_LOOKS = [
+  { name: 'Yellow', rot: 38, sat: 1.05, val: 1.05, tint: 0xe8c22a },
+  { name: 'Green', rot: 115, sat: 0.9, val: 0.95, tint: 0x3f9a55 },
+  { name: 'Teal', rot: 160, sat: 0.95, val: 1.0, tint: 0x2aa6a0 },
+  { name: 'Blue', rot: 215, sat: 1.0, val: 1.0, tint: 0x3a6fd0 },
+  { name: 'Violet', rot: 270, sat: 0.95, val: 1.0, tint: 0x7d52c8 },
+  { name: 'Pink', rot: 320, sat: 0.95, val: 1.05, tint: 0xd8558f },
+  { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
+];
+const recoloured = new WeakMap();           // source texture -> Map(look -> texture)
+
+/** A copy of `tex` with the look applied, or null if the picture can't be read back (then the caller tints instead). */
+function recolour(tex, look) {
+  let per = recoloured.get(tex);
+  if (!per) recoloured.set(tex, per = new Map());
+  if (per.has(look)) return per.get(look);
+  let out = null;
+  try {
+    const img = tex.image, w = img.width, h = img.height;
+    if (!w || !h) throw new Error('no picture');
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const data = g.getImageData(0, 0, w, h), px = data.data;
+    const a = look.rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    // the standard hue-rotation matrix
+    const m0 = 0.213 + c * 0.787 - sn * 0.213, m1 = 0.715 - c * 0.715 - sn * 0.715, m2 = 0.072 - c * 0.072 + sn * 0.928;
+    const m3 = 0.213 - c * 0.213 + sn * 0.143, m4 = 0.715 + c * 0.285 + sn * 0.140, m5 = 0.072 - c * 0.072 - sn * 0.283;
+    const m6 = 0.213 - c * 0.213 - sn * 0.787, m7 = 0.715 - c * 0.715 + sn * 0.715, m8 = 0.072 + c * 0.928 + sn * 0.072;
+    const sat = look.sat, val = look.val;
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], gg = px[i + 1], b = px[i + 2];
+      let R = m0 * r + m1 * gg + m2 * b, G = m3 * r + m4 * gg + m5 * b, B = m6 * r + m7 * gg + m8 * b;
+      const l = 0.299 * R + 0.587 * G + 0.114 * B;
+      R = (l + (R - l) * sat) * val; G = (l + (G - l) * sat) * val; B = (l + (B - l) * sat) * val;
+      px[i] = R < 0 ? 0 : R > 255 ? 255 : R; px[i + 1] = G < 0 ? 0 : G > 255 ? 255 : G; px[i + 2] = B < 0 ? 0 : B > 255 ? 255 : B;
+    }
+    g.putImageData(data, 0, 0);
+    out = new THREE.CanvasTexture(cv);
+    out.flipY = tex.flipY; out.colorSpace = tex.colorSpace; out.wrapS = tex.wrapS; out.wrapT = tex.wrapT;
+    out.minFilter = tex.minFilter; out.magFilter = tex.magFilter; out.anisotropy = tex.anisotropy; out.channel = tex.channel;
+  } catch (e) { console.warn('Could not recolour the rival texture, tinting instead.', e); out = null; }
+  per.set(look, out);
+  return out;
+}
+
 export class CarVisual {
   constructor(scene, restHeight) {
     this.restHeight = restHeight;
@@ -40,7 +88,50 @@ export class CarVisual {
     this.loaded = false;
   }
 
-  setPaint(hex) { this.material.color.set(hex); }
+  setPaint(hex) { this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1; }
+
+  /**
+   * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
+   * and give it a paint job from RIVAL_LOOKS. Returns false if `src` hasn't finished loading yet.
+   */
+  adopt(src, look) {
+    if (this.loaded || !src.loaded || !src.model) return false;
+    const model = src.model.clone(true);
+    this.mats = [];
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material.clone();
+      if (m.map) {
+        const t = recolour(m.map, look);
+        if (t) m.map = t; else m.color.set(look.tint);
+      } else m.color.set(look.tint);
+      m.userData.base = m.color.clone();
+      o.material = m; o.castShadow = false; o.receiveShadow = false;
+      this.mats.push(m);
+    });
+    this.holder.rotation.copy(src.holder.rotation);
+    this.holder.remove(this.placeholder);
+    this.holder.add(model);
+    this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
+    this._lookKey = -1;
+    return true;
+  }
+
+  /**
+   * Show damage: `dark` (1 = fresh, 0 = burnt black) dims the paint, `flash` (0..1) lights the car up red for a moment.
+   * Nothing is touched until the values change, so calling it every frame is cheap.
+   */
+  setLook(dark, flash = 0) {
+    const key = Math.round(dark * 50) * 100 + Math.round(flash * 20);
+    if (key === this._lookKey) return;
+    this._lookKey = key;
+    const list = this.mats && this.mats.length ? this.mats : [this.material];
+    for (const m of list) {
+      const base = m.userData.base || (m.userData.base = m.color.clone());
+      m.color.copy(base).multiplyScalar(dark);
+      m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
+    }
+  }
 
   /** True once a model with its own texture is showing (the paint colour no longer applies). */
   get textured() { return this.hasTexture === true; }
@@ -50,6 +141,7 @@ export class CarVisual {
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
       const model = gltf.scene;
       this.hasTexture = false;
+      this.mats = [];
       model.traverse((o) => {
         if (!o.isMesh) return;
         if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
@@ -60,9 +152,11 @@ export class CarVisual {
           for (const m of mats) {
             for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = 8;
             m.envMapIntensity = 0.8;
+            this.mats.push(m);
           }
         } else {
           o.material = this.material;
+          this.mats.push(this.material);
         }
       });
       const wb = CAR.wheelbase;
@@ -78,6 +172,7 @@ export class CarVisual {
       }
       this.holder.remove(this.placeholder);
       this.holder.add(model);
+      this.model = model; this._lookKey = -1;
       this.loaded = true;
       this.onLoad?.(this);
     } catch (e) {

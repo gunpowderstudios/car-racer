@@ -36,7 +36,7 @@ export class Particles {
   constructor(scene) {
     const map = puffTexture();
     this.smoke = []; this.sparks = [];
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 180; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xd9d4cf, transparent: true, depthWrite: false, opacity: 0 }));
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1 }; scene.add(s); this.smoke.push(s);
     }
@@ -45,13 +45,13 @@ export class Particles {
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1 }; scene.add(s); this.sparks.push(s);
     }
     this.flames = [];
-    for (let i = 0; i < 48; i++) {
+    for (let i = 0; i < 96; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xff8a2a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1 }; scene.add(s); this.flames.push(s);
     }
     // fireballs: bigger and longer-lived than exhaust flames, with a white-hot flash sprite first
     this.hot = [];
-    for (let i = 0; i < 44; i++) {
+    for (let i = 0; i < 80; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xffb040, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1, flash: false }; scene.add(s); this.hot.push(s);
     }
@@ -73,22 +73,32 @@ export class Particles {
     s.position.set(x, y, z); d.v.set(vx + (Math.random() - 0.5) * 0.8, vy + Math.random() * 0.4, vz + (Math.random() - 0.5) * 0.8);
     d.life = d.max = 0.1 + Math.random() * 0.08; d.size = 0.55 + Math.random() * 0.2; s.visible = true;
   }
-  /** A barrel going off: flash, fireball, lingering black smoke and a spray of sparks. */
-  blast(x, y, z) {
+  /** A barrel going off: flash, fireball, lingering black smoke and a spray of sparks. `scale` 1 is a drum; a car uses about 1.7. */
+  blast(x, y, z, scale = 1) {
     const R = Math.random, hot = (flash, vx, vy, vz, life, size) => {
       const s = this.hot[this.hi++ % this.hot.length], d = s.userData;
       s.position.set(x, y, z); d.v.set(vx, vy, vz); d.life = d.max = life; d.size = size; d.flash = flash; s.visible = true;
     };
-    hot(true, 0, 0, 0, 0.16, 12);
+    hot(true, 0, 0, 0, 0.16 + 0.05 * (scale - 1), 12 * scale);
     for (let i = 0; i < 16; i++) {
-      const a = R() * Math.PI * 2, h = 1 + R() * 6;
-      hot(false, Math.cos(a) * h, 1.5 + R() * 6, Math.sin(a) * h, 0.35 + R() * 0.45, 2.6 + R() * 2.2);
+      const a = R() * Math.PI * 2, h = (1 + R() * 6) * scale;
+      hot(false, Math.cos(a) * h, (1.5 + R() * 6) * scale, Math.sin(a) * h, 0.35 + R() * 0.45 + 0.15 * (scale - 1), (2.6 + R() * 2.2) * scale);
     }
     for (let i = 0; i < 12; i++) {
-      const a = R() * Math.PI * 2, h = R() * 3;
-      this.puff(x + Math.cos(a) * h * 0.4, y + R(), z + Math.sin(a) * h * 0.4, Math.cos(a) * h * 5, Math.sin(a) * h * 5, 3.2 + R() * 2.5, 1.6 + R() * 1.4, 0x3a3538);
+      const a = R() * Math.PI * 2, h = R() * 3 * scale;
+      this.puff(x + Math.cos(a) * h * 0.4, y + R(), z + Math.sin(a) * h * 0.4, Math.cos(a) * h * 5, Math.sin(a) * h * 5, (3.2 + R() * 2.5) * scale, 1.6 + R() * 1.4, 0x3a3538);
     }
-    for (let i = 0; i < 18; i++) this.spark(x, y, z, (R() - 0.5) * 8, 3 + R() * 6, (R() - 0.5) * 8);
+    for (let i = 0; i < 18 * scale; i++) this.spark(x, y, z, (R() - 0.5) * 8 * scale, (3 + R() * 6) * scale, (R() - 0.5) * 8 * scale);
+  }
+  /** Fire licking off a burning car: a few short flames and a plume of smoke, called every frame with the car's centre. */
+  burn(x, y, z, vx, vz, dt, heavy = 1) {
+    const R = Math.random;
+    if (R() < 26 * dt * heavy) {
+      const s = this.flames[this.fi++ % this.flames.length], d = s.userData;
+      s.position.set(x + (R() - 0.5) * 1.4, y + 0.3 + R() * 0.5, z + (R() - 0.5) * 1.6);
+      d.v.set(vx * 0.3 + (R() - 0.5), 2 + R() * 2.5, vz * 0.3 + (R() - 0.5)); d.life = d.max = 0.28 + R() * 0.22; d.size = 1.0 + R() * 0.8; s.visible = true;
+    }
+    if (R() < 9 * dt * heavy) this.puff(x + (R() - 0.5), y + 0.8, z + (R() - 0.5), vx, vz, 2.4 + R() * 1.6, 1.4 + R() * 1.1, 0x2b2729);
   }
   update(dt) {
     for (const s of this.hot) {

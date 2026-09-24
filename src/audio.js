@@ -90,11 +90,12 @@ export class Sound {
     if (this.scrape) this.scrape.gain.gain.setTargetAtTime(on * (car.scraping ? 0.6 : 0), t, 0.04);
   }
 
-  hit(speed, kind = 'wall') {
+  hit(speed, kind = 'wall', dist = 0) {
     if (!this.ready || !this.sfxOn) return;
+    const near = clamp01(1 - dist / 90); if (near < 0.03) return;       // a crash across the track is quieter
     const b = this.buf[speed > 9 ? 'crash' : 'shunt'] || this.buf.crash; if (!b) return;
     const s = this.ctx.createBufferSource(), g = this.ctx.createGain();
-    s.buffer = b; s.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = Math.min(1, 0.25 + speed / 18) * (kind === 'ground' ? 0.7 : 1);
+    s.buffer = b; s.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = Math.min(1, 0.25 + speed / 18) * (kind === 'ground' ? 0.7 : 1) * near;
     s.connect(g).connect(this.sfx); s.start();
   }
 

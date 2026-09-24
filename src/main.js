@@ -2,10 +2,13 @@
 import * as THREE from 'three';
 import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
-import { V3 } from './math.js';
+import { Derby, DERBY } from './derby.js';
+import { IDLE } from './ai.js';
+import { ZONE_LABEL } from './damage.js';
+import { V3, lerp } from './math.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
-import { CarVisual, ChaseCamera } from './carVisual.js';
+import { CarVisual, ChaseCamera, RIVAL_LOOKS } from './carVisual.js';
 import { SkidMarks, Particles, Scorch } from './effects.js';
 import { Props } from './props.js';
 import { PropsView } from './propsView.js';
@@ -24,7 +27,7 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or blocked */ } },
 };
-const opts = Object.assign({ assist: true, kmh: false, shadow: true, paint: 0 }, store.get('cr.opts', {}));
+const opts = Object.assign({ assist: true, kmh: false, shadow: true, paint: 0, derby: true, rivals: DERBY.rivals }, store.get('cr.opts', {}));
 const userTracks = () => store.get('cr.tracks', {});
 const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
 
@@ -50,6 +53,11 @@ const props = new Props();
 const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
+const derby = new Derby();
+const views = new Map();            // rival id -> CarVisual
+const viewPool = [];                // visuals of rivals that have gone, ready to be reused
+const derbyBest = () => store.get('cr.derby', {});
+let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
 
 let mode = 'menu', track = null, def = null, hasPlayed = false;
 let paused = false;
@@ -59,6 +67,7 @@ let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0;
 let throttleNow = 0, wallSpot = null;
 const race = { unwrapped: 0, max: 0, lastS: null, index: -1, lapStart: null, laps: 0, best: null, reverseT: 0, lastTime: null };
 const safe = { s: 0, off: 0, t: 0 };
+const mapDots = [];
 const trouble = { flipped: 0, lost: 0 };
 
 const input = new Input({
@@ -107,7 +116,8 @@ function loadTrack(newDef) {
   race.best = store.get('cr.best', {})[bestKey(track)] ?? null;
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
-  window.__game = { car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props };
+  derbyStart();
+  window.__game = { car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -138,10 +148,12 @@ function restartRace() {
   skid.clear(); particles.clear(); scorch.clear(); props.reset();
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
-  hud.banner('Get to the start line', 1400);
+  derbyStart();
+  hud.banner(derby.enabled ? 'Wreck them all' : 'Get to the start line', 1400);
 }
 
 function respawn() {
+  if (derby.over) return;
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
   race.reverseT = 0;
@@ -153,7 +165,9 @@ function sim(seconds, inp) {
   const full = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false, ...inp };
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
-    car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track); props.step(DT, car); simTime += DT; car.events.length = 0; props.events.length = 0;
+    car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track);
+    if (derby.enabled) derby.step(DT);
+    props.step(DT, derby.enabled ? derby.cars : car); simTime += DT; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);
   }
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ); chase.snap(); acc = 0;
@@ -205,15 +219,18 @@ function updateRace(dt) {
 
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
-  const inp = input.read();
+  const raw = input.read();
+  const inp = derby.over ? IDLE : raw;          // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   acc += dt; let n = 0;
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
-    props.step(DT, car);
+    if (derby.enabled) derby.step(DT);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
+    props.step(DT, derby.enabled ? derby.cars : car);
     syncPose(); acc -= DT; n++; simTime += DT;
     if (props.events.length) { propEvents(); }
+    if (derby.events.length) { derbyEvents(); }
     if (car.events.length) {
       for (const e of car.events) {
         sound.hit(e.speed, e.type); chase.impact(e.speed);
@@ -234,9 +251,114 @@ function propEvents() {
       if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
       sound.explode(e.dist);
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
+      if (derby.enabled) derby.blast(e.x, e.y, e.z);
     } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
   }
   props.events.length = 0;
+}
+
+// ------------------------------------------------------- destruction derby
+function derbyStart() {
+  derby.enabled = !!opts.derby;
+  if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
+  clearViews(); overAt = 0; overInfo = null;
+  visual.setLook(1, 0);
+  hud.derbyMode(derby.enabled);
+  if (derby.enabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
+}
+
+/** Turn what the derby did this step into noise, fire, shaking and messages. */
+const groundQ = Track.newQuery();
+function derbyEvents() {
+  for (const e of derby.events) {
+    if (e.type === 'hit') {
+      sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car', e.dist);
+      if (e.player) chase.impact(e.speed);
+      const n = Math.min(10, 2 + e.speed * 0.5);
+      for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
+    } else if (e.type === 'damage') {
+      if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
+    } else if (e.type === 'wreck') {
+      particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
+      const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
+      if (e.y - g.y < 2.5) scorch.add(e.x, g.y, e.z, g.nx, g.ny, g.nz, 3.4);
+      sound.explode(e.dist);
+      if (e.dist < 45) chase.impact(Math.max(0, 1 - e.dist / 45) * 22);
+      props.shock(e.x, e.y, e.z, 8);                  // a burning car sets off drums beside it
+      if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
+    } else if (e.type === 'award') {
+      hud.feed(`+${e.points} ${e.label}`);
+    } else if (e.type === 'over') {
+      const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
+      if (isBest) { all[key] = e.score; store.set('cr.derby', all); }
+      overInfo = { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: `${ZONE_LABEL[e.zone]} destroyed` };
+      overAt = performance.now() + 1800;
+      hud.banner('Wrecked', 1700);
+    }
+  }
+  derby.events.length = 0;
+}
+
+// ----- how the rivals look
+const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+function makeView(f) {
+  let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
+  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
+  v.root.visible = true; v.root.scale.setScalar(0.001);
+  views.set(f.id, v);
+  return v;
+}
+function releaseView(id) {
+  const v = views.get(id); if (!v) return;
+  v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
+}
+function clearViews() { for (const id of [...views.keys()]) releaseView(id); }
+
+/** Place each rival's visual at its (interpolated) physics pose. At most two new ones are built per frame. */
+function syncViews(a) {
+  let made = 0;
+  for (const f of derby.fighters) {
+    if (f.isPlayer) continue;
+    let v = views.get(f.id);
+    if (f.gone) { if (v) releaseView(f.id); continue; }
+    if (!v) { if (made >= 2) continue; v = makeView(f); made++; }
+    if (!v.loaded && visual.loaded) v.adopt(visual, RIVAL_LOOKS[f.hue]);
+    const p = f.prev, c = f.cur;
+    v.root.position.set(lerp(p.x, c.x, a), lerp(p.y, c.y, a), lerp(p.z, c.z, a));
+    qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
+    v.root.quaternion.slerpQuaternions(qa, qb, a);
+    let k = Math.min(1, f.age / 0.5);                                          // fade a new rival in
+    if (f.wrecked && f.wreckT > DERBY.wreckLife) k = 1 - (f.wreckT - DERBY.wreckLife) / DERBY.wreckFade;   // and a burnt-out one away
+    v.root.scale.setScalar(Math.max(k, 0.001));
+    const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
+    v.root.visible = dx * dx + dz * dz < 300 * 300;                            // 200,000 triangles each: skip the far ones
+    v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
+  }
+}
+
+// ----- smoke and fire
+const zoneLocal = { front: new V3(0, 0.45, 1.8), back: new V3(0, 0.4, -1.9), left: new V3(0.8, 0.4, 0.2), right: new V3(-0.8, 0.4, 0.2) };
+const fxPos = new V3();
+function derbyFx(dt) {
+  for (const f of derby.fighters) {
+    if (f.gone) continue;
+    const c = f.car;
+    if (!f.isPlayer) {
+      const dx = c.pos.x - camera.position.x, dz = c.pos.z - camera.position.z;
+      if (dx * dx + dz * dz > 160 * 160) continue;
+    }
+    if (f.wrecked) {
+      if (f.isPlayer || f.wreckT < DERBY.wreckLife) particles.burn(c.pos.x, c.pos.y, c.pos.z, c.vel.x, c.vel.z, dt, f.isPlayer ? 1 : Math.max(0.3, 1 - f.wreckT / DERBY.wreckLife));
+      continue;
+    }
+    const w = f.health.worst;
+    if (w >= 0.55) continue;
+    // hurt: smoke (and, when nearly dead, flames) from the weakest part
+    c.toWorld(zoneLocal[f.health.worstZone], fxPos);
+    const heavy = w < 0.25;
+    if (Math.random() < (heavy ? 18 : 8) * dt) particles.puff(fxPos.x, fxPos.y, fxPos.z, c.vel.x, c.vel.z, heavy ? 1.9 : 1.4, 0.8 + Math.random() * 0.5, heavy ? 0x1d1b1d : 0x9d9893);
+    if (heavy && Math.random() < 6 * dt) particles.flame(fxPos.x, fxPos.y, fxPos.z, c.vel.x * 0.5, 1.5, c.vel.z * 0.5);
+  }
 }
 
 const boostLocal = new V3(), boostPos = new THREE.Vector3();
@@ -281,8 +403,17 @@ function frame(now) {
     chase.update(dt, drawPos, drawQ, velV, track);
     effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best });
-    hud.drawMap(car);
-    sound.update(car, throttleNow, true);
+    if (derby.enabled) {
+      hud.setScore(derby.score, derby.takedowns, derby.alive);
+      hud.setDamage(derby.player.health);
+      derbyFx(dt);
+      visual.setLook(derby.over ? 0.12 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
+      mapDots.length = 0;
+      for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
+      if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
+    }
+    hud.drawMap(car, derby.enabled ? mapDots : null);
+    sound.update(car, throttleNow, !derby.over);
     if (!$('debug').hidden) debugText();
   } else {
     drawPos.copy(curPos); drawQ.copy(curQ);
@@ -296,6 +427,7 @@ function frame(now) {
     sound.update(car, 0, false);
   }
   visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
+  if (derby.enabled || views.size) syncViews(mode === 'drive' ? acc / DT : 1);
   propsView.update(props);
   stage.update(drawPos, camera.position);
   renderer.render(stage.scene, camera);
@@ -324,7 +456,7 @@ function startDriving(newDef) {
   sound.init();
   if (newDef) loadTrack(newDef);
   hasPlayed = true; setMode('drive'); last = performance.now();
-  hud.banner('Get to the start line', 1600);
+  hud.banner(derby.enabled ? 'Wreck them all' : 'Get to the start line', 1600);
 }
 function openEditor(d) {
   setMode('edit'); editor.open(d || def || makeTemplate('kidney'));
@@ -379,6 +511,11 @@ function renderMenu() {
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
+  bindOpt('opt-derby', 'derby', (v) => { opts.derby = v; if (track) derbyStart(); });
+  const rv = $('opt-rivals'); rv.value = String(opts.rivals);
+  rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
+  $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };
+  $('go-menu').onclick = () => showMenu();
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
   bindOpt('opt-sfx', 'sfx', (v) => { sound.setEnabled('sfx', v); syncSoundUI(); });

@@ -1,4 +1,7 @@
-// DOM heads-up display: speed, gear, RPM strip, lap timing, minimap, banner messages.
+// DOM heads-up display: speed, gear, RPM strip, lap timing, minimap, banner messages,
+// and the destruction-derby score, damage chart and game-over card.
+import { ZONES } from './damage.js';
+
 const $ = (id) => document.getElementById(id);
 
 export const fmtTime = (t) => {
@@ -16,6 +19,11 @@ export class Hud {
     this.segs = [...this.el.rpm.children];
     this.kmh = false; this._bt = 0; this._last = {};
     this.mapCache = null;
+    // destruction derby panels
+    this.dz = {}; this.dt = {};
+    for (const z of ZONES) { this.dz[z] = $('dz-' + z); this.dt[z] = $('dt-' + z); }
+    this.d = { score: $('derby-score'), num: $('ds-score'), sub: $('ds-sub'), card: $('dmg-card'), feed: $('feed'), over: $('gameover') };
+    this._flash = {};
   }
   setUnits(kmh) { this.kmh = kmh; this.el.unit.textContent = kmh ? 'km/h' : 'mph'; }
 
@@ -51,6 +59,62 @@ export class Hud {
     }
   }
 
+  // ------------------------------------------------------------ destruction derby
+  /** Show or hide the score and damage panels (they only make sense in derby mode). */
+  derbyMode(on) {
+    this.d.score.hidden = !on; this.d.card.hidden = !on;
+    if (!on) { this.d.feed.textContent = ''; this.hideGameOver(); }
+    this._last.ds = this._last.dmg = null;
+  }
+
+  /** Score, wrecks and how many rivals are still running. */
+  setScore(score, wrecked, rivals) {
+    const k = score + '|' + wrecked + '|' + rivals;
+    if (k === this._last.ds) return;
+    this._last.ds = k;
+    this.d.num.textContent = score.toLocaleString('en-GB');
+    this.d.sub.textContent = `${wrecked} wrecked \u00b7 ${rivals} rivals`;
+  }
+
+  /** The four-part damage chart. `health` is a damage.js Health. */
+  setDamage(health, hitZone = null) {
+    const parts = [];
+    for (const z of ZONES) parts.push(Math.round(health.frac(z) * 100));
+    if (hitZone) { this._flash[hitZone] = performance.now() + 220; }
+    const now = performance.now();
+    const k = parts.join(',') + '|' + ZONES.map((z) => (this._flash[z] > now ? 1 : 0)).join('');
+    if (k === this._last.dmg) return;
+    this._last.dmg = k;
+    ZONES.forEach((z, i) => {
+      const pct = parts[i], el = this.dz[z];
+      el.style.fill = pct <= 0 ? '#120a0a' : `hsl(${Math.round(pct * 1.15)} 78% ${pct < 30 ? 42 : 38}%)`;
+      el.classList.toggle('hit', this._flash[z] > now);
+      el.classList.toggle('low', pct > 0 && pct < 30);
+      this.dt[z].textContent = pct <= 0 ? '\u2716' : String(pct);
+    });
+  }
+  /** Whether a zone flash is still fading (so setDamage keeps being called until it is). */
+  get flashing() { const n = performance.now(); return ZONES.some((z) => this._flash[z] > n); }
+
+  /** A short "+100 Takedown" line that fades away by itself. */
+  feed(text) {
+    const li = document.createElement('div'); li.className = 'feed-item'; li.textContent = text;
+    this.d.feed.appendChild(li);
+    while (this.d.feed.children.length > 4) this.d.feed.firstChild.remove();
+    setTimeout(() => li.remove(), 2600);
+  }
+
+  showGameOver({ score, takedowns, best, isBest, zone }) {
+    const o = this.d.over;
+    $('go-why').textContent = zone;
+    $('go-score').textContent = score.toLocaleString('en-GB');
+    $('go-kills').textContent = String(takedowns);
+    $('go-best').textContent = isBest ? 'New best score!' : `Best ${best.toLocaleString('en-GB')}`;
+    o.classList.toggle('best', !!isBest);
+    o.hidden = false;
+  }
+  hideGameOver() { this.d.over.hidden = true; }
+
   buildMap(track) {
     const W = this.el.map.width, H = this.el.map.height, pad = 22;
     let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
@@ -74,10 +138,18 @@ export class Hud {
     this.mapCache = { off, sc, cx, cz, W, H };
   }
 
-  drawMap(car) {
+  /** `others` (optional): [{ x, z, wreck }] for the rival cars. */
+  drawMap(car, others) {
     const m = this.mapCache; if (!m) return;
     const g = this.el.map.getContext('2d');
     g.clearRect(0, 0, m.W, m.H); g.drawImage(m.off, 0, 0);
+    if (others) {
+      for (const o of others) {
+        const ox = (o.x - m.cx) * m.sc + m.W / 2, oy = (o.z - m.cz) * m.sc + m.H / 2;
+        if (o.wreck) { g.strokeStyle = 'rgba(20,12,12,.9)'; g.lineWidth = 3; g.beginPath(); g.moveTo(ox - 4, oy - 4); g.lineTo(ox + 4, oy + 4); g.moveTo(ox + 4, oy - 4); g.lineTo(ox - 4, oy + 4); g.stroke(); }
+        else { g.fillStyle = '#5ab8ff'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.arc(ox, oy, 5, 0, 7); g.fill(); g.stroke(); }
+      }
+    }
     const x = (car.pos.x - m.cx) * m.sc + m.W / 2, y = (car.pos.z - m.cz) * m.sc + m.H / 2;
     const fx = car.az.x, fz = car.az.z, l = Math.hypot(fx, fz) || 1, dx = fx / l, dz = fz / l;
     g.fillStyle = '#e8392c'; g.strokeStyle = '#fff'; g.lineWidth = 2;

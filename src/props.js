@@ -6,7 +6,8 @@
 //  * The car pushes barrels with a sphere-vs-box test against a two-box model of its hull, and
 //    the barrel pushes back with a proper impulse (a drum weighs 65 kg, the car 1450 kg).
 //  * Hit one hard enough and it explodes. The blast throws other barrels, sets off the ones close
-//    by a moment later (chain reaction), shoves the car, and scatters scrap metal.
+//    by a moment later (chain reaction), shoves every car nearby, and scatters scrap metal.
+//  * step() takes one car or a list of them (the player first): rival cars knock drums about too.
 //  * Nothing here imports three.js, so the whole thing runs (and is tested) in Node.
 //    propsView.js draws it, and main.js turns the events it emits into sound and smoke.
 
@@ -134,7 +135,7 @@ export class Props {
     this.bi = 0; this.time = 0; this.rng = mulberry(1);
     this.gq = Track.newQuery();      // ground query for barrels
     this.bq = Track.newQuery();      // ground query for scrap
-    this._car = null;
+    this._car = null; this._cars = [];
   }
 
   /** Put the barrels of a track definition where the editor placed them. */
@@ -164,11 +165,12 @@ export class Props {
   // ---------------------------------------------------------------- step
   step(dt, car) {
     if (!this.track) return;
-    this._car = car || null;
+    const cars = Array.isArray(car) ? car : car ? [car] : [];
+    this._cars = cars; this._car = cars[0] || null;         // the first is the player: sounds fade with distance from it
     this.time += dt;
     const bs = this.barrels;
     if (bs.length) {
-      if (car) { car.refreshFrame(); this._carContacts(car); }
+      for (const c of cars) { c.refreshFrame(); this._carContacts(c); }
       for (const b of bs) if (b.alive && !b.asleep) this._integrate(b, dt);
       this._pairs();
       for (const b of bs) {
@@ -376,7 +378,7 @@ export class Props {
   // ------------------------------------------------------- explosions
   _detonate(b) {
     b.alive = false; b.asleep = true; b.boom = false; b.fuse = -1;
-    const T = this.track, rnd = this.rng, car = this._car;
+    const T = this.track, rnd = this.rng;
     const g = T.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.6, this.bq);
     this.events.push({
       type: 'blast', x: b.pos.x, y: b.pos.y, z: b.pos.z, gy: g.y, nx: g.nx, ny: g.ny, nz: g.nz,
@@ -408,8 +410,8 @@ export class Props {
       if (d <= BLAST.chainRadius) this._light(o, 0.07 + d * 0.045);
     }
 
-    // the car feels it too: pushed away from the blast and given a bump
-    if (car) {
+    // every car nearby feels it too: pushed away from the blast and given a bump
+    for (const car of this._cars) {
       const dx = car.pos.x - b.pos.x, dy = car.pos.y - b.pos.y, dz = car.pos.z - b.pos.z, d = Math.hypot(dx, dy, dz);
       if (d < BLAST.radius) {
         const k = 1 - d / BLAST.radius, inv = d > 0.05 ? 1 / d : 0;
@@ -420,6 +422,20 @@ export class Props {
         sP.set(car.pos.x - car.ay.x * 0.25, car.pos.y - car.ay.y * 0.25, car.pos.z - car.ay.z * 0.25);   // a little below the centre of mass
         car.impulseAt(sN, car.mass * BLAST.carPush * k, sP);
       }
+    }
+  }
+
+  /** Something else went up (a wrecked car): shove the drums nearby and light the closest ones. */
+  shock(x, y, z, radius = 7) {
+    for (const o of this.barrels) {
+      if (!o.alive) continue;
+      const dx = o.pos.x - x, dy = o.pos.y - y, dz = o.pos.z - z, d = Math.hypot(dx, dy, dz);
+      if (d > radius) continue;
+      const k = 1 - d / radius, inv = d > 0.05 ? 1 / d : 0;
+      o.vel.x += dx * inv * BLAST.throwSpeed * 0.6 * k; o.vel.z += dz * inv * BLAST.throwSpeed * 0.6 * k;
+      o.vel.y += BLAST.lift * (0.3 + k);
+      this._wake(o);
+      if (d <= radius * 0.6) this._light(o, 0.15 + d * 0.06);
     }
   }
 

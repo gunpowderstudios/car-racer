@@ -31,6 +31,41 @@
     </div>
   </div>
   <div id="banner" role="status" aria-live="polite"></div>
+
+  <!-- destruction derby: score, points feed, damage chart -->
+  <div id="derby-score" hidden>
+    <div class="ds-label">Score</div>
+    <div id="ds-score">0</div>
+    <div id="ds-sub">0 wrecked</div>
+  </div>
+  <div id="feed" aria-live="polite"></div>
+  <div id="dmg-card" hidden>
+    <div class="dmg-title">Damage</div>
+    <svg id="dmg-svg" viewBox="0 0 120 172" role="img" aria-label="Damage to the front, rear, left and right of your car">
+      <rect class="wheel" x="14" y="26" width="14" height="28" rx="4"/><rect class="wheel" x="92" y="26" width="14" height="28" rx="4"/>
+      <rect class="wheel" x="14" y="118" width="14" height="28" rx="4"/><rect class="wheel" x="92" y="118" width="14" height="28" rx="4"/>
+      <polygon id="dz-front" class="dz" points="34,10 86,10 92,26 92,56 28,56 28,26"/>
+      <polygon id="dz-back" class="dz" points="28,114 92,114 92,144 86,160 34,160 28,144"/>
+      <polygon id="dz-left" class="dz" points="28,58 44,58 44,112 28,112"/>
+      <polygon id="dz-right" class="dz" points="76,58 92,58 92,112 76,112"/>
+      <polygon class="cabin" points="46,58 74,58 74,112 46,112"/>
+      <line class="bar" x1="30" y1="6" x2="90" y2="6"/>
+      <text id="dt-front" class="dt" x="60" y="38">100</text>
+      <text id="dt-back" class="dt" x="60" y="141">100</text>
+      <text id="dt-left" class="dt sm" x="36" y="88">100</text>
+      <text id="dt-right" class="dt sm" x="84" y="88">100</text>
+    </svg>
+  </div>
+  <div id="gameover" hidden>
+    <div class="go-card">
+      <div class="go-title">Wrecked</div>
+      <div id="go-why" class="go-why"></div>
+      <div class="go-score"><span id="go-score">0</span><small>points</small></div>
+      <div class="go-line"><b id="go-kills">0</b> wrecked &middot; <span id="go-best"></span></div>
+      <div class="go-btns"><button id="go-again" type="button" class="btn">Go again</button><button id="go-menu" type="button" class="btn ghost">Menu</button></div>
+      <div class="go-hint"><kbd>&#9003;</kbd> restarts too</div>
+    </div>
+  </div>
   <div id="speed-plate">
     <div id="rpm" aria-hidden="true"></div>
     <div id="speed-row">
@@ -77,6 +112,8 @@
       <summary>Options</summary>
       <div class="opt-grid">
         <label><input id="opt-assist" type="checkbox" checked> Drift assist (helps you catch slides)</label>
+        <label><input id="opt-derby" type="checkbox" checked> Destruction derby (rival cars, damage, score)</label>
+        <label class="sel">Rival cars <select id="opt-rivals" aria-label="Number of rival cars"><option>3</option><option>4</option><option>5</option><option selected>6</option><option>8</option><option>10</option></select></label>
         <label><input id="opt-kmh" type="checkbox"> Show km/h</label>
         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
         <label><input id="opt-music" type="checkbox" checked> Music</label>
@@ -84,7 +121,8 @@
         <div class="swatches" id="swatches" role="radiogroup" aria-label="Car colour"></div>
       </div>
     </details>
-    <p class="fine">Controls: W/S throttle and brake, A/D steer, Space handbrake, R reset to the road, C camera. Gamepad and touch controls work too.</p>
+    <p class="fine">Controls: W/S throttle and brake, A/D steer, Space boost, Shift handbrake, R reset to the road, C camera. Gamepad and touch controls work too.</p>
+    <p class="fine">Derby: ram the rival cars. Every crash damages the part of the car that was hit, and the first part to run out wrecks the car. Your front end is armoured, your rear is not. Explosive barrels hurt everyone.</p>
   </div>
 </section>
 

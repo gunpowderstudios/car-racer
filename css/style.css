@@ -48,6 +48,8 @@ body:not(.mode-menu) #menu { display: none; }
 .options summary { cursor: pointer; font-family: var(--cond); font-weight: 600; font-size: 18px; color: var(--amber); }
 .opt-grid { display: grid; gap: 8px; padding: 10px 0; font-size: 15px; }
 .opt-grid label { display: flex; gap: 8px; align-items: center; }
+.opt-grid label.sel { gap: 10px; }
+.opt-grid select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); padding: 3px 6px; font-family: var(--cond); font-size: 16px; }
 .opt-grid input[type=checkbox], .check input { accent-color: var(--amber); width: 16px; height: 16px; }
 .swatches { display: flex; gap: 8px; align-items: center; }
 .swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); cursor: pointer; padding: 0; }
@@ -109,7 +111,7 @@ body:not(.mode-menu) #menu { display: none; }
 #controls kbd + kbd { margin-left: -3px; }
 #controls .ctl.on { border-color: var(--amber); color: #fff; }
 #controls .ctl.on kbd { background: var(--amber); transform: translateY(2px); box-shadow: none; }
-#debug { position: absolute; left: 16px; top: 130px; margin: 0; font: 12px/1.35 ui-monospace, Menlo, monospace; color: #fff; background: rgba(0,0,0,.6); padding: 8px; text-shadow: none; }
+#debug { position: absolute; left: 16px; top: 340px; margin: 0; font: 12px/1.35 ui-monospace, Menlo, monospace; color: #fff; background: rgba(0,0,0,.6); padding: 8px; text-shadow: none; }
 
 #touch { position: fixed; inset: auto 0 max(14px, env(safe-area-inset-bottom)) 0; z-index: 12; display: flex; justify-content: space-between; padding: 0 14px; pointer-events: none; }
 #touch .t-side { display: flex; gap: 10px; align-items: flex-end; }
@@ -118,6 +120,45 @@ body:not(.mode-menu) #menu { display: none; }
 #t-left, #t-right { font-size: 44px; }
 #t-boost { border-color: #8fe3ff !important; }
 #t-gas { width: 104px; height: 104px; }
+
+/* -------------------------------------------------------- destruction derby */
+#derby-score { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); min-width: 190px; padding: 6px 26px 8px; text-align: center;
+  background: rgba(42,29,74,.84); border-bottom: 4px solid var(--amber); clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 100%, 0 100%); }
+#derby-score .ds-label { font-family: var(--cond); font-weight: 600; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-dim); text-shadow: none; }
+#ds-score { font-weight: 900; font-size: 46px; line-height: .95; color: var(--amber); font-variant-numeric: tabular-nums; }
+#ds-sub { font-family: var(--cond); font-size: 15px; color: var(--peach); text-shadow: none; }
+#feed { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 106px); left: 50%; transform: translateX(-50%); display: grid; gap: 3px; justify-items: center; }
+.feed-item { font-weight: 900; font-size: 30px; color: #fff; text-transform: uppercase; letter-spacing: .02em; transform: skewX(-7deg); text-shadow: 2px 2px 0 var(--red); animation: feedIn 2.6s ease-out both; }
+@keyframes feedIn { 0% { opacity: 0; transform: skewX(-7deg) translateY(14px) scale(1.25); } 12% { opacity: 1; transform: skewX(-7deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: skewX(-7deg) translateY(-12px); } }
+
+#dmg-card { position: absolute; left: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 122px); width: 132px; padding: 6px 10px 8px; background: rgba(42,29,74,.82); border-left: 5px solid var(--red); }
+.dmg-title { font-family: var(--cond); font-weight: 600; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-dim); text-shadow: none; text-align: center; }
+#dmg-svg { display: block; width: 100%; height: auto; }
+#dmg-svg .wheel { fill: #0d0a14; stroke: rgba(246,217,176,.35); stroke-width: 1; }
+#dmg-svg .cabin { fill: rgba(16,12,28,.85); stroke: rgba(246,217,176,.25); stroke-width: 1; }
+#dmg-svg .dz { fill: hsl(115 78% 38%); stroke: rgba(12,8,20,.9); stroke-width: 2; stroke-linejoin: round; transition: fill .25s; }
+#dmg-svg .dz.hit { stroke: #fff; stroke-width: 3; }
+#dmg-svg .dz.low { animation: dzPulse .7s ease-in-out infinite alternate; }
+@keyframes dzPulse { from { opacity: 1; } to { opacity: .55; } }
+#dmg-svg .bar { stroke: var(--amber); stroke-width: 5; stroke-linecap: round; }
+#dmg-svg .dt { font-family: var(--display); font-weight: 900; font-size: 20px; fill: #fff; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 3px; text-shadow: none; }
+#dmg-svg .dt.sm { font-size: 12px; stroke-width: 2px; }
+
+#gameover { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(27,18,51,.35), rgba(27,18,51,.78)); pointer-events: auto; }
+#gameover[hidden] { display: none; }
+.go-card { text-align: center; padding: 22px 46px 20px; background: rgba(27,18,51,.9); border-top: 5px solid var(--red); border-bottom: 5px solid var(--amber); animation: goIn .4s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes goIn { from { opacity: 0; transform: scale(1.12); } to { opacity: 1; transform: none; } }
+.go-title { font-family: var(--display); font-weight: 900; font-size: clamp(56px, 10vw, 110px); line-height: .9; text-transform: uppercase; color: var(--red); transform: skewX(-7deg); text-shadow: 4px 4px 0 var(--violet); }
+.go-why { font-family: var(--cond); font-size: 18px; color: var(--ink-dim); margin: 4px 0 10px; letter-spacing: .04em; }
+.go-score { font-family: var(--display); font-weight: 900; font-size: clamp(54px, 9vw, 92px); line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
+.go-score small { display: block; font-family: var(--cond); font-weight: 600; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-dim); }
+.go-line { font-family: var(--cond); font-size: 20px; color: var(--peach); margin: 8px 0 16px; }
+.go-line b { color: var(--amber); font-size: 24px; }
+#gameover.best #go-best { color: var(--amber); font-weight: 600; }
+.go-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.go-hint { margin-top: 12px; font-family: var(--cond); font-size: 14px; color: var(--ink-dim); }
+.go-hint kbd { background: var(--peach); color: var(--violet-deep); padding: 1px 6px; border-radius: 3px; font-family: var(--body); font-size: 12px; }
+body:not(.mode-drive) #gameover { display: none; }
 
 body.mode-menu #hud, body.mode-edit #hud, body.mode-edit #touch, body.mode-menu #touch { display: none; }
 #toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 60; background: var(--violet); color: var(--peach); padding: 10px 16px; border-left: 4px solid var(--amber);
@@ -183,6 +224,12 @@ body:not(.mode-edit) #editor { display: none; }
   #sound-ctl { top: calc(max(14px, env(safe-area-inset-top)) + 122px); }
   #controls { bottom: auto; top: calc(max(14px, env(safe-area-inset-top)) + 124px); max-width: 60vw; font-size: 13px; }
   #controls .legend { display: none; }
+  #derby-score { top: calc(max(14px, env(safe-area-inset-top)) + 4px); min-width: 130px; padding: 3px 14px 5px; }
+  #ds-score { font-size: 30px; }
+  #ds-sub { font-size: 12px; }
+  #feed { top: calc(max(14px, env(safe-area-inset-top)) + 76px); }
+  .feed-item { font-size: 22px; }
+  #dmg-card { width: 96px; padding: 4px 8px 6px; top: calc(max(14px, env(safe-area-inset-top)) + 214px); }
   #ed-side { width: 220px; }
   #ed-name { width: 150px; }
 }
@@ -195,4 +242,5 @@ body:not(.mode-edit) #editor { display: none; }
   #t-left, #t-right { width: 80px !important; height: 80px !important; }
   #speed-plate { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 164px); }
   #controls .legend, #controls kbd { display: none; }
+  #dmg-card { width: 96px; top: calc(max(14px, env(safe-area-inset-top)) + 214px); }
 }
