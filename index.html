@@ -37,17 +37,25 @@
       <span id="speed">0</span><span id="unit">mph</span>
       <span id="gear">1</span>
     </div>
+    <div id="boost-bar" aria-hidden="true"><i id="boost-fill"></i><span>Boost</span></div>
     <div id="hand-flag">Handbrake</div>
   </div>
-  <div id="hints">
-    <b>W A S D</b> or arrows to drive &nbsp; <b>Space</b> handbrake &nbsp; <b>R</b> back on the road &nbsp; <b>C</b> camera &nbsp; <b>E</b> editor &nbsp; <b>Esc</b> menu
-  </div>
+  <nav id="controls" aria-label="Controls">
+    <span class="ctl legend"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</span>
+    <span class="ctl legend" id="ctl-boost"><kbd class="wide">Space</kbd> Boost</span>
+    <span class="ctl legend" id="ctl-hand"><kbd class="wide">Shift</kbd> Handbrake</span>
+    <button class="ctl" type="button" data-act="restart"><kbd>&#9003;</kbd> Restart</button>
+    <button class="ctl" type="button" data-act="reset"><kbd>R</kbd> Back on road</button>
+    <button class="ctl" type="button" data-act="camera"><kbd>C</kbd> Camera</button>
+    <button class="ctl" type="button" data-act="edit"><kbd>E</kbd> Edit</button>
+    <button class="ctl" type="button" data-act="menu"><kbd>Esc</kbd> Menu</button>
+  </nav>
   <pre id="debug" hidden></pre>
 </div>
 
 <div id="touch" hidden>
   <div class="t-side"><button id="t-left" aria-label="Steer left">&lsaquo;</button><button id="t-right" aria-label="Steer right">&rsaquo;</button></div>
-  <div class="t-side t-right"><button id="t-hand">Hand</button><button id="t-brake">Brake</button><button id="t-gas">Go</button></div>
+  <div class="t-side t-right"><button id="t-hand">Hand</button><button id="t-boost">Boost</button><button id="t-brake">Brake</button><button id="t-gas">Go</button></div>
 </div>
 
 <!-- ============================ MENU ============================ -->
@@ -94,6 +102,10 @@
       <button id="ed-rev" title="Drive the other way round">Reverse</button>
     </div>
     <div class="ed-group">
+      <button id="ed-fit" title="Fit the whole track on screen (F)">Fit</button>
+      <button id="ed-3d-toggle" title="Show or hide the 3D view (3)" aria-pressed="true">3D view</button>
+    </div>
+    <div class="ed-group">
       <select id="ed-template" aria-label="Start from a template"></select>
     </div>
     <div class="ed-spacer"></div>
@@ -109,7 +121,11 @@
     <div id="ed-stage">
       <canvas id="ed-canvas"></canvas>
       <div id="ed-issues" role="status"></div>
-      <div id="ed-help">Drag points to reshape. Double-click the road to add a point. Scroll to zoom, drag empty space to pan.</div>
+      <div id="ed-3d">
+        <canvas id="ed-3d-canvas" aria-label="3D view of the track. Drag to turn it, scroll to zoom, double-click to reset."></canvas>
+        <div class="ed-3d-bar"><span>3D view</span><span class="muted" id="ed-3d-ex"></span><button id="ed-3d-hide" title="Hide the 3D view" aria-label="Hide the 3D view">&times;</button></div>
+      </div>
+      <div id="ed-help">Drag points to reshape. Double-click the road to add a point. Scroll or pinch to zoom, drag empty space to pan, <b>F</b> fits the track.</div>
     </div>
     <aside id="ed-side">
       <h2>Track</h2>
@@ -126,9 +142,12 @@
         <label class="check"><input id="ed-w-auto" type="checkbox"> Use the track width</label>
         <label class="check"><input id="ed-gap" type="checkbox"> Jump gap here</label>
         <div class="field"><label for="ed-gap-len">Gap length</label><input id="ed-gap-len" type="range" min="6" max="30" step="1"><output id="ed-gap-o"></output></div>
+        <div class="field"><label for="ed-lip">Ramp height</label><input id="ed-lip" type="range" min="0.3" max="3" step="0.1"><output id="ed-lip-o"></output></div>
+        <div class="field"><label for="ed-kick">Lip angle</label><input id="ed-kick" type="range" min="0" max="30" step="1"><output id="ed-kick-o"></output></div>
+        <canvas id="ed-ramp" aria-label="Side view of the jump"></canvas>
         <div class="readout" id="ed-info"></div>
       </div>
-      <p class="muted small">Bank is positive when the left edge is higher, which suits right-hand corners. Jump gaps get a takeoff ramp automatically.</p>
+      <p class="muted small">Bank is positive when the left edge is higher, which suits right-hand corners. Jump gaps get a takeoff ramp automatically. Lip angle curves the end of the ramp up into a kicker: 0&deg; flattens out, higher angles throw the car higher.</p>
     </aside>
   </div>
 

@@ -10,14 +10,14 @@ export const fmtTime = (t) => {
 export class Hud {
   constructor() {
     this.el = { speed: $('speed'), unit: $('unit'), gear: $('gear'), rpm: $('rpm'), lapNum: $('lap-num'), lapTime: $('lap-time'), lapBest: $('lap-best'),
-      banner: $('banner'), hand: $('hand-flag'), map: $('minimap'), hints: $('hints'), debug: $('debug') };
+      banner: $('banner'), hand: $('hand-flag'), map: $('minimap'), debug: $('debug'),
+      boost: $('boost-bar'), boostFill: $('boost-fill'), ctlBoost: $('ctl-boost'), ctlHand: $('ctl-hand') };
     for (let i = 0; i < 24; i++) this.el.rpm.appendChild(document.createElement('i'));
     this.segs = [...this.el.rpm.children];
     this.kmh = false; this._bt = 0; this._last = {};
     this.mapCache = null;
   }
   setUnits(kmh) { this.kmh = kmh; this.el.unit.textContent = kmh ? 'km/h' : 'mph'; }
-  hideHintsLater(ms = 9000) { this.el.hints.classList.remove('fade'); clearTimeout(this._ht); this._ht = setTimeout(() => this.el.hints.classList.add('fade'), ms); }
 
   banner(text, ms = 1400) {
     const b = this.el.banner; b.textContent = text; b.classList.add('show');
@@ -36,6 +36,11 @@ export class Hud {
       this._last.rpm = on;
     }
     this.el.hand.classList.toggle('on', !!car.handbrake);
+    this.el.ctlHand.classList.toggle('on', !!car.handbrake);
+    const fuel = Math.round(car.boostFuel * 100);
+    if (fuel !== this._last.fuel) { this.el.boostFill.style.width = fuel + '%'; this._last.fuel = fuel; }
+    const bs = car.boosting ? 'on' : car.boostFuel < car.spec.boost.restart ? 'low' : '';
+    if (bs !== this._last.bs) { this.el.boost.className = bs; this.el.ctlBoost.classList.toggle('on', bs === 'on'); this._last.bs = bs; }
     if (info) {
       const lt = info.lap > 0 ? `Lap ${info.lap}` : 'Get to the line';
       if (lt !== this._last.lap) { this.el.lapNum.textContent = lt; this._last.lap = lt; }

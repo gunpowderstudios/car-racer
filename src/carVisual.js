@@ -91,6 +91,7 @@ export class ChaseCamera {
   constructor(camera) {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
+    this.boosting = false; this.kick = 0;   // widens the view while boosting
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
   cycle() { this.mode = (this.mode + 1) % 3; this.ready = false; return ['Chase', 'High', 'Bumper'][this.mode]; }
@@ -101,11 +102,12 @@ export class ChaseCamera {
     const f = this._f.set(0, 0, 1).applyQuaternion(quat);
     const speed = Math.hypot(vel.x, vel.z);
     const heading = Math.atan2(f.x, f.z);
+    this.kick += ((this.boosting ? 1 : 0) - this.kick) * Math.min(1, (this.boosting ? 5 : 2.5) * dt);
     if (this.mode === 2) {
       const off = this._v.set(0, 0.5, 2.6).applyQuaternion(quat);
       this.cam.position.copy(p).add(off);
       this.cam.quaternion.copy(quat).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.02, Math.PI, 0)));
-      this.cam.fov += (74 + speed * 0.2 - this.cam.fov) * Math.min(1, 4 * dt);
+      this.cam.fov += (74 + speed * 0.2 + this.kick * 10 - this.cam.fov) * Math.min(1, 4 * dt);
       this.cam.updateProjectionMatrix();
       return;
     }
@@ -124,12 +126,12 @@ export class ChaseCamera {
     this.pos.set(p.x - sx * dist, this.y + h, p.z - cz * dist);
     const q = track.query(this.pos.x, this.pos.y + 3, this.pos.z, this._q, 3);
     if (q.idx >= 0 || q.y === 0) this.pos.y = Math.max(this.pos.y, q.y + 0.9);
-    this.shake *= Math.exp(-6 * dt);
+    this.shake = Math.max(this.shake * Math.exp(-6 * dt), this.kick * 0.12);
     const sh = this.shake * 0.35;
     this.cam.position.set(this.pos.x + (Math.random() - 0.5) * sh, this.pos.y + (Math.random() - 0.5) * sh, this.pos.z + (Math.random() - 0.5) * sh);
     const look = (far ? 6 : 5) + speed * 0.12;
     this.cam.lookAt(p.x + sx * look, this.ly + (far ? 0.4 : 1.0), p.z + cz * look);
-    const fov = (far ? 58 : 62) + clamp(speed, 0, 65) * 0.34;
+    const fov = (far ? 58 : 62) + clamp(speed, 0, 65) * 0.34 + this.kick * 12;
     this.cam.fov += (fov - this.cam.fov) * Math.min(1, 5 * dt);
     this.cam.updateProjectionMatrix();
   }

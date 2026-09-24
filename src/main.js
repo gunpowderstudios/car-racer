@@ -11,6 +11,7 @@ import { Input } from './input.js';
 import { Sound } from './audio.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
+import { EditorPreview } from './editorPreview.js';
 
 const $ = (id) => document.getElementById(id);
 const DT = 1 / 120;
@@ -57,6 +58,7 @@ const trouble = { flipped: 0, lost: 0 };
 
 const input = new Input({
   onReset: () => mode === 'drive' && respawn(),
+  onRestart: () => mode === 'drive' && restartRace(),
   onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
   onMenu: () => (mode === 'drive' ? showMenu() : null),
   onEditor: () => mode === 'drive' && openEditor(def),
@@ -77,6 +79,17 @@ for (const [id, kind] of [['hud-sfx', 'sfx'], ['hud-music', 'music']]) {
 }
 addEventListener('pointerdown', (e) => { if (!$('sound-ctl').contains(e.target)) setSoundPop(false); });
 syncSoundUI();
+
+// ------------------------------------------------------- on-screen controls bar
+const controlActions = {
+  restart: () => restartRace(), reset: () => respawn(),
+  camera: () => hud.banner(chase.cycle() + ' camera', 900),
+  edit: () => openEditor(def), menu: () => showMenu(),
+};
+for (const b of document.querySelectorAll('#controls button[data-act]')) {
+  b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
+  b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); });
+}
 
 // --------------------------------------------------------------------- track
 function loadTrack(newDef) {
@@ -113,6 +126,15 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
   chase.snap(); trouble.flipped = trouble.lost = 0; acc = 0;
 }
 
+/** Back to the start line with a fresh lap and a full boost tank. */
+function restartRace() {
+  race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
+  skid.clear(); particles.clear();
+  placeCar(track.startS(12), 0, 0);
+  car.boostFuel = 1;
+  hud.banner('Get to the start line', 1400);
+}
+
 function respawn() {
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
@@ -122,7 +144,7 @@ function respawn() {
 
 /** Advance the simulation by `seconds` without rendering (used by automated tests). */
 function sim(seconds, inp) {
-  const full = { throttle: 0, brake: 0, steer: 0, handbrake: false, ...inp };
+  const full = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false, ...inp };
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
     car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track); simTime += DT; car.events.length = 0;
@@ -196,6 +218,7 @@ function stepPhysics(dt) {
   updateRace(dt);
 }
 
+const boostLocal = new V3(), boostPos = new THREE.Vector3();
 function effects(dt) {
   for (let i = 0; i < 4; i++) {
     const w = car.wheels[i];
@@ -203,6 +226,15 @@ function effects(dt) {
       skid.add(i, w.contactPoint, w.normal, car.vel);
       if (w.skid > 0.55 && Math.random() < 14 * dt) particles.puff(w.contactPoint.x, w.contactPoint.y, w.contactPoint.z, car.vel.x, car.vel.z, 1.2 + w.skid);
     } else skid.lift(i);
+  }
+  if (car.boosting) {
+    // flames from twin exhausts under the rear bumper
+    const n = Math.random() < 0.5 ? 2 : 3;
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 ? 0.45 : -0.45;
+      car.toWorld(boostLocal.set(side, -0.32, -2.5 - Math.random() * 0.15), boostPos);
+      particles.flame(boostPos.x, boostPos.y, boostPos.z, car.vel.x - car.az.x * 9, car.vel.y - car.az.y * 9, car.vel.z - car.az.z * 9);
+    }
   }
   if (car.scraping && wallSpot && simTime - wallSpot.t < 0.4 && Math.random() < 40 * dt) particles.spark(wallSpot.x, wallSpot.y, wallSpot.z, car.vel.x * 0.2, 1.5, car.vel.z * 0.2);
   particles.update(dt);
@@ -224,6 +256,7 @@ function frame(now) {
     const a = acc / DT;
     drawPos.copy(prevPos).lerp(curPos, a); drawQ.copy(prevQ).slerp(curQ, a);
     velV.set(car.vel.x, car.vel.y, car.vel.z);
+    chase.boosting = car.boosting;
     chase.update(dt, drawPos, drawQ, velV, track);
     effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best });
@@ -268,7 +301,7 @@ function showMenu() { setMode('menu'); renderMenu(); }
 function startDriving(newDef) {
   sound.init();
   if (newDef) loadTrack(newDef);
-  hasPlayed = true; setMode('drive'); hud.hideHintsLater(); last = performance.now();
+  hasPlayed = true; setMode('drive'); last = performance.now();
   hud.banner('Get to the start line', 1600);
 }
 function openEditor(d) {
@@ -277,6 +310,7 @@ function openEditor(d) {
 
 const editor = window.__editor = new Editor({
   toast,
+  preview: new EditorPreview($('ed-3d-canvas')),
   onDrive: (d) => {
     editor.close(); store.set('cr.draft', d);
     const a = analyzeTrack(new Track(d));

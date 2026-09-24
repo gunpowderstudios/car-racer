@@ -26,6 +26,7 @@ export class Sound {
     this.screech = this._loop('screech', this.sfx, 0);
     this.scrape = this._loop('scrape', this.sfx, 0);
     if (!this.engine) this._synth();
+    this._boostRush();
     if (this.buf.music) this._loop('music', this.music, 1, false);
     this.ready = true;
   }
@@ -44,6 +45,18 @@ export class Sound {
     o1.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 700; g.gain.value = 0;
     o1.connect(lp); o2.connect(lp); lp.connect(g).connect(this.sfx); o1.start(); o2.start();
     this.engine = { synth: [o1, o2, lp], gain: g };
+  }
+
+  /** Filtered noise loop for the boost; silent until the car boosts. */
+  _boostRush() {
+    const c = this.ctx, len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { last = last * 0.6 + (Math.random() * 2 - 1) * 0.4; d[i] = last; }
+    const src = c.createBufferSource(); src.buffer = b; src.loop = true;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.8;
+    const g = c.createGain(); g.gain.value = 0;
+    src.connect(bp).connect(g).connect(this.sfx); src.start();
+    this.rush = { gain: g, filter: bp };
   }
 
   setEnabled(kind, on) {
@@ -68,6 +81,11 @@ export class Sound {
       }
     }
     if (this.screech) this.screech.gain.gain.setTargetAtTime(on * Math.min(1, car.skidLevel) * 0.55 * (car.onGround ? 1 : 0), t, 0.05);
+    if (this.rush) {
+      const b = on && car.boosting ? 1 : 0;
+      this.rush.gain.gain.setTargetAtTime(b * 0.5, t, b ? 0.04 : 0.15);
+      this.rush.filter.frequency.setTargetAtTime(500 + car.speed * 18, t, 0.1);
+    }
     if (this.scrape) this.scrape.gain.gain.setTargetAtTime(on * (car.scraping ? 0.6 : 0), t, 0.04);
   }
 

@@ -16,13 +16,16 @@ Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump st
 |---|---|
 | W / S or Up / Down | throttle, brake (hold S when stopped to reverse) |
 | A / D or Left / Right | steer |
-| Space | handbrake: locks the rear wheels for handbrake turns |
+| Space | boost: a nitro push while held. The meter under the speedo drains in about 3 s and refills in about 9 s |
+| Shift | handbrake: locks the rear wheels for handbrake turns |
 | R | put the car back on the road (also happens automatically if you flip or fall off) |
+| Backspace | restart: back to the start line with a fresh lap and a full boost tank |
 | C | camera: chase, high, bumper |
 | E | open the track editor with the current track |
 | Esc | menu, M music, F3 telemetry |
 
-Gamepad (right trigger, left trigger, left stick, B or RB for handbrake, Y reset) and touch controls also work.
+Gamepad (right trigger, left trigger, left stick, A or X boost, B or RB handbrake, Y reset, Back restart) and touch controls also work.
+The controls bar along the bottom of the screen shows the keys; its buttons (Restart, Back on road, Camera, Edit, Menu) can be clicked too.
 The menu has a **drift assist** option that counter-steers when the rear axle slides.
 
 ## The track editor
@@ -31,12 +34,19 @@ Draw a closed circuit by dragging points. The editor and the game share the same
 
 - Drag a point to move it. **Double-click the road** to add a point, or press A. Delete removes one.
 - Every point has a height, a bank angle, an optional width, and an optional **jump gap** (a takeoff ramp is built for you).
+- A jump's **ramp height** and **lip angle** shape the takeoff. At 0° the ramp flattens out at the edge; higher angles curve
+  the end up into a kicker that launches the car at exactly that angle. A side view under the sliders shows the ramp to scale.
+- The **3D view** (top right) turns slowly and updates as you edit. Drag it to look around, scroll to zoom, double-click to reset.
+  Heights are exaggerated in it (shown as "heights ×N") so hills and jumps are easy to read. Press 3 to hide or show it.
+- **Fit** (or F) puts the whole track back on screen. Scrolling zooms gently, pinching zooms faster, and a sideways
+  swipe pans; zooming out stops a little past the fitted view so the track can't get lost.
 - Drag the markers in the **height strip** at the bottom to build hills. Steep sections turn red.
 - **Auto-bank** leans every corner into the turn. **Reverse** drives the loop the other way.
 - Tight corners and roads that cross at the same height are flagged. Raise one crossing by about 5 m to make a bridge.
 - Save keeps the track in your browser. Export writes a `.json` file; import it from the menu.
 
-Track format (`version: 5`): `{ name, width, walls, handles: [{ x, y, z, w, bank, gap }] }` in metres and degrees.
+Track format (`version: 5`): `{ name, width, walls, handles: [{ x, y, z, w, bank, gap, lip, kick }] }` in metres and degrees.
+`lip` (ramp height, default 0.5) and `kick` (lip angle, default 0) only matter on points with a `gap`; older files load unchanged.
 `y` is the height of the lowest edge of the road. `bank > 0` lifts the left edge. Old editor files (v4) are migrated on load.
 
 ## How it works

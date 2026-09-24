@@ -1,6 +1,6 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
-import { Track, normalizeTrack, analyzeTrack, suggestBanks } from './track.js';
+import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
 import { makeTemplate, TEMPLATE_KEYS } from './templates.js';
 import { clamp, lerp } from './math.js';
 
@@ -9,8 +9,11 @@ const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#e
 const DEG = 180 / Math.PI;
 
 export class Editor {
-  constructor({ onDrive, onClose, onSave, toast }) {
+  constructor({ onDrive, onClose, onSave, toast, preview }) {
     this.cb = { onDrive, onClose, onSave, toast };
+    this.preview = preview || null;               // optional 3D view (EditorPreview)
+    if (this.preview) this.preview.onScale = (ex) => { $('ed-3d-ex').textContent = ex > 1 ? `heights \u00d7${ex}` : ''; };
+    try { this.show3d = localStorage.getItem('cr.ed3d') !== '0'; } catch { this.show3d = true; }
     this.c = $('ed-canvas'); this.g = this.c.getContext('2d');
     this.pc = $('ed-profile'); this.pg = this.pc.getContext('2d');
     this.def = null; this.track = null; this.analysis = { tight: [], crossings: [] };
@@ -33,8 +36,14 @@ export class Editor {
     $('ed-name').value = this.def.name;
     this._resize(); this._resizeProfile();
     this.rebuild(true); this.fit(); this.updateUI(); this.draw();
+    this._show3d(this.show3d); this.preview?.fit();
   }
-  close() { this.visible = false; }
+  close() { this.visible = false; this.preview?.stop(); }
+  _show3d(on) {
+    this.show3d = on; try { localStorage.setItem('cr.ed3d', on ? '1' : '0'); } catch { /* blocked */ }
+    $('ed-3d').hidden = !on || !this.preview; $('ed-3d-toggle').setAttribute('aria-pressed', String(on));
+    if (on && this.visible) this.preview?.play(); else this.preview?.stop();
+  }
   get json() { return JSON.stringify(this.def, null, 2); }
 
   // --------------------------------------------------------------- model
@@ -55,6 +64,7 @@ export class Editor {
 
   rebuild(analyseNow = false) {
     try { this.track = new Track(this.def); } catch (e) { return; }
+    this.preview?.setTrack(this.track);
     clearTimeout(this._analyzeT);
     const run = () => { this.analysis = analyzeTrack(this.track); this.updateIssues(); this.draw(); };
     if (analyseNow) run(); else this._analyzeT = setTimeout(run, 140);
@@ -77,13 +87,42 @@ export class Editor {
   }
   toScreen(x, z) { return [(x - this.view.x) * this.view.scale + this.w / 2, (z - this.view.z) * this.view.scale + this.h / 2]; }
   toWorld(sx, sy) { return [(sx - this.w / 2) / this.view.scale + this.view.x, (sy - this.h / 2) / this.view.scale + this.view.z]; }
+  /** Bounding box of the road itself (not just the points), in world metres. */
+  _bounds() {
+    const t = this.track;
+    let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    if (t) for (let i = 0; i < t.n; i += 2) { const r = t.hw[i]; minX = Math.min(minX, t.px[i] - r); maxX = Math.max(maxX, t.px[i] + r); minZ = Math.min(minZ, t.pz[i] - r); maxZ = Math.max(maxZ, t.pz[i] + r); }
+    for (const p of this.def.handles) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z); }
+    return { minX, maxX, minZ, maxZ };
+  }
+  /** Scale at which the whole track fits, leaving room for the panels on top of the map. */
+  _fitScale() {
+    const b = this._bounds(), pad = 40;
+    const w = this.w - (this.show3d && this.preview ? Math.min(380, Math.max(240, this.w * 0.3)) + 24 : 0);
+    return clamp(Math.min(Math.max(120, w) / (b.maxX - b.minX + pad * 2), (this.h - 60) / (b.maxZ - b.minZ + pad * 2)), 0.03, 6);
+  }
+  /** Fit the whole track on screen. */
   fit() {
-    const hs = this.def.handles;
-    const xs = hs.map((p) => p.x), zs = hs.map((p) => p.z);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
-    this.view.x = (minX + maxX) / 2; this.view.z = (minZ + maxZ) / 2;
-    const pad = 90;
-    this.view.scale = clamp(Math.min(this.w / (maxX - minX + pad * 2), this.h / (maxZ - minZ + pad * 2)), 0.05, 6);
+    if (!this.w) return;
+    const b = this._bounds(), S = this._fitScale();
+    const shift = this.show3d && this.preview ? (Math.min(380, Math.max(240, this.w * 0.3)) + 24) / 2 / S : 0;   // centre in the free area left of the 3D view
+    this.view.x = (b.minX + b.maxX) / 2 + shift; this.view.z = (b.minZ + b.maxZ) / 2; this.view.scale = S;
+    this.preview?.fit();
+  }
+  /** Keep the track findable: limit zoom-out to a bit past "fit" and keep part of it on screen. */
+  _clampView() {
+    const fitS = this._fitScale();
+    this.view.scale = clamp(this.view.scale, fitS * 0.5, 8);
+    const b = this._bounds(), mx = this.w / 2 / this.view.scale * 0.8, mz = this.h / 2 / this.view.scale * 0.8;
+    this.view.x = clamp(this.view.x, b.minX - mx, b.maxX + mx);
+    this.view.z = clamp(this.view.z, b.minZ - mz, b.maxZ + mz);
+  }
+  /** Zoom by `factor` keeping the world point under (sx, sy) fixed. */
+  zoomAt(sx, sy, factor) {
+    const [wx, wz] = this.toWorld(sx, sy);
+    this.view.scale *= factor; this._clampView();
+    const [nx, nz] = this.toWorld(sx, sy); this.view.x += wx - nx; this.view.z += wz - nz;
+    this._clampView(); this.draw();
   }
 
   // ------------------------------------------------------------- drawing
@@ -147,7 +186,7 @@ export class Editor {
         const q = t.frameAt(t.handleS[k] + o), [x1, y1] = this.toScreen(q.x + t.lx[q.idx] * q.hw, q.z + t.lz[q.idx] * q.hw), [x2, y2] = this.toScreen(q.x - t.lx[q.idx] * q.hw, q.z - t.lz[q.idx] * q.hw);
         g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       }
-      const [cx, cy] = this.toScreen(f.x, f.z); g.setLineDash([]); g.fillText(`jump ${h.gap} m`, cx + 10, cy - 10); g.setLineDash([5, 4]);
+      const [cx, cy] = this.toScreen(f.x, f.z); g.setLineDash([]); g.fillText(`jump ${h.gap} m` + (h.kick ? `, ${h.lip} m lip at ${h.kick}\u00b0` : ''), cx + 14, cy + 22); g.setLineDash([5, 4]);
     });
     g.setLineDash([]);
 
@@ -189,6 +228,7 @@ export class Editor {
     g.beginPath(); g.moveTo(bx, by - 5); g.lineTo(bx, by); g.lineTo(bx + bar * S, by); g.lineTo(bx + bar * S, by - 5); g.stroke();
     g.fillText(`${bar} m`, bx, by - 9);
     this.drawProfile();
+    this.preview?.setSelected(this.sel);
   }
 
   _grid(g) {
@@ -262,12 +302,51 @@ export class Editor {
     const auto = !h.w;
     $('ed-w-auto').checked = auto; $('ed-w').disabled = auto; $('ed-w').value = h.w || this.def.width; $('ed-w-o').textContent = `${h.w || this.def.width} m`;
     $('ed-gap').checked = h.gap > 0; $('ed-gap-len').disabled = !h.gap; $('ed-gap-len').value = h.gap || 14; $('ed-gap-o').textContent = h.gap ? `${h.gap} m` : 'off';
+    for (const id of ['ed-lip', 'ed-kick']) { $(id).disabled = !h.gap; $(id).closest('.field').classList.toggle('off', !h.gap); }
+    $('ed-lip').value = h.lip; $('ed-lip-o').textContent = h.gap ? `${h.lip.toFixed(1)} m` : '';
+    $('ed-kick').value = h.kick; $('ed-kick-o').textContent = h.gap ? (h.kick ? `${h.kick}\u00b0` : 'flat') : '';
+    $('ed-ramp').hidden = !h.gap;
+    if (h.gap) this.drawRamp(h);
     const t = this.track;
     if (t) {
       const i = Math.round(t.handleS[this.sel] / t.ds) % t.n, k = t.curv[i];
       const r = Math.abs(k) > 1e-4 ? Math.round(1 / Math.abs(k)) : null;
       $('ed-info').innerHTML = `Distance ${Math.round(t.handleS[this.sel])} m<br>Grade ${(t.ty[i] * 100).toFixed(1)}%<br>` + (r ? `Corner radius ${r} m ${k > 0 ? '(left)' : '(right)'}` : 'Straight');
     }
+  }
+  /** Close-up side view of the selected jump: run-up, curved lip, gap and landing, to scale. */
+  drawRamp(h) {
+    const c = $('ed-ramp'), r = c.getBoundingClientRect(), d = devicePixelRatio || 1;
+    if (!r.width) return;
+    c.width = Math.round(r.width * d); c.height = Math.round(r.height * d);
+    const g = c.getContext('2d'), W = r.width, Hh = r.height; g.setTransform(d, 0, 0, d, 0, 0);
+    const ramp = takeoffRamp(h), before = 6, landing = 12, total = before + ramp.len + h.gap + landing;
+    const sx = (W - 16) / total, sy = Math.min(sx * 2.5, (Hh - 40) / Math.max(1, ramp.rise + 0.6));   // heights drawn up to 2.5x
+    const X = (m) => 8 + m * sx, Y = (m) => Hh - 22 - m * sy;
+    g.fillStyle = PAPER_DEEP; g.fillRect(0, 0, W, Hh);
+    g.strokeStyle = `rgba(${LINE},.35)`; g.lineWidth = 1; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(W, Y(0)); g.stroke(); g.setLineDash([]);
+    // road: run-up and ramp
+    g.fillStyle = 'rgba(234,246,255,.14)'; g.strokeStyle = INK; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(before), Y(0));
+    for (let x = 0; x <= ramp.len; x += 0.25) g.lineTo(X(before + x), Y(ramp.at(x)));
+    g.lineTo(X(before + ramp.len), Y(ramp.at(ramp.len))); g.stroke();
+    g.lineTo(X(before + ramp.len), Hh); g.lineTo(X(0), Hh); g.closePath(); g.fill();
+    // landing (sits a little lower)
+    const l0 = before + ramp.len + h.gap;
+    g.beginPath(); g.moveTo(X(l0), Y(-0.4)); g.lineTo(X(total), Y(0)); g.stroke();
+    g.lineTo(X(total), Hh); g.lineTo(X(l0), Hh); g.closePath(); g.fill();
+    // launch direction from the lip
+    const lx = X(before + ramp.len), ly = Y(ramp.rise), a = ramp.angle / DEG;
+    g.strokeStyle = AMBER; g.lineWidth = 2; g.setLineDash([4, 3]);
+    g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + Math.cos(a) * 40, ly - Math.sin(a) * 40 * (sy / sx)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = AMBER; g.beginPath(); g.arc(lx, ly, 3.5, 0, 7); g.fill();
+    // labels
+    g.font = '600 12px "Barlow Condensed", sans-serif'; g.fillStyle = INK;
+    g.fillText(`${ramp.len.toFixed(0)} m ramp`, X(before), Hh - 6);
+    g.fillStyle = RED; g.fillText(`${h.gap} m gap`, X(before + ramp.len) + 4, Hh - 6);
+    g.fillStyle = AMBER; g.fillText(ramp.angle ? `${ramp.angle}\u00b0 lip` : 'flat lip', Math.min(W - 44, lx + 6), Math.max(12, ly - 8));
+    g.fillStyle = `rgba(${LINE},.8)`; g.fillText(`${ramp.rise.toFixed(1)} m`, 8, Math.max(12, ly - 4));
   }
   updateIssues() {
     const el = $('ed-issues'); el.innerHTML = '';
@@ -326,7 +405,7 @@ export class Editor {
         this.rebuild(); this.updateInspector(); this.draw();
       } else {
         const dx = sx - d.sx, dy = sy - d.sy; if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
-        this.view.x = d.vx - dx / this.view.scale; this.view.z = d.vz - dy / this.view.scale; this.draw();
+        this.view.x = d.vx - dx / this.view.scale; this.view.z = d.vz - dy / this.view.scale; this._clampView(); this.draw();
       }
     });
     const end = () => {
@@ -339,11 +418,19 @@ export class Editor {
       const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0) return;
       const i = this._nearestSample(sx, sy); if (i >= 0) this.insertAt(i);
     });
+    // Wheel / trackpad / Magic Mouse. Zoom follows how far you actually scrolled (so the stream of
+    // small momentum events from a Magic Mouse or trackpad glides instead of jumping), capped per event.
+    // Pinch (ctrlKey) zooms a little faster; a mostly sideways swipe pans instead of zooming.
     c.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const [sx, sy] = pos(e), [wx, wz] = this.toWorld(sx, sy);
-      this.view.scale = clamp(this.view.scale * (e.deltaY < 0 ? 1.13 : 1 / 1.13), 0.05, 8);
-      const [nx, nz] = this.toWorld(sx, sy); this.view.x += wx - nx; this.view.z += wz - nz; this.draw();
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.h : 1;
+      const dx = e.deltaX * unit, dy = e.deltaY * unit;
+      if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        this.view.x += dx / this.view.scale; this._clampView(); this.draw(); return;
+      }
+      const k = e.ctrlKey ? 0.006 : 0.0011;
+      const [sx, sy] = pos(e);
+      this.zoomAt(sx, sy, Math.exp(clamp(-dy * k, -0.08, 0.08)));
     }, { passive: false });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -389,6 +476,9 @@ export class Editor {
       this.snapshot(); const t = makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
       this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     };
+    $('ed-fit').onclick = () => { this.fit(); this.draw(); };
+    $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };
+    $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };
     $('ed-save').onclick = () => { this.cb.onSave(this.def); };
     $('ed-export').onclick = () => {
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([this.json], { type: 'application/json' }));
@@ -409,6 +499,8 @@ export class Editor {
     gesture($('ed-b'), (el) => { H().bank = +el.value; });
     gesture($('ed-w'), (el) => { H().w = +el.value; });
     gesture($('ed-gap-len'), (el) => { H().gap = +el.value; });
+    gesture($('ed-lip'), (el) => { H().lip = +el.value; });
+    gesture($('ed-kick'), (el) => { H().kick = +el.value; });
     gesture($('ed-width'), (el) => { this.def.width = +el.value; $('ed-width-o').textContent = `${el.value} m`; });
     $('ed-w-auto').onchange = (e) => { this.snapshot(); H().w = e.target.checked ? 0 : this.def.width; this.rebuild(true); this.updateInspector(); this.draw(); };
     $('ed-gap').onchange = (e) => {
@@ -426,6 +518,8 @@ export class Editor {
       if (typing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
+      else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }
       else if (e.key === 'Escape') { this.sel = -1; this.updateInspector(); this.draw(); }
       else if (e.key === '[' || e.key === ']') { const n = this.def.handles.length; this.sel = (((this.sel < 0 ? 0 : this.sel) + (e.key === ']' ? 1 : -1)) + n) % n; this.updateInspector(); this.draw(); }
     });

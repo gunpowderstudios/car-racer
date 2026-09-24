@@ -47,6 +47,9 @@ export const CAR = {
   wallBounce: 0.3,              // restitution against barriers on a solid hit
   aero: { drag: 0.55, down: 0.33 },   // 0.5*rho*CdA and 0.5*rho*ClA
   steer: { max: 0.55, rate: 4.2, returnRate: 6.5 },
+  // Nitro: a push along the nose while held. The tank drains in `burn` seconds and refills in
+  // `refill` seconds; once empty it has to refill to `restart` before it fires again.
+  boost: { accel: 4.8, airShare: 0.35, burn: 3.2, refill: 9, restart: 0.2 },
   // Body outline used for ground and wall contact (local coords: x left, y up, z forward)
   hull: (() => {
     const p = [];
@@ -82,6 +85,7 @@ export class Vehicle {
   constructor(spec = CAR) {
     this.spec = spec;
     this.mass = spec.mass;
+    this.boostFuel = 1;           // 0..1 nitro tank (kept across respawns)
     this.invI = new V3(1 / spec.inertia.x, 1 / spec.inertia.y, 1 / spec.inertia.z);
     this.pos = new V3(); this.vel = new V3(); this.angVel = new V3();
     this.rot = new Q();
@@ -113,6 +117,7 @@ export class Vehicle {
     this.gear = 1; this.rpm = this.spec.engine.idle; this.shiftTimer = 0; this.spinFactor = 0;
     this.fwdSpeed = speed; this.speed = speed; this.latSpeed = 0; this.sideSlip = 0;
     this.onGround = false; this.airTime = 0; this.scraping = false; this.handbrake = false;
+    this.boosting = false;
     this.events.length = 0;
     for (const w of this.wheels) { w.contact = false; w.load = 0; w.skid = 0; w.compress = 0; }
   }
@@ -159,6 +164,7 @@ export class Vehicle {
     this.thr += clamp(input.throttle - this.thr, -8 * dt, 5 * dt);
     this.brk += clamp(input.brake - this.brk, -10 * dt, 7 * dt);
     this.handbrake = !!input.handbrake;
+    this._boost(dt, !!input.boost);
     const flatF = tmpA.set(this.az.x, 0, this.az.z);
     const fl = flatF.length() || 1; flatF.scale(1 / fl);
     this.fwdSpeed = this.vel.dot(flatF);
@@ -176,6 +182,7 @@ export class Vehicle {
     this._arb(0, 1, sp.susp.arbFront); this._arb(2, 3, sp.susp.arbRear);
     this.onGround = contacts > 0;
     this.airTime = this.onGround ? 0 : this.airTime + dt;
+    if (this.boosting) this.F.addScaled(this.az, this.mass * sp.boost.accel * (contacts >= 2 ? 1 : sp.boost.airShare));
 
     // --- drivetrain
     const drv = this._drivetrain(dt, input);
@@ -305,6 +312,14 @@ export class Vehicle {
     const r = Math.abs(this._gearRatio(g));
     return Math.abs(speed) / this.spec.wheelRadius * r * 60 / (2 * Math.PI);
   }
+  /** Nitro tank: drains while boosting, refills otherwise. Needs a forward gear. */
+  _boost(dt, want) {
+    const b = this.spec.boost;
+    const can = this.gear > 0 && this.boostFuel > 0 && (this.boosting || this.boostFuel >= b.restart);
+    this.boosting = want && can;
+    this.boostFuel = this.boosting ? Math.max(0, this.boostFuel - dt / b.burn) : Math.min(1, this.boostFuel + dt / b.refill);
+  }
+
   _torque(rpm) {
     const c = this.spec.engine.curve;
     if (rpm <= c[0][0]) return c[0][1];
@@ -352,7 +367,7 @@ export class Vehicle {
     if (drive < 0.05 && this.gear > 0 && this.rpm > e.idle + 400) {
       force -= Math.sign(fwd) * e.engineBrake * Math.abs(ratio) / this.spec.wheelRadius * clamp(Math.abs(fwd) / 3, 0, 1);
     }
-    const hold = drive < 0.02 && brakeCmd < 0.02 && Math.abs(fwd) < 0.5 && !this.handbrake ? 1 : 0;
+    const hold = drive < 0.02 && brakeCmd < 0.02 && Math.abs(fwd) < 0.5 && !this.handbrake && !this.boosting ? 1 : 0;
     return { force, brake: brakeCmd, hold };
   }
 

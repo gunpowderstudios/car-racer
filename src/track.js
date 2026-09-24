@@ -25,11 +25,29 @@ export const EMBANKMENT = 0.8;             // verge falls away this many metres 
 const CELL = 8;
 const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its ends
 const QUERY_MARGIN = 4.5;
-const TAKEOFF_LEN = 12, TAKEOFF_RISE = 0.5;   // ramp up to a gap
+const TAKEOFF_LEN = 12, TAKEOFF_RISE = 0.5;   // ramp up to a gap (the default, flat-lipped ramp)
+export const LIP = { minH: 0.3, maxH: 3, maxDeg: 30, minLen: 5, maxLen: 30 };
 const LANDING_LEN = 10, LANDING_DROP = 0.4;   // far side sits a little lower           // how far outside the road edge a query still "sees" it
 
 const DEG = Math.PI / 180;
 let candI = new Int32Array(256), candY = new Float64Array(256), candD = new Float64Array(256);   // query scratch
+
+// ---------------------------------------------------------------- jumps
+
+/**
+ * Takeoff ramp profile for a jump handle. `at(x)` is the lift x metres into the ramp.
+ * kick 0: the classic gentle ramp that flattens out at the edge.
+ * kick > 0: a curved kicker, flat where it starts and rising to exactly `kick` degrees at
+ * the lip (y = H u^p, with the ramp length and exponent chosen so the end slope matches).
+ */
+export function takeoffRamp(h) {
+  const H = h.lip ?? TAKEOFF_RISE, kick = h.kick || 0;
+  if (kick <= 0) return { len: TAKEOFF_LEN, rise: H, angle: 0, at: (x) => H * smoothstep(x / TAKEOFF_LEN) };
+  const tanK = Math.tan(kick * DEG);
+  const len = clamp((2 * H) / tanK, LIP.minLen, LIP.maxLen);
+  const p = Math.max(1.2, (len * tanK) / H);
+  return { len, rise: H, angle: kick, at: (x) => H * Math.pow(clamp(x / len, 0, 1), p) };
+}
 
 // ---------------------------------------------------------------- definition
 
@@ -44,6 +62,8 @@ export function normalizeTrack(input) {
     w: h.w ? clamp(Number(h.w), 12, 40) : 0,           // 0 = use track default
     bank: clamp(Number(h.bank) || 0, -20, 20),          // degrees
     gap: h.gap ? clamp(Number(h.gap), 6, 40) : (h.gapAfter ? 14 : 0), // metres of missing road
+    lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
+    kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
   }));
   return {
     version: TRACK_VERSION,
@@ -148,11 +168,11 @@ export class Track {
     const gap = (this.gap = new Uint8Array(n));
     def.handles.forEach((h, hi) => {
       if (!h.gap) return;
-      const c = this.handleS[hi], half = h.gap / 2;
+      const c = this.handleS[hi], half = h.gap / 2, ramp = takeoffRamp(h);
       for (let i = 0; i < n; i++) {
         let d = s[i] - c; if (d > total / 2) d -= total; if (d < -total / 2) d += total;   // signed distance to gap centre
         if (Math.abs(d) <= half) gap[i] = 1;
-        else if (d < 0 && d > -half - TAKEOFF_LEN) py[i] += TAKEOFF_RISE * smoothstep((d + half + TAKEOFF_LEN) / TAKEOFF_LEN);
+        else if (d < 0 && d > -half - ramp.len) py[i] += ramp.at(d + half + ramp.len);
         else if (d > 0 && d < half + LANDING_LEN) py[i] -= LANDING_DROP * smoothstep((half + LANDING_LEN - d) / LANDING_LEN);
       }
     });
@@ -165,7 +185,8 @@ export class Track {
     const curv = (this.curv = new Float64Array(n));
     const yaw = new Float64Array(n);
     for (let i = 0; i < n; i++) {
-      const p = (i - 1 + n) % n, q = (i + 1) % n;
+      // one-sided at the edges of a gap, so a ramp's lip keeps its own slope
+      const p = gap[(i - 1 + n) % n] && !gap[i] ? i : (i - 1 + n) % n, q = gap[(i + 1) % n] && !gap[i] ? i : (i + 1) % n;
       let Tx = px[q] - px[p], Ty = py[q] - py[p], Tz = pz[q] - pz[p];
       const tl = Math.hypot(Tx, Ty, Tz) || 1; Tx /= tl; Ty /= tl; Tz /= tl;
       tx[i] = Tx; ty[i] = Ty; tz[i] = Tz;

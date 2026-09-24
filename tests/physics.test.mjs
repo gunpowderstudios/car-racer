@@ -1,7 +1,7 @@
 // Run with:  npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Track, SURF, analyzeTrack, normalizeTrack, suggestBanks } from '../src/track.js';
+import { Track, SURF, analyzeTrack, normalizeTrack, suggestBanks, takeoffRamp } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS } from '../src/templates.js';
 import { makeSim, run, bot, placeOnTrack, DRAG_DEF } from './harness.mjs';
@@ -211,4 +211,52 @@ test('banked roads never dip below the ground', () => {
       }
     }
   }
+});
+
+test('boost adds speed, drains the tank, then refills it', () => {
+  const trial = (boost) => {
+    const { track, car } = makeSim(DRAG_DEF, 40, 15);
+    run(car, track, 2.5, () => ({ throttle: 1, boost }));
+    return car;
+  };
+  const plain = trial(false), boosted = trial(true);
+  assert.ok(boosted.fwdSpeed > plain.fwdSpeed + 6, `boost should be clearly faster (${plain.fwdSpeed.toFixed(1)} vs ${boosted.fwdSpeed.toFixed(1)} m/s)`);
+  assert.ok(boosted.ay.y > 0.95, 'boost should not flip the car');
+  const { track, car } = makeSim(DRAG_DEF, 40, 15);
+  run(car, track, 3.4, () => ({ throttle: 1, boost: true }));
+  assert.ok(car.boostFuel < 0.05 && !car.boosting, `tank should run dry (${car.boostFuel.toFixed(2)})`);
+  run(car, track, 2, () => ({ throttle: 0.4 }));
+  assert.ok(car.boostFuel > 0.15 && car.boostFuel < 0.4, `tank refills slowly (${car.boostFuel.toFixed(2)})`);
+});
+
+test('a jump lip rises to its height and launches at its angle', () => {
+  for (const [lip, kick] of [[0.5, 0], [1, 12], [2, 22], [3, 30]]) {
+    const r = takeoffRamp({ lip, kick });
+    assert.ok(Math.abs(r.at(r.len) - lip) < 1e-6, 'ramp reaches its height');
+    assert.ok(r.at(0) === 0 && r.at(r.len * 0.5) < lip * 0.5 + 1e-9, 'ramp starts flat and curves up');
+    const slope = (r.at(r.len) - r.at(r.len - 0.01)) / 0.01;
+    assert.ok(Math.abs(Math.atan(slope) * 57.2958 - kick) < 1, `lip angle ${kick}: got ${(Math.atan(slope) * 57.2958).toFixed(1)}`);
+  }
+  // the track surface follows it, and the frame at the lip points up the ramp (not down into the gap)
+  const d = makeTemplate('hills'), k = d.handles.findIndex((h) => h.gap);
+  Object.assign(d.handles[k], { lip: 2, kick: 20 });
+  const t = new Track(d);
+  let lipI = -1; for (let i = 1; i < t.n; i++) if (t.gap[i] && !t.gap[i - 1]) { lipI = i - 1; break; }
+  assert.ok(Math.atan(t.ty[lipI] / Math.hypot(t.tx[lipI], t.tz[lipI])) * 57.2958 > 14, 'road tilts up at the lip');
+  assert.deepEqual(normalizeTrack({ handles: [{ x: 0, z: 0, gap: 10 }] }).handles[0].kick, 0, 'old tracks keep the flat ramp');
+});
+
+test('a kicked lip throws the car higher and it still lands upright', () => {
+  const air = (lip, kick) => {
+    const d = makeTemplate('hills'), k = d.handles.findIndex((h) => h.gap);
+    Object.assign(d.handles[k], { lip, kick });
+    const track = new Track(d), car = new Vehicle(), drive = bot({ speed: 30 });
+    placeOnTrack(car, track, track.handleS[k] - d.handles[k].gap / 2 - takeoffRamp(d.handles[k]).len - 50, 0, 30);
+    let a = 0, best = 0, minUp = 1;
+    run(car, track, 6, (t, c, tr) => { a = c.onGround ? 0 : a + 1 / 120; best = Math.max(best, a); minUp = Math.min(minUp, c.ay.y); return drive(t, c, tr); });
+    return { best, minUp };
+  };
+  const flat = air(0.5, 0), kicked = air(1.5, 20);
+  assert.ok(kicked.best > flat.best + 0.8, `kicker should add airtime (${flat.best.toFixed(2)}s -> ${kicked.best.toFixed(2)}s)`);
+  assert.ok(kicked.minUp > 0.8, `should land upright (${kicked.minUp.toFixed(2)})`);
 });
