@@ -48,7 +48,7 @@ export function buildTrackGeometry(track) {
   const vgrid = L / Math.max(1, Math.round(L / 20));       // texture repeat length that divides the loop exactly
 
   // generic quad-strip builder: cols(i) -> array of {p:[x,y,z], n:[..], c:[..], u}
-  const strip = (buf, cols, C, vOf) => {
+  const strip = (buf, cols, C, vOf, skip) => {
     const base = buf.count;
     for (let i = 0; i <= n; i++) {
       const k = i % n, cs = cols(k), v = vOf(i);
@@ -57,6 +57,7 @@ export function buildTrackGeometry(track) {
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
       if (track.gap[i] || track.gap[j]) continue;
+      if (skip && (skip(i) || skip(j))) continue;
       for (let c = 0; c < C - 1; c++) {
         const a = base + i * C + c, b = a + 1, d = base + (i + 1) * C + c, e = d + 1;
         buf.idx.push(a, b, d, b, e, d);
@@ -95,6 +96,30 @@ export function buildTrackGeometry(track) {
     return [{ p: [l[0], l[1] - SLAB, l[2]], n: dn, c: C_ROAD_SIDE }, { p: [r[0], r[1] - SLAB, r[2]], n: dn, c: C_ROAD_SIDE }];
   }, 2, sv);
 
+  // Where a raised road (bridge) passes over another part of the track, its grass embankment would
+  // form a hill blocking the road underneath. Leave the embankment out there so the bridge stands
+  // on its slab and pillars and the lower road runs clear beneath it.
+  const noBank = { 1: new Uint8Array(n), '-1': new Uint8Array(n) };
+  {
+    const q = Track.newQuery(), k0 = Math.max(KERB_W, apron);
+    for (const sg of [1, -1]) {
+      for (let i = 0; i < n; i++) {
+        if (track.gap[i] || track.py[i] < 1.5) continue;
+        const reach = Math.max(2, track.py[i] / EMBANKMENT);
+        for (let k = 0; k <= reach + 6; k += 1.5) {
+          const o = out(i, sg, k0 + k);
+          track.query(o[0], 1.0, o[2], q, 0.6);
+          if (q.surface === SURF.ROAD && q.idx >= 0) {
+            const ds = Math.abs(track.s[i] - q.s);
+            if (ds > 40 && ds < L - 40) { noBank[sg][i] = 1; break; }
+          }
+        }
+      }
+      const src = noBank[sg].slice();                       // widen the opening a little either side
+      for (let i = 0; i < n; i++) if (src[i]) for (let d = -14; d <= 14; d++) noBank[sg][(i + d + n) % n] = 1;
+    }
+  }
+
   // ---- kerbs and embankments (both sides), painted in alternating blocks
   for (const sg of [1, -1]) {
     const blockCol = (i, a, b) => (Math.floor(i / 5) % 2 ? a : b);
@@ -114,7 +139,7 @@ export function buildTrackGeometry(track) {
       const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
       const c = [C_GRASS[0] * shade, C_GRASS[1] * shade, C_GRASS[2] * shade];
       return [{ p: e, n: nn, c }, { p: [q[0], 0, q[2]], n: nn, c }];
-    }, 2, sv);
+    }, 2, sv, (i) => noBank[sg][i]);
   }
 
   // ---- walls (barrier blocks, red and white)
