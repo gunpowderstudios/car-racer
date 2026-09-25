@@ -43,7 +43,9 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
   one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
 - **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners and traffic, take the jump, and
   reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost).
-  A wrecked rival burns for a while as an obstacle, then a fresh one is dropped on the road far from you.
+  A wrecked rival burns for a while, then sits as a permanent obstacle - it never disappears - while a fresh rival
+is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks`), the oldest quietly shrinks away
+to make room for the next one.
 - **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
   barrels beside it. Lay barrels in the editor to build a proper killing ground.
 

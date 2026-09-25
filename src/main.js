@@ -328,7 +328,7 @@ function syncViews(a) {
     qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
     v.root.quaternion.slerpQuaternions(qa, qb, a);
     let k = Math.min(1, f.age / 0.5);                                          // fade a new rival in
-    if (f.wrecked && f.wreckT > DERBY.wreckLife) k = 1 - (f.wreckT - DERBY.wreckLife) / DERBY.wreckFade;   // and a burnt-out one away
+    if (f.expire) k = 1 - f.expireT / DERBY.wreckFade;                         // making room: shrink this one away
     v.root.scale.setScalar(Math.max(k, 0.001));
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     v.root.visible = dx * dx + dz * dz < 300 * 300;                            // 200,000 triangles each: skip the far ones

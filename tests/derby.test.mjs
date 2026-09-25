@@ -219,7 +219,7 @@ test('every kind of points goes through award(), so a new one is a single line',
   } finally { delete POINTS.landing; }
 });
 
-test('a wrecked rival lies about for a while, is replaced by a fresh one, and finally goes', () => {
+test('a wrecked rival lies about, is replaced by a fresh one, and never disappears on its own', () => {
   const track = new Track(makeTemplate('speedway')), car = new Vehicle();
   placeOnRoad(car, track, track.startS(12), 0, 0);
   const derby = new Derby(); derby.enabled = true; derby.start(track, car, 4, 5);
@@ -231,9 +231,21 @@ test('a wrecked rival lies about for a while, is replaced by a fresh one, and fi
   assert.equal(derby.alive, 4, 'a replacement arrived');
   assert.equal(victim.gone, false, 'the hulk is still there');
   for (let i = 0; i < (DERBY.wreckLife + DERBY.wreckFade + 1) / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
-  assert.equal(victim.gone, true, 'burnt out and removed');
-  assert.ok(!derby.cars.includes(victim.car));
+  assert.equal(victim.gone, false, 'still there long after it would once have burnt out');
+  assert.ok(derby.cars.includes(victim.car), 'still a solid obstacle');
   assert.equal(derby.alive, 4);
+});
+
+test('once too many hulks pile up, the oldest one fades away to make room', () => {
+  const track = new Track(makeTemplate('speedway')), car = new Vehicle();
+  placeOnRoad(car, track, track.startS(12), 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.start(track, car, DERBY.maxWrecks + 2, 5);
+  const first = derby.rivals[0]; first.age = 9;
+  derby._damage(first, 'back', 999, null);                 // the oldest wreck
+  for (let i = 0; i < 0.5 / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
+  for (const f of derby.rivals) { f.age = 9; derby._damage(f, 'back', 999, null); }   // wreck everything else too
+  for (let i = 0; i < 3 / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
+  assert.equal(first.gone, true, 'the oldest hulk made way once the cap was hit');
 });
 
 // ------------------------------------------------------------------ explosions

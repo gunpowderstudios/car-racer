@@ -29,10 +29,10 @@ export const DERBY = {
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
-  wreckLife: 14,         // how long a burnt-out hulk lies about
-  wreckFade: 1.6,        // and how long it takes to shrink away after that
+  wreckLife: 14,         // how long a wrecked rival actively burns before the fire dies down
+  wreckFade: 1.6,        // how long the oldest hulk takes to shrink away when maxWrecks is exceeded
   spawnEvery: 2.5,       // seconds between replacements
-  maxWrecks: 8,
+  maxWrecks: 8,           // wrecked rivals stay on the track as obstacles forever, up to this many at once
   creditNear: 30,        // m: a blast this close to you counts as yours
   gridLead: 12,          // m: gap from the player to the first row of the starting grid
   gridRow: 8,            // m: gap between grid rows
@@ -200,6 +200,7 @@ export class Derby {
     const f = {
       id: this._id++, isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: SPECS.rival,
       wrecked: false, wreckT: 0, gone: false, age: 0, lastHit: null, flash: 0, flashZone: 'front', flipT: 0, idleT: 0, offT: 0,
+      expire: false, expireT: 0,
       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,
     };
     this._pose(f, f.cur); this._pose(f, f.prev);
@@ -272,15 +273,21 @@ export class Derby {
     for (const f of F) {
       if (f.gone) continue;
       f.flash = Math.max(0, f.flash - dt * 3.5);
-      if (f.wrecked) { f.wreckT += dt; if (!f.isPlayer) { wrecks++; if (f.wreckT > DERBY.wreckLife + DERBY.wreckFade) this._remove(f); } }
+      if (f.wrecked) {
+        f.wreckT += dt;
+        if (!f.isPlayer) {
+          wrecks++;
+          if (f.expire) { f.expireT += dt; if (f.expireT > DERBY.wreckFade) this._remove(f); }
+        }
+      }
       else if (!f.isPlayer) this._watch(f, dt);
       else f.flipT = 0;
       this._snap(f);
     }
-    if (wrecks > DERBY.maxWrecks) {                         // too many hulks: the oldest go early
+    if (wrecks > DERBY.maxWrecks) {                         // too many hulks: fade the oldest to make room
       let old = null;
-      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && (!old || f.wreckT > old.wreckT)) old = f;
-      if (old && old.wreckT < DERBY.wreckLife) old.wreckT = DERBY.wreckLife;
+      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && (!old || f.wreckT > old.wreckT)) old = f;
+      if (old) old.expire = true;
     }
 
     // -------- replacements

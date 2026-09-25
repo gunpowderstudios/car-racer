@@ -1,0 +1,133 @@
+diff --git a/README.md b/README.md
+index efc6926..efe49b2 100644
+--- a/README.md
++++ b/README.md
+@@ -43,7 +43,9 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
+   one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
+ - **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners and traffic, take the jump, and
+   reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost).
+-  A wrecked rival burns for a while as an obstacle, then a fresh one is dropped on the road far from you.
++  A wrecked rival burns for a while, then sits as a permanent obstacle - it never disappears - while a fresh rival
++is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks`), the oldest quietly shrinks away
++to make room for the next one.
+ - **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
+   barrels beside it. Lay barrels in the editor to build a proper killing ground.
+ 
+diff --git a/src/derby.js b/src/derby.js
+index b2ff092..60c0ae2 100644
+--- a/src/derby.js
++++ b/src/derby.js
+@@ -29,10 +29,10 @@ export const DERBY = {
+   grace: 3,              // seconds after the start before anything can hurt you
+   spawnGrace: 1.5,       // and before a fresh rival can be hurt
+   credit: 6,             // seconds after your hit in which a wreck still counts as yours
+-  wreckLife: 14,         // how long a burnt-out hulk lies about
+-  wreckFade: 1.6,        // and how long it takes to shrink away after that
++  wreckLife: 14,         // how long a wrecked rival actively burns before the fire dies down
++  wreckFade: 1.6,        // how long the oldest hulk takes to shrink away when maxWrecks is exceeded
+   spawnEvery: 2.5,       // seconds between replacements
+-  maxWrecks: 8,
++  maxWrecks: 8,           // wrecked rivals stay on the track as obstacles forever, up to this many at once
+   creditNear: 30,        // m: a blast this close to you counts as yours
+   gridLead: 12,          // m: gap from the player to the first row of the starting grid
+   gridRow: 8,            // m: gap between grid rows
+@@ -200,6 +200,7 @@ export class Derby {
+     const f = {
+       id: this._id++, isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: SPECS.rival,
+       wrecked: false, wreckT: 0, gone: false, age: 0, lastHit: null, flash: 0, flashZone: 'front', flipT: 0, idleT: 0, offT: 0,
++      expire: false, expireT: 0,
+       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,
+     };
+     this._pose(f, f.cur); this._pose(f, f.prev);
+@@ -272,15 +273,21 @@ export class Derby {
+     for (const f of F) {
+       if (f.gone) continue;
+       f.flash = Math.max(0, f.flash - dt * 3.5);
+-      if (f.wrecked) { f.wreckT += dt; if (!f.isPlayer) { wrecks++; if (f.wreckT > DERBY.wreckLife + DERBY.wreckFade) this._remove(f); } }
++      if (f.wrecked) {
++        f.wreckT += dt;
++        if (!f.isPlayer) {
++          wrecks++;
++          if (f.expire) { f.expireT += dt; if (f.expireT > DERBY.wreckFade) this._remove(f); }
++        }
++      }
+       else if (!f.isPlayer) this._watch(f, dt);
+       else f.flipT = 0;
+       this._snap(f);
+     }
+-    if (wrecks > DERBY.maxWrecks) {                         // too many hulks: the oldest go early
++    if (wrecks > DERBY.maxWrecks) {                         // too many hulks: fade the oldest to make room
+       let old = null;
+-      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && (!old || f.wreckT > old.wreckT)) old = f;
+-      if (old && old.wreckT < DERBY.wreckLife) old.wreckT = DERBY.wreckLife;
++      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && (!old || f.wreckT > old.wreckT)) old = f;
++      if (old) old.expire = true;
+     }
+ 
+     // -------- replacements
+diff --git a/src/main.js b/src/main.js
+index 02aab7c..3457cfa 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -328,7 +328,7 @@ function syncViews(a) {
+     qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
+     v.root.quaternion.slerpQuaternions(qa, qb, a);
+     let k = Math.min(1, f.age / 0.5);                                          // fade a new rival in
+-    if (f.wrecked && f.wreckT > DERBY.wreckLife) k = 1 - (f.wreckT - DERBY.wreckLife) / DERBY.wreckFade;   // and a burnt-out one away
++    if (f.expire) k = 1 - f.expireT / DERBY.wreckFade;                         // making room: shrink this one away
+     v.root.scale.setScalar(Math.max(k, 0.001));
+     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
+     v.root.visible = dx * dx + dz * dz < 300 * 300;                            // 200,000 triangles each: skip the far ones
+diff --git a/src/version.js b/src/version.js
+index 18a1485..eb9322f 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -3,6 +3,6 @@
+ // and set NOTE to a short line describing what changed, e.g. 'AI cars now line up on the grid'.
+ // BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
+ // (it commits the short commit id + date, so you can always tell exactly what's live).
+-export const VERSION = '12.5';
+-export const NOTE = 'AI cars line up on a starting grid; fixed bridge supports poking through steep banks';
+-export const BUILD = 'b88739d 25 Sep 07:50';
++export const VERSION = '12.6';
++export const NOTE = 'Wrecked rivals stay on track as permanent obstacles instead of disappearing';
++export const BUILD = 'dev';
+diff --git a/tests/derby.test.mjs b/tests/derby.test.mjs
+index 2fd8c5e..446a13d 100644
+--- a/tests/derby.test.mjs
++++ b/tests/derby.test.mjs
+@@ -219,7 +219,7 @@ test('every kind of points goes through award(), so a new one is a single line',
+   } finally { delete POINTS.landing; }
+ });
+ 
+-test('a wrecked rival lies about for a while, is replaced by a fresh one, and finally goes', () => {
++test('a wrecked rival lies about, is replaced by a fresh one, and never disappears on its own', () => {
+   const track = new Track(makeTemplate('speedway')), car = new Vehicle();
+   placeOnRoad(car, track, track.startS(12), 0, 0);
+   const derby = new Derby(); derby.enabled = true; derby.start(track, car, 4, 5);
+@@ -231,11 +231,23 @@ test('a wrecked rival lies about for a while, is replaced by a fresh one, and fi
+   assert.equal(derby.alive, 4, 'a replacement arrived');
+   assert.equal(victim.gone, false, 'the hulk is still there');
+   for (let i = 0; i < (DERBY.wreckLife + DERBY.wreckFade + 1) / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
+-  assert.equal(victim.gone, true, 'burnt out and removed');
+-  assert.ok(!derby.cars.includes(victim.car));
++  assert.equal(victim.gone, false, 'still there long after it would once have burnt out');
++  assert.ok(derby.cars.includes(victim.car), 'still a solid obstacle');
+   assert.equal(derby.alive, 4);
+ });
+ 
++test('once too many hulks pile up, the oldest one fades away to make room', () => {
++  const track = new Track(makeTemplate('speedway')), car = new Vehicle();
++  placeOnRoad(car, track, track.startS(12), 0, 0);
++  const derby = new Derby(); derby.enabled = true; derby.start(track, car, DERBY.maxWrecks + 2, 5);
++  const first = derby.rivals[0]; first.age = 9;
++  derby._damage(first, 'back', 999, null);                 // the oldest wreck
++  for (let i = 0; i < 0.5 / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
++  for (const f of derby.rivals) { f.age = 9; derby._damage(f, 'back', 999, null); }   // wreck everything else too
++  for (let i = 0; i < 3 / DT; i++) { car.step(DT, IN, track); derby.step(DT); car.events.length = 0; derby.events.length = 0; }
++  assert.equal(first.gone, true, 'the oldest hulk made way once the cap was hit');
++});
++
+ // ------------------------------------------------------------------ explosions
+ 
+ test('a barrel going off hurts the cars around it, more the closer they are, and yours takes far less', () => {
