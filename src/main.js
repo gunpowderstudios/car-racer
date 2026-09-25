@@ -78,7 +78,47 @@ const input = new Input({
   onEditor: () => mode === 'drive' && openEditor(def),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
   onMusic: () => { sound.setEnabled('music', !sound.musicOn); syncSoundUI(); },
+  onMirror: () => mode === 'drive' && toggleMirror(),
 });
+
+// ------------------------------------------------------------ rear-view mirror
+// A second camera looking back from just behind the car renders into a texture, which is drawn
+// left-right flipped (like a real mirror) into the #mirror frame at the top of the screen.
+const mirror = {
+  on: true, el: $('mirror'),
+  cam: new THREE.PerspectiveCamera(48, 4, 0.3, 1800),
+  rt: new THREE.WebGLRenderTarget(1, 1, { samples: 4 }),
+  scene: new THREE.Scene(), ortho: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2),
+  off: new THREE.Vector3(), tilt: new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.05, 0, 0)),
+};
+{
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: mirror.rt.texture, depthTest: false, depthWrite: false }));
+  quad.scale.x = -1;   // the mirror flip
+  mirror.scene.add(quad); mirror.ortho.position.z = 1;
+}
+function toggleMirror() { mirror.on = !mirror.on; mirror.el.hidden = !mirror.on; hud.banner('Mirror ' + (mirror.on ? 'on' : 'off'), 900); }
+function renderMirror() {
+  const r = mirror.el.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return;
+  // in the derby the mirror sits under the score card, and the kill feed under the mirror
+  const score = $('derby-score'), feed = $('feed');
+  if (!score.hidden) { mirror.el.style.top = score.getBoundingClientRect().bottom + 6 + 'px'; feed.style.top = r.bottom + 6 + 'px'; }
+  else if (mirror.el.style.top) { mirror.el.style.top = ''; feed.style.top = ''; }
+  const pr = renderer.getPixelRatio(), bw = 3, w = r.width - bw * 2, h = r.height - bw * 2;
+  const tw = Math.round(w * pr), th = Math.round(h * pr);
+  if (mirror.rt.width !== tw || mirror.rt.height !== th) mirror.rt.setSize(tw, th);
+  mirror.cam.aspect = w / h; mirror.cam.updateProjectionMatrix();
+  mirror.cam.position.copy(drawPos).add(mirror.off.set(0, 1.35, -2.7).applyQuaternion(drawQ));
+  mirror.cam.quaternion.copy(drawQ).multiply(mirror.tilt);   // camera looks down -Z, which is the car's rear
+  const shadows = renderer.shadowMap.autoUpdate;
+  renderer.shadowMap.autoUpdate = false;                     // reuse the shadow map from the main view
+  renderer.setRenderTarget(mirror.rt); renderer.render(stage.scene, mirror.cam); renderer.setRenderTarget(null);
+  renderer.shadowMap.autoUpdate = shadows;
+  const x = r.left + bw, y = innerHeight - r.bottom + bw;
+  renderer.setScissorTest(true); renderer.setScissor(x, y, w, h); renderer.setViewport(x, y, w, h);
+  renderer.autoClear = false; renderer.render(mirror.scene, mirror.ortho); renderer.autoClear = true;
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight);
+}
 
 // ------------------------------------------------------------ in-game sound cog
 function syncSoundUI() {
@@ -98,6 +138,7 @@ syncSoundUI();
 const controlActions = {
   restart: () => restartRace(), reset: () => respawn(),
   camera: () => hud.banner(chase.cycle() + ' camera', 900),
+  mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
 };
 for (const b of document.querySelectorAll('#controls button[data-act]')) {
@@ -433,6 +474,7 @@ function frame(now) {
   propsView.update(props);
   stage.update(drawPos, camera.position);
   renderer.render(stage.scene, camera);
+  if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
 }
 
 function debugText() {

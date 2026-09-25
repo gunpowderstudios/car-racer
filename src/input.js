@@ -2,13 +2,13 @@
 import { clamp } from './math.js';
 
 export class Input {
-  constructor({ onReset, onRestart, onCamera, onMenu, onEditor, onDebug, onMusic } = {}) {
+  constructor({ onReset, onRestart, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror } = {}) {
     this.keys = new Set();
     this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
     this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false };
     this._prevPad = {};
     this.enabled = true;
-    const map = { KeyR: onReset, Backspace: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic };
+    const map = { KeyR: onReset, Backspace: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror };
     addEventListener('keydown', (e) => {
       if (!this.enabled) return;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();

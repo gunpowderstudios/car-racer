@@ -21,6 +21,7 @@ Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump st
 | R | put the car back on the road (also happens automatically if you flip or fall off) |
 | Backspace | restart: back to the start line with a fresh lap, a full boost tank and (in the derby) a new set of rivals and a repaired car |
 | C | camera: chase, high, bumper |
+| V | rear-view mirror on/off |
 | E | open the track editor with the current track |
 | Esc | menu, M music, F3 telemetry |
 
