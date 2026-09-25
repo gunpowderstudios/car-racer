@@ -312,6 +312,28 @@ test('a rival steers around a barrel sitting on the road instead of driving into
 
 // ------------------------------------------------------------------ the rival drivers
 
+test('a hunting rival still steers gently through a jump gap instead of yanking the wheel toward the player', () => {
+  const track = new Track(makeTemplate('hills'));
+  const gapS = track.handleS[track.def.handles.findIndex((h) => h.gap)];
+  const car = new Vehicle();
+  placeOnRoad(car, track, ((gapS - 40) % track.length + track.length) % track.length, 0, 25);
+  // player parked hard against one edge, well before the gap - pulls hunting's aim off-centre if it's allowed to
+  const player = new Vehicle();
+  placeOnRoad(player, track, ((gapS - 15) % track.length + track.length) % track.length, 8, 0);
+  const drv = new Driver(mulberry(9), 1); drv.mood = 'hunt'; drv.moodT = 60;
+  const ctx = { player, cars: [car], barrels: null };
+  let maxAbsSteer = 0, sawGap = false;
+  for (let i = 0; i < 3 / DT; i++) {
+    const s = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
+    const nearGap = Math.abs(((s - gapS + track.length / 2) % track.length) - track.length / 2) < 20;
+    const inp = (i % 4 === 0) ? drv.drive(car, track, ctx, DT * 4) : drv.input;
+    car.step(i % 4 === 0 ? DT * 4 : DT, inp, track);
+    if (nearGap) { sawGap = true; maxAbsSteer = Math.max(maxAbsSteer, Math.abs(inp.steer)); }
+  }
+  assert.ok(sawGap, 'test setup problem - never reached the gap');
+  assert.ok(maxAbsSteer <= 0.26, `steer hit ${maxAbsSteer.toFixed(2)} near the gap - not committing to the jump`);
+});
+
 test('rivals drive every track without flipping, getting lost or crashing about', () => {
   for (const key of TEMPLATE_KEYS) {
     const track = new Track(makeTemplate(key)), car = new Vehicle();

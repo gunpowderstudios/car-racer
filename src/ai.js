@@ -163,7 +163,7 @@ export class Driver {
     this.laneNow = clamp(this.laneNow, -0.85, 0.85);
 
     // ---------------------------------------------------------------- jumps: commit or don't
-    const jump = !hunting && gapAhead(track, s);
+    const jump = gapAhead(track, s);
     if (jump) { vT = Math.max(vT, AI.jumpSpeed); ax = f.x; az = f.z; }
 
     // ---------------------------------------------------------------- steer

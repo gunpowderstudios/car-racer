@@ -42,7 +42,8 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
 - **Score.** Wrecking a rival that you hit within the last 6 seconds is a *Takedown*, worth 100. That includes rivals caught in the blast of
   one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
 - **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners, traffic and barrels, take the jump, and
-  reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost). Ram one
+  reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost) - though a
+  jump always takes priority, so a hunting rival still lines up and commits to a gap rather than yanking the wheel toward you mid-air. Ram one
   yourself and it holds a grudge for a while (`AI.grudgeTime`), hunting you down even if it wouldn't normally pick a fight.
   A wrecked rival burns for a while, then sits as a permanent obstacle - it never disappears - while a fresh rival
 is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks`), the oldest quietly shrinks away
