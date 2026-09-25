@@ -350,7 +350,7 @@ function derbyFx(dt) {
     if (f.wrecked) {
       if (f.isPlayer || f.wreckT < DERBY.wreckLife) particles.burn(c.pos.x, c.pos.y, c.pos.z, c.vel.x, c.vel.z, dt, f.isPlayer ? 1 : Math.max(0.3, 1 - f.wreckT / DERBY.wreckLife));
       // the fire's died down, but a burnt-out hulk still smoulders - a thin trail rising up, for good
-      else if (Math.random() < 1.1 * dt) particles.puff(c.pos.x + (Math.random() - 0.5) * 0.6, c.pos.y + 0.5, c.pos.z + (Math.random() - 0.5) * 0.6, 0, 0, 1.1 + Math.random() * 0.5, 2.4 + Math.random() * 1.4, 0x49454a);
+      else if (Math.random() < 1.4 * dt) particles.puff(c.pos.x + (Math.random() - 0.5) * 1.0, c.pos.y + 0.5, c.pos.z + (Math.random() - 0.5) * 1.0, 0, 0, 2.2 + Math.random() * 1.4, 3.4 + Math.random() * 2.0, 0x49454a);
       continue;
     }
     const w = f.health.worst;
