@@ -290,6 +290,26 @@ test('rival cars knock barrels about too, and an explosion pushes every car near
   p2.shock(pt.x, pt.y, pt.z);                       // and the wreck shock does not throw
 });
 
+test('a rival steers around a barrel sitting on the road instead of driving into it', () => {
+  const track = dragTrack();
+  const pt = placeProp(track, 0, -260);
+  const def = { ...DRAG_DEF, props: [{ type: 'barrel', x: pt.x, z: pt.z, y: pt.y }] };
+  const t2 = new Track(def);
+  const props = new Props(); props.load(t2, t2.def.props);
+  const car = new Vehicle();
+  placeOnTrack(car, t2, t2.progressAt(0, 0.65, -340), 0, 20);
+  const drv = new Driver(mulberry(4), 0.3);
+  const ctx = { player: null, cars: [car], barrels: props.barrels };
+  let closest = Infinity;
+  for (let i = 0; i < 3 / DT; i++) {
+    car.step(DT, i % 4 === 0 ? drv.drive(car, t2, ctx, DT * 4) : drv.input, t2);
+    props.step(DT, [car]);
+    closest = Math.min(closest, Math.hypot(car.pos.x - pt.x, car.pos.z - pt.z));
+  }
+  assert.ok(closest > 1.6, `only got ${closest.toFixed(2)}m of clearance`);
+  assert.equal(props.barrels[0].alive, true, 'drove past without setting it off');
+});
+
 // ------------------------------------------------------------------ the rival drivers
 
 test('rivals drive every track without flipping, getting lost or crashing about', () => {
@@ -330,6 +350,21 @@ test('a hunting rival heads for you and hits you', () => {
     derby.events.length = 0; me.events.length = 0;
   }
   assert.ok(hit, 'it found you');
+});
+
+test('ramming a rival gives it a grudge - it hunts you down regardless of its usual mood timer', () => {
+  const a = arena();
+  const c = new Vehicle();
+  placeOnTrack(c, a.track, a.track.progressAt(0, 0.65, -280), 0, 0);
+  const driver = new Driver(mulberry(6), 0.1);           // low aggression - on its own it would rarely pick a fight
+  const f = a.derby.add(c, driver); f.age = 9;
+  assert.equal(driver.grudgeT, 0);
+  a.derby._damage(f, 'back', 50, a.derby.player);        // rammed by the player
+  assert.ok(driver.grudgeT > 0, 'holds a grudge after being rammed');
+  driver.mood = 'cruise'; driver.moodT = 0.01;           // about to naturally reconsider its mood
+  const ctx = { player: a.car, cars: [c], barrels: null };
+  driver.drive(c, a.track, ctx, 0.02);
+  assert.equal(driver.mood, 'hunt', 'the grudge forces it to hunt regardless');
 });
 
 // ------------------------------------------------------------------ the whole thing

@@ -41,8 +41,9 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
   of the screen shows all four zones (green to red, flashing when hit); when one hits zero you explode and the game is over.
 - **Score.** Wrecking a rival that you hit within the last 6 seconds is a *Takedown*, worth 100. That includes rivals caught in the blast of
   one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
-- **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners and traffic, take the jump, and
-  reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost).
+- **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners, traffic and barrels, take the jump, and
+  reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost). Ram one
+  yourself and it holds a grudge for a while (`AI.grudgeTime`), hunting you down even if it wouldn't normally pick a fight.
   A wrecked rival burns for a while, then sits as a permanent obstacle - it never disappears - while a fresh rival
 is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks`), the oldest quietly shrinks away
 to make room for the next one.
@@ -94,7 +95,7 @@ Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank
 | `src/propsView.js` | Draws the barrels and scrap as instanced meshes. |
 | `src/derby.js` | The derby: rivals, car-against-car collisions (five spheres per car, impulses at the point of contact), damage, wrecks, replacements and `award()` for scoring. No three.js. |
 | `src/damage.js` | Zones, hit points, armour and the crash / wall / blast damage formulas. No three.js. |
-| `src/ai.js` | The rival driver: follows the road, avoids traffic, takes jumps, hunts you. Produces the same throttle / brake / steer a person would. No three.js. |
+| `src/ai.js` | The rival driver: follows the road, avoids traffic and barrels, takes jumps, hunts you - and holds a grudge if you ram it. Produces the same throttle / brake / steer a person would. No three.js. |
 | `src/stage.js`, `carVisual.js`, `effects.js` | Scenery, car model and chase camera, skid marks, smoke, explosions and scorch marks. `carVisual.js` also paints the rival cars: the model's texture is hue-shifted once per colour and shared. |
 | `src/hud.js` | The DOM heads-up display, including the derby score, damage chart, points feed and game-over card. |
 

@@ -16,11 +16,13 @@ import { Track, SURF } from './track.js';
 export const IDLE = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });
 
 export const AI = {
-  cruiseMin: 19, cruiseMax: 28,     // m/s a rival is happy to cruise at (about 42 - 63 mph)
-  huntMax: 36,                      // m/s when chasing the player
+  cruiseMin: 22, cruiseMax: 32,     // m/s a rival is happy to cruise at (about 49 - 72 mph) - faster than before
+  huntMax: 40,                      // m/s when chasing the player
   aLatCruise: 7.0, aLatHunt: 9.0,   // cornering g-budget (m/s^2) used to pick corner speeds
   huntRange: 110,                   // m: nobody starts hunting from further away than this
   jumpSpeed: 30,                    // m/s to take a jump gap at
+  grudgeTime: 7,                    // s: how long a rival holds a grudge and won't give up the chase, once rammed
+  grudgeRangeMul: 2.2,              // hunting range is stretched this much further while holding a grudge
 };
 
 /** Largest corner curvature in the next `span` metres. */
@@ -57,6 +59,8 @@ export class Driver {
     this.q = Track.newQuery(); this.q2 = Track.newQuery();
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.target = false;                      // is it currently aiming at the player?
+    this.grudgeT = 0;                         // seconds left holding a grudge after being rammed by the player
+    this.steerNow = 0;                        // smoothed steering output, so it can't snap lock to lock
   }
 
   /**
@@ -75,6 +79,7 @@ export class Driver {
     // ---------------------------------------------------------------- mood
     const P = ctx.player;
     this.moodT -= dt;
+    this.grudgeT = Math.max(0, this.grudgeT - dt);
     let pd = Infinity, pRoad = false, pLane = 0;
     if (P) {
       pd = Math.hypot(P.pos.x - car.pos.x, P.pos.z - car.pos.z);
@@ -84,16 +89,18 @@ export class Driver {
         if (pRoad) pLane = clamp(this.q.d / Math.max(2, this.q.hw - 3.6), -0.85, 0.85);   // which lane you are in
       }
     }
-    if (this.moodT <= 0) {
+    if (this.grudgeT > 0 && P && pRoad) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
+    else if (this.moodT <= 0) {
       if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = 4 + this.rng() * 6 / (0.4 + this.aggr); }
       else if (P && pRoad && pd < AI.huntRange && this.rng() < this.aggr) { this.mood = 'hunt'; this.moodT = 5 + this.rng() * 6; }
       else this.moodT = 1.5 + this.rng() * 2;
     }
-    const hunting = this.mood === 'hunt' && !!P && pRoad && pd < AI.huntRange * 1.6;
+    const range = AI.huntRange * (this.grudgeT > 0 ? AI.grudgeRangeMul : 1.6);
+    const hunting = this.mood === 'hunt' && !!P && pRoad && pd < range;
     this.target = hunting;
 
     // ---------------------------------------------------------------- where to aim
-    const look = Math.max(11, car.speed * 0.55);
+    const look = Math.max(15, car.speed * 0.7);
     const f = track.frameAt(s + look);
     const usable = Math.max(2, f.hw - 3.6);
     let ax, az, vT;
@@ -138,6 +145,20 @@ export class Driver {
       const gap = ahead - 4.7;
       if (gap < 12 && car.fwdSpeed > o.fwdSpeed) { vT = Math.min(vT, Math.max(4, o.speed - 1 + gap * 0.4)); brake = Math.max(brake, 0.3); }
     }
+    // barrels sitting on the road: the same nudge-around, if any are in range (only passed while a derby is running)
+    if (ctx.barrels) {
+      for (const b of ctx.barrels) {
+        if (!b.alive) continue;
+        const rx = b.pos.x - car.pos.x, rz = b.pos.z - car.pos.z;
+        const ahead = rx * fx + rz * fz;
+        if (ahead < 0 || ahead > 22) continue;
+        const side = rx * car.ax.x + rz * car.ax.z;
+        if (Math.abs(side) > 2.2 || Math.abs(b.pos.y - car.pos.y) > 2.5) continue;
+        laneBias += side > 0 ? -1 : 1;
+        const gap = ahead - 3;
+        if (gap < 10) { vT = Math.min(vT, Math.max(6, gap * 1.2 + 6)); brake = Math.max(brake, 0.25); }
+      }
+    }
     this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
     this.laneNow = clamp(this.laneNow, -0.85, 0.85);
 
@@ -148,8 +169,10 @@ export class Driver {
     // ---------------------------------------------------------------- steer
     const dx = ax - car.pos.x, dz = az - car.pos.z;
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);      // + = target is on our left
-    let steer = clamp(ang * 2.2, -1, 1);
-    if (jump) steer = clamp(steer, -0.25, 0.25);
+    let steerTarget = clamp(ang * 2.2, -1, 1);
+    if (jump) steerTarget = clamp(steerTarget, -0.25, 0.25);
+    this.steerNow += clamp(steerTarget - this.steerNow, -3.2 * dt, 3.2 * dt);   // can't snap side to side
+    let steer = this.steerNow;
 
     // ---------------------------------------------------------------- pedals
     const err = vT - car.fwdSpeed;

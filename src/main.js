@@ -166,7 +166,7 @@ function sim(seconds, inp) {
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
     car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track);
-    if (derby.enabled) derby.step(DT);
+    if (derby.enabled) derby.step(DT, props.barrels);
     props.step(DT, derby.enabled ? derby.cars : car); simTime += DT; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);
   }
@@ -226,7 +226,7 @@ function stepPhysics(dt) {
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
-    if (derby.enabled) derby.step(DT);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
+    if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     props.step(DT, derby.enabled ? derby.cars : car);
     syncPose(); acc -= DT; n++; simTime += DT;
     if (props.events.length) { propEvents(); }

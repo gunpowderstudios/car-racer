@@ -13,7 +13,7 @@
 import { V3 } from './math.js';
 import { Vehicle } from './vehicle.js';
 import { Track, SURF } from './track.js';
-import { Driver, IDLE } from './ai.js';
+import { Driver, IDLE, AI } from './ai.js';
 import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage } from './damage.js';
 
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
@@ -114,7 +114,7 @@ export class Derby {
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
     this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
-    this._ctx = { player: null, cars: [] };
+    this._ctx = { player: null, cars: [], barrels: null };
     this._q = Track.newQuery();
     this.cars = [];                       // every car that should take part in physics, player first
   }
@@ -221,14 +221,14 @@ export class Derby {
    * Advance the rivals one physics step and settle every collision. Call it straight after the
    * player's car has stepped, before that car's own events are read (they are used here for damage).
    */
-  step(dt) {
+  step(dt, barrels = null) {
     if (!this.enabled || !this.track || !this.player) return;
     const T = this.track, P = this.player, F = this.fighters;
     this.time += dt; this._tick++;
 
     // -------- rivals think and drive
     const ctx = this._ctx;
-    ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars;
+    ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;
@@ -330,6 +330,7 @@ export class Derby {
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };
+    if (by && by.isPlayer && !f.isPlayer && f.driver) f.driver.grudgeT = Math.max(f.driver.grudgeT, AI.grudgeTime);
     f.health.hit(zone, hp * (f.spec.mul?.[zone] ?? 1));
     for (const n of NEIGHBOURS[zone]) f.health.hit(n, hp * DAMAGE.bleed * (f.spec.mul?.[n] ?? 1));
     f.health.last = zone;
