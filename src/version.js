@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '12.5';
 export const NOTE = 'AI cars line up on a starting grid; fixed bridge supports poking through steep banks';
-export const BUILD = 'dev';
+export const BUILD = 'b88739d 25 Sep 07:50';
