@@ -1,0 +1,130 @@
+diff --git a/workflows/stamp.yml b/.github/workflows/stamp.yml
+similarity index 100%
+rename from workflows/stamp.yml
+rename to .github/workflows/stamp.yml
+diff --git a/index.html b/index.html
+index 8cb243c..2d2281d 100644
+--- a/index.html
++++ b/index.html
+@@ -98,6 +98,7 @@
+   <div class="menu-inner">
+     <h1><span>Car</span> <span>Racer</span></h1>
+     <div id="version">v12.4</div>
++    <div id="version-note" class="muted small"></div>
+     <p class="lede">Heavy steel, wide roads, and a handbrake. Pick a circuit, or draw your own.</p>
+ 
+     <ul id="track-list" class="track-list"></ul>
+@@ -205,8 +206,9 @@
+ <div id="fatal" hidden></div>
+ 
+ <script type="module">
+-  import { VERSION, BUILD } from './src/version.js';
++  import { VERSION, BUILD, NOTE } from './src/version.js';
+   document.getElementById('version').textContent = 'v' + VERSION + (BUILD && BUILD !== 'dev' ? ' \u00b7 ' + BUILD : '');
++  if (NOTE) document.getElementById('version-note').textContent = NOTE;
+ </script>
+ <script type="module" src="src/main.js"></script>
+ </body>
+diff --git a/src/derby.js b/src/derby.js
+index 3f65ab5..b2ff092 100644
+--- a/src/derby.js
++++ b/src/derby.js
+@@ -34,6 +34,9 @@ export const DERBY = {
+   spawnEvery: 2.5,       // seconds between replacements
+   maxWrecks: 8,
+   creditNear: 30,        // m: a blast this close to you counts as yours
++  gridLead: 12,          // m: gap from the player to the first row of the starting grid
++  gridRow: 8,            // m: gap between grid rows
++  gridPerRow: 2,          // cars per row (a real grid staggers pole/second etc.)
+ };
+ 
+ // Five spheres along the car stand in for its body when cars meet.
+@@ -131,10 +134,31 @@ export class Derby {
+       prev: pose(), cur: pose(), hue: -1,
+     };
+     this.fighters.push(p);
+-    for (let k = 0; k < count; k++) this._spawn(k, count);
++    for (let k = 0; k < count; k++) this._spawnGrid(k, count);
+     this._refreshCars();
+   }
+ 
++  /** Place rival `k` of `of` in a starting grid ahead of the player: a couple of cars per
++   *  row, stationary, like a real race lineup. Only used for the initial field in `start()` -
++   *  a rival wrecked mid-race is replaced by `_spawn()`, which drops it in anywhere on the track. */
++  _spawnGrid(k, of) {
++    const T = this.track, P = this.player, L = T.length, rnd = this.rng;
++    const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
++    const perRow = Math.max(1, DERBY.gridPerRow);
++    const row = Math.floor(k / perRow), col = k % perRow;
++    const cols = Math.min(perRow, of - row * perRow);
++    let s = ps + DERBY.gridLead + row * DERBY.gridRow;
++    s = ((s % L) + L) % L;
++    const fr = T.frameAt(s);
++    const lane = Math.max(2, fr.hw - 3);
++    const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : (rnd() - 0.5) * lane * 0.3;
++    const car = new Vehicle();
++    const driver = new Driver(rnd);
++    placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
++    car.opts.assist = 0.7;
++    return this.add(car, driver);
++  }
++
+   /** Switch the derby off (plain racing). */
+   stop() { this.fighters.length = 0; this.events.length = 0; this.player = null; this.over = false; this._refreshCars(); }
+ 
+diff --git a/src/stage.js b/src/stage.js
+index 679e014..0d4aee9 100644
+--- a/src/stage.js
++++ b/src/stage.js
+@@ -111,9 +111,12 @@ export class Stage {
+     // pillars
+     if (geo.pillars.length) {
+       const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x6b6870, roughness: 0.95 }), geo.pillars.length);
+-      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
++      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qBank = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
+       geo.pillars.forEach((pl, i) => {
+-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), pl.yaw);
++        // Roll around the deck's own axis to match its bank, then yaw to its heading - otherwise a
++        // flat-topped pillar pokes through one edge of a steeply banked road while gapping the other.
++        qBank.setFromAxisAngle(new THREE.Vector3(0, 0, 1), pl.bank || 0);
++        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), pl.yaw).multiply(qBank);
+         p.set(pl.x, pl.h / 2, pl.z); s.set(pl.w, pl.h, 1.6);
+         m4.compose(p, q, s); im.setMatrixAt(i, m4);
+       });
+diff --git a/src/trackGeometry.js b/src/trackGeometry.js
+index 3c7e6a0..43ad0ef 100644
+--- a/src/trackGeometry.js
++++ b/src/trackGeometry.js
+@@ -211,7 +211,7 @@ export function buildTrackGeometry(track) {
+     track.query(track.px[i], track.py[i] - 1.5, track.pz[i], q, 0.5);
+     if (q.surface === SURF.ROAD && q.idx >= 0 && Math.abs(track.s[i] - q.s) > 40 && Math.abs(track.s[i] - q.s) < L - 40) clear = false;
+     if (!clear) continue;
+-    pillars.push({ x: track.px[i], z: track.pz[i], h: track.py[i] - SLAB, w: Math.min(track.hw[i] * 2 - 4, 8), yaw: Math.atan2(track.tx[i], track.tz[i]) });
++    pillars.push({ x: track.px[i], z: track.pz[i], h: track.py[i] - SLAB, w: Math.min(track.hw[i] * 2 - 4, 8), yaw: Math.atan2(track.tx[i], track.tz[i]), bank: track.bank[i] });
+   }
+   for (let i = 12, k = 0; i < n; i += 52, k++) {
+     if (track.gap[i]) continue;
+diff --git a/src/version.js b/src/version.js
+new file mode 100644
+index 0000000..c2eb740
+--- /dev/null
++++ b/src/version.js
+@@ -0,0 +1,8 @@
++// Shown small on the menu screen.
++// VERSION and NOTE are edited by hand together, every time a change lands: bump VERSION
++// and set NOTE to a short line describing what changed, e.g. 'AI cars now line up on the grid'.
++// BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
++// (it commits the short commit id + date, so you can always tell exactly what's live).
++export const VERSION = '12.5';
++export const NOTE = 'AI cars line up on a starting grid; fixed bridge supports poking through steep banks';
++export const BUILD = 'dev';
+diff --git a/workflows/version.js b/workflows/version.js
+deleted file mode 100644
+index 653dbe6..0000000
+--- a/workflows/version.js
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// Shown small on the menu screen. VERSION is edited by hand; BUILD is stamped automatically
+-// by .github/workflows/stamp.yml on every push to main (it commits the short commit id + date).
+-export const VERSION = '12.4';
+-export const BUILD = 'dev';
