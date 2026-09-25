@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '12.7';
 export const NOTE = 'Burnt-out wrecks keep a thin trail of smoke rising forever';
-export const BUILD = 'dev';
+export const BUILD = 'a62fa91 25 Sep 08:57';
