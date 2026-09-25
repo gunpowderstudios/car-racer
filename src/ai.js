@@ -54,7 +54,7 @@ export class Driver {
     this.moodT = 3 + rng() * 6;
     this.stuck = 0; this.reverse = 0; this.revSteer = 0;
     this.s = 0; this.sT = 0;
-    this.q = Track.newQuery();
+    this.q = Track.newQuery(); this.q2 = Track.newQuery();
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.target = false;                      // is it currently aiming at the player?
   }
@@ -75,12 +75,13 @@ export class Driver {
     // ---------------------------------------------------------------- mood
     const P = ctx.player;
     this.moodT -= dt;
-    let pd = Infinity, pRoad = false;
+    let pd = Infinity, pRoad = false, pLane = 0;
     if (P) {
       pd = Math.hypot(P.pos.x - car.pos.x, P.pos.z - car.pos.z);
       if (Math.abs(P.pos.y - car.pos.y) < 6) {
         track.query(P.pos.x, P.pos.y + 0.5, P.pos.z, this.q, 1.5);
         pRoad = this.q.idx >= 0 && Math.abs(this.q.d) < this.q.hw + 0.5;
+        if (pRoad) pLane = clamp(this.q.d / Math.max(2, this.q.hw - 3.6), -0.85, 0.85);   // which lane you are in
       }
     }
     if (this.moodT <= 0) {
@@ -103,9 +104,23 @@ export class Driver {
     if (hunting) {
       // aim where the player will be by the time we get there
       const lead = clamp(pd / Math.max(car.speed + 8, 16), 0, 1.2);
-      ax = P.pos.x + P.vel.x * lead; az = P.pos.z + P.vel.z * lead;
+      const tx = P.pos.x + P.vel.x * lead, tz = P.pos.z + P.vel.z * lead;
+      // Only cut straight across when the whole line is road. Otherwise stay on the road and
+      // come up the lane the player is in, so a hunter never drives itself into a barrier.
+      // ...and never try to U-turn onto a player who has gone past: give up the hunt and pick up the road again.
+      const angT = Math.atan2(fz * (tx - car.pos.x) - fx * (tz - car.pos.z), fx * (tx - car.pos.x) + fz * (tz - car.pos.z));
+      const behind = Math.abs(angT) > 1.3;
+      if (behind) this.moodT = Math.min(this.moodT, 1.2);
+      let clear = pd < 45 && !behind;
+      for (let t = 0.25; clear && t <= 1.001; t += 0.25) {
+        const x = car.pos.x + (tx - car.pos.x) * t, z = car.pos.z + (tz - car.pos.z) * t;
+        track.query(x, car.pos.y + 0.5, z, this.q2, 1.5);
+        clear = this.q2.idx >= 0 && Math.abs(this.q2.d) < this.q2.hw - 1.4 && Math.abs(this.q2.y - car.pos.y) < 3;
+      }
+      if (clear) { ax = tx; az = tz; }
+      else { ax = f.x + f.lx * pLane * usable; az = f.z + f.lz * pLane * usable; }
       vT = Math.max(vT, Math.min(AI.huntMax, P.speed + 3 + pd * 0.12));
-      if (pd < 14) vT = AI.huntMax;                          // committed: just go for it
+      if (pd < 14 && clear) vT = AI.huntMax;                 // committed: just go for it
     } else {
       ax = f.x + f.lx * this.laneNow * usable; az = f.z + f.lz * this.laneNow * usable;
     }
