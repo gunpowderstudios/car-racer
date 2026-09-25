@@ -62,3 +62,29 @@ test('gaps leave no road triangles', () => {
     assert.ok(Math.hypot(x - centre.x, z - centre.z) > 5.5, 'road triangle inside the gap');
   }
 });
+
+test('a pillar under a tall, steeply banked stretch of road never pokes through either edge', () => {
+  // a single high, hard-banked peak between low points - the extreme case a user can build with the sliders
+  const N = 14, R = 300;
+  const handles = [];
+  for (let k = 0; k < N; k++) {
+    const a = (k / N) * Math.PI * 2;
+    const peak = k === 1;
+    handles.push({ x: Math.round(Math.cos(a) * R), z: Math.round(Math.sin(a) * R),
+      y: peak ? 40 : 0.65, w: 0, bank: peak ? 20 : 2, gap: 0 });
+  }
+  const track = new Track({ name: 'peak-test', width: 26, walls: true, handles });
+  const g = buildTrackGeometry(track);
+  const SLAB = 0.7;
+  const edgeY = (i, sg) => track.py[i] - (track.nx[i] * track.lx[i] * track.hw[i] * sg + track.nz[i] * track.lz[i] * track.hw[i] * sg) / track.ny[i];
+  assert.ok(g.pillars.length > 0, 'this track should need pillars');
+  let worst = Infinity;
+  for (const p of g.pillars) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < track.n; i++) { const d = (track.px[i] - p.x) ** 2 + (track.pz[i] - p.z) ** 2; if (d < bd) { bd = d; bi = i; } }
+    const hL = edgeY(bi, 1) - SLAB, hR = edgeY(bi, -1) - SLAB, halfW = p.w / 2;
+    const clearL = hL - (p.h + Math.sin(p.bank) * halfW), clearR = hR - (p.h - Math.sin(p.bank) * halfW);
+    worst = Math.min(worst, clearL, clearR);
+  }
+  assert.ok(worst >= -0.01, `a pillar pokes through by ${(-worst).toFixed(2)}m`);
+});

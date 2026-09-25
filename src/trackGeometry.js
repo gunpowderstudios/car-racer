@@ -211,7 +211,11 @@ export function buildTrackGeometry(track) {
     track.query(track.px[i], track.py[i] - 1.5, track.pz[i], q, 0.5);
     if (q.surface === SURF.ROAD && q.idx >= 0 && Math.abs(track.s[i] - q.s) > 40 && Math.abs(track.s[i] - q.s) < L - 40) clear = false;
     if (!clear) continue;
-    pillars.push({ x: track.px[i], z: track.pz[i], h: track.py[i] - SLAB, w: Math.min(track.hw[i] * 2 - 4, 8), yaw: Math.atan2(track.tx[i], track.tz[i]), bank: track.bank[i] });
+    const w = Math.min(track.hw[i] * 2 - 4, 8), halfW = w / 2, bank = track.bank[i];
+    const hL = edge(i, 1)[1] - SLAB, hR = edge(i, -1)[1] - SLAB;         // true underside height at each edge
+    // pick the tallest the (rolled) box can be while its top still clears both true edges - never pokes through
+    const h = Math.min(hL - halfW * Math.sin(bank), hR + halfW * Math.sin(bank));
+    pillars.push({ x: track.px[i], z: track.pz[i], h, w, yaw: Math.atan2(track.tx[i], track.tz[i]), bank });
   }
   for (let i = 12, k = 0; i < n; i += 52, k++) {
     if (track.gap[i]) continue;
