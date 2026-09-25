@@ -211,7 +211,7 @@ export function buildTrackGeometry(track) {
     track.query(track.px[i], track.py[i] - 1.5, track.pz[i], q, 0.5);
     if (q.surface === SURF.ROAD && q.idx >= 0 && Math.abs(track.s[i] - q.s) > 40 && Math.abs(track.s[i] - q.s) < L - 40) clear = false;
     if (!clear) continue;
-    pillars.push({ x: track.px[i], z: track.pz[i], h: track.py[i] - SLAB, w: Math.min(track.hw[i] * 2 - 4, 8), yaw: Math.atan2(track.tx[i], track.tz[i]) });
+    pillars.push({ x: track.px[i], z: track.pz[i], h: track.py[i] - SLAB, w: Math.min(track.hw[i] * 2 - 4, 8), yaw: Math.atan2(track.tx[i], track.tz[i]), bank: track.bank[i] });
   }
   for (let i = 12, k = 0; i < n; i += 52, k++) {
     if (track.gap[i]) continue;

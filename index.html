@@ -98,6 +98,7 @@
   <div class="menu-inner">
     <h1><span>Car</span> <span>Racer</span></h1>
     <div id="version">v12.4</div>
+    <div id="version-note" class="muted small"></div>
     <p class="lede">Heavy steel, wide roads, and a handbrake. Pick a circuit, or draw your own.</p>
 
     <ul id="track-list" class="track-list"></ul>
@@ -205,8 +206,9 @@
 <div id="fatal" hidden></div>
 
 <script type="module">
-  import { VERSION, BUILD } from './src/version.js';
+  import { VERSION, BUILD, NOTE } from './src/version.js';
   document.getElementById('version').textContent = 'v' + VERSION + (BUILD && BUILD !== 'dev' ? ' \u00b7 ' + BUILD : '');
+  if (NOTE) document.getElementById('version-note').textContent = NOTE;
 </script>
 <script type="module" src="src/main.js"></script>
 </body>

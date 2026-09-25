@@ -111,9 +111,12 @@ export class Stage {
     // pillars
     if (geo.pillars.length) {
       const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x6b6870, roughness: 0.95 }), geo.pillars.length);
-      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
+      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qBank = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
       geo.pillars.forEach((pl, i) => {
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), pl.yaw);
+        // Roll around the deck's own axis to match its bank, then yaw to its heading - otherwise a
+        // flat-topped pillar pokes through one edge of a steeply banked road while gapping the other.
+        qBank.setFromAxisAngle(new THREE.Vector3(0, 0, 1), pl.bank || 0);
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), pl.yaw).multiply(qBank);
         p.set(pl.x, pl.h / 2, pl.z); s.set(pl.w, pl.h, 1.6);
         m4.compose(p, q, s); im.setMatrixAt(i, m4);
       });

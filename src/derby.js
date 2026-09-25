@@ -34,6 +34,9 @@ export const DERBY = {
   spawnEvery: 2.5,       // seconds between replacements
   maxWrecks: 8,
   creditNear: 30,        // m: a blast this close to you counts as yours
+  gridLead: 12,          // m: gap from the player to the first row of the starting grid
+  gridRow: 8,            // m: gap between grid rows
+  gridPerRow: 2,          // cars per row (a real grid staggers pole/second etc.)
 };
 
 // Five spheres along the car stand in for its body when cars meet.
@@ -131,8 +134,29 @@ export class Derby {
       prev: pose(), cur: pose(), hue: -1,
     };
     this.fighters.push(p);
-    for (let k = 0; k < count; k++) this._spawn(k, count);
+    for (let k = 0; k < count; k++) this._spawnGrid(k, count);
     this._refreshCars();
+  }
+
+  /** Place rival `k` of `of` in a starting grid ahead of the player: a couple of cars per
+   *  row, stationary, like a real race lineup. Only used for the initial field in `start()` -
+   *  a rival wrecked mid-race is replaced by `_spawn()`, which drops it in anywhere on the track. */
+  _spawnGrid(k, of) {
+    const T = this.track, P = this.player, L = T.length, rnd = this.rng;
+    const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
+    const perRow = Math.max(1, DERBY.gridPerRow);
+    const row = Math.floor(k / perRow), col = k % perRow;
+    const cols = Math.min(perRow, of - row * perRow);
+    let s = ps + DERBY.gridLead + row * DERBY.gridRow;
+    s = ((s % L) + L) % L;
+    const fr = T.frameAt(s);
+    const lane = Math.max(2, fr.hw - 3);
+    const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : (rnd() - 0.5) * lane * 0.3;
+    const car = new Vehicle();
+    const driver = new Driver(rnd);
+    placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
+    car.opts.assist = 0.7;
+    return this.add(car, driver);
   }
 
   /** Switch the derby off (plain racing). */
