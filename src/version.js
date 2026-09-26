@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '13.7';
 export const NOTE = 'Random track generator - a new circuit every time, in the menu and the editor';
-export const BUILD = 'dev';
+export const BUILD = 'ca7ccf0 26 Sep 15:49';
