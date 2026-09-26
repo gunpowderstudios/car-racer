@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '13.6';
 export const NOTE = 'Chickens actually look like chickens now: tail, eyes, comb, wattle, legs';
-export const BUILD = 'dev';
+export const BUILD = 'f5ef664 26 Sep 13:04';
