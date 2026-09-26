@@ -582,6 +582,7 @@ function bindMenu() {
     sw.appendChild(b);
   });
   $('btn-new').onclick = () => { const d = makeTemplate('kidney'); d.name = 'My track'; openEditor(d); };
+  $('btn-play-now').onclick = () => startDriving(makeRandomTrack());
   $('import-file').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {

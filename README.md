@@ -9,7 +9,8 @@ npm test             # physics, track, barrel and derby tests (Node 20+, no depe
 ```
 
 Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`, `random`) to jump straight in, and `&edit=1`
-to open the editor. `random` builds a fresh circuit every time - hills, jumps, banks, barrels and chickens.
+to open the editor. `random` builds a fresh circuit every time - hills, jumps, banks, barrels and chickens. The
+**Play Now** button on the menu does the same thing with one click, no URL needed.
 
 ## Controls
 
