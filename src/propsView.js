@@ -43,14 +43,66 @@ function mergeParts(parts) {
   return g;
 }
 
-/** A simple, cheerful low-poly chicken: a rounded body, a head, a beak and a comb. Purely cosmetic. */
+/** A proper cartoon chicken: plump body, fanned tail, head with eyes/beak/comb/wattle, and legs. Purely cosmetic. */
 function chickenGeometry() {
-  const r = CHICKEN.radius, white = new THREE.Color(0xf2ede0), orange = new THREE.Color(0xe0872e), red = new THREE.Color(0xc23524);
-  const body = new THREE.CapsuleGeometry(r * 0.85, r * 1.0, 4, 8); body.translate(0, r * 1.35, 0);
-  const head = new THREE.SphereGeometry(r * 0.55, 8, 6); head.translate(0, r * 2.35, r * 0.55);
-  const beak = new THREE.ConeGeometry(r * 0.22, r * 0.5, 6); beak.rotateX(Math.PI / 2); beak.translate(0, r * 2.3, r * 1.05);
-  const comb = new THREE.BoxGeometry(r * 0.18, r * 0.32, r * 0.5); comb.translate(0, r * 2.85, r * 0.45);
-  return mergeParts([{ geo: body, color: white }, { geo: head, color: white }, { geo: beak, color: orange }, { geo: comb, color: red }]);
+  const r = CHICKEN.radius;
+  const white = new THREE.Color(0xf7f1e6), orange = new THREE.Color(0xe8912e), red = new THREE.Color(0xc23524), dark = new THREE.Color(0x241f1c);
+  const parts = [];
+
+  // body: a plump egg shape, narrower at the tail end
+  const body = new THREE.SphereGeometry(r * 1.05, 10, 8);
+  body.scale(0.95, 1.05, 1.25); body.translate(0, r * 1.15, -r * 0.05);
+  parts.push({ geo: body, color: white });
+
+  // tail: a fan of feathers angled up and back
+  for (const [ang, scale] of [[-0.4, 0.8], [-0.05, 1], [0.3, 0.85]]) {
+    const feather = new THREE.ConeGeometry(r * 0.15, r * 0.95 * scale, 5);
+    feather.rotateX(Math.PI * 0.68); feather.rotateZ(ang);
+    feather.translate(r * ang * 0.35, r * 1.65, -r * 1.15);
+    parts.push({ geo: feather, color: white });
+  }
+
+  // head, slightly forward of the body
+  const head = new THREE.SphereGeometry(r * 0.52, 8, 6);
+  head.translate(0, r * 2.05, r * 0.72);
+  parts.push({ geo: head, color: white });
+
+  // eyes
+  for (const sx of [-1, 1]) {
+    const eye = new THREE.SphereGeometry(r * 0.065, 6, 5);
+    eye.translate(sx * r * 0.32, r * 2.15, r * 1.05);
+    parts.push({ geo: eye, color: dark });
+  }
+
+  // beak: short and wide, top and bottom wedges meeting at a point
+  const beakTop = new THREE.ConeGeometry(r * 0.22, r * 0.32, 4);
+  beakTop.rotateX(Math.PI / 2); beakTop.rotateZ(Math.PI / 4); beakTop.scale(1, 1, 0.65);
+  beakTop.translate(0, r * 2.03, r * 1.28);
+  parts.push({ geo: beakTop, color: orange });
+
+  // comb: a row of small points along the top of the head
+  for (const dz of [-0.18, 0.05, 0.28]) {
+    const spike = new THREE.ConeGeometry(r * 0.09, r * 0.3, 5);
+    spike.translate(0, r * 2.48, r * (0.62 + dz));
+    parts.push({ geo: spike, color: red });
+  }
+
+  // wattle: a small dangling teardrop under the beak
+  const wattle = new THREE.SphereGeometry(r * 0.13, 6, 5);
+  wattle.scale(0.8, 1.35, 0.8); wattle.translate(0, r * 1.72, r * 1.15);
+  parts.push({ geo: wattle, color: red });
+
+  // legs and feet
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.CylinderGeometry(r * 0.05, r * 0.05, r * 0.5, 5);
+    leg.translate(sx * r * 0.22, r * 0.25, r * 0.05);
+    parts.push({ geo: leg, color: orange });
+    const foot = new THREE.ConeGeometry(r * 0.13, r * 0.2, 4);
+    foot.rotateX(Math.PI / 2); foot.translate(sx * r * 0.22, r * 0.02, r * 0.22);
+    parts.push({ geo: foot, color: orange });
+  }
+
+  return mergeParts(parts);
 }
 
 export class PropsView {

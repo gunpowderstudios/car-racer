@@ -3,6 +3,6 @@
 // and set NOTE to a short line describing what changed, e.g. 'AI cars now line up on the grid'.
 // BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
 // (it commits the short commit id + date, so you can always tell exactly what's live).
-export const VERSION = '13.5';
-export const NOTE = 'Chickens now wander the road and pop comically when hit; barrels and chickens 20% bigger';
-export const BUILD = 'e70dc91 26 Sep 10:22';
+export const VERSION = '13.6';
+export const NOTE = 'Chickens actually look like chickens now: tail, eyes, comb, wattle, legs';
+export const BUILD = 'dev';
