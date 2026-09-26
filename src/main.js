@@ -513,6 +513,8 @@ function startDriving(newDef) {
   hud.banner(derby.enabled ? 'Wreck them all' : 'Get to the start line', 1600);
 }
 function openEditor(d) {
+  // the editor needs a mouse and a big screen - on touch devices just say so
+  if (matchMedia('(pointer: coarse)').matches) { toast('The track editor only works on a desktop computer.'); return; }
   setMode('edit'); editor.open(d || def || makeTemplate('kidney'));
 }
 

@@ -296,6 +296,7 @@ body:not(.mode-edit) #editor { display: none; }
   #t-gas { border-color: rgba(120,220,140,.7); }
   #t-brake { border-color: rgba(255,110,90,.7); }
   .go-card { padding: 18px 22px 16px; max-width: calc(100vw - 28px); }
+  #toast { bottom: auto; top: 38%; max-width: calc(100vw - 32px); text-align: center; }
 }
 
 /* touch screens: stop a press on the HUD / touch buttons turning into text selection or the iOS copy menu */
