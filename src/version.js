@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '13.8';
 export const NOTE = 'Splatting a chicken near you now scores 10 points';
-export const BUILD = 'dev';
+export const BUILD = 'afb28c2 26 Sep 16:03';
