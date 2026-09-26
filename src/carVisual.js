@@ -189,7 +189,7 @@ export class ChaseCamera {
     this.boosting = false; this.kick = 0;   // widens the view while boosting
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
-  cycle() { this.mode = (this.mode + 1) % 3; this.ready = false; return ['Chase', 'High', 'Bumper'][this.mode]; }
+  cycle() { this.mode = (this.mode + 1) % 4; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet'][this.mode]; }
   snap() { this.ready = false; }
   impact(mag) { this.shake = Math.min(1, this.shake + mag * 0.05); }
 
@@ -203,6 +203,14 @@ export class ChaseCamera {
       this.cam.position.copy(p).add(off);
       this.cam.quaternion.copy(quat).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.02, Math.PI, 0)));
       this.cam.fov += (74 + speed * 0.2 + this.kick * 10 - this.cam.fov) * Math.min(1, 4 * dt);
+      this.cam.updateProjectionMatrix();
+      return;
+    }
+    if (this.mode === 3) {
+      const off = this._v.set(0, 0.75, 1.3).applyQuaternion(quat);
+      this.cam.position.copy(p).add(off);
+      this.cam.quaternion.copy(quat).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.02, Math.PI, 0)));
+      this.cam.fov += (64 + speed * 0.22 + this.kick * 10 - this.cam.fov) * Math.min(1, 4 * dt);
       this.cam.updateProjectionMatrix();
       return;
     }
