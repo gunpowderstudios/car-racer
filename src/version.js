@@ -5,4 +5,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '13.4';
 export const NOTE = 'Mirror and music off by default (music now actually works from the menu); chickens - splat for laughs';
-export const BUILD = 'dev';
+export const BUILD = '74d4dad 26 Sep 08:02';
