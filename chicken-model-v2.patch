@@ -1,0 +1,301 @@
+diff --git a/README.md b/README.md
+index e0e5cf4..6e5537c 100644
+--- a/README.md
++++ b/README.md
+@@ -51,7 +51,8 @@ is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks
+ to make room for the next one.
+ - **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
+   barrels beside it. Lay barrels in the editor to build a proper killing ground.
+-- **Chickens are just for laughs**: any touch splats one - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
++- **Chickens are just for laughs**: they wander back and forth across the road, oblivious to traffic, and any touch launches one into a
++  quick comedic tumble before it vanishes - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
+ 
+ Everything you would want to tune is in the open at the top of `src/damage.js` (`ARMOUR`, `DAMAGE`, `SPECS`), `src/derby.js` (`DERBY`, `POINTS`)
+ and `src/ai.js` (`AI`).
+diff --git a/src/props.js b/src/props.js
+index 4dd2188..9d8792d 100644
+--- a/src/props.js
++++ b/src/props.js
+@@ -18,8 +18,8 @@ const G = 9.81;
+ const UP = new V3(0, 1, 0);
+ 
+ export const BARREL = {
+-  radius: 0.36, height: 1.08, mass: 100,
+-  reach: 0.396, step: 0.324,     // three spheres this far apart along the axis stand in for the cylinder
++  radius: 0.43, height: 1.3, mass: 100,   // 20% bigger than the previous size (44% over the very first version)
++  reach: 0.48, step: 0.39,       // three spheres this far apart along the axis stand in for the cylinder
+   mu: 0.7,                       // tyre-on-tarmac-ish friction of a steel rim
+   bounce: 0.5,                   // how lively it is: 0 = dead thud, 1 = perfect rubber ball
+   bounceAbove: 1.5,              // impacts softer than this (m/s) don't bounce, so resting barrels stay put
+@@ -29,7 +29,9 @@ export const BARREL = {
+   clangSpeed: 1.5,               // impacts at least this hard make the clang sound
+ };
+ export const CHICKEN = {
+-  radius: 0.22,                  // roughly how big a chicken is, for placement and hit-testing
++  radius: 0.26,                  // roughly how big a chicken is, for placement and hit-testing (20% bigger)
++  walkSpeed: 0.9,                // m/s: an oblivious waddle
++  wanderMargin: 0.6,             // m: how close to the road edge before turning back
+ };
+ export const BLAST = {
+   radius: 10,                    // barrels and the car feel it this far away
+@@ -165,6 +167,7 @@ export class Props {
+         this.chickens.push({
+           i, alive: true, pos: new V3(d.x, g.y, d.z), nx: g.nx, ny: g.ny, nz: g.nz,
+           bob: this.rng() * Math.PI * 2, tint: this.rng(),
++          walkDir: this.rng() < 0.5 ? 1 : -1, heading: 0, deadT: -1,
+         });
+       }
+     });
+@@ -196,7 +199,7 @@ export class Props {
+         if (!any) break;
+       }
+     }
+-    if (this.chickens.length) for (const c of cars) this._chickenContacts(c);
++    if (this.chickens.length) { this._stepChickens(dt); for (const c of cars) this._chickenContacts(c); }
+     this._stepBits(dt);
+   }
+ 
+@@ -254,6 +257,25 @@ export class Props {
+   }
+ 
+   // ------------------------------------------------------- chickens
++  /** Chickens wander back and forth across the road, oblivious to traffic. Splatted ones (deadT >= 0) just tick their timer - propsView.js does the comedy pop. */
++  _stepChickens(dt) {
++    const T = this.track;
++    for (const c of this.chickens) {
++      if (c.deadT >= 0) { c.deadT += dt; continue; }
++      if (!c.alive) continue;
++      const q = this.gq;
++      T.query(c.pos.x, c.pos.y + 0.3, c.pos.z, q, 1.0);
++      if (q.idx < 0) continue;                          // lost the road somehow: just stand still
++      const nextD = q.d + c.walkDir * CHICKEN.walkSpeed * dt;
++      if (Math.abs(nextD) > Math.max(0.3, q.hw - CHICKEN.wanderMargin)) c.walkDir *= -1;
++      c.pos.x += q.lx * c.walkDir * CHICKEN.walkSpeed * dt;
++      c.pos.z += q.lz * c.walkDir * CHICKEN.walkSpeed * dt;
++      c.heading = Math.atan2(q.lx * c.walkDir, q.lz * c.walkDir);   // face the way it's actually walking
++      const g = T.groundAt(c.pos.x, c.pos.z, c.pos.y + 0.5, this.gq, true);
++      c.pos.y = g.y; c.nx = g.nx; c.ny = g.ny; c.nz = g.nz;
++    }
++  }
++
+   /** A chicken has no physics of its own: any real touch from the car splats it on the spot. */
+   _chickenContacts(car) {
+     for (const c of this.chickens) {
+@@ -264,7 +286,7 @@ export class Props {
+       let hitIt = false;
+       for (const box of CAR_BOXES) if (sphereBox(sV, CHICKEN.radius + 0.15, car, box)) { hitIt = true; break; }
+       if (!hitIt) continue;
+-      c.alive = false;
++      c.alive = false; c.deadT = 0;
+       this.events.push({ type: 'splat', x: c.pos.x, y: c.pos.y, z: c.pos.z, nx: c.nx, ny: c.ny, nz: c.nz, dist: this._carDist(c.pos.x, c.pos.y, c.pos.z) });
+     }
+   }
+diff --git a/src/propsView.js b/src/propsView.js
+index 38a974f..3c217a6 100644
+--- a/src/propsView.js
++++ b/src/propsView.js
+@@ -4,6 +4,7 @@ import { BARREL, CHICKEN } from './props.js';
+ 
+ const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
+ const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
++const POP_V0 = 5, POP_G = 16, POP_DURATION = (2 * POP_V0) / POP_G;      // a splatted chicken's comedic launch: up, tumble, gone
+ 
+ /** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
+ function drumGeometry() {
+@@ -41,14 +42,66 @@ function mergeParts(parts) {
+   return g;
+ }
+ 
+-/** A simple, cheerful low-poly chicken: a rounded body, a head, a beak and a comb. Purely cosmetic. */
++/** A proper cartoon chicken: plump body, fanned tail, head with eyes/beak/comb/wattle, and legs. Purely cosmetic. */
+ function chickenGeometry() {
+-  const r = CHICKEN.radius, white = new THREE.Color(0xf2ede0), orange = new THREE.Color(0xe0872e), red = new THREE.Color(0xc23524);
+-  const body = new THREE.CapsuleGeometry(r * 0.85, r * 1.0, 4, 8); body.translate(0, r * 1.35, 0);
+-  const head = new THREE.SphereGeometry(r * 0.55, 8, 6); head.translate(0, r * 2.35, r * 0.55);
+-  const beak = new THREE.ConeGeometry(r * 0.22, r * 0.5, 6); beak.rotateX(Math.PI / 2); beak.translate(0, r * 2.3, r * 1.05);
+-  const comb = new THREE.BoxGeometry(r * 0.18, r * 0.32, r * 0.5); comb.translate(0, r * 2.85, r * 0.45);
+-  return mergeParts([{ geo: body, color: white }, { geo: head, color: white }, { geo: beak, color: orange }, { geo: comb, color: red }]);
++  const r = CHICKEN.radius;
++  const white = new THREE.Color(0xf7f1e6), orange = new THREE.Color(0xe8912e), red = new THREE.Color(0xc23524), dark = new THREE.Color(0x241f1c);
++  const parts = [];
++
++  // body: a plump egg shape, narrower at the tail end
++  const body = new THREE.SphereGeometry(r * 1.05, 10, 8);
++  body.scale(0.95, 1.05, 1.25); body.translate(0, r * 1.15, -r * 0.05);
++  parts.push({ geo: body, color: white });
++
++  // tail: a fan of feathers angled up and back
++  for (const [ang, scale] of [[-0.4, 0.8], [-0.05, 1], [0.3, 0.85]]) {
++    const feather = new THREE.ConeGeometry(r * 0.15, r * 0.95 * scale, 5);
++    feather.rotateX(Math.PI * 0.68); feather.rotateZ(ang);
++    feather.translate(r * ang * 0.35, r * 1.65, -r * 1.15);
++    parts.push({ geo: feather, color: white });
++  }
++
++  // head, slightly forward of the body
++  const head = new THREE.SphereGeometry(r * 0.52, 8, 6);
++  head.translate(0, r * 2.05, r * 0.72);
++  parts.push({ geo: head, color: white });
++
++  // eyes
++  for (const sx of [-1, 1]) {
++    const eye = new THREE.SphereGeometry(r * 0.065, 6, 5);
++    eye.translate(sx * r * 0.32, r * 2.15, r * 1.05);
++    parts.push({ geo: eye, color: dark });
++  }
++
++  // beak: short and wide, top and bottom wedges meeting at a point
++  const beakTop = new THREE.ConeGeometry(r * 0.22, r * 0.32, 4);
++  beakTop.rotateX(Math.PI / 2); beakTop.rotateZ(Math.PI / 4); beakTop.scale(1, 1, 0.65);
++  beakTop.translate(0, r * 2.03, r * 1.28);
++  parts.push({ geo: beakTop, color: orange });
++
++  // comb: a row of small points along the top of the head
++  for (const dz of [-0.18, 0.05, 0.28]) {
++    const spike = new THREE.ConeGeometry(r * 0.09, r * 0.3, 5);
++    spike.translate(0, r * 2.48, r * (0.62 + dz));
++    parts.push({ geo: spike, color: red });
++  }
++
++  // wattle: a small dangling teardrop under the beak
++  const wattle = new THREE.SphereGeometry(r * 0.13, 6, 5);
++  wattle.scale(0.8, 1.35, 0.8); wattle.translate(0, r * 1.72, r * 1.15);
++  parts.push({ geo: wattle, color: red });
++
++  // legs and feet
++  for (const sx of [-1, 1]) {
++    const leg = new THREE.CylinderGeometry(r * 0.05, r * 0.05, r * 0.5, 5);
++    leg.translate(sx * r * 0.22, r * 0.25, r * 0.05);
++    parts.push({ geo: leg, color: orange });
++    const foot = new THREE.ConeGeometry(r * 0.13, r * 0.2, 4);
++    foot.rotateX(Math.PI / 2); foot.translate(sx * r * 0.22, r * 0.02, r * 0.22);
++    parts.push({ geo: foot, color: orange });
++  }
++
++  return mergeParts(parts);
+ }
+ 
+ export class PropsView {
+@@ -62,6 +115,7 @@ export class PropsView {
+     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
+     this.bitMat = new THREE.MeshStandardMaterial({ color: 0x3b3a40, roughness: 0.6, metalness: 0.6 });
+     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
++    this._e = new THREE.Euler();
+     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
+   }
+ 
+@@ -110,11 +164,21 @@ export class PropsView {
+     const cm = this.chickens;
+     if (cm) {
+       props.chickens.forEach((c, i) => {
++        if (c.deadT >= 0) {
++          const t = c.deadT;
++          if (t > POP_DURATION) { cm.setMatrixAt(i, this._zero); return; }
++          const h = POP_V0 * t - 0.5 * POP_G * t * t;                      // a quick comedic launch, then it drops
++          this._p.set(c.pos.x, c.pos.y + Math.max(0, h), c.pos.z);
++          this._e.set(t * 26, t * 17, t * 11);
++          this._q.setFromEuler(this._e);                                  // tumbling
++          this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
++          return;
++        }
+         if (!c.alive) { cm.setMatrixAt(i, this._zero); return; }
+-        // a little idle bob and waddle so a field of them doesn't look frozen
+-        const bob = Math.sin(props.time * 5 + c.bob) * 0.02, waddle = Math.sin(props.time * 3.2 + c.bob) * 0.12;
++        // faces the way it's actually walking, with a waddling wobble and a little hop per step
++        const bob = Math.abs(Math.sin(props.time * 6 + c.bob)) * 0.035, wobble = Math.sin(props.time * 6 + c.bob) * 0.18;
+         this._p.set(c.pos.x, c.pos.y + bob, c.pos.z);
+-        this._q.setFromAxisAngle(this._up || (this._up = new THREE.Vector3(0, 1, 0)), waddle);
++        this._q.setFromAxisAngle(this._up || (this._up = new THREE.Vector3(0, 1, 0)), c.heading + wobble);
+         this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
+       });
+       cm.instanceMatrix.needsUpdate = true;
+diff --git a/src/version.js b/src/version.js
+index f0d6b32..4f358f0 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -3,6 +3,6 @@
+ // and set NOTE to a short line describing what changed, e.g. 'AI cars now line up on the grid'.
+ // BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
+ // (it commits the short commit id + date, so you can always tell exactly what's live).
+-export const VERSION = '13.4';
+-export const NOTE = 'Mirror and music off by default (music now actually works from the menu); chickens - splat for laughs';
+-export const BUILD = '74d4dad 26 Sep 08:02';
++export const VERSION = '13.5';
++export const NOTE = 'Chickens: wander the road, face the way they walk, a proper cartoon look, pop when hit; barrels+chickens 20% bigger';
++export const BUILD = 'dev';
+diff --git a/tests/props.test.mjs b/tests/props.test.mjs
+index 5deb8da..afeea52 100644
+--- a/tests/props.test.mjs
++++ b/tests/props.test.mjs
+@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
+ import { Track, normalizeTrack, TRACK_VERSION } from '../src/track.js';
+ import { Vehicle } from '../src/vehicle.js';
+ import { makeTemplate, TEMPLATE_KEYS } from '../src/templates.js';
+-import { Props, placeProp, BARREL, BLAST } from '../src/props.js';
++import { Props, placeProp, BARREL, BLAST, CHICKEN } from '../src/props.js';
+ import { DRAG_DEF, placeOnTrack, DT } from './harness.mjs';
+ 
+ /** Drag strip with barrels at the given (x, z); the straight part runs along x = 0 between z = -550 and 550. */
+@@ -119,8 +119,13 @@ test('a lit barrel keeps flying and bouncing during the delay, and the fuse coun
+   assert.ok(moved > 3, `it travelled ${moved.toFixed(1)} m with the fuse burning`);
+ });
+ 
+-test('barrels are 20% bigger than the first version', () => {
+-  assert.ok(Math.abs(BARREL.height / 0.9 - 1.2) < 1e-9 && Math.abs(BARREL.radius / 0.3 - 1.2) < 1e-9);
++test('barrels are 20% bigger than the previous size, and 44% bigger than the very first version', () => {
++  assert.ok(Math.abs(BARREL.height / 1.08 - 1.2) < 0.02 && Math.abs(BARREL.radius / 0.36 - 1.2) < 0.02);
++  assert.ok(Math.abs(BARREL.height / 0.9 - 1.44) < 0.02 && Math.abs(BARREL.radius / 0.3 - 1.44) < 0.02);
++});
++
++test('chickens are 20% bigger than their original size', () => {
++  assert.ok(Math.abs(CHICKEN.radius / 0.22 - 1.2) < 0.02);
+ });
+ 
+ test('a dropped barrel bounces, and clangs when it lands', () => {
+@@ -237,9 +242,9 @@ function chickenSetup(points) {
+ test('a chicken splats on any real touch, with no damage or explosion', () => {
+   const { track, props } = chickenSetup([[0, -350]]);
+   assert.equal(props.aliveChickens, 1);
+-  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -385), 0, 15);
++  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -358), 0, 15);
+   let splat = null;
+-  for (let i = 0; i < 3 / DT && !splat; i++) {
++  for (let i = 0; i < 1 / DT && !splat; i++) {
+     car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track);
+     props.step(DT, car);
+     splat = props.events.find((e) => e.type === 'splat') || null;
+@@ -261,6 +266,34 @@ test('chickens do not react to cars that never come near them', () => {
+   assert.equal(props.aliveChickens, 1, 'a chicken well clear of the road should survive');
+ });
+ 
++test('a chicken wanders back and forth across the road without ever leaving it', () => {
++  const { track, props } = chickenSetup([[0, -300]]);
++  const c = props.chickens[0];
++  let sawTurnaround = false, offRoad = 0, lastDir = c.walkDir;
++  for (let i = 0; i < 40 / DT; i++) {
++    props.step(DT, []);
++    if (c.walkDir !== lastDir) { sawTurnaround = true; lastDir = c.walkDir; }
++    const q = Track.newQuery();
++    track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, q, 1.0);
++    if (q.idx < 0) offRoad++;
++    else assert.ok(Math.abs(q.d) <= q.hw, `wandered off the road: d=${q.d.toFixed(2)} hw=${q.hw.toFixed(2)}`);
++  }
++  assert.equal(offRoad, 0, 'never lost the road');
++  assert.ok(sawTurnaround, 'never turned around, so it would eventually walk off the road');
++});
++
++test('splatting a chicken starts its pop timer, and it stops reacting to further contact', () => {
++  const { track, props } = chickenSetup([[0, -350]]);
++  const c = props.chickens[0];
++  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -358), 0, 15);
++  for (let i = 0; i < 1 / DT && c.deadT < 0; i++) { car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track); props.step(DT, car); props.events.length = 0; }
++  assert.ok(c.deadT >= 0, 'splat timer never started');
++  const deadTAfter = c.deadT;
++  props.step(DT, car);          // a further step with the same car right on top of it
++  assert.ok(c.deadT > deadTAfter, 'the timer should keep ticking');
++  assert.equal(props.events.length, 0, 'an already-splatted chicken should not splat again');
++});
++
+ test('chickens survive a track save/load round trip (PROP_TYPES)', () => {
+   const def = normalizeTrack({ handles: makeTemplate('kidney').handles, props: [
+     { type: 'barrel', x: 1, z: 1, y: 0.65 }, { type: 'chicken', x: 2, z: 2, y: 0.65 },
