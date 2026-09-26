@@ -219,6 +219,14 @@ test('every kind of points goes through award(), so a new one is a single line',
   } finally { delete POINTS.landing; }
 });
 
+test('splatting a chicken scores POINTS.chicken', () => {
+  const a = arena();
+  assert.equal(a.derby.award('chicken', 1, 'Splat!'), POINTS.chicken);
+  assert.equal(a.derby.score, POINTS.chicken);
+  const e = a.derby.events.find((x) => x.type === 'award');
+  assert.equal(e.label, 'Splat!');
+});
+
 test('a wrecked rival lies about, is replaced by a fresh one, and never disappears on its own', () => {
   const track = new Track(makeTemplate('speedway')), car = new Vehicle();
   placeOnRoad(car, track, track.startS(12), 0, 0);

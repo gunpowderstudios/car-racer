@@ -42,7 +42,8 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
   points *and* it soaks half of every hit. The rear and sides are much easier to kill, so keep your tail out of the way. The chart at the left
   of the screen shows all four zones (green to red, flashing when hit); when one hits zero you explode and the game is over.
 - **Score.** Wrecking a rival that you hit within the last 6 seconds is a *Takedown*, worth 100. That includes rivals caught in the blast of
-  one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Your best score on each track is kept in the browser.
+  one you wrecked (chain reactions), and rivals a barrel blast near you finished off. Splatting a chicken near you is worth 10. Your best
+  score on each track is kept in the browser.
 - **Rivals** run on the same car physics as you. They cruise the road in their own lane, slow for corners, traffic and barrels, take the jump, and
   reverse out of trouble; now and then one turns on you, aims at where you are going to be and rams (the nastiest use their boost) - though a
   jump always takes priority, so a hunting rival still lines up and commits to a gap rather than yanking the wheel toward you mid-air. Ram one
@@ -50,8 +51,10 @@ Options let you turn it off (plain lap racing) or pick how many rivals (3 to 10)
   A wrecked rival burns for a while, then sits as a permanent obstacle - it never disappears - while a fresh rival
 is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks`), the oldest quietly shrinks away
 to make room for the next one.
-- **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
-  barrels beside it. Lay barrels in the editor to build a proper killing ground.
+- **Barrels hurt everybody**: full damage within 2 m of the blast, falling off in a straight line to nothing at 10 m (`BLAST.radius` in
+  `src/props.js`, `SPECS.barrel` in `src/damage.js`) - yours takes less than half as much. Each explosion in a chain reaction checks who's
+  within 30 m independently, so a takedown counts as yours if you're near *that* blast, not necessarily the one you originally lit. A
+  burning wreck sets off barrels beside it. Lay barrels in the editor to build a proper killing ground.
 - **Chickens are just for laughs**: they wander back and forth across the road, oblivious to traffic, and any touch launches one into a
   quick comedic tumble before it vanishes - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
 

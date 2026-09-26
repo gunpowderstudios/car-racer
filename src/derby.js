@@ -19,6 +19,7 @@ import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDama
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
 export const POINTS = {
   takedown: 100,
+  chicken: 10,
   // Ideas for later - award them from wherever the event happens:
   //   landing: 50,   (a clean landing after a big jump)
   //   barrel: 25,    (an explosive barrel set off)

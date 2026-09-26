@@ -302,6 +302,7 @@ function propEvents() {
       }
       splats.add(e.x, e.y, e.z, e.nx, e.ny, e.nz, 0.9 + Math.random() * 0.3);
       sound.splat(e.dist);
+      if (derby.enabled && e.dist < DERBY.creditNear) derby.award('chicken', 1, 'Splat!');
     }
   }
   props.events.length = 0;
