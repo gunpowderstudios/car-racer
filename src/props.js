@@ -28,6 +28,9 @@ export const BARREL = {
   fuse: 0.7,                     // seconds between being lit and going off
   clangSpeed: 1.5,               // impacts at least this hard make the clang sound
 };
+export const CHICKEN = {
+  radius: 0.22,                  // roughly how big a chicken is, for placement and hit-testing
+};
 export const BLAST = {
   radius: 10,                    // barrels and the car feel it this far away
   chainRadius: 4.5,              // barrels this close go off too, a moment later
@@ -128,7 +131,7 @@ function sphereBox(c, R, car, box) {
 export class Props {
   constructor() {
     this.track = null; this.defs = [];
-    this.barrels = []; this.bits = []; this.events = [];
+    this.barrels = []; this.chickens = []; this.bits = []; this.events = [];
     for (let i = 0; i < MAX_BITS; i++) {
       this.bits.push({ pos: new V3(), vel: new V3(), w: new V3(), q: new Q(), life: 0, rest: false, sx: 0.3, sy: 0.04, sz: 0.2 });
     }
@@ -141,26 +144,34 @@ export class Props {
   /** Put the barrels of a track definition where the editor placed them. */
   load(track, defs) { this.track = track; this.defs = defs || []; this.reset(); }
 
-  /** Every barrel back where it started, standing and asleep; scrap and events cleared. */
+  /** Every barrel and chicken back where it started; scrap and events cleared. */
   reset() {
-    this.barrels.length = 0; this.events.length = 0; this.time = 0; this.rng = mulberry(1);
+    this.barrels.length = 0; this.chickens.length = 0; this.events.length = 0; this.time = 0; this.rng = mulberry(1);
     for (const p of this.bits) { p.life = 0; p.rest = true; }
     if (!this.track) return;
     this.defs.forEach((d, i) => {
-      if (d.type !== 'barrel') return;
-      const g = this.track.groundAt(d.x, d.z, d.y + 0.5, this.gq, true);
-      const b = {
-        i, alive: true, asleep: true, still: 0, fuse: -1, boom: false, clang: 0,
-        pos: new V3(d.x + g.nx * (BARREL.height / 2 + 0.003), g.y + g.ny * (BARREL.height / 2 + 0.003), d.z + g.nz * (BARREL.height / 2 + 0.003)),
-        vel: new V3(), w: new V3(), q: new Q(), axis: new V3(0, 1, 0),
-        paint: (i * 2654435761 >>> 0) % 10 < 7 ? 0 : 1,
-      };
-      qFromUp(g.nx, g.ny, g.nz, b.q); b.q.rotate(UP, b.axis);
-      this.barrels.push(b);
+      if (d.type === 'barrel') {
+        const g = this.track.groundAt(d.x, d.z, d.y + 0.5, this.gq, true);
+        const b = {
+          i, alive: true, asleep: true, still: 0, fuse: -1, boom: false, clang: 0,
+          pos: new V3(d.x + g.nx * (BARREL.height / 2 + 0.003), g.y + g.ny * (BARREL.height / 2 + 0.003), d.z + g.nz * (BARREL.height / 2 + 0.003)),
+          vel: new V3(), w: new V3(), q: new Q(), axis: new V3(0, 1, 0),
+          paint: (i * 2654435761 >>> 0) % 10 < 7 ? 0 : 1,
+        };
+        qFromUp(g.nx, g.ny, g.nz, b.q); b.q.rotate(UP, b.axis);
+        this.barrels.push(b);
+      } else if (d.type === 'chicken') {
+        const g = this.track.groundAt(d.x, d.z, d.y + 0.5, this.gq, true);
+        this.chickens.push({
+          i, alive: true, pos: new V3(d.x, g.y, d.z), nx: g.nx, ny: g.ny, nz: g.nz,
+          bob: this.rng() * Math.PI * 2, tint: this.rng(),
+        });
+      }
     });
   }
 
   get alive() { let n = 0; for (const b of this.barrels) if (b.alive) n++; return n; }
+  get aliveChickens() { let n = 0; for (const c of this.chickens) if (c.alive) n++; return n; }
 
   // ---------------------------------------------------------------- step
   step(dt, car) {
@@ -168,9 +179,10 @@ export class Props {
     const cars = Array.isArray(car) ? car : car ? [car] : [];
     this._cars = cars; this._car = cars[0] || null;         // the first is the player: sounds fade with distance from it
     this.time += dt;
+    for (const c of cars) c.refreshFrame();
     const bs = this.barrels;
     if (bs.length) {
-      for (const c of cars) { c.refreshFrame(); this._carContacts(c); }
+      for (const c of cars) this._carContacts(c);
       for (const b of bs) if (b.alive && !b.asleep) this._integrate(b, dt);
       this._pairs();
       for (const b of bs) {
@@ -184,6 +196,7 @@ export class Props {
         if (!any) break;
       }
     }
+    if (this.chickens.length) for (const c of cars) this._chickenContacts(c);
     this._stepBits(dt);
   }
 
@@ -237,6 +250,22 @@ export class Props {
       }
       if (-rel >= BARREL.lightSpeed) this._light(b, BARREL.fuse);
       this._emitClang(b, -rel, p.x, p.y, p.z);
+    }
+  }
+
+  // ------------------------------------------------------- chickens
+  /** A chicken has no physics of its own: any real touch from the car splats it on the spot. */
+  _chickenContacts(car) {
+    for (const c of this.chickens) {
+      if (!c.alive) continue;
+      const dx = c.pos.x - car.pos.x, dz = c.pos.z - car.pos.z;
+      if (dx * dx + dz * dz > 9) continue;               // 3 m: outside the car's reach
+      sV.set(c.pos.x, c.pos.y + CHICKEN.radius, c.pos.z);
+      let hitIt = false;
+      for (const box of CAR_BOXES) if (sphereBox(sV, CHICKEN.radius + 0.15, car, box)) { hitIt = true; break; }
+      if (!hitIt) continue;
+      c.alive = false;
+      this.events.push({ type: 'splat', x: c.pos.x, y: c.pos.y, z: c.pos.z, nx: c.nx, ny: c.ny, nz: c.nz, dist: this._carDist(c.pos.x, c.pos.y, c.pos.z) });
     }
   }
 

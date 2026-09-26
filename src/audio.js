@@ -4,7 +4,7 @@ export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
     this.sfxOn = localStorage.getItem('cr.sfx') !== '0';
-    this.musicOn = localStorage.getItem('cr.music') !== '0';
+    this.musicOn = localStorage.getItem('cr.music') === '1';
     this.buf = {};
   }
 
@@ -20,7 +20,7 @@ export class Sound {
     await Promise.all([
       load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
-      load('explosion', 'sounds/explosion.mp3'), load('barrel', 'sounds/barrel.mp3'),
+      load('explosion', 'sounds/explosion.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
       load('music', 'sounds/background-music.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -113,6 +113,8 @@ export class Sound {
   explode(dist = 0) { this._shot('explosion', 1, 0.92 + Math.random() * 0.16, dist); }
   /** A drum being knocked about: a clang whose loudness follows how hard it was hit. */
   clang(speed, dist = 0) { this._shot('barrel', Math.min(1, 0.4 + speed / 12), 0.85 + Math.random() * 0.4, dist, 0.6); }
+  /** A chicken meeting its end. */
+  splat(dist = 0) { this._shot('cluck', 0.85, 0.85 + Math.random() * 0.3, dist, 0.5); }
 }
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);

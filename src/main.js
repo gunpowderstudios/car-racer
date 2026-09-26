@@ -49,6 +49,7 @@ const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
 const particles = new Particles(stage.scene);
 const scorch = new Scorch(stage.scene);
+const splats = new Scorch(stage.scene, 40, 0xb5502e);   // a warmer tint than the black burn marks
 const props = new Props();
 const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
@@ -85,7 +86,7 @@ const input = new Input({
 // A second camera looking back from just behind the car renders into a texture, which is drawn
 // left-right flipped (like a real mirror) into the #mirror frame at the top of the screen.
 const mirror = {
-  on: true, el: $('mirror'),
+  on: false, el: $('mirror'),
   cam: new THREE.PerspectiveCamera(48, 4, 0.3, 1800),
   rt: new THREE.WebGLRenderTarget(1, 1, { samples: 4 }),
   scene: new THREE.Scene(), ortho: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2),
@@ -294,6 +295,14 @@ function propEvents() {
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
       if (derby.enabled) derby.blast(e.x, e.y, e.z);
     } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
+    else if (e.type === 'splat') {
+      for (let k = 0; k < 7; k++) {
+        const a = Math.random() * Math.PI * 2, h = 0.6 + Math.random() * 1.6;
+        particles.puff(e.x + Math.cos(a) * 0.15, e.y + 0.2 + Math.random() * 0.2, e.z + Math.sin(a) * 0.15, Math.cos(a) * h, Math.sin(a) * h, 0.7 + Math.random() * 0.5, 0.7 + Math.random() * 0.5, 0xf2ede0);
+      }
+      splats.add(e.x, e.y, e.z, e.nx, e.ny, e.nz, 0.9 + Math.random() * 0.3);
+      sound.splat(e.dist);
+    }
   }
   props.events.length = 0;
 }
@@ -563,7 +572,7 @@ function bindMenu() {
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
   bindOpt('opt-sfx', 'sfx', (v) => { sound.setEnabled('sfx', v); syncSoundUI(); });
-  bindOpt('opt-music', 'music', (v) => { sound.setEnabled('music', v); syncSoundUI(); });
+  bindOpt('opt-music', 'music', (v) => { if (v) sound.init(); sound.setEnabled('music', v); syncSoundUI(); });
   const sw = $('swatches');
   PAINTS.forEach(([name, hex], i) => {
     const b = document.createElement('button'); b.type = 'button'; b.title = name; b.setAttribute('role', 'radio'); b.setAttribute('aria-label', name);

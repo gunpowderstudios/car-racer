@@ -51,6 +51,7 @@ is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks
 to make room for the next one.
 - **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
   barrels beside it. Lay barrels in the editor to build a proper killing ground.
+- **Chickens are just for laughs**: any touch splats one - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
 
 Everything you would want to tune is in the open at the top of `src/damage.js` (`ARMOUR`, `DAMAGE`, `SPECS`), `src/derby.js` (`DERBY`, `POINTS`)
 and `src/ai.js` (`AI`).
@@ -76,8 +77,10 @@ Draw a closed circuit by dragging points. The editor and the game share the same
 - **Auto-bank** leans every corner into the turn. **Reverse** drives the loop the other way.
 - Tight corners and roads that cross at the same height are flagged. Raise one crossing by about 5 m to make a bridge.
 - **Barrels**: press **B** (or the Barrels button) and click the map to drop an explosive barrel. Drag one to move it and press Delete
-  to remove it; the side panel has *Remove all barrels*. Barrels sit on the road surface (bridges included), and are nudged clear of the
+  to remove it; the side panel has *Remove all props*. Barrels sit on the road surface (bridges included), and are nudged clear of the
   barriers. They are drawn as little drums in the 3D view.
+- **Chickens**: press **K** (or the Chickens button) and click the map the same way. They just splat on any touch - purely decorative,
+  no damage or chain reaction.
 - Save keeps the track in your browser. Export writes a `.json` file; import it from the menu.
 
 Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank, gap, lip, kick }], props: [{ type, x, z, y }] }` in metres and degrees.
@@ -94,7 +97,7 @@ Track format (`version: 6`): `{ name, width, walls, handles: [{ x, y, z, w, bank
 | `src/editor.js` | The blueprint editor and height strip. |
 | `src/main.js` | Game loop (fixed 120 Hz physics, interpolated rendering), laps, respawn, menu. |
 | `src/props.js` | Barrels: rigid bodies that rest on the same analytic ground as the car, get pushed by an impulse from the car's hull, light a fuse when hit and explode after a short delay, throw their neighbours (chain reaction), shove the car and scatter scrap. No three.js, so it is tested in Node. **Tuning lives in `BARREL` and `BLAST` at the top.** |
-| `src/propsView.js` | Draws the barrels and scrap as instanced meshes. |
+| `src/propsView.js` | Draws the barrels, chickens and scrap as instanced meshes. |
 | `src/derby.js` | The derby: rivals, car-against-car collisions (five spheres per car, impulses at the point of contact), damage, wrecks, replacements and `award()` for scoring. No three.js. |
 | `src/damage.js` | Zones, hit points, armour and the crash / wall / blast damage formulas. No three.js. |
 | `src/ai.js` | The rival driver: follows the road, avoids traffic and barrels, takes jumps, hunts you - and holds a grudge if you ram it. Produces the same throttle / brake / steer a person would. No three.js. |
@@ -109,9 +112,9 @@ If the model's nose points the wrong way, set `MODEL.flip = true` in `src/carVis
 ## Migrating from the old version
 
 This replaces the single-file `index.html` and the `track-editor/` folder. You can delete `track-editor/`, `cars/car.gltf` (22 MB, the game uses `cars/car.glb`),
-and the sounds `boost` and `engine.mp3`, which are no longer used. Keep `barrel.mp3` and `explosion.mp3` (the barrels use them) and `cluck.mp3` (for the chickens, coming next).
+and the sounds `boost` and `engine.mp3`, which are no longer used. Keep `barrel.mp3` and `explosion.mp3` (the barrels use them) and `cluck.mp3` (the chickens use it).
 There are also Dropbox-style "conflicted copy" files inside `.git`, which are worth removing before they confuse git.
 
 ## Ideas for next
 
-Chickens (they go splat), scattered debris such as cones, crates and tyres, points for clean jump landings and barrels, difficulty that ramps up with your score, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.
+Scattered debris such as cones, crates and tyres, points for clean jump landings and barrels, difficulty that ramps up with your score, open point-to-point tracks, a ghost of your best lap, and a street-network mode for the full Driver experience.

@@ -222,3 +222,50 @@ test('constants stay sane', () => {
   assert.ok(BARREL.lightSpeed < BARREL.chainSpeed && BARREL.fuse > 0.2 && BARREL.fuse < 2);
   assert.ok(BLAST.chainRadius < BLAST.radius);
 });
+
+// ---------------------------------------------------------------- chickens
+
+function chickenSetup(points) {
+  const def = { ...DRAG_DEF, props: [] };
+  let track = new Track(def);
+  def.props = points.map(([x, z]) => { const p = placeProp(track, x, z); return { type: 'chicken', x: p.x, z: p.z, y: p.y }; });
+  track = new Track(def);
+  const props = new Props(); props.load(track, track.def.props);
+  return { track, props };
+}
+
+test('a chicken splats on any real touch, with no damage or explosion', () => {
+  const { track, props } = chickenSetup([[0, -350]]);
+  assert.equal(props.aliveChickens, 1);
+  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -385), 0, 15);
+  let splat = null;
+  for (let i = 0; i < 3 / DT && !splat; i++) {
+    car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track);
+    props.step(DT, car);
+    splat = props.events.find((e) => e.type === 'splat') || null;
+    props.events.length = 0;
+  }
+  assert.ok(splat, 'never splatted');
+  assert.equal(props.aliveChickens, 0);
+  assert.ok(car.speed > 5, 'a chicken should not stop the car dead - it has no mass of its own');
+});
+
+test('chickens do not react to cars that never come near them', () => {
+  const { track, props } = chickenSetup([[8, -350]]);   // well off to the side
+  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -420), 0, 20);
+  for (let i = 0; i < 3 / DT; i++) {
+    car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track);
+    props.step(DT, car);
+    props.events.length = 0;
+  }
+  assert.equal(props.aliveChickens, 1, 'a chicken well clear of the road should survive');
+});
+
+test('chickens survive a track save/load round trip (PROP_TYPES)', () => {
+  const def = normalizeTrack({ handles: makeTemplate('kidney').handles, props: [
+    { type: 'barrel', x: 1, z: 1, y: 0.65 }, { type: 'chicken', x: 2, z: 2, y: 0.65 },
+  ] });
+  assert.equal(def.props.length, 2, 'both survive normalization');
+  const again = normalizeTrack(JSON.parse(JSON.stringify(def)));
+  assert.deepEqual(again.props, def.props, 'survives an export / import round trip');
+});

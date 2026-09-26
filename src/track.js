@@ -54,7 +54,7 @@ export function takeoffRamp(h) {
 /** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
-export const PROP_TYPES = ['barrel'];
+export const PROP_TYPES = ['barrel', 'chicken'];
 export const MAX_PROPS = 400;
 
 export function normalizeProps(list) {

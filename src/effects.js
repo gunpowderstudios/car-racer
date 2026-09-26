@@ -141,10 +141,10 @@ export class Particles {
 
 /** Dark scorch marks left on the road by explosions. */
 export class Scorch {
-  constructor(scene, capacity = 60) {
+  constructor(scene, capacity = 60, color = 0x000000) {
     this.cap = capacity; this.i = 0; this.count = 0;
     const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({ map: puffTexture(), color: 0x000000, transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    const mat = new THREE.MeshBasicMaterial({ map: puffTexture(), color, transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     this.mesh = new THREE.InstancedMesh(geo, mat, capacity);
     this.mesh.frustumCulled = false; this.mesh.count = 0;
     scene.add(this.mesh);

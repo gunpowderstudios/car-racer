@@ -3,6 +3,6 @@
 // and set NOTE to a short line describing what changed, e.g. 'AI cars now line up on the grid'.
 // BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
 // (it commits the short commit id + date, so you can always tell exactly what's live).
-export const VERSION = '13.3';
-export const NOTE = 'Rear-view mirror at the top of the screen (V to toggle)';
-export const BUILD = '555e38d 25 Sep 17:43';
+export const VERSION = '13.4';
+export const NOTE = 'Mirror and music off by default (music now actually works from the menu); chickens - splat for laughs';
+export const BUILD = 'dev';
