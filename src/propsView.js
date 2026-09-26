@@ -1,6 +1,7 @@
 // Draws the barrels, chickens and scrap metal that props.js simulates.
 import * as THREE from 'three';
 import { BARREL, CHICKEN } from './props.js';
+import './chickenBehavior.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
 const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
