@@ -8,7 +8,8 @@ npm start            # then open http://localhost:8080
 npm test             # physics, track, barrel and derby tests (Node 20+, no dependencies)
 ```
 
-Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`) to jump straight in, and `&edit=1` to open the editor.
+Try `?track=hills` (or `speedway`, `kidney`, `technical`, `overpass`, `random`) to jump straight in, and `&edit=1`
+to open the editor. `random` builds a fresh circuit every time - hills, jumps, banks, barrels and chickens.
 
 ## Controls
 
@@ -77,6 +78,9 @@ Draw a closed circuit by dragging points. The editor and the game share the same
 - Drag the markers in the **height strip** at the bottom to build hills. Steep sections turn red.
 - **Auto-bank** leans every corner into the turn. **Reverse** drives the loop the other way.
 - Tight corners and roads that cross at the same height are flagged. Raise one crossing by about 5 m to make a bridge.
+- Pick **Random circuit** from the template dropdown for a fresh, ready-made layout to tweak - hills, jumps, banked
+  corners, and a scatter of barrels and chickens. Every pick is a different track; it's checked to be actually
+  drivable before it's handed to you, not just randomly thrown together.
 - **Barrels**: press **B** (or the Barrels button) and click the map to drop an explosive barrel. Drag one to move it and press Delete
   to remove it; the side panel has *Remove all props*. Barrels sit on the road surface (bridges included), and are nudged clear of the
   barriers. They are drawn as little drums in the 3D view.

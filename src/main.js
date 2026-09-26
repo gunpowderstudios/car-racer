@@ -6,7 +6,7 @@ import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
 import { ZONE_LABEL } from './damage.js';
 import { V3, lerp } from './math.js';
-import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
+import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
 import { CarVisual, ChaseCamera, RIVAL_LOOKS } from './carVisual.js';
 import { SkidMarks, Particles, Scorch } from './effects.js';
@@ -549,7 +549,7 @@ function renderMenu() {
   };
   if (track && hasPlayed) row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]);
   for (const k of TEMPLATE_KEYS) {
-    const d = makeTemplate(k), t = new Track(d);
+    const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
     row(d.name, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`, '', [['Drive', () => startDriving(d)], ['Edit', () => openEditor(d)]]);
   }
   for (const [name, d] of Object.entries(userTracks())) {
@@ -603,6 +603,6 @@ requestAnimationFrame(frame);
 
 const params = new URLSearchParams(location.search);
 if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
-  const d = makeTemplate(params.get('track'));
+  const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
   if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
 }

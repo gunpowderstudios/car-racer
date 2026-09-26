@@ -1,7 +1,7 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
-import { makeTemplate, TEMPLATE_KEYS } from './templates.js';
+import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
 import { clamp, lerp } from './math.js';
 
@@ -556,7 +556,7 @@ export class Editor {
     };
     $('ed-template').onchange = (e) => {
       const k = e.target.value; e.target.value = ''; if (!k) return;
-      this.snapshot(); const t = makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
+      this.snapshot(); const t = k === 'random' ? makeRandomTrack() : makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
       this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     };
     $('ed-fit').onclick = () => { this.fit(); this.draw(); };
