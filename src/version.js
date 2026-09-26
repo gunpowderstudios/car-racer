@@ -4,6 +4,6 @@
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
 // BUILD is stamped automatically by .github/workflows/stamp.yml on every push to main
 // (it commits the short commit id + date, so you can always tell exactly what's live).
-export const VERSION = '13.9';
-export const NOTE = 'A big Play Now button by the logo jumps straight into a random track';
+export const VERSION = '14.0';
+export const NOTE = 'Phone layout tidied (compact HUD, one button row) and no more text-select on long press';
 export const BUILD = '00b1c5a 26 Sep 18:02';

@@ -250,3 +250,56 @@ body:not(.mode-edit) #editor { display: none; }
   #controls .legend, #controls kbd { display: none; }
   #dmg-card { width: 96px; top: calc(max(14px, env(safe-area-inset-top)) + 214px); }
 }
+
+/* ---------------------------------------------- phone (touch, portrait-ish)
+   Top: lap | score | map. One row of action buttons under that, cog at its end.
+   Sides: damage on the right, compact speed plate on the left above steering.
+   The middle of the screen stays clear so you can see the car and the road. */
+@media (pointer: coarse) and (max-width: 760px) {
+  #lap-card { left: 10px; padding: 5px 16px 6px 9px; border-left-width: 4px; }
+  #lap-num { font-size: 14px; }
+  #lap-time { font-size: 28px; }
+  #lap-best { font-size: 11px; }
+  #derby-score { min-width: 0; padding: 2px 12px 4px; left: 54%; }
+  #derby-score .ds-label { font-size: 10px; }
+  #ds-score { font-size: 24px; }
+  #ds-sub { font-size: 10px; }
+  #minimap { right: 10px; width: 84px; height: 84px; }
+
+  #controls { left: 10px; right: 58px; top: calc(max(14px, env(safe-area-inset-top)) + 96px); bottom: auto; max-width: none;
+    flex-wrap: nowrap; gap: 4px; font-size: 12px; opacity: .9; }
+  #controls .ctl { flex: 1 1 0; min-width: 0; justify-content: center; padding: 6px 2px; white-space: normal; text-align: center; line-height: 1.05; }
+  #sound-ctl { right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 94px); }
+  #cog { width: 38px; height: 38px; padding: 7px; }
+
+  #mirror { top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 62vw; }
+  #feed { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
+  .feed-item { font-size: 20px; }
+  #dmg-card { left: auto; right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 146px); width: 66px; padding: 3px 5px 4px;
+    border-left: 0; border-right: 4px solid var(--red); }
+  .dmg-title { font-size: 9px; letter-spacing: .1em; }
+
+  #speed-plate { left: 10px; right: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 94px); min-width: 0; width: 136px;
+    padding: 6px 10px 6px 22px; clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%); }
+  #rpm { height: 6px; margin-bottom: 3px; }
+  #speed { font-size: 34px; min-width: 1.6em; }
+  #unit { font-size: 13px; }
+  #gear { width: 28px; height: 28px; font-size: 19px; }
+  #boost-bar { height: 9px; margin-top: 4px; }
+  #boost-bar span { font-size: 8px; line-height: 9px; }
+  #hand-flag { left: 22px; bottom: auto; top: -16px; font-size: 11px; }
+
+  #touch { padding: 0 10px; }
+  #touch .t-right { grid-template-columns: repeat(2, 66px); gap: 8px; }
+  #touch button { width: 66px; height: 66px; font-size: 17px; background: rgba(42,29,74,.45); }
+  #t-left, #t-right { width: 76px !important; height: 76px !important; font-size: 30px !important; }
+  #t-gas { border-color: rgba(120,220,140,.7); }
+  #t-brake { border-color: rgba(255,110,90,.7); }
+  .go-card { padding: 18px 22px 16px; max-width: calc(100vw - 28px); }
+}
+
+/* touch screens: stop a press on the HUD / touch buttons turning into text selection or the iOS copy menu */
+@media (pointer: coarse) {
+  body.mode-drive, #hud, #touch, #touch button, #controls .ctl {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+}
