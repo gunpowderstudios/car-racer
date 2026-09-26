@@ -123,10 +123,26 @@ export class PropsView {
           return;
         }
         if (!c.alive) { cm.setMatrixAt(i, this._zero); return; }
-        // a little idle bob and waddle so a field of them doesn't look frozen
-        const bob = Math.sin(props.time * 5 + c.bob) * 0.02, waddle = Math.sin(props.time * 3.2 + c.bob) * 0.12;
+
+        const moving = c.state === 'walk' || c.state === 'flee';
+        const pace = c.state === 'flee' ? 13 : 7;
+        const phase = props.time * pace + c.bob;
+        const bob = moving ? Math.abs(Math.sin(phase)) * (c.state === 'flee' ? 0.045 : 0.025) : 0;
+        const roll = moving ? Math.sin(phase) * (c.state === 'flee' ? 0.18 : 0.11) : 0;
+        let pitch = 0, yaw = c.heading || 0;
+
+        if (c.state === 'peck') {
+          const peck = 0.5 + 0.5 * Math.sin(props.time * 12 + c.bob);
+          pitch = 0.2 + peck * 0.5;
+        } else if (c.state === 'look') {
+          yaw += Math.sin(props.time * 4.5 + c.bob) * 0.42;
+        } else if (c.state === 'freeze') {
+          pitch = -0.06;
+        }
+
         this._p.set(c.pos.x, c.pos.y + bob, c.pos.z);
-        this._q.setFromAxisAngle(this._up || (this._up = new THREE.Vector3(0, 1, 0)), waddle);
+        this._e.set(pitch, yaw, roll, 'XYZ');
+        this._q.setFromEuler(this._e);
         this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
       });
       cm.instanceMatrix.needsUpdate = true;
