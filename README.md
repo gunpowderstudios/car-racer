@@ -51,7 +51,8 @@ is dropped on the road far from you. Once 8 hulks are piled up (`DERBY.maxWrecks
 to make room for the next one.
 - **Barrels hurt everybody**: an explosion damages every car in range (yours takes less than half as much), and a burning wreck sets off
   barrels beside it. Lay barrels in the editor to build a proper killing ground.
-- **Chickens are just for laughs**: any touch splats one - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
+- **Chickens are just for laughs**: they wander back and forth across the road, oblivious to traffic, and any touch launches one into a
+  quick comedic tumble before it vanishes - no damage, no explosion, no chain reaction. Purely cosmetic scatter.
 
 Everything you would want to tune is in the open at the top of `src/damage.js` (`ARMOUR`, `DAMAGE`, `SPECS`), `src/derby.js` (`DERBY`, `POINTS`)
 and `src/ai.js` (`AI`).

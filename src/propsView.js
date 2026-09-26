@@ -4,6 +4,7 @@ import { BARREL, CHICKEN } from './props.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
 const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
+const POP_V0 = 5, POP_G = 16, POP_DURATION = (2 * POP_V0) / POP_G;      // a splatted chicken's comedic launch: up, tumble, gone
 
 /** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
 function drumGeometry() {
@@ -62,6 +63,7 @@ export class PropsView {
     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
     this.bitMat = new THREE.MeshStandardMaterial({ color: 0x3b3a40, roughness: 0.6, metalness: 0.6 });
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
+    this._e = new THREE.Euler();
     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
   }
 
@@ -110,6 +112,16 @@ export class PropsView {
     const cm = this.chickens;
     if (cm) {
       props.chickens.forEach((c, i) => {
+        if (c.deadT >= 0) {
+          const t = c.deadT;
+          if (t > POP_DURATION) { cm.setMatrixAt(i, this._zero); return; }
+          const h = POP_V0 * t - 0.5 * POP_G * t * t;                      // a quick comedic launch, then it drops
+          this._p.set(c.pos.x, c.pos.y + Math.max(0, h), c.pos.z);
+          this._e.set(t * 26, t * 17, t * 11);
+          this._q.setFromEuler(this._e);                                  // tumbling
+          this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
+          return;
+        }
         if (!c.alive) { cm.setMatrixAt(i, this._zero); return; }
         // a little idle bob and waddle so a field of them doesn't look frozen
         const bob = Math.sin(props.time * 5 + c.bob) * 0.02, waddle = Math.sin(props.time * 3.2 + c.bob) * 0.12;

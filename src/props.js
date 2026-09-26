@@ -18,8 +18,8 @@ const G = 9.81;
 const UP = new V3(0, 1, 0);
 
 export const BARREL = {
-  radius: 0.36, height: 1.08, mass: 100,
-  reach: 0.396, step: 0.324,     // three spheres this far apart along the axis stand in for the cylinder
+  radius: 0.43, height: 1.3, mass: 100,   // 20% bigger than the previous size (44% over the very first version)
+  reach: 0.48, step: 0.39,       // three spheres this far apart along the axis stand in for the cylinder
   mu: 0.7,                       // tyre-on-tarmac-ish friction of a steel rim
   bounce: 0.5,                   // how lively it is: 0 = dead thud, 1 = perfect rubber ball
   bounceAbove: 1.5,              // impacts softer than this (m/s) don't bounce, so resting barrels stay put
@@ -29,7 +29,9 @@ export const BARREL = {
   clangSpeed: 1.5,               // impacts at least this hard make the clang sound
 };
 export const CHICKEN = {
-  radius: 0.22,                  // roughly how big a chicken is, for placement and hit-testing
+  radius: 0.26,                  // roughly how big a chicken is, for placement and hit-testing (20% bigger)
+  walkSpeed: 0.9,                // m/s: an oblivious waddle
+  wanderMargin: 0.6,             // m: how close to the road edge before turning back
 };
 export const BLAST = {
   radius: 10,                    // barrels and the car feel it this far away
@@ -165,6 +167,7 @@ export class Props {
         this.chickens.push({
           i, alive: true, pos: new V3(d.x, g.y, d.z), nx: g.nx, ny: g.ny, nz: g.nz,
           bob: this.rng() * Math.PI * 2, tint: this.rng(),
+          walkDir: this.rng() < 0.5 ? 1 : -1, deadT: -1,
         });
       }
     });
@@ -196,7 +199,7 @@ export class Props {
         if (!any) break;
       }
     }
-    if (this.chickens.length) for (const c of cars) this._chickenContacts(c);
+    if (this.chickens.length) { this._stepChickens(dt); for (const c of cars) this._chickenContacts(c); }
     this._stepBits(dt);
   }
 
@@ -254,6 +257,24 @@ export class Props {
   }
 
   // ------------------------------------------------------- chickens
+  /** Chickens wander back and forth across the road, oblivious to traffic. Splatted ones (deadT >= 0) just tick their timer - propsView.js does the comedy pop. */
+  _stepChickens(dt) {
+    const T = this.track;
+    for (const c of this.chickens) {
+      if (c.deadT >= 0) { c.deadT += dt; continue; }
+      if (!c.alive) continue;
+      const q = this.gq;
+      T.query(c.pos.x, c.pos.y + 0.3, c.pos.z, q, 1.0);
+      if (q.idx < 0) continue;                          // lost the road somehow: just stand still
+      const nextD = q.d + c.walkDir * CHICKEN.walkSpeed * dt;
+      if (Math.abs(nextD) > Math.max(0.3, q.hw - CHICKEN.wanderMargin)) c.walkDir *= -1;
+      c.pos.x += q.lx * c.walkDir * CHICKEN.walkSpeed * dt;
+      c.pos.z += q.lz * c.walkDir * CHICKEN.walkSpeed * dt;
+      const g = T.groundAt(c.pos.x, c.pos.z, c.pos.y + 0.5, this.gq, true);
+      c.pos.y = g.y; c.nx = g.nx; c.ny = g.ny; c.nz = g.nz;
+    }
+  }
+
   /** A chicken has no physics of its own: any real touch from the car splats it on the spot. */
   _chickenContacts(car) {
     for (const c of this.chickens) {
@@ -264,7 +285,7 @@ export class Props {
       let hitIt = false;
       for (const box of CAR_BOXES) if (sphereBox(sV, CHICKEN.radius + 0.15, car, box)) { hitIt = true; break; }
       if (!hitIt) continue;
-      c.alive = false;
+      c.alive = false; c.deadT = 0;
       this.events.push({ type: 'splat', x: c.pos.x, y: c.pos.y, z: c.pos.z, nx: c.nx, ny: c.ny, nz: c.nz, dist: this._carDist(c.pos.x, c.pos.y, c.pos.z) });
     }
   }
