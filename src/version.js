@@ -6,4 +6,4 @@
 // (it commits the short commit id + date, so you can always tell exactly what's live).
 export const VERSION = '14.0';
 export const NOTE = 'Phone layout tidied (compact HUD, one button row) and no more text-select on long press';
-export const BUILD = '00b1c5a 26 Sep 18:02';
+export const BUILD = 'd66750f 26 Sep 19:05';
