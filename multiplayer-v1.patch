@@ -95,7 +95,7 @@ index b6dfcf2..22d111e 100644
  <section id="editor">
    <header id="ed-bar">
 diff --git a/src/main.js b/src/main.js
-index e9bfbeb..8b9ef73 100644
+index e9bfbeb..5b4bf16 100644
 --- a/src/main.js
 +++ b/src/main.js
 @@ -17,6 +17,7 @@ import { Sound } from './audio.js';
@@ -148,7 +148,7 @@ index e9bfbeb..8b9ef73 100644
  function startDriving(newDef) {
    sound.init();
    if (newDef) loadTrack(newDef);
-@@ -594,12 +607,142 @@ function bindMenu() {
+@@ -594,12 +607,157 @@ function bindMenu() {
    };
  }
  
@@ -235,7 +235,22 @@ index e9bfbeb..8b9ef73 100644
 +  mpPrevDerby = opts.derby; opts.derby = mpAiWanted;
 +  startDriving(makeTemplate('speedway'));
 +  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
++  mpPlaceOnGrid();
 +  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
++}
++/** Give each human player their own spot on the starting grid, same idea as the AI rivals' grid:
++ *  a couple of cars per row, side by side. The order is sorted by peer id so every client computes
++ *  the identical layout without needing to agree over the network. */
++function mpPlaceOnGrid() {
++  const roster = [...net.players.values()].sort((a, b) => a.id.localeCompare(b.id));
++  const myIndex = Math.max(0, roster.findIndex((p) => p.id === net.selfId));
++  const perRow = 2, row = Math.floor(myIndex / perRow), col = myIndex % perRow;
++  const cols = Math.min(perRow, roster.length - row * perRow);
++  const L = track.length;
++  let s = track.startS(12) + row * 8; s = ((s % L) + L) % L;
++  const lane = Math.max(2, track.frameAt(s).hw - 3);
++  const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : 0;
++  placeCar(s, off, 0);
 +}
 +const mpHandlers = {
 +  onLobby: (players, hostId) => mpRenderLobby(players, hostId),
@@ -291,7 +306,7 @@ index e9bfbeb..8b9ef73 100644
  loadTrack(makeTemplate('speedway'));
  renderMenu();
  setMode('menu');
-@@ -609,4 +752,9 @@ const params = new URLSearchParams(location.search);
+@@ -609,4 +767,9 @@ const params = new URLSearchParams(location.search);
  if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
    const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
    if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
