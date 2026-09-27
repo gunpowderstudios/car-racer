@@ -8,38 +8,19 @@ import { Track } from './track.js';
 
 // Measurements of cars/car.glb (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
+// cars/car-textured.glb is the textured car.gltf, baked into the same position and scale,
+// so these numbers fit both. Models that carry their own textures keep their materials;
+// untextured ones get the paint colour from the menu.
 export const MODEL = {
   url: 'cars/car-textured.glb',
   frontAxleX: -62, rearAxleX: 45,
   centerZ: 3.5845, groundY: -9.3037,
-  flip: false,
+  flip: false,            // set true if your model's nose points the other way
   paint: 0xd9482b,
 };
 
-// Put the graphics choice on the opening menu without coupling it to the rest of main.js.
-// Changing it reloads once so all player/rival visuals use the same lightweight/heavy asset family.
-function installVehicleModeChooser() {
-  const grid = document.querySelector('.opt-grid');
-  if (!grid || document.getElementById('opt-vehicle-mode')) return;
-  const label = document.createElement('label');
-  label.className = 'sel';
-  label.textContent = 'Vehicle graphics ';
-  const select = document.createElement('select');
-  select.id = 'opt-vehicle-mode';
-  select.setAttribute('aria-label', 'Vehicle graphics');
-  select.innerHTML = '<option value="3d">Real 3D vehicles</option><option value="poly">Poly Vehicles — for crappy old computers!</option>';
-  let saved = '3d';
-  try { saved = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
-  select.value = saved;
-  select.addEventListener('change', () => {
-    try { localStorage.setItem('cr.vehicleMode', select.value); } catch { /* private mode */ }
-    location.reload();
-  });
-  label.appendChild(select);
-  grid.prepend(label);
-}
-installVehicleModeChooser();
-
+// Paint jobs for the rival cars. `rot` turns the hue of the model's (orange) texture; `sat` washes it out.
+// Each look is made once, the first time a rival wears it, and shared by every car with that look.
 export const RIVAL_LOOKS = [
   { name: 'Yellow', rot: 38, sat: 1.05, val: 1.05, tint: 0xe8c22a },
   { name: 'Green', rot: 115, sat: 0.9, val: 0.95, tint: 0x3f9a55 },
@@ -49,8 +30,9 @@ export const RIVAL_LOOKS = [
   { name: 'Pink', rot: 320, sat: 0.95, val: 1.05, tint: 0xd8558f },
   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
 ];
-const recoloured = new WeakMap();
+const recoloured = new WeakMap();           // source texture -> Map(look -> texture)
 
+/** A copy of `tex` with the look applied, or null if the picture can't be read back (then the caller tints instead). */
 function recolour(tex, look) {
   let per = recoloured.get(tex);
   if (!per) recoloured.set(tex, per = new Map());
@@ -64,6 +46,7 @@ function recolour(tex, look) {
     g.drawImage(img, 0, 0);
     const data = g.getImageData(0, 0, w, h), px = data.data;
     const a = look.rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    // the standard hue-rotation matrix
     const m0 = 0.213 + c * 0.787 - sn * 0.213, m1 = 0.715 - c * 0.715 - sn * 0.715, m2 = 0.072 - c * 0.072 + sn * 0.928;
     const m3 = 0.213 - c * 0.213 + sn * 0.143, m4 = 0.715 + c * 0.285 + sn * 0.140, m5 = 0.072 - c * 0.072 - sn * 0.283;
     const m6 = 0.213 - c * 0.213 - sn * 0.787, m7 = 0.715 - c * 0.715 + sn * 0.715, m8 = 0.072 + c * 0.928 + sn * 0.072;
@@ -92,6 +75,7 @@ export class CarVisual {
     this.root.add(this.holder);
     scene.add(this.root);
     this.material = new THREE.MeshStandardMaterial({ color: MODEL.paint, roughness: 0.4, metalness: 0.35, side: THREE.DoubleSide });
+    // cheap invisible shadow caster (the real mesh is 200k triangles)
     const shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.62, 4.85), shadowMat);
     body.position.set(0, -0.05, 0); body.castShadow = true;
@@ -104,12 +88,12 @@ export class CarVisual {
     this.loaded = false;
   }
 
-  setPaint(hex) {
-    this.material.color.set(hex); this.material.userData.base = this.material.color.clone();
-    if (this.paintMats) for (const m of this.paintMats) { m.color.set(hex); m.userData.base = m.color.clone(); }
-    this._lookKey = -1;
-  }
+  setPaint(hex) { this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1; }
 
+  /**
+   * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
+   * and give it a paint job from RIVAL_LOOKS. Returns false if `src` hasn't finished loading yet.
+   */
   adopt(src, look) {
     if (this.loaded || !src.loaded || !src.model) return false;
     const model = src.model.clone(true);
@@ -117,12 +101,10 @@ export class CarVisual {
     model.traverse((o) => {
       if (!o.isMesh) return;
       const m = o.material.clone();
-      if (!m.userData.noTint) {
-        if (m.map) {
-          const t = recolour(m.map, look);
-          if (t) m.map = t; else m.color.set(look.tint);
-        } else m.color.set(look.tint);
-      }
+      if (m.map) {
+        const t = recolour(m.map, look);
+        if (t) m.map = t; else m.color.set(look.tint);
+      } else m.color.set(look.tint);
       m.userData.base = m.color.clone();
       o.material = m; o.castShadow = false; o.receiveShadow = false;
       this.mats.push(m);
@@ -135,6 +117,10 @@ export class CarVisual {
     return true;
   }
 
+  /**
+   * Show damage: `dark` (1 = fresh, 0 = burnt black) dims the paint, `flash` (0..1) lights the car up red for a moment.
+   * Nothing is touched until the values change, so calling it every frame is cheap.
+   */
   setLook(dark, flash = 0) {
     const key = Math.round(dark * 50) * 100 + Math.round(flash * 20);
     if (key === this._lookKey) return;
@@ -147,18 +133,11 @@ export class CarVisual {
     }
   }
 
+  /** True once a model with its own texture is showing (the paint colour no longer applies). */
   get textured() { return this.hasTexture === true; }
 
   async load(url = MODEL.url) {
     try {
-      let mode = '3d';
-      try { mode = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
-      if (mode === 'poly') {
-        const { installProceduralMotorhome } = await import('./proceduralMotorhome.js');
-        installProceduralMotorhome(this);
-        return;
-      }
-
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
       const model = gltf.scene;
       this.hasTexture = false;
@@ -182,7 +161,7 @@ export class CarVisual {
       });
       const wb = CAR.wheelbase;
       const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
-      const a = (1 - CAR.frontWeight) * wb;
+      const a = (1 - CAR.frontWeight) * wb;                 // COM to front axle
       model.scale.setScalar(s);
       if (!MODEL.flip) {
         this.holder.rotation.y = Math.PI / 2;
@@ -207,7 +186,7 @@ export class ChaseCamera {
   constructor(camera) {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
-    this.boosting = false; this.kick = 0;
+    this.boosting = false; this.kick = 0;   // widens the view while boosting
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
   cycle() { this.mode = (this.mode + 1) % 4; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet'][this.mode]; }
