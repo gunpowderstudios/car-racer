@@ -187,6 +187,8 @@ body:not(.mode-mp) #mp { display: none; }
 .mp-field input { display: block; width: 100%; max-width: 320px; margin-top: 6px; background: rgba(246,217,176,.08); border: 1px solid rgba(246,217,176,.3); color: var(--peach); padding: 10px 12px; font-size: 18px; border-radius: 2px; }
 .mp-field input:focus-visible { outline: 2px solid var(--amber); }
 .mp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+.mp-check { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--peach); margin: 0 0 16px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
 .mp-error { color: var(--red); font-size: 14px; max-width: 30em; }
 #mp-players { list-style: none; margin: 0 0 20px; padding: 0; max-width: 320px; }
 #mp-players li { padding: 9px 0; border-bottom: 1px dashed rgba(246,217,176,.25); font-family: var(--cond); font-size: 19px; font-weight: 600; }

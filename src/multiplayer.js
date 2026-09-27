@@ -59,6 +59,7 @@ export class Multiplayer {
     this.players = new Map();     // id -> {id,name,hue}  (kept on both host and guests)
     this.usedHues = new Set();
     this._sendTimer = null;
+    this.started = false;      // host only: once true, the game is underway and new joins are turned away
   }
 
   get selfName() { return this.players.get(this.selfId)?.name; }
@@ -100,6 +101,7 @@ export class Multiplayer {
 
   _hostAcceptsGuest(conn) {
     conn.on('open', () => {
+      if (this.started) { conn.send({ t: 'started' }); setTimeout(() => conn.close(), 200); return; }
       if (this.players.size >= 8) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 200); return; }
       this.conns.set(conn.peer, conn);
       conn.on('data', (msg) => this._onHostMessage(conn.peer, msg));
@@ -142,6 +144,7 @@ export class Multiplayer {
         });
         conn.on('data', (msg) => {
           if (msg.t === 'full') { fail('That room is full.'); return; }
+          if (msg.t === 'started') { fail('That game has already started. Ask your friend to create a new room.'); return; }
           if (msg.t === 'lobby') {
             for (const p of msg.players) this.players.set(p.id, p);
             for (const id of [...this.players.keys()]) if (!msg.players.some((p) => p.id === id)) this.players.delete(id);
@@ -176,6 +179,7 @@ export class Multiplayer {
   /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
   startGame() {
     if (!this.isHost) return;
+    this.started = true;
     this._sendAll({ t: 'start' });
     this.h.onStart();
   }

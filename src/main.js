@@ -67,6 +67,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 let net = null;                     // active Multiplayer session, or null in single-player
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
+let mpAiWanted = true, mpPrevDerby = null;   // this session's AI-rivals choice, and opts.derby to restore after
 let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
@@ -274,6 +275,7 @@ function stepPhysics(dt) {
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
+    if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     props.step(DT, derby.enabled ? derby.cars : car);
     syncPose(); acc -= DT; n++; simTime += DT;
@@ -607,6 +609,22 @@ function bindMenu() {
 
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
+const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
+ *  bump rather than real physics, computed purely from the last state we received over the network. */
+function mpCollideLocal() {
+  for (const p of remotePlayers.values()) {
+    if (!p.cur) continue;
+    const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
+    if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
+    const distSq = dx * dx + dz * dz;
+    if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
+    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
+    car.pos.x += nx * overlap; car.pos.z += nz * overlap;
+    const vn = car.vel.x * nx + car.vel.z * nz;
+    if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
+  }
+}
 function mpMakeView(hue) {
   let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
@@ -622,6 +640,7 @@ function mpTeardown() {
   for (const p of remotePlayers.values()) mpReleasePlayer(p);
   remotePlayers.clear();
   if (net) { net.leave(); net = null; }
+  if (mpPrevDerby !== null) { opts.derby = mpPrevDerby; mpPrevDerby = null; }
 }
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */
 function mpSyncRemote() {
@@ -635,6 +654,8 @@ function mpSyncRemote() {
     qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
     p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
     p.view.setLook(c.alive === false ? 0.15 : 1, 0);
+    const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
+    p.view.root.visible = dx * dx + dz * dz < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
     if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
     mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
     const dist = camera.position.distanceTo(p.view.root.position);
@@ -657,13 +678,34 @@ function mpRenderLobby(players, hostId) {
     if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
     ul.appendChild(li);
   }
-  if (net) { $('mp-start').hidden = !net.isHost; $('mp-waiting').hidden = net.isHost; }
+  if (net) {
+    $('mp-start').hidden = !net.isHost;
+    $('mp-start').disabled = players.length < 2;
+    $('mp-need-more').hidden = !net.isHost || players.length >= 2;
+    $('mp-waiting').hidden = net.isHost;
+  }
 }
 function mpBeginDrive() {
   const mine = net.players.get(net.selfId);
+  mpPrevDerby = opts.derby; opts.derby = mpAiWanted;
   startDriving(makeTemplate('speedway'));
   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
+  mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
+}
+/** Give each human player their own spot on the starting grid, same idea as the AI rivals' grid:
+ *  a couple of cars per row, side by side. The order is sorted by peer id so every client computes
+ *  the identical layout without needing to agree over the network. */
+function mpPlaceOnGrid() {
+  const roster = [...net.players.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const myIndex = Math.max(0, roster.findIndex((p) => p.id === net.selfId));
+  const perRow = 2, row = Math.floor(myIndex / perRow), col = myIndex % perRow;
+  const cols = Math.min(perRow, roster.length - row * perRow);
+  const L = track.length;
+  let s = track.startS(12) + row * 8; s = ((s % L) + L) % L;
+  const lane = Math.max(2, track.frameAt(s).hw - 3);
+  const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : 0;
+  placeCar(s, off, 0);
 }
 const mpHandlers = {
   onLobby: (players, hostId) => mpRenderLobby(players, hostId),
@@ -678,23 +720,25 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); $('mp-ai').checked = store.get('cr.mpai', true); };
   $('mp-back').onclick = () => showMenu();
   $('mp-create').onclick = async () => {
     const name = $('mp-name').value.trim();
     if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
     store.set('cr.mpname', name);
+    mpAiWanted = $('mp-ai').checked; store.set('cr.mpai', mpAiWanted);
     $('mp-create').disabled = true;
     try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
     catch (e) { mpErr('mp-home-error', e.message); net = null; }
     $('mp-create').disabled = false;
   };
-  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
+  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); $('mp-join-ai').checked = store.get('cr.mpai', true); };
   $('mp-join-go').onclick = async () => {
     const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
     if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
     if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
     store.set('cr.mpname', name);
+    mpAiWanted = $('mp-join-ai').checked; store.set('cr.mpai', mpAiWanted);
     $('mp-join-go').disabled = true;
     try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
     catch (e) { mpErr('mp-join-error', e.message); net = null; }
@@ -726,5 +770,6 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
 } else if (params.get('room')) {
   setMode('mp'); mpShow('mp-join');
   $('mp-join-name').value = store.get('cr.mpname', '');
+  $('mp-join-ai').checked = store.get('cr.mpai', true);
   $('mp-code').value = params.get('room').toUpperCase();
 }
