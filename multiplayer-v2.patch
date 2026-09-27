@@ -25,8 +25,46 @@ index cc36ad0..2cb5488 100644
        <p id="mp-waiting" class="fine" hidden>Waiting for the host&hellip;</p>
        <p id="mp-lobby-error" class="mp-error" role="alert" hidden></p>
      </div>
+diff --git a/src/carVisual.js b/src/carVisual.js
+index 759da9d..55956b6 100644
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -90,6 +90,33 @@ export class CarVisual {
+ 
+   setPaint(hex) { this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1; }
+ 
++  /**
++   * Recolour this car's own already-loaded materials in place, the same hue-rotation `adopt()` uses
++   * for rival clones. Unlike `adopt`, this doesn't clone anything - it's for the one car actually
++   * being driven (the local multiplayer player), which must look identical to how everyone else's
++   * client renders it. Safe to call more than once; `reset()` undoes it.
++   */
++  retint(look) {
++    if (!this.mats) return;
++    for (const m of this.mats) {
++      if (m.userData.origMap === undefined) { m.userData.origMap = m.map || null; m.userData.origColor = m.color.clone(); }
++      if (m.userData.origMap) { const t = recolour(m.userData.origMap, look); if (t) m.map = t; else m.color.set(look.tint); }
++      else m.color.set(look.tint);
++      m.userData.base = m.color.clone();
++    }
++    this._lookKey = -1;
++  }
++  /** Undo `retint()`, back to the car's original loaded appearance. */
++  reset() {
++    if (!this.mats) return;
++    for (const m of this.mats) {
++      if (m.userData.origMap === undefined) continue;   // never retinted
++      m.map = m.userData.origMap; m.color.copy(m.userData.origColor);
++      m.userData.base = m.color.clone();
++    }
++    this._lookKey = -1;
++  }
++
+   /**
+    * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
+    * and give it a paint job from RIVAL_LOOKS. Returns false if `src` hasn't finished loading yet.
 diff --git a/src/main.js b/src/main.js
-index ec356cf..005b232 100644
+index ec356cf..d425174 100644
 --- a/src/main.js
 +++ b/src/main.js
 @@ -8,7 +8,7 @@ import { ZONE_LABEL } from './damage.js';
@@ -38,15 +76,16 @@ index ec356cf..005b232 100644
  import { SkidMarks, Particles, Scorch } from './effects.js';
  import { Props } from './props.js';
  import { PropsView } from './propsView.js';
-@@ -67,6 +67,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
+@@ -67,6 +67,8 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
  let net = null;                     // active Multiplayer session, or null in single-player
  const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
  const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
 +let mpPrevDerby = null;   // opts.derby value to restore once a multiplayer session ends
++let mpOwnHue = null, mpOwnTinted = false;    // this player's own colour for the current session (-1 = host/orange)
  let paused = false;
  const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
  const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
-@@ -274,6 +275,7 @@ function stepPhysics(dt) {
+@@ -274,6 +276,7 @@ function stepPhysics(dt) {
    while (acc >= DT && n < 6) {
      prevPos.copy(curPos); prevQ.copy(curQ);
      car.step(DT, inp, track);
@@ -54,14 +93,24 @@ index ec356cf..005b232 100644
      if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
      props.step(DT, derby.enabled ? derby.cars : car);
      syncPose(); acc -= DT; n++; simTime += DT;
-@@ -607,9 +609,27 @@ function bindMenu() {
+@@ -477,6 +480,7 @@ function frame(now) {
+     if (net) {
+       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
+         vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, alive: !(derby.enabled && derby.player && derby.player.wrecked) });
++      mpApplyOwnLook();
+       mpSyncRemote();
+     }
+   } else {
+@@ -607,9 +611,35 @@ function bindMenu() {
  
  // -------------------------------------------------------------- multiplayer
  const mpLabelV = new THREE.Vector3();
 +const HOST_LOOK = { rot: 0, sat: 1, val: 1, tint: MODEL.paint };   // the host always keeps the plain, untinted car
-+const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
-+/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
-+ *  bump rather than real physics, computed purely from the last state we received over the network. */
++const MP_COLLIDE_R = 3.6;   // a loose circular stand-in for the car's footprint (its real length is ~4.85m)
++/** Push the local car out of any remote car it's overlapping, and give it a shove away - a soft
++ *  bump rather than real physics, computed purely from the last state we received over the network.
++ *  Every client runs this for its own car against everyone else's, so a rammed car gets pushed too,
++ *  once its own client reacts and reports the new position back over the network. */
 +function mpCollideLocal() {
 +  for (const p of remotePlayers.values()) {
 +    if (!p.cur) continue;
@@ -70,10 +119,16 @@ index ec356cf..005b232 100644
 +    const distSq = dx * dx + dz * dz;
 +    if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
 +    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
-+    car.pos.x += nx * overlap; car.pos.z += nz * overlap;
-+    const vn = car.vel.x * nx + car.vel.z * nz;
-+    if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
++    car.pos.x += nx * overlap * 0.5; car.pos.z += nz * overlap * 0.5;   // resolve gradually, not in one jolt
++    const vn = car.vel.x * nx + car.vel.z * nz, closing = Math.max(0, -vn);
++    car.vel.x += nx * closing * 1.4; car.vel.z += nz * closing * 1.4;   // cancel the closing speed, then a bit of a shove outward
 +  }
++}
++/** Apply this session's colour to the player's own car, once the model has actually loaded. */
++function mpApplyOwnLook() {
++  if (mpOwnHue === null || mpOwnTinted || !visual.loaded) return;
++  if (mpOwnHue === -1) visual.reset(); else visual.retint(RIVAL_LOOKS[mpOwnHue]);
++  mpOwnTinted = true;
 +}
  function mpMakeView(hue) {
 +  const look = hue === -1 ? HOST_LOOK : RIVAL_LOOKS[hue];
@@ -83,15 +138,16 @@ index ec356cf..005b232 100644
    v.root.visible = true; v.root.scale.setScalar(1);
    return v;
  }
-@@ -622,6 +642,7 @@ function mpTeardown() {
+@@ -622,6 +652,8 @@ function mpTeardown() {
    for (const p of remotePlayers.values()) mpReleasePlayer(p);
    remotePlayers.clear();
    if (net) { net.leave(); net = null; }
 +  if (mpPrevDerby !== null) { opts.derby = mpPrevDerby; mpPrevDerby = null; }
++  if (mpOwnHue !== null) { visual.reset(); mpOwnHue = null; mpOwnTinted = false; }
  }
  /** Move each remote player's car towards its latest reported state and keep its name label placed. */
  function mpSyncRemote() {
-@@ -629,12 +650,14 @@ function mpSyncRemote() {
+@@ -629,12 +661,14 @@ function mpSyncRemote() {
    for (const p of remotePlayers.values()) {
      if (!p.cur) continue;
      if (!p.view) p.view = mpMakeView(p.hue);
@@ -107,7 +163,7 @@ index ec356cf..005b232 100644
      if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
      mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
      const dist = camera.position.distanceTo(p.view.root.position);
-@@ -657,17 +680,39 @@ function mpRenderLobby(players, hostId) {
+@@ -657,17 +691,40 @@ function mpRenderLobby(players, hostId) {
      if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
      ul.appendChild(li);
    }
@@ -123,10 +179,11 @@ index ec356cf..005b232 100644
 -function mpBeginDrive() {
 +function mpBeginDrive(ai) {
    const mine = net.players.get(net.selfId);
++  mpOwnHue = mine ? mine.hue : null; mpOwnTinted = false;
 +  mpPrevDerby = opts.derby; opts.derby = ai;
    startDriving(makeTemplate('speedway'));
 -  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
-+  if (mine && mine.hue !== -1) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
++  mpApplyOwnLook();
 +  mpPlaceOnGrid();
    hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
  }
@@ -151,7 +208,7 @@ index ec356cf..005b232 100644
    onState: (id, s) => {
      if (id === net.selfId) return;
      let p = remotePlayers.get(id);
-@@ -685,7 +730,11 @@ function bindMultiplayer() {
+@@ -685,7 +742,11 @@ function bindMultiplayer() {
      if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
      store.set('cr.mpname', name);
      $('mp-create').disabled = true;
@@ -164,7 +221,7 @@ index ec356cf..005b232 100644
      catch (e) { mpErr('mp-home-error', e.message); net = null; }
      $('mp-create').disabled = false;
    };
-@@ -700,7 +749,11 @@ function bindMultiplayer() {
+@@ -700,7 +761,11 @@ function bindMultiplayer() {
      catch (e) { mpErr('mp-join-error', e.message); net = null; }
      $('mp-join-go').disabled = false;
    };
