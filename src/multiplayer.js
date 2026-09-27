@@ -42,7 +42,7 @@ export class Multiplayer {
   /**
    * handlers: {
    *   onLobby(players, hostId, selfId) - players: [{id,name,hue}], called on any roster change
-   *   onStart() - host said go
+   *   onStart(trackDef) - host said go, and picked this track (a normalizeTrack()-shaped object)
    *   onState(id, state) - a remote player's latest pose
    *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
    *   onPlayerLeft(id)
@@ -155,7 +155,7 @@ export class Multiplayer {
             this.h.onLobby(msg.players, msg.players[0]?.id, this.selfId);
             if (!settled) { settled = true; resolve(roomCode); }
           } else if (msg.t === 'start') {
-            this.h.onStart();
+            this.h.onStart(msg.track);
           } else if (msg.t === 'state') {
             this.h.onState(msg.id, msg.s);
           } else if (msg.t === 'left') {
@@ -195,12 +195,12 @@ export class Multiplayer {
     }
   }
 
-  /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
-  startGame() {
+  /** Host only: tell every guest (and the caller) which track to load, and to leave the lobby and start driving. */
+  startGame(trackDef) {
     if (!this.isHost) return;
     this.started = true;
-    this._sendAll({ t: 'start' });
-    this.h.onStart();
+    this._sendAll({ t: 'start', track: trackDef });
+    this.h.onStart(trackDef);
   }
 
   /** Call every frame while driving; internally throttled to STATE_HZ. */

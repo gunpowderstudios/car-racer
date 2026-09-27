@@ -64,3 +64,28 @@ test('a hit to an unknown or disconnected guest is silently dropped, not thrown'
   assert.doesNotThrow(() => mp.sendHit('nobody', { nx: 1, nz: 0, speed: 1 }));
   assert.doesNotThrow(() => mp._onHostMessage('guestA', { t: 'hit', to: 'nobody', d: {} }));
 });
+
+test('startGame sends the host\'s chosen track to every guest, and fires onStart with it locally', () => {
+  let started = null;
+  const mp = new Multiplayer(noopHandlers({ onStart: (track) => { started = track; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  const track = { name: 'Kidney', handles: [{ x: 0, z: 0 }] };
+  mp.startGame(track);
+  assert.equal(mp.started, true);
+  assert.deepEqual(connA._sent[0], { t: 'start', track });
+  assert.deepEqual(connB._sent[0], { t: 'start', track });
+  assert.deepEqual(started, track, 'the host itself should start on the same track it sent out');
+});
+
+test('startGame does nothing if called by a guest - only the host can start the race', () => {
+  let called = false;
+  const mp = new Multiplayer(noopHandlers({ onStart: () => { called = true; } }));
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.startGame({ name: 'Kidney' });
+  assert.equal(called, false);
+  assert.equal(mp.started, false);
+  assert.equal(hostConn._sent.length, 0);
+});

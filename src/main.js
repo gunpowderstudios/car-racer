@@ -66,6 +66,9 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 // ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
 let net = null;                     // active Multiplayer session, or null in single-player
 let mpHealth = 1;                   // 0..1: this player's own health from being rammed by others online
+let mpExploded = false;             // has the local player's health already hit zero this race
+let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps
+let mpRaceStart = null;             // sim time the current multiplayer race began (lap 1 crossing)
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
 let paused = false;
@@ -241,13 +244,18 @@ function updateRace(dt) {
   const idx = Math.floor(race.max / L);
   if (idx > race.index) {
     race.index = idx;
-    if (idx === 0) { race.lapStart = simTime; race.laps = 1; hud.banner('Go!', 900); }
+    if (idx === 0) { race.lapStart = simTime; race.laps = 1; if (net) mpRaceStart = simTime; hud.banner('Go!', 900); }
     else if (idx > 0 && race.lapStart != null) {
       const t = simTime - race.lapStart; race.lastTime = t;
       const improved = race.best == null || t < race.best;
       if (improved) { race.best = t; const b = store.get('cr.best', {}); b[bestKey(track)] = t; store.set('cr.best', b); }
-      hud.banner(improved ? `Best lap ${fmtTime(t)}` : `Lap ${fmtTime(t)}`, 2200);
       race.lapStart = simTime; race.laps = idx + 1;
+      if (net && !mpFinished && race.laps >= MP_RACE_LAPS) {
+        mpFinished = true;
+        hud.banner(`Finished! ${fmtTime(simTime - (mpRaceStart ?? simTime))}`, 3200);
+      } else {
+        hud.banner(improved ? `Best lap ${fmtTime(t)}` : `Lap ${fmtTime(t)}`, 2200);
+      }
     }
   }
   if (race.reverseT > 1.6) { hud.banner('Wrong way', 700); }
@@ -464,7 +472,8 @@ function frame(now) {
     chase.boosting = car.boosting;
     chase.update(dt, drawPos, drawQ, velV, track);
     effects(dt);
-    hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best });
+    hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
+      maxLap: net ? MP_RACE_LAPS : null, finished: mpFinished });
     if (derby.enabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
@@ -612,6 +621,7 @@ function bindMenu() {
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
 const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps
 const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
 /** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
@@ -621,6 +631,13 @@ function mpImpactFx(x, y, z, speed) {
   chase.impact(speed);
   for (let i = 0, n = Math.min(8, 3 + speed * 0.3); i < n; i++) particles.spark(x, y, z, (Math.random() - 0.5) * 4, 1 + Math.random() * 2, (Math.random() - 0.5) * 4);
   for (let i = 0; i < 3; i++) particles.puff(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.6, 1 + Math.random() * 0.5, 0x9a9498);
+}
+/** A player's health has just hit zero - the same fireball, scorch mark and explosion sound a barrel gives,
+ *  wherever the car actually is (yours, or a remote player's last known position). */
+function mpExplodeAt(x, y, z, dist = 0) {
+  particles.blast(x, y, z);
+  scorch.add(x, y, z, 0, 1, 0, 2.6);
+  sound.explode(dist);
 }
 
 /** Push the local car out of any remote car it's overlapping, and kill the closing speed - then, if we hit
@@ -683,6 +700,8 @@ function mpSyncRemote() {
       bar.appendChild(p.healthFill); p.label.append(nameEl, bar); $('mp-labels').appendChild(p.label);
     }
     const health = c.health ?? 1;
+    if (health <= 0 && !p.exploded) { p.exploded = true; mpExplodeAt(p.view.root.position.x, p.view.root.position.y, p.view.root.position.z, camera.position.distanceTo(p.view.root.position)); }
+    else if (health > 0) p.exploded = false;
     p.healthFill.style.width = Math.round(health * 100) + '%';
     p.healthFill.style.background = health > 0.5 ? '#6bd66b' : health > 0.2 ? '#e8b13a' : '#d94b3a';
     mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
@@ -711,12 +730,14 @@ function mpRenderLobby(players, hostId) {
     $('mp-start').disabled = players.length < 2;
     $('mp-need-more').hidden = !net.isHost || players.length >= 2;
     $('mp-waiting').hidden = net.isHost;
+    $('mp-track-field').hidden = !net.isHost;
+    $('mp-track-fixed').hidden = net.isHost;
   }
 }
-function mpBeginDrive() {
-  mpHealth = 1;
+function mpBeginDrive(trackDef) {
+  mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false;
   const mine = net.players.get(net.selfId);
-  startDriving(makeTemplate('speedway'));
+  startDriving(trackDef || makeTemplate('speedway'));
   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
   mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
@@ -737,7 +758,7 @@ function mpPlaceOnGrid() {
 }
 const mpHandlers = {
   onLobby: (players, hostId) => mpRenderLobby(players, hostId),
-  onStart: () => mpBeginDrive(),
+  onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {
     if (id === net.selfId) return;
     let p = remotePlayers.get(id);
@@ -750,11 +771,13 @@ const mpHandlers = {
     car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
     car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
     mpHealth = Math.max(0, mpHealth - Math.min(MP_MAX_HIT_DAMAGE, speed * MP_DAMAGE_PER_SPEED));
-    mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
+    if (mpHealth <= 0 && !mpExploded) { mpExploded = true; mpExplodeAt(car.pos.x, car.pos.y, car.pos.z); }
+    else mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
   },
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
+  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Random circuit' : makeTemplate(k).name}</option>`).join('');
   $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
   $('mp-back').onclick = () => showMenu();
   $('mp-create').onclick = async () => {
@@ -777,7 +800,11 @@ function bindMultiplayer() {
     catch (e) { mpErr('mp-join-error', e.message); net = null; }
     $('mp-join-go').disabled = false;
   };
-  $('mp-start').onclick = () => net && net.startGame();
+  $('mp-start').onclick = () => {
+    if (!net) return;
+    const key = $('mp-track').value;
+    net.startGame(key === 'random' ? makeRandomTrack() : makeTemplate(key));
+  };
   $('mp-copy').onclick = async () => {
     const url = `${location.origin}${location.pathname}?room=${net.roomCode}`;
     try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); }

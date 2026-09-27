@@ -53,6 +53,8 @@ body:not(.mode-menu) #menu { display: none; }
 .opt-grid label { display: flex; gap: 8px; align-items: center; }
 .opt-grid label.sel { gap: 10px; }
 .opt-grid select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); padding: 3px 6px; font-family: var(--cond); font-size: 16px; }
+#mp-track-field { display: flex; gap: 8px; align-items: center; margin: 10px 0; font-family: var(--cond); font-weight: 600; font-size: 16px; color: var(--peach); }
+#mp-track-field select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); padding: 4px 8px; font-family: var(--cond); font-size: 16px; }
 .opt-grid input[type=checkbox], .check input { accent-color: var(--amber); width: 16px; height: 16px; }
 .swatches { display: flex; gap: 8px; align-items: center; }
 .swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); cursor: pointer; padding: 0; }

@@ -50,7 +50,7 @@ export class Hud {
     const bs = car.boosting ? 'on' : car.boostFuel < car.spec.boost.restart ? 'low' : '';
     if (bs !== this._last.bs) { this.el.boost.className = bs; this.el.ctlBoost.classList.toggle('on', bs === 'on'); this._last.bs = bs; }
     if (info) {
-      const lt = info.lap > 0 ? `Lap ${info.lap}` : 'Get to the line';
+      const lt = info.lap <= 0 ? 'Get to the line' : info.finished ? 'Finished!' : info.maxLap ? `Lap ${info.lap}/${info.maxLap}` : `Lap ${info.lap}`;
       if (lt !== this._last.lap) { this.el.lapNum.textContent = lt; this._last.lap = lt; }
       const tm = fmtTime(info.time ?? 0);
       if (tm !== this._last.time) { this.el.lapTime.textContent = info.time == null ? '0:00.0' : tm; this._last.time = tm; }
