@@ -69,9 +69,14 @@ export function installProceduralGeneralLee(visual) {
   addBox('hood', 1.78, 0.10, 1.55, 0, 0.26, 1.35, paint);
   addBox('trunk-deck', 1.78, 0.10, 1.10, 0, 0.26, -1.55, paint);
   addBox('cabin', 1.64, 0.44, 1.95, 0, 0.60, -0.05, paint);
-  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(1.40, 0.05, 1.55), [black, black, flagMat, black, black, black]);
+  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(1.40, 0.05, 1.55), black);
   roofMesh.name = 'roof'; roofMesh.position.set(0, 0.85, -0.10);
   root.add(roofMesh);
+  // Flag decal as its own thin panel sitting on top, rather than a multi-material
+  // face on the roof box: rival-car cloning assumes one material per mesh.
+  const flagPanel = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.01, 1.51), flagMat);
+  flagPanel.name = 'roof-flag'; flagPanel.position.set(0, 0.876, -0.10);
+  root.add(flagPanel);
 
   // Windscreen, backlight and side glass.
   addBox('windscreen', 1.50, 0.42, 0.04, 0, 0.72, 0.85, glass, -0.35);
