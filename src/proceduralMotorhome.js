@@ -104,7 +104,8 @@ export function installProceduralMotorhome(visual) {
     o.receiveShadow = false;
   });
 
-  visual.holder.remove(visual.placeholder);
+  // Replace whatever visual is currently in the holder (placeholder or loaded GLB).
+  while (visual.holder.children.length) visual.holder.remove(visual.holder.children[0]);
   visual.holder.add(root);
   visual.model = root;
   visual.mats = mats;
