@@ -197,7 +197,10 @@ body:not(.mode-mp) #mp { display: none; }
 
 #mp-labels { position: fixed; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
 .mp-label { position: absolute; transform: translate(-50%, -100%); font-family: var(--cond); font-weight: 600; font-size: 14px; color: var(--peach);
-  background: rgba(27,18,51,.55); padding: 2px 8px; border-radius: 3px; white-space: nowrap; will-change: transform, opacity; }
+  background: rgba(27,18,51,.55); padding: 3px 8px 5px; border-radius: 3px; white-space: nowrap; will-change: transform, opacity; text-align: center; }
+.mp-name { display: block; }
+.mp-health { width: 46px; height: 4px; margin: 3px auto 0; background: rgba(0,0,0,.45); border-radius: 2px; overflow: hidden; }
+.mp-health-fill { height: 100%; width: 100%; background: #6bd66b; border-radius: 2px; transition: width .15s linear, background .15s linear; }
 body:not(.mode-drive) .mp-label { display: none; }
 #ed-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--paper-deep); border-bottom: 1px solid rgba(234,246,255,.4); flex-wrap: wrap; }
 #ed-name { background: transparent; border: 0; border-bottom: 1px dashed rgba(234,246,255,.5); color: var(--bp-ink); font-family: var(--display); font-weight: 700; font-size: 24px; width: 180px; padding: 2px 4px; }

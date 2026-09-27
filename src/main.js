@@ -65,6 +65,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 
 // ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
 let net = null;                     // active Multiplayer session, or null in single-player
+let mpHealth = 1;                   // 0..1: this player's own health from being rammed by others online
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
 let paused = false;
@@ -478,7 +479,8 @@ function frame(now) {
     if (!$('debug').hidden) debugText();
     if (net) {
       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
-        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, alive: !(derby.enabled && derby.player && derby.player.wrecked) });
+        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: mpHealth,
+        alive: !(derby.enabled && derby.player && derby.player.wrecked) && mpHealth > 0 });
       mpSyncRemote();
     }
   } else {
@@ -610,6 +612,17 @@ function bindMenu() {
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
 const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
+const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
+/** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
+ *  target's side, so it feels and sounds the same crash from either end. */
+function mpImpactFx(x, y, z, speed) {
+  sound.hit(speed, 'car');
+  chase.impact(speed);
+  for (let i = 0, n = Math.min(8, 3 + speed * 0.3); i < n; i++) particles.spark(x, y, z, (Math.random() - 0.5) * 4, 1 + Math.random() * 2, (Math.random() - 0.5) * 4);
+  for (let i = 0; i < 3; i++) particles.puff(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.6, 1 + Math.random() * 0.5, 0x9a9498);
+}
+
 /** Push the local car out of any remote car it's overlapping, and kill the closing speed - then, if we hit
  *  them hard enough, tell them about it so their end applies a matching shove. Still not real physics (we
  *  only ever see their last reported position), but both sides now actually react. */
@@ -628,6 +641,7 @@ function mpCollideLocal() {
     if (net && -vn > 1 && now - (p.lastHitSent || 0) > 200) {
       net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * 0.5, speed: Math.min(20, -vn) });
       p.lastHitSent = now;
+      mpImpactFx((car.pos.x + p.cur.x) / 2, car.pos.y + 0.6, (car.pos.z + p.cur.z) / 2, -vn);
     }
   }
 }
@@ -661,7 +675,16 @@ function mpSyncRemote() {
     p.view.setLook(c.alive === false ? 0.15 : 1, 0);
     const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
     p.view.root.visible = dx * dx + dz * dz < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
-    if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
+    if (!p.label) {
+      p.label = document.createElement('div'); p.label.className = 'mp-label';
+      const nameEl = document.createElement('div'); nameEl.className = 'mp-name'; nameEl.textContent = p.name;
+      const bar = document.createElement('div'); bar.className = 'mp-health';
+      p.healthFill = document.createElement('div'); p.healthFill.className = 'mp-health-fill';
+      bar.appendChild(p.healthFill); p.label.append(nameEl, bar); $('mp-labels').appendChild(p.label);
+    }
+    const health = c.health ?? 1;
+    p.healthFill.style.width = Math.round(health * 100) + '%';
+    p.healthFill.style.background = health > 0.5 ? '#6bd66b' : health > 0.2 ? '#e8b13a' : '#d94b3a';
     mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
     const dist = camera.position.distanceTo(p.view.root.position);
     mpLabelV.project(camera);
@@ -691,6 +714,7 @@ function mpRenderLobby(players, hostId) {
   }
 }
 function mpBeginDrive() {
+  mpHealth = 1;
   const mine = net.players.get(net.selfId);
   startDriving(makeTemplate('speedway'));
   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
@@ -725,7 +749,8 @@ const mpHandlers = {
     const speed = Math.min(20, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
     car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
     car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
-    chase.impact(speed);
+    mpHealth = Math.max(0, mpHealth - Math.min(MP_MAX_HIT_DAMAGE, speed * MP_DAMAGE_PER_SPEED));
+    mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
   },
   onError: (msg) => { toast(msg); showMenu(); },
 };
