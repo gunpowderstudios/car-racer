@@ -44,6 +44,7 @@ export class Multiplayer {
    *   onLobby(players, hostId, selfId) - players: [{id,name,hue}], called on any roster change
    *   onStart() - host said go
    *   onState(id, state) - a remote player's latest pose
+   *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
    *   onPlayerLeft(id)
    *   onError(message) - show this to the user, then multiplayer is done for this session
    * }
@@ -117,6 +118,9 @@ export class Multiplayer {
     } else if (msg.t === 'state') {
       this.h.onState(id, msg.s);
       this._sendAll({ t: 'state', id, s: msg.s }, id);
+    } else if (msg.t === 'hit') {
+      if (msg.to === this.selfId) this.h.onHit(id, msg.d);
+      else { const c = this.conns.get(msg.to); if (c && c.open) c.send({ t: 'hit', from: id, d: msg.d }); }
     }
   }
 
@@ -156,6 +160,8 @@ export class Multiplayer {
             this.h.onState(msg.id, msg.s);
           } else if (msg.t === 'left') {
             this.h.onPlayerLeft(msg.id);
+          } else if (msg.t === 'hit') {
+            this.h.onHit(msg.from, msg.d);
           }
         });
         conn.on('close', () => this.h.onError('The host left the game.'));
@@ -175,6 +181,19 @@ export class Multiplayer {
   }
 
   _peerError(e) { this.h.onError(this._friendlyPeerError(e).message); }
+
+  /** Tell one specific player they've just been hit (a ram, not a barrel/wreck) - `data` is whatever
+   *  main.js wants applied on their end (an impulse direction and strength). Guests can't reach each
+   *  other directly, so this goes via the host either way. */
+  sendHit(targetId, data) {
+    if (targetId === this.selfId) return;             // never hit yourself
+    if (this.isHost) {
+      const c = this.conns.get(targetId);
+      if (c && c.open) c.send({ t: 'hit', from: this.selfId, d: data });
+    } else if (this.hostConn && this.hostConn.open) {
+      this.hostConn.send({ t: 'hit', to: targetId, d: data });
+    }
+  }
 
   /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
   startGame() {

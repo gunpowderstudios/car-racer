@@ -1,0 +1,66 @@
+// The hit-relay routing: guests can't reach each other directly (star topology), so every hit
+// goes via the host either way. These test the routing contract directly, without real WebRTC.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { Multiplayer } from '../src/multiplayer.js';
+
+function mockConn(peerId) {
+  const sent = [];
+  return { peer: peerId, open: true, send: (msg) => sent.push(msg), _sent: sent };
+}
+
+function noopHandlers(overrides = {}) {
+  return { onLobby: () => {}, onStart: () => {}, onState: () => {}, onHit: () => {}, onPlayerLeft: () => {}, onError: () => {}, ...overrides };
+}
+
+test('host relays a hit aimed at itself straight to its own onHit handler', () => {
+  let got = null;
+  const mp = new Multiplayer(noopHandlers({ onHit: (from, d) => { got = { from, d }; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  mp._onHostMessage('guestA', { t: 'hit', to: 'host', d: { nx: 1, nz: 0, speed: 5 } });
+  assert.deepEqual(got, { from: 'guestA', d: { nx: 1, nz: 0, speed: 5 } });
+});
+
+test('host relays a hit aimed at another guest to that guest, not to itself', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'hit', to: 'guestB', d: { nx: 0, nz: 1, speed: 3 } });
+  assert.equal(connA._sent.length, 0, 'the sender should not get their own hit echoed back');
+  assert.equal(connB._sent.length, 1);
+  assert.deepEqual(connB._sent[0], { t: 'hit', from: 'guestA', d: { nx: 0, nz: 1, speed: 3 } });
+});
+
+test('a guest sending a hit always goes via the host, whoever the actual target is', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.sendHit('guestB', { nx: 1, nz: 0, speed: 4 });
+  assert.equal(hostConn._sent.length, 1);
+  assert.deepEqual(hostConn._sent[0], { t: 'hit', to: 'guestB', d: { nx: 1, nz: 0, speed: 4 } });
+});
+
+test('the host sending a hit to a guest goes directly, no relay needed', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'); mp.conns.set('guestA', connA);
+  mp.sendHit('guestA', { nx: -1, nz: 0, speed: 6 });
+  assert.equal(connA._sent.length, 1);
+  assert.deepEqual(connA._sent[0], { t: 'hit', from: 'host', d: { nx: -1, nz: 0, speed: 6 } });
+});
+
+test('sendHit never sends anything if you somehow target yourself', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.sendHit('guestA', { nx: 1, nz: 0, speed: 1 });
+  assert.equal(hostConn._sent.length, 0);
+});
+
+test('a hit to an unknown or disconnected guest is silently dropped, not thrown', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  assert.doesNotThrow(() => mp.sendHit('nobody', { nx: 1, nz: 0, speed: 1 }));
+  assert.doesNotThrow(() => mp._onHostMessage('guestA', { t: 'hit', to: 'nobody', d: {} }));
+});

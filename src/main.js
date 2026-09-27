@@ -610,19 +610,25 @@ function bindMenu() {
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
 const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
-/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
- *  bump rather than real physics, computed purely from the last state we received over the network. */
+/** Push the local car out of any remote car it's overlapping, and kill the closing speed - then, if we hit
+ *  them hard enough, tell them about it so their end applies a matching shove. Still not real physics (we
+ *  only ever see their last reported position), but both sides now actually react. */
 function mpCollideLocal() {
-  for (const p of remotePlayers.values()) {
+  const now = performance.now();
+  for (const [id, p] of remotePlayers) {
     if (!p.cur) continue;
     const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
     if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
     const distSq = dx * dx + dz * dz;
     if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
     const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
-    car.pos.x += nx * overlap; car.pos.z += nz * overlap;
+    car.pos.x += nx * overlap * 0.5; car.pos.z += nz * overlap * 0.5;    // each side takes half the separation
     const vn = car.vel.x * nx + car.vel.z * nz;
     if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
+    if (net && -vn > 1 && now - (p.lastHitSent || 0) > 200) {
+      net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * 0.5, speed: Math.min(20, -vn) });
+      p.lastHitSent = now;
+    }
   }
 }
 function mpMakeView(hue) {
@@ -715,6 +721,12 @@ const mpHandlers = {
     p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
   },
   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
+  onHit: (fromId, d) => {
+    const speed = Math.min(20, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
+    car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
+    car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
+    chase.impact(speed);
+  },
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {

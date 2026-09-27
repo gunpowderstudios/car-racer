@@ -1,0 +1,182 @@
+diff --git a/src/main.js b/src/main.js
+index c459a9a..5b850a9 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -610,19 +610,25 @@ function bindMenu() {
+ // -------------------------------------------------------------- multiplayer
+ const mpLabelV = new THREE.Vector3();
+ const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+-/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
+- *  bump rather than real physics, computed purely from the last state we received over the network. */
++/** Push the local car out of any remote car it's overlapping, and kill the closing speed - then, if we hit
++ *  them hard enough, tell them about it so their end applies a matching shove. Still not real physics (we
++ *  only ever see their last reported position), but both sides now actually react. */
+ function mpCollideLocal() {
+-  for (const p of remotePlayers.values()) {
++  const now = performance.now();
++  for (const [id, p] of remotePlayers) {
+     if (!p.cur) continue;
+     const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
+     if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
+     const distSq = dx * dx + dz * dz;
+     if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
+     const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
+-    car.pos.x += nx * overlap; car.pos.z += nz * overlap;
++    car.pos.x += nx * overlap * 0.5; car.pos.z += nz * overlap * 0.5;    // each side takes half the separation
+     const vn = car.vel.x * nx + car.vel.z * nz;
+     if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
++    if (net && -vn > 1 && now - (p.lastHitSent || 0) > 200) {
++      net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * 0.5, speed: Math.min(20, -vn) });
++      p.lastHitSent = now;
++    }
+   }
+ }
+ function mpMakeView(hue) {
+@@ -715,6 +721,12 @@ const mpHandlers = {
+     p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
+   },
+   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
++  onHit: (fromId, d) => {
++    const speed = Math.min(20, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
++    car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
++    car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
++    chase.impact(speed);
++  },
+   onError: (msg) => { toast(msg); showMenu(); },
+ };
+ function bindMultiplayer() {
+diff --git a/src/multiplayer.js b/src/multiplayer.js
+index 57f2e02..8cb10c0 100644
+--- a/src/multiplayer.js
++++ b/src/multiplayer.js
+@@ -44,6 +44,7 @@ export class Multiplayer {
+    *   onLobby(players, hostId, selfId) - players: [{id,name,hue}], called on any roster change
+    *   onStart() - host said go
+    *   onState(id, state) - a remote player's latest pose
++   *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
+    *   onPlayerLeft(id)
+    *   onError(message) - show this to the user, then multiplayer is done for this session
+    * }
+@@ -117,6 +118,9 @@ export class Multiplayer {
+     } else if (msg.t === 'state') {
+       this.h.onState(id, msg.s);
+       this._sendAll({ t: 'state', id, s: msg.s }, id);
++    } else if (msg.t === 'hit') {
++      if (msg.to === this.selfId) this.h.onHit(id, msg.d);
++      else { const c = this.conns.get(msg.to); if (c && c.open) c.send({ t: 'hit', from: id, d: msg.d }); }
+     }
+   }
+ 
+@@ -156,6 +160,8 @@ export class Multiplayer {
+             this.h.onState(msg.id, msg.s);
+           } else if (msg.t === 'left') {
+             this.h.onPlayerLeft(msg.id);
++          } else if (msg.t === 'hit') {
++            this.h.onHit(msg.from, msg.d);
+           }
+         });
+         conn.on('close', () => this.h.onError('The host left the game.'));
+@@ -176,6 +182,19 @@ export class Multiplayer {
+ 
+   _peerError(e) { this.h.onError(this._friendlyPeerError(e).message); }
+ 
++  /** Tell one specific player they've just been hit (a ram, not a barrel/wreck) - `data` is whatever
++   *  main.js wants applied on their end (an impulse direction and strength). Guests can't reach each
++   *  other directly, so this goes via the host either way. */
++  sendHit(targetId, data) {
++    if (targetId === this.selfId) return;             // never hit yourself
++    if (this.isHost) {
++      const c = this.conns.get(targetId);
++      if (c && c.open) c.send({ t: 'hit', from: this.selfId, d: data });
++    } else if (this.hostConn && this.hostConn.open) {
++      this.hostConn.send({ t: 'hit', to: targetId, d: data });
++    }
++  }
++
+   /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
+   startGame() {
+     if (!this.isHost) return;
+diff --git a/src/version.js b/src/version.js
+index ee2011e..692a021 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -2,5 +2,5 @@
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '14.7';
+-export const NOTE = 'Much more detail on the poly vehicles: fender flares, chrome trim, round headlights, mag wheels with spokes, motorhome roof vent and sun visor';
++export const VERSION = '14.8';
++export const NOTE = 'Ramming another player in multiplayer now shoves them too, not just you';
+diff --git a/tests/multiplayer.test.mjs b/tests/multiplayer.test.mjs
+new file mode 100644
+index 0000000..a09d927
+--- /dev/null
++++ b/tests/multiplayer.test.mjs
+@@ -0,0 +1,66 @@
++// The hit-relay routing: guests can't reach each other directly (star topology), so every hit
++// goes via the host either way. These test the routing contract directly, without real WebRTC.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { Multiplayer } from '../src/multiplayer.js';
++
++function mockConn(peerId) {
++  const sent = [];
++  return { peer: peerId, open: true, send: (msg) => sent.push(msg), _sent: sent };
++}
++
++function noopHandlers(overrides = {}) {
++  return { onLobby: () => {}, onStart: () => {}, onState: () => {}, onHit: () => {}, onPlayerLeft: () => {}, onError: () => {}, ...overrides };
++}
++
++test('host relays a hit aimed at itself straight to its own onHit handler', () => {
++  let got = null;
++  const mp = new Multiplayer(noopHandlers({ onHit: (from, d) => { got = { from, d }; } }));
++  mp.isHost = true; mp.selfId = 'host';
++  mp._onHostMessage('guestA', { t: 'hit', to: 'host', d: { nx: 1, nz: 0, speed: 5 } });
++  assert.deepEqual(got, { from: 'guestA', d: { nx: 1, nz: 0, speed: 5 } });
++});
++
++test('host relays a hit aimed at another guest to that guest, not to itself', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = true; mp.selfId = 'host';
++  const connA = mockConn('guestA'), connB = mockConn('guestB');
++  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
++  mp._onHostMessage('guestA', { t: 'hit', to: 'guestB', d: { nx: 0, nz: 1, speed: 3 } });
++  assert.equal(connA._sent.length, 0, 'the sender should not get their own hit echoed back');
++  assert.equal(connB._sent.length, 1);
++  assert.deepEqual(connB._sent[0], { t: 'hit', from: 'guestA', d: { nx: 0, nz: 1, speed: 3 } });
++});
++
++test('a guest sending a hit always goes via the host, whoever the actual target is', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = false; mp.selfId = 'guestA';
++  const hostConn = mockConn('host'); mp.hostConn = hostConn;
++  mp.sendHit('guestB', { nx: 1, nz: 0, speed: 4 });
++  assert.equal(hostConn._sent.length, 1);
++  assert.deepEqual(hostConn._sent[0], { t: 'hit', to: 'guestB', d: { nx: 1, nz: 0, speed: 4 } });
++});
++
++test('the host sending a hit to a guest goes directly, no relay needed', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = true; mp.selfId = 'host';
++  const connA = mockConn('guestA'); mp.conns.set('guestA', connA);
++  mp.sendHit('guestA', { nx: -1, nz: 0, speed: 6 });
++  assert.equal(connA._sent.length, 1);
++  assert.deepEqual(connA._sent[0], { t: 'hit', from: 'host', d: { nx: -1, nz: 0, speed: 6 } });
++});
++
++test('sendHit never sends anything if you somehow target yourself', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = false; mp.selfId = 'guestA';
++  const hostConn = mockConn('host'); mp.hostConn = hostConn;
++  mp.sendHit('guestA', { nx: 1, nz: 0, speed: 1 });
++  assert.equal(hostConn._sent.length, 0);
++});
++
++test('a hit to an unknown or disconnected guest is silently dropped, not thrown', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = true; mp.selfId = 'host';
++  assert.doesNotThrow(() => mp.sendHit('nobody', { nx: 1, nz: 0, speed: 1 }));
++  assert.doesNotThrow(() => mp._onHostMessage('guestA', { t: 'hit', to: 'nobody', d: {} }));
++});
