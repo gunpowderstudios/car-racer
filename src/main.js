@@ -17,6 +17,7 @@ import { Sound } from './audio.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
+import { Multiplayer } from './multiplayer.js';
 
 const $ = (id) => document.getElementById(id);
 const DT = 1 / 120;
@@ -61,6 +62,11 @@ const derbyBest = () => store.get('cr.derby', {});
 let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
 
 let mode = 'menu', track = null, def = null, hasPlayed = false;
+
+// ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
+let net = null;                     // active Multiplayer session, or null in single-player
+const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
+const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
 let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
@@ -468,6 +474,11 @@ function frame(now) {
     hud.drawMap(car, derby.enabled ? mapDots : null);
     sound.update(car, throttleNow, !derby.over);
     if (!$('debug').hidden) debugText();
+    if (net) {
+      net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
+        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, alive: !(derby.enabled && derby.player && derby.player.wrecked) });
+      mpSyncRemote();
+    }
   } else {
     drawPos.copy(curPos); drawQ.copy(curQ);
     if (mode === 'menu') {
@@ -505,7 +516,7 @@ function setMode(m) {
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
 }
-function showMenu() { setMode('menu'); renderMenu(); }
+function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
 function startDriving(newDef) {
   sound.init();
   if (newDef) loadTrack(newDef);
@@ -594,12 +605,115 @@ function bindMenu() {
   };
 }
 
+// -------------------------------------------------------------- multiplayer
+const mpLabelV = new THREE.Vector3();
+function mpMakeView(hue) {
+  let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
+  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
+  v.root.visible = true; v.root.scale.setScalar(1);
+  return v;
+}
+function mpReleasePlayer(p) {
+  if (p.view) { p.view.root.visible = false; (mpViewPool[p.view.hue] || (mpViewPool[p.view.hue] = [])).push(p.view); p.view = null; }
+  if (p.label) { p.label.remove(); p.label = null; }
+}
+function mpTeardown() {
+  if (!net && !remotePlayers.size) return;
+  for (const p of remotePlayers.values()) mpReleasePlayer(p);
+  remotePlayers.clear();
+  if (net) { net.leave(); net = null; }
+}
+/** Move each remote player's car towards its latest reported state and keep its name label placed. */
+function mpSyncRemote() {
+  const now = performance.now();
+  for (const p of remotePlayers.values()) {
+    if (!p.cur) continue;
+    if (!p.view) p.view = mpMakeView(p.hue);
+    if (!p.view.loaded && visual.loaded) p.view.adopt(visual, RIVAL_LOOKS[p.hue]);
+    const t = Math.min(1.4, (now - p.recvAt) / 50), c = p.cur, pr = p.prev || c;
+    p.view.root.position.set(lerp(pr.x, c.x, t), lerp(pr.y, c.y, t), lerp(pr.z, c.z, t));
+    qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
+    p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
+    p.view.setLook(c.alive === false ? 0.15 : 1, 0);
+    if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
+    mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
+    const dist = camera.position.distanceTo(p.view.root.position);
+    mpLabelV.project(camera);
+    if (mpLabelV.z > 1 || dist > 220) { p.label.style.display = 'none'; continue; }
+    p.label.style.display = ''; p.label.style.opacity = String(Math.max(0.15, 1 - dist / 220));
+    p.label.style.left = (mpLabelV.x * 0.5 + 0.5) * innerWidth + 'px';
+    p.label.style.top = (-mpLabelV.y * 0.5 + 0.5) * innerHeight + 'px';
+  }
+}
+function mpShow(id) {
+  for (const s of ['mp-home', 'mp-join', 'mp-lobby']) $(s).hidden = s !== id;
+  for (const e of ['mp-home-error', 'mp-join-error', 'mp-lobby-error']) $(e).hidden = true;
+}
+function mpErr(id, msg) { const el = $(id); el.textContent = msg; el.hidden = false; }
+function mpRenderLobby(players, hostId) {
+  const ul = $('mp-players'); ul.innerHTML = '';
+  for (const p of players) {
+    const li = document.createElement('li'); li.textContent = p.name;
+    if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
+    ul.appendChild(li);
+  }
+  if (net) { $('mp-start').hidden = !net.isHost; $('mp-waiting').hidden = net.isHost; }
+}
+function mpBeginDrive() {
+  const mine = net.players.get(net.selfId);
+  startDriving(makeTemplate('speedway'));
+  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
+  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
+}
+const mpHandlers = {
+  onLobby: (players, hostId) => mpRenderLobby(players, hostId),
+  onStart: () => mpBeginDrive(),
+  onState: (id, s) => {
+    if (id === net.selfId) return;
+    let p = remotePlayers.get(id);
+    if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
+    p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
+  },
+  onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
+  onError: (msg) => { toast(msg); showMenu(); },
+};
+function bindMultiplayer() {
+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
+  $('mp-back').onclick = () => showMenu();
+  $('mp-create').onclick = async () => {
+    const name = $('mp-name').value.trim();
+    if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
+    store.set('cr.mpname', name);
+    $('mp-create').disabled = true;
+    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
+    catch (e) { mpErr('mp-home-error', e.message); net = null; }
+    $('mp-create').disabled = false;
+  };
+  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
+  $('mp-join-go').onclick = async () => {
+    const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
+    if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
+    if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
+    store.set('cr.mpname', name);
+    $('mp-join-go').disabled = true;
+    try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
+    catch (e) { mpErr('mp-join-error', e.message); net = null; }
+    $('mp-join-go').disabled = false;
+  };
+  $('mp-start').onclick = () => net && net.startGame();
+  $('mp-copy').onclick = async () => {
+    const url = `${location.origin}${location.pathname}?room=${net.roomCode}`;
+    try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); }
+  };
+}
+
 // ---------------------------------------------------------------------- boot
 addEventListener('error', (e) => { const f = $('fatal'); f.hidden = false; f.textContent = 'Something broke:\n' + (e.error?.stack || e.message); });
 addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
 document.addEventListener('visibilitychange', () => { last = performance.now(); });
 
 bindMenu();
+bindMultiplayer();
 loadTrack(makeTemplate('speedway'));
 renderMenu();
 setMode('menu');
@@ -609,4 +723,8 @@ const params = new URLSearchParams(location.search);
 if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
   if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
+} else if (params.get('room')) {
+  setMode('mp'); mpShow('mp-join');
+  $('mp-join-name').value = store.get('cr.mpname', '');
+  $('mp-code').value = params.get('room').toUpperCase();
 }

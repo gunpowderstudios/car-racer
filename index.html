@@ -111,6 +111,10 @@
       <input id="import-file" type="file" accept=".json,application/json" hidden>
     </div>
 
+    <div class="menu-actions">
+      <button id="btn-multiplayer" class="btn ghost">Multiplayer</button>
+    </div>
+
     <details class="options" open>
       <summary>Options</summary>
       <div class="opt-grid">
@@ -128,6 +132,42 @@
     <p class="fine">Derby: ram the rival cars. Every crash damages the part of the car that was hit, and the first part to run out wrecks the car. Your front end is armoured, your rear is not. Explosive barrels hurt everyone; chickens just splat.</p>
   </div>
 </section>
+
+<!-- ============================ MULTIPLAYER ============================ -->
+<section id="mp">
+  <div class="menu-inner mp-inner">
+    <button id="mp-back" class="btn ghost mp-back" type="button">&larr; Back</button>
+
+    <div id="mp-home">
+      <h2>Multiplayer</h2>
+      <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
+      <div class="mp-actions">
+        <button id="mp-create" class="btn" type="button">Create game</button>
+        <button id="mp-join-show" class="btn ghost" type="button">Join game</button>
+      </div>
+      <p id="mp-home-error" class="mp-error" role="alert" hidden></p>
+    </div>
+
+    <div id="mp-join" hidden>
+      <h2>Join game</h2>
+      <label class="mp-field">Your name<input id="mp-join-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
+      <label class="mp-field">Room code<input id="mp-code" type="text" maxlength="8" placeholder="GUN42" autocapitalize="characters" autocomplete="off"></label>
+      <button id="mp-join-go" class="btn" type="button">Join</button>
+      <p id="mp-join-error" class="mp-error" role="alert" hidden></p>
+    </div>
+
+    <div id="mp-lobby" hidden>
+      <h2>Room <span id="mp-room-code"></span></h2>
+      <button id="mp-copy" class="btn ghost" type="button">Copy invite link</button>
+      <ul id="mp-players"></ul>
+      <button id="mp-start" class="btn btn-play" type="button" hidden>Start game</button>
+      <p id="mp-waiting" class="fine" hidden>Waiting for the host&hellip;</p>
+      <p id="mp-lobby-error" class="mp-error" role="alert" hidden></p>
+    </div>
+  </div>
+</section>
+
+<div id="mp-labels" aria-hidden="true"></div>
 
 <!-- ============================ EDITOR ============================ -->
 <section id="editor">

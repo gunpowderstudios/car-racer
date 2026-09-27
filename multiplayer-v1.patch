@@ -1,0 +1,466 @@
+diff --git a/css/style.css b/css/style.css
+index bdc0ce5..c961390 100644
+--- a/css/style.css
++++ b/css/style.css
+@@ -175,6 +175,28 @@ body.mode-menu #hud, body.mode-edit #hud, body.mode-edit #touch, body.mode-menu
+ /* ---------------------------------------------------------------- editor */
+ #editor { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--paper); color: var(--bp-ink); font-family: var(--body); }
+ body:not(.mode-edit) #editor { display: none; }
++
++/* ------------------------------------------------------------- multiplayer */
++#mp { position: fixed; inset: 0; z-index: 20; display: flex; align-items: stretch; pointer-events: none;
++  background: linear-gradient(100deg, rgba(27,18,51,.94) 0%, rgba(27,18,51,.86) 34%, rgba(27,18,51,0) 68%); }
++body:not(.mode-mp) #mp { display: none; }
++.mp-inner { pointer-events: auto; }
++.mp-inner h2 { font-family: var(--display); font-weight: 900; font-size: clamp(30px, 4.4vw, 44px); text-transform: uppercase; color: var(--amber); margin: 6px 0 18px; }
++.mp-back { margin-bottom: 18px; }
++.mp-field { display: block; font-size: 14px; color: var(--ink-dim); margin: 0 0 16px; }
++.mp-field input { display: block; width: 100%; max-width: 320px; margin-top: 6px; background: rgba(246,217,176,.08); border: 1px solid rgba(246,217,176,.3); color: var(--peach); padding: 10px 12px; font-size: 18px; border-radius: 2px; }
++.mp-field input:focus-visible { outline: 2px solid var(--amber); }
++.mp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
++.mp-error { color: var(--red); font-size: 14px; max-width: 30em; }
++#mp-players { list-style: none; margin: 0 0 20px; padding: 0; max-width: 320px; }
++#mp-players li { padding: 9px 0; border-bottom: 1px dashed rgba(246,217,176,.25); font-family: var(--cond); font-size: 19px; font-weight: 600; }
++#mp-players li .mp-host-tag { color: var(--ink-dim); font-size: 13px; font-weight: 400; margin-left: 6px; }
++#mp-room-code { color: var(--peach); letter-spacing: .04em; }
++
++#mp-labels { position: fixed; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
++.mp-label { position: absolute; transform: translate(-50%, -100%); font-family: var(--cond); font-weight: 600; font-size: 14px; color: var(--peach);
++  background: rgba(27,18,51,.55); padding: 2px 8px; border-radius: 3px; white-space: nowrap; will-change: transform, opacity; }
++body:not(.mode-drive) .mp-label { display: none; }
+ #ed-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--paper-deep); border-bottom: 1px solid rgba(234,246,255,.4); flex-wrap: wrap; }
+ #ed-name { background: transparent; border: 0; border-bottom: 1px dashed rgba(234,246,255,.5); color: var(--bp-ink); font-family: var(--display); font-weight: 700; font-size: 24px; width: 180px; padding: 2px 4px; }
+ .ed-group { display: flex; gap: 0; border: 1px solid rgba(234,246,255,.4); }
+diff --git a/index.html b/index.html
+index b6dfcf2..cc36ad0 100644
+--- a/index.html
++++ b/index.html
+@@ -111,6 +111,10 @@
+       <input id="import-file" type="file" accept=".json,application/json" hidden>
+     </div>
+ 
++    <div class="menu-actions">
++      <button id="btn-multiplayer" class="btn ghost">Multiplayer</button>
++    </div>
++
+     <details class="options" open>
+       <summary>Options</summary>
+       <div class="opt-grid">
+@@ -129,6 +133,42 @@
+   </div>
+ </section>
+ 
++<!-- ============================ MULTIPLAYER ============================ -->
++<section id="mp">
++  <div class="menu-inner mp-inner">
++    <button id="mp-back" class="btn ghost mp-back" type="button">&larr; Back</button>
++
++    <div id="mp-home">
++      <h2>Multiplayer</h2>
++      <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
++      <div class="mp-actions">
++        <button id="mp-create" class="btn" type="button">Create game</button>
++        <button id="mp-join-show" class="btn ghost" type="button">Join game</button>
++      </div>
++      <p id="mp-home-error" class="mp-error" role="alert" hidden></p>
++    </div>
++
++    <div id="mp-join" hidden>
++      <h2>Join game</h2>
++      <label class="mp-field">Your name<input id="mp-join-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
++      <label class="mp-field">Room code<input id="mp-code" type="text" maxlength="8" placeholder="GUN42" autocapitalize="characters" autocomplete="off"></label>
++      <button id="mp-join-go" class="btn" type="button">Join</button>
++      <p id="mp-join-error" class="mp-error" role="alert" hidden></p>
++    </div>
++
++    <div id="mp-lobby" hidden>
++      <h2>Room <span id="mp-room-code"></span></h2>
++      <button id="mp-copy" class="btn ghost" type="button">Copy invite link</button>
++      <ul id="mp-players"></ul>
++      <button id="mp-start" class="btn btn-play" type="button" hidden>Start game</button>
++      <p id="mp-waiting" class="fine" hidden>Waiting for the host&hellip;</p>
++      <p id="mp-lobby-error" class="mp-error" role="alert" hidden></p>
++    </div>
++  </div>
++</section>
++
++<div id="mp-labels" aria-hidden="true"></div>
++
+ <!-- ============================ EDITOR ============================ -->
+ <section id="editor">
+   <header id="ed-bar">
+diff --git a/src/main.js b/src/main.js
+index e9bfbeb..ec356cf 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -17,6 +17,7 @@ import { Sound } from './audio.js';
+ import { Hud, fmtTime } from './hud.js';
+ import { Editor } from './editor.js';
+ import { EditorPreview } from './editorPreview.js';
++import { Multiplayer } from './multiplayer.js';
+ 
+ const $ = (id) => document.getElementById(id);
+ const DT = 1 / 120;
+@@ -61,6 +62,11 @@ const derbyBest = () => store.get('cr.derby', {});
+ let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
+ 
+ let mode = 'menu', track = null, def = null, hasPlayed = false;
++
++// ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
++let net = null;                     // active Multiplayer session, or null in single-player
++const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
++const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
+ let paused = false;
+ const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
+ const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
+@@ -468,6 +474,11 @@ function frame(now) {
+     hud.drawMap(car, derby.enabled ? mapDots : null);
+     sound.update(car, throttleNow, !derby.over);
+     if (!$('debug').hidden) debugText();
++    if (net) {
++      net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
++        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, alive: !(derby.enabled && derby.player && derby.player.wrecked) });
++      mpSyncRemote();
++    }
+   } else {
+     drawPos.copy(curPos); drawQ.copy(curQ);
+     if (mode === 'menu') {
+@@ -505,7 +516,7 @@ function setMode(m) {
+   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
+   input.enabled = m === 'drive';
+ }
+-function showMenu() { setMode('menu'); renderMenu(); }
++function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
+ function startDriving(newDef) {
+   sound.init();
+   if (newDef) loadTrack(newDef);
+@@ -594,12 +605,115 @@ function bindMenu() {
+   };
+ }
+ 
++// -------------------------------------------------------------- multiplayer
++const mpLabelV = new THREE.Vector3();
++function mpMakeView(hue) {
++  let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
++  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
++  v.root.visible = true; v.root.scale.setScalar(1);
++  return v;
++}
++function mpReleasePlayer(p) {
++  if (p.view) { p.view.root.visible = false; (mpViewPool[p.view.hue] || (mpViewPool[p.view.hue] = [])).push(p.view); p.view = null; }
++  if (p.label) { p.label.remove(); p.label = null; }
++}
++function mpTeardown() {
++  if (!net && !remotePlayers.size) return;
++  for (const p of remotePlayers.values()) mpReleasePlayer(p);
++  remotePlayers.clear();
++  if (net) { net.leave(); net = null; }
++}
++/** Move each remote player's car towards its latest reported state and keep its name label placed. */
++function mpSyncRemote() {
++  const now = performance.now();
++  for (const p of remotePlayers.values()) {
++    if (!p.cur) continue;
++    if (!p.view) p.view = mpMakeView(p.hue);
++    if (!p.view.loaded && visual.loaded) p.view.adopt(visual, RIVAL_LOOKS[p.hue]);
++    const t = Math.min(1.4, (now - p.recvAt) / 50), c = p.cur, pr = p.prev || c;
++    p.view.root.position.set(lerp(pr.x, c.x, t), lerp(pr.y, c.y, t), lerp(pr.z, c.z, t));
++    qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
++    p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
++    p.view.setLook(c.alive === false ? 0.15 : 1, 0);
++    if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
++    mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
++    const dist = camera.position.distanceTo(p.view.root.position);
++    mpLabelV.project(camera);
++    if (mpLabelV.z > 1 || dist > 220) { p.label.style.display = 'none'; continue; }
++    p.label.style.display = ''; p.label.style.opacity = String(Math.max(0.15, 1 - dist / 220));
++    p.label.style.left = (mpLabelV.x * 0.5 + 0.5) * innerWidth + 'px';
++    p.label.style.top = (-mpLabelV.y * 0.5 + 0.5) * innerHeight + 'px';
++  }
++}
++function mpShow(id) {
++  for (const s of ['mp-home', 'mp-join', 'mp-lobby']) $(s).hidden = s !== id;
++  for (const e of ['mp-home-error', 'mp-join-error', 'mp-lobby-error']) $(e).hidden = true;
++}
++function mpErr(id, msg) { const el = $(id); el.textContent = msg; el.hidden = false; }
++function mpRenderLobby(players, hostId) {
++  const ul = $('mp-players'); ul.innerHTML = '';
++  for (const p of players) {
++    const li = document.createElement('li'); li.textContent = p.name;
++    if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
++    ul.appendChild(li);
++  }
++  if (net) { $('mp-start').hidden = !net.isHost; $('mp-waiting').hidden = net.isHost; }
++}
++function mpBeginDrive() {
++  const mine = net.players.get(net.selfId);
++  startDriving(makeTemplate('speedway'));
++  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
++  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
++}
++const mpHandlers = {
++  onLobby: (players, hostId) => mpRenderLobby(players, hostId),
++  onStart: () => mpBeginDrive(),
++  onState: (id, s) => {
++    if (id === net.selfId) return;
++    let p = remotePlayers.get(id);
++    if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
++    p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
++  },
++  onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
++  onError: (msg) => { toast(msg); showMenu(); },
++};
++function bindMultiplayer() {
++  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
++  $('mp-back').onclick = () => showMenu();
++  $('mp-create').onclick = async () => {
++    const name = $('mp-name').value.trim();
++    if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
++    store.set('cr.mpname', name);
++    $('mp-create').disabled = true;
++    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
++    catch (e) { mpErr('mp-home-error', e.message); net = null; }
++    $('mp-create').disabled = false;
++  };
++  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
++  $('mp-join-go').onclick = async () => {
++    const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
++    if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
++    if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
++    store.set('cr.mpname', name);
++    $('mp-join-go').disabled = true;
++    try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
++    catch (e) { mpErr('mp-join-error', e.message); net = null; }
++    $('mp-join-go').disabled = false;
++  };
++  $('mp-start').onclick = () => net && net.startGame();
++  $('mp-copy').onclick = async () => {
++    const url = `${location.origin}${location.pathname}?room=${net.roomCode}`;
++    try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); }
++  };
++}
++
+ // ---------------------------------------------------------------------- boot
+ addEventListener('error', (e) => { const f = $('fatal'); f.hidden = false; f.textContent = 'Something broke:\n' + (e.error?.stack || e.message); });
+ addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
+ document.addEventListener('visibilitychange', () => { last = performance.now(); });
+ 
+ bindMenu();
++bindMultiplayer();
+ loadTrack(makeTemplate('speedway'));
+ renderMenu();
+ setMode('menu');
+@@ -609,4 +723,8 @@ const params = new URLSearchParams(location.search);
+ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
+   const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
+   if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
++} else if (params.get('room')) {
++  setMode('mp'); mpShow('mp-join');
++  $('mp-join-name').value = store.get('cr.mpname', '');
++  $('mp-code').value = params.get('room').toUpperCase();
+ }
+diff --git a/src/multiplayer.js b/src/multiplayer.js
+new file mode 100644
+index 0000000..6a5de48
+--- /dev/null
++++ b/src/multiplayer.js
+@@ -0,0 +1,199 @@
++// Car Racer - online multiplayer (v1: simple P2P via PeerJS, host relays state).
++//
++// Architecture: the host's browser tab acts as the "server" - every guest opens a
++// direct WebRTC connection to the host (star topology). The host assigns car
++// colours, relays each player's state to everyone else, and relays lobby/start
++// messages. There is no dedicated backend and nothing to deploy: PeerJS's public
++// broker is only used to introduce peers to each other, all game traffic then
++// flows peer-to-peer.
++//
++// This module knows nothing about rendering or physics - it just moves plain
++// objects around and calls the callbacks it was given. main.js owns turning
++// remote state into visuals.
++
++const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the shared public broker
++const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
++const STATE_HZ = 20;
++
++function randomCode(len = 5) {
++  let s = '';
++  for (let i = 0; i < len; i++) s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
++  return s;
++}
++
++/** Plain-text, short, no markup. Used for both player names and room codes coming from the network. */
++function sanitizeName(s) {
++  return String(s || '').replace(/[<>&"']/g, '').trim().slice(0, 20) || 'Driver';
++}
++
++function loadPeerJs() {
++  if (window.Peer) return Promise.resolve();
++  if (loadPeerJs._p) return loadPeerJs._p;
++  return loadPeerJs._p = new Promise((resolve, reject) => {
++    const s = document.createElement('script');
++    s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
++    s.onload = () => resolve();
++    s.onerror = () => reject(new Error('Could not reach the multiplayer network. Check your connection.'));
++    document.head.appendChild(s);
++  });
++}
++
++export class Multiplayer {
++  /**
++   * handlers: {
++   *   onLobby(players, hostId, selfId) - players: [{id,name,hue}], called on any roster change
++   *   onStart() - host said go
++   *   onState(id, state) - a remote player's latest pose
++   *   onPlayerLeft(id)
++   *   onError(message) - show this to the user, then multiplayer is done for this session
++   * }
++   */
++  constructor(handlers) {
++    this.h = handlers;
++    this.peer = null;
++    this.conns = new Map();       // host only: playerId -> DataConnection
++    this.hostConn = null;         // guest only: DataConnection to the host
++    this.isHost = false;
++    this.selfId = null;
++    this.roomCode = null;
++    this.players = new Map();     // id -> {id,name,hue}  (kept on both host and guests)
++    this.usedHues = new Set();
++    this._sendTimer = null;
++  }
++
++  get selfName() { return this.players.get(this.selfId)?.name; }
++
++  _assignHue() {
++    const N = 7; // RIVAL_LOOKS.length, kept in sync manually to avoid importing three.js here
++    for (let i = 0; i < N; i++) if (!this.usedHues.has(i)) { this.usedHues.add(i); return i; }
++    return Math.floor(Math.random() * N);  // ran out of unique colours - reuse one
++  }
++
++  _broadcastLobby() {
++    const list = [...this.players.values()];
++    this.h.onLobby(list, this.selfId, this.selfId);
++    if (this.isHost) this._sendAll({ t: 'lobby', players: list });
++  }
++
++  _sendAll(msg, exceptId) {
++    for (const [id, c] of this.conns) if (id !== exceptId && c.open) c.send(msg);
++  }
++
++  async createRoom(name) {
++    await loadPeerJs();
++    const myName = sanitizeName(name);
++    return new Promise((resolve, reject) => {
++      const code = randomCode();
++      const peer = new window.Peer(PEER_PREFIX + code);
++      peer.on('open', (id) => {
++        this.peer = peer; this.isHost = true; this.selfId = id; this.roomCode = code;
++        const hue = this._assignHue();
++        this.players.set(id, { id, name: myName, hue });
++        peer.on('connection', (conn) => this._hostAcceptsGuest(conn));
++        peer.on('error', (e) => this._peerError(e));
++        this._broadcastLobby();
++        resolve(code);
++      });
++      peer.on('error', (e) => { reject(this._friendlyPeerError(e)); });
++    });
++  }
++
++  _hostAcceptsGuest(conn) {
++    conn.on('open', () => {
++      if (this.players.size >= 8) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 200); return; }
++      this.conns.set(conn.peer, conn);
++      conn.on('data', (msg) => this._onHostMessage(conn.peer, msg));
++      conn.on('close', () => this._playerLeft(conn.peer));
++    });
++  }
++
++  _onHostMessage(id, msg) {
++    if (msg.t === 'join') {
++      const hue = this._assignHue();
++      this.players.set(id, { id, name: sanitizeName(msg.name), hue });
++      this._broadcastLobby();
++    } else if (msg.t === 'state') {
++      this.h.onState(id, msg.s);
++      this._sendAll({ t: 'state', id, s: msg.s }, id);
++    }
++  }
++
++  _playerLeft(id) {
++    const p = this.players.get(id);
++    if (p) this.usedHues.delete(p.hue);
++    this.players.delete(id); this.conns.delete(id);
++    this.h.onPlayerLeft(id);
++    this._broadcastLobby();
++  }
++
++  async joinRoom(code, name) {
++    await loadPeerJs();
++    const myName = sanitizeName(name), roomCode = sanitizeName(code).toUpperCase().slice(0, 8);
++    return new Promise((resolve, reject) => {
++      const peer = new window.Peer();
++      peer.on('open', (id) => {
++        this.peer = peer; this.selfId = id; this.roomCode = roomCode;
++        const conn = peer.connect(PEER_PREFIX + roomCode, { reliable: true });
++        let settled = false;
++        const fail = (msg) => { if (!settled) { settled = true; reject(new Error(msg)); } };
++        conn.on('open', () => {
++          this.hostConn = conn;
++          conn.send({ t: 'join', name: myName });
++        });
++        conn.on('data', (msg) => {
++          if (msg.t === 'full') { fail('That room is full.'); return; }
++          if (msg.t === 'lobby') {
++            for (const p of msg.players) this.players.set(p.id, p);
++            for (const id of [...this.players.keys()]) if (!msg.players.some((p) => p.id === id)) this.players.delete(id);
++            this.h.onLobby(msg.players, msg.players[0]?.id, this.selfId);
++            if (!settled) { settled = true; resolve(roomCode); }
++          } else if (msg.t === 'start') {
++            this.h.onStart();
++          } else if (msg.t === 'state') {
++            this.h.onState(msg.id, msg.s);
++          } else if (msg.t === 'left') {
++            this.h.onPlayerLeft(msg.id);
++          }
++        });
++        conn.on('close', () => this.h.onError('The host left the game.'));
++        conn.on('error', () => fail('Could not connect to that room.'));
++        setTimeout(() => fail('Room not found. Check the code and try again.'), 8000);
++      });
++      peer.on('error', (e) => reject(this._friendlyPeerError(e)));
++    });
++  }
++
++  _friendlyPeerError(e) {
++    const type = e && e.type;
++    if (type === 'peer-unavailable') return new Error('Room not found. Check the code and try again.');
++    if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'disconnected') return new Error('Multiplayer server unavailable right now. Try again shortly.');
++    if (type === 'unavailable-id') return new Error('That room code is already taken - try again.');
++    return new Error('Multiplayer connection problem.');
++  }
++
++  _peerError(e) { this.h.onError(this._friendlyPeerError(e).message); }
++
++  /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
++  startGame() {
++    if (!this.isHost) return;
++    this._sendAll({ t: 'start' });
++    this.h.onStart();
++  }
++
++  /** Call every frame while driving; internally throttled to STATE_HZ. */
++  sendState(state) {
++    const now = performance.now();
++    if (this._lastSend && now - this._lastSend < 1000 / STATE_HZ) return;
++    this._lastSend = now;
++    if (this.isHost) this._sendAll({ t: 'state', id: this.selfId, s: state });
++    else if (this.hostConn && this.hostConn.open) this.hostConn.send({ t: 'state', s: state });
++  }
++
++  leave() {
++    if (this.isHost) this._sendAll({ t: 'left', id: this.selfId });
++    try { this.peer && this.peer.destroy(); } catch { /* already gone */ }
++    this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear();
++  }
++}
++
++export { randomCode, sanitizeName };
