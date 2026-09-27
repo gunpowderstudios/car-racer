@@ -90,7 +90,7 @@ index b6dfcf2..cc36ad0 100644
  <section id="editor">
    <header id="ed-bar">
 diff --git a/src/main.js b/src/main.js
-index e9bfbeb..ec356cf 100644
+index e9bfbeb..a5a6b6c 100644
 --- a/src/main.js
 +++ b/src/main.js
 @@ -17,6 +17,7 @@ import { Sound } from './audio.js';
@@ -134,7 +134,7 @@ index e9bfbeb..ec356cf 100644
  function startDriving(newDef) {
    sound.init();
    if (newDef) loadTrack(newDef);
-@@ -594,12 +605,115 @@ function bindMenu() {
+@@ -594,12 +605,117 @@ function bindMenu() {
    };
  }
  
@@ -168,6 +168,8 @@ index e9bfbeb..ec356cf 100644
 +    qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
 +    p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
 +    p.view.setLook(c.alive === false ? 0.15 : 1, 0);
++    const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
++    p.view.root.visible = dx * dx + dz * dz < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
 +    if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
 +    mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
 +    const dist = camera.position.distanceTo(p.view.root.position);
@@ -250,7 +252,7 @@ index e9bfbeb..ec356cf 100644
  loadTrack(makeTemplate('speedway'));
  renderMenu();
  setMode('menu');
-@@ -609,4 +723,8 @@ const params = new URLSearchParams(location.search);
+@@ -609,4 +725,8 @@ const params = new URLSearchParams(location.search);
  if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
    const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
    if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
