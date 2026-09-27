@@ -778,6 +778,7 @@ const mpHandlers = {
 };
 function bindMultiplayer() {
   $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Random circuit' : makeTemplate(k).name}</option>`).join('');
+  $('mp-track').value = 'random';
   $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
   $('mp-back').onclick = () => showMenu();
   $('mp-create').onclick = async () => {
