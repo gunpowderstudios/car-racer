@@ -1,0 +1,564 @@
+diff --git a/poly-general-lee.patch b/poly-general-lee.patch
+deleted file mode 100644
+index 39e6980..0000000
+--- a/poly-general-lee.patch
++++ /dev/null
+@@ -1,198 +0,0 @@
+-diff --git a/src/carVisual.js b/src/carVisual.js
+-index cdf92c0..458232b 100644
+---- a/src/carVisual.js
+-+++ b/src/carVisual.js
+-@@ -36,6 +36,26 @@ function installVehicleModeChooser() {
+-     location.reload();
+-   });
+-   label.appendChild(select);
+-+
+-+  // Second, only-shown-in-poly-mode chooser for which lightweight vehicle to use.
+-+  const polyLabel = document.createElement('label');
+-+  polyLabel.className = 'sel';
+-+  polyLabel.textContent = 'Poly vehicle ';
+-+  polyLabel.style.display = saved === 'poly' ? '' : 'none';
+-+  const polySelect = document.createElement('select');
+-+  polySelect.id = 'opt-poly-vehicle';
+-+  polySelect.setAttribute('aria-label', 'Poly vehicle');
+-+  polySelect.innerHTML = '<option value="motorhome">Hymer Motorhome</option><option value="general-lee">General Lee</option>';
+-+  let savedPoly = 'motorhome';
+-+  try { savedPoly = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
+-+  polySelect.value = savedPoly;
+-+  polySelect.addEventListener('change', () => {
+-+    try { localStorage.setItem('cr.polyVehicle', polySelect.value); } catch { /* private mode */ }
+-+    location.reload();
+-+  });
+-+  polyLabel.appendChild(polySelect);
+-+
+-+  grid.prepend(polyLabel);
+-   grid.prepend(label);
+- }
+- installVehicleModeChooser();
+-@@ -154,8 +174,15 @@ export class CarVisual {
+-       let mode = '3d';
+-       try { mode = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
+-       if (mode === 'poly') {
+--        const { installProceduralMotorhome } = await import('./proceduralMotorhome.js');
+--        installProceduralMotorhome(this);
+-+        let polyVehicle = 'motorhome';
+-+        try { polyVehicle = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
+-+        if (polyVehicle === 'general-lee') {
+-+          const { installProceduralGeneralLee } = await import('./proceduralGeneralLee.js');
+-+          installProceduralGeneralLee(this);
+-+        } else {
+-+          const { installProceduralMotorhome } = await import('./proceduralMotorhome.js');
+-+          installProceduralMotorhome(this);
+-+        }
+-         return;
+-       }
+- 
+-diff --git a/src/proceduralGeneralLee.js b/src/proceduralGeneralLee.js
+-new file mode 100644
+-index 0000000..4f24fb4
+---- /dev/null
+-+++ b/src/proceduralGeneralLee.js
+-@@ -0,0 +1,131 @@
+-+import * as THREE from 'three';
+-+
+-+// Lightweight procedural muscle-car build, styled after the classic orange
+-+// "01" stunt car, for the low-spec "Poly Vehicles" mode. Built entirely from
+-+// primitives plus two small canvas decals (roof flag, door number) so there
+-+// are no extra image assets to load. +Z is the vehicle's driving direction.
+-+export function installProceduralGeneralLee(visual) {
+-+  const root = new THREE.Group();
+-+  root.name = 'procedural-general-lee';
+-+  root.rotation.y = Math.PI; // built nose towards -Z, like the motorhome
+-+
+-+  const mats = [];
+-+  const paintMats = [];
+-+  const mat = (color, roughness = 0.4, metalness = 0.25, paintable = false, noTint = false) => {
+-+    const m = new THREE.MeshStandardMaterial({ color, roughness, metalness });
+-+    m.userData.base = m.color.clone();
+-+    if (noTint) m.userData.noTint = true;
+-+    if (paintable) paintMats.push(m);
+-+    mats.push(m);
+-+    return m;
+-+  };
+-+
+-+  const paint = mat(0xd9482b, 0.35, 0.3, true);
+-+  const black = mat(0x101010, 0.55, 0.15, false, true);
+-+  const chrome = mat(0xc9c9c9, 0.25, 0.85, false, true);
+-+  const glass = mat(0x18262d, 0.2, 0.1, false, true);
+-+  const rubber = mat(0x121212, 0.98, 0.0, false, true);
+-+  const amber = mat(0xd78425, 0.4, 0.05, false, true);
+-+  const red = mat(0x8d2620, 0.5, 0.08, false, true);
+-+
+-+  // Roof decal: a small canvas cross-and-stars flag, close enough at driving
+-+  // distance without needing an image file.
+-+  const flagCv = document.createElement('canvas');
+-+  flagCv.width = 128; flagCv.height = 64;
+-+  const fg = flagCv.getContext('2d');
+-+  fg.fillStyle = '#b5231d'; fg.fillRect(0, 0, 128, 64);
+-+  fg.strokeStyle = '#1c2f6b'; fg.lineWidth = 16;
+-+  fg.beginPath(); fg.moveTo(0, 0); fg.lineTo(128, 64); fg.moveTo(128, 0); fg.lineTo(0, 64); fg.stroke();
+-+  fg.fillStyle = '#f2f2f2';
+-+  for (const [x, y] of [[20, 10], [44, 20], [64, 32], [84, 20], [108, 10], [20, 54], [44, 44], [84, 44], [108, 54]]) {
+-+    fg.beginPath(); fg.arc(x, y, 2.6, 0, Math.PI * 2); fg.fill();
+-+  }
+-+  const flagTex = new THREE.CanvasTexture(flagCv);
+-+  flagTex.colorSpace = THREE.SRGBColorSpace;
+-+  const flagMat = new THREE.MeshStandardMaterial({ map: flagTex, roughness: 0.6, metalness: 0.02 });
+-+  flagMat.userData.noTint = true; mats.push(flagMat);
+-+
+-+  // Door decal: plain white circle with a "01".
+-+  const numCv = document.createElement('canvas');
+-+  numCv.width = 96; numCv.height = 96;
+-+  const ng = numCv.getContext('2d');
+-+  ng.fillStyle = '#d9482b'; ng.fillRect(0, 0, 96, 96);
+-+  ng.fillStyle = '#f4f2ea'; ng.beginPath(); ng.arc(48, 48, 40, 0, Math.PI * 2); ng.fill();
+-+  ng.fillStyle = '#1c2f6b'; ng.font = 'bold 46px sans-serif';
+-+  ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillText('01', 48, 52);
+-+  const numTex = new THREE.CanvasTexture(numCv);
+-+  numTex.colorSpace = THREE.SRGBColorSpace;
+-+  const numMat = new THREE.MeshStandardMaterial({ map: numTex, roughness: 0.6, metalness: 0.02 });
+-+  numMat.userData.noTint = true; mats.push(numMat);
+-+
+-+  const addBox = (name, sx, sy, sz, x, y, z, material, rx = 0, ry = 0, rz = 0) => {
+-+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
+-+    mesh.name = name; mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz);
+-+    root.add(mesh);
+-+    return mesh;
+-+  };
+-+
+-+  // Long, low fastback body with a black vinyl roof panel.
+-+  addBox('body-lower', 1.83, 0.60, 4.55, 0, -0.10, 0, paint);
+-+  addBox('hood', 1.78, 0.10, 1.55, 0, 0.26, 1.35, paint);
+-+  addBox('trunk-deck', 1.78, 0.10, 1.10, 0, 0.26, -1.55, paint);
+-+  addBox('cabin', 1.64, 0.44, 1.95, 0, 0.60, -0.05, paint);
+-+  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(1.40, 0.05, 1.55), [black, black, flagMat, black, black, black]);
+-+  roofMesh.name = 'roof'; roofMesh.position.set(0, 0.85, -0.10);
+-+  root.add(roofMesh);
+-+
+-+  // Windscreen, backlight and side glass.
+-+  addBox('windscreen', 1.50, 0.42, 0.04, 0, 0.72, 0.85, glass, -0.35);
+-+  addBox('backlight', 1.44, 0.40, 0.04, 0, 0.70, -1.00, glass, 0.30);
+-+  for (const side of [-1, 1]) {
+-+    addBox('side-window', 0.04, 0.34, 1.55, side * 0.825, 0.66, -0.10, glass);
+-+    addBox('door-line', 0.06, 0.02, 3.1, side * 0.92, 0.10, -0.05, black);
+-+    addBox('door-decal', 0.03, 0.42, 0.42, side * 0.93, -0.02, -0.10, numMat);
+-+    addBox('mirror-arm', 0.05, 0.05, 0.10, side * 0.95, 0.62, 0.75, black);
+-+    addBox('mirror', 0.10, 0.10, 0.16, side * 1.02, 0.62, 0.80, black);
+-+  }
+-+
+-+  // Front grille, quad headlights, chrome bumper.
+-+  addBox('grille', 1.10, 0.22, 0.05, 0, -0.02, 2.28, black);
+-+  for (const side of [-1, 1]) {
+-+    addBox('headlight', 0.30, 0.24, 0.05, side * 0.62, -0.02, 2.30, chrome);
+-+    addBox('indicator', 0.20, 0.10, 0.05, side * 0.62, -0.20, 2.30, amber);
+-+  }
+-+  addBox('front-bumper', 1.95, 0.18, 0.20, 0, -0.30, 2.30, chrome);
+-+
+-+  // Rear panel, tail lights, chrome bumper.
+-+  addBox('rear-panel', 1.80, 0.30, 0.05, 0, -0.05, -2.28, black);
+-+  for (const side of [-1, 1]) addBox('tail-light', 0.55, 0.16, 0.05, side * 0.45, -0.05, -2.28, red);
+-+  addBox('rear-bumper', 1.95, 0.18, 0.20, 0, -0.30, -2.28, chrome);
+-+
+-+  // Wheels: black tyres with simple chrome mag hubs.
+-+  const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
+-+  wheelGeo.rotateZ(Math.PI / 2);
+-+  const hubGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.25, 10);
+-+  hubGeo.rotateZ(Math.PI / 2);
+-+  for (const x of [-0.85, 0.85]) for (const z of [1.30, -1.40]) {
+-+    const tyre = new THREE.Mesh(wheelGeo, rubber);
+-+    tyre.position.set(x, -0.33, z); tyre.name = 'wheel'; root.add(tyre);
+-+    const hub = new THREE.Mesh(hubGeo, chrome);
+-+    hub.position.set(x, -0.33, z); hub.name = 'hub'; root.add(hub);
+-+  }
+-+
+-+  for (const child of visual.root.children) if (child !== visual.holder && child.isMesh) child.castShadow = false;
+-+  root.traverse((o) => {
+-+    if (!o.isMesh) return;
+-+    o.castShadow = true;
+-+    o.receiveShadow = false;
+-+  });
+-+
+-+  while (visual.holder.children.length) visual.holder.remove(visual.holder.children[0]);
+-+  visual.holder.rotation.set(0, 0, 0);
+-+  visual.holder.add(root);
+-+  visual.model = root;
+-+  visual.mats = mats;
+-+  visual.paintMats = paintMats;
+-+  visual.loaded = true;
+-+  visual.hasTexture = false;
+-+  visual._lookKey = -1;
+-+  visual.onLoad?.(visual);
+-+  return root;
+-+}
+-diff --git a/src/version.js b/src/version.js
+-index 9cad7cc..bb61df5 100644
+---- a/src/version.js
+-+++ b/src/version.js
+-@@ -2,5 +2,5 @@
+- // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+- // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+- // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+--export const VERSION = '14.5';
+--export const NOTE = 'Vehicle graphics chooser: Real 3D or lightweight Poly Vehicles, with improved motorhome';
+-+export const VERSION = '14.6';
+-+export const NOTE = 'Poly Vehicles mode now offers two vehicles: Hymer Motorhome or General Lee';
+diff --git a/src/carVisual.js b/src/carVisual.js
+index 759da9d..b005b3f 100644
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -19,6 +19,50 @@ export const MODEL = {
+   paint: 0xd9482b,
+ };
+ 
++// Put the graphics choice on the opening menu without coupling it to the rest of main.js.
++// Changing either dropdown reloads once so all player/rival visuals use the same asset family.
++function installVehicleModeChooser() {
++  const grid = document.querySelector('.opt-grid');
++  if (!grid || document.getElementById('opt-vehicle-mode')) return;
++  const label = document.createElement('label');
++  label.className = 'sel';
++  label.textContent = 'Vehicle graphics ';
++  const select = document.createElement('select');
++  select.id = 'opt-vehicle-mode';
++  select.setAttribute('aria-label', 'Vehicle graphics');
++  select.innerHTML = '<option value="3d">Real 3D vehicles</option><option value="poly">Poly Vehicles — for crappy old computers!</option>';
++  let saved = '3d';
++  try { saved = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
++  select.value = saved;
++  select.addEventListener('change', () => {
++    try { localStorage.setItem('cr.vehicleMode', select.value); } catch { /* private mode */ }
++    location.reload();
++  });
++  label.appendChild(select);
++
++  // Second, only-shown-in-poly-mode chooser for which lightweight vehicle to use.
++  const polyLabel = document.createElement('label');
++  polyLabel.className = 'sel';
++  polyLabel.textContent = 'Poly vehicle ';
++  polyLabel.style.display = saved === 'poly' ? '' : 'none';
++  const polySelect = document.createElement('select');
++  polySelect.id = 'opt-poly-vehicle';
++  polySelect.setAttribute('aria-label', 'Poly vehicle');
++  polySelect.innerHTML = '<option value="motorhome">Hymer Motorhome</option><option value="general-lee">General Lee</option>';
++  let savedPoly = 'motorhome';
++  try { savedPoly = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
++  polySelect.value = savedPoly;
++  polySelect.addEventListener('change', () => {
++    try { localStorage.setItem('cr.polyVehicle', polySelect.value); } catch { /* private mode */ }
++    location.reload();
++  });
++  polyLabel.appendChild(polySelect);
++
++  grid.prepend(polyLabel);
++  grid.prepend(label);
++}
++installVehicleModeChooser();
++
+ // Paint jobs for the rival cars. `rot` turns the hue of the model's (orange) texture; `sat` washes it out.
+ // Each look is made once, the first time a rival wears it, and shared by every car with that look.
+ export const RIVAL_LOOKS = [
+@@ -138,6 +182,21 @@ export class CarVisual {
+ 
+   async load(url = MODEL.url) {
+     try {
++      let mode = '3d';
++      try { mode = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
++      if (mode === 'poly') {
++        let polyVehicle = 'motorhome';
++        try { polyVehicle = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
++        if (polyVehicle === 'general-lee') {
++          const { installProceduralGeneralLee } = await import('./proceduralGeneralLee.js');
++          installProceduralGeneralLee(this);
++        } else {
++          const { installProceduralMotorhome } = await import('./proceduralMotorhome.js');
++          installProceduralMotorhome(this);
++        }
++        return;
++      }
++
+       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+       const model = gltf.scene;
+       this.hasTexture = false;
+diff --git a/src/proceduralGeneralLee.js b/src/proceduralGeneralLee.js
+new file mode 100644
+index 0000000..7be6417
+--- /dev/null
++++ b/src/proceduralGeneralLee.js
+@@ -0,0 +1,129 @@
++import * as THREE from 'three';
++
++// Lightweight procedural muscle-car build, styled after the classic orange
++// "01" stunt car, for the low-spec "Poly Vehicles" mode. Built entirely from
++// primitives plus two small canvas decals (roof flag, door number) so there
++// are no extra image assets to load. +Z is the vehicle's driving direction.
++export function installProceduralGeneralLee(visual) {
++  const root = new THREE.Group();
++  root.name = 'procedural-general-lee';
++  root.rotation.y = Math.PI; // built nose towards -Z, like the motorhome
++
++  const mats = [];
++  const mat = (color, roughness = 0.4, metalness = 0.25) => {
++    const m = new THREE.MeshStandardMaterial({ color, roughness, metalness });
++    m.userData.base = m.color.clone();
++    mats.push(m);
++    return m;
++  };
++
++  const paint = mat(0xd9482b, 0.35, 0.3);
++  const black = mat(0x101010, 0.55, 0.15);
++  const chrome = mat(0xc9c9c9, 0.25, 0.85);
++  const glass = mat(0x18262d, 0.2, 0.1);
++  const rubber = mat(0x121212, 0.98, 0.0);
++  const amber = mat(0xd78425, 0.4, 0.05);
++  const red = mat(0x8d2620, 0.5, 0.08);
++
++  // Roof decal: a small canvas cross-and-stars flag, close enough at driving
++  // distance without needing an image file.
++  const flagCv = document.createElement('canvas');
++  flagCv.width = 128; flagCv.height = 64;
++  const fg = flagCv.getContext('2d');
++  fg.fillStyle = '#b5231d'; fg.fillRect(0, 0, 128, 64);
++  fg.strokeStyle = '#1c2f6b'; fg.lineWidth = 16;
++  fg.beginPath(); fg.moveTo(0, 0); fg.lineTo(128, 64); fg.moveTo(128, 0); fg.lineTo(0, 64); fg.stroke();
++  fg.fillStyle = '#f2f2f2';
++  for (const [x, y] of [[20, 10], [44, 20], [64, 32], [84, 20], [108, 10], [20, 54], [44, 44], [84, 44], [108, 54]]) {
++    fg.beginPath(); fg.arc(x, y, 2.6, 0, Math.PI * 2); fg.fill();
++  }
++  const flagTex = new THREE.CanvasTexture(flagCv);
++  flagTex.colorSpace = THREE.SRGBColorSpace;
++  const flagMat = new THREE.MeshStandardMaterial({ map: flagTex, roughness: 0.6, metalness: 0.02 });
++  flagMat.userData.base = new THREE.Color(0xffffff);
++  mats.push(flagMat);
++
++  // Door decal: plain white circle with a "01".
++  const numCv = document.createElement('canvas');
++  numCv.width = 96; numCv.height = 96;
++  const ng = numCv.getContext('2d');
++  ng.fillStyle = '#d9482b'; ng.fillRect(0, 0, 96, 96);
++  ng.fillStyle = '#f4f2ea'; ng.beginPath(); ng.arc(48, 48, 40, 0, Math.PI * 2); ng.fill();
++  ng.fillStyle = '#1c2f6b'; ng.font = 'bold 46px sans-serif';
++  ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillText('01', 48, 52);
++  const numTex = new THREE.CanvasTexture(numCv);
++  numTex.colorSpace = THREE.SRGBColorSpace;
++  const numMat = new THREE.MeshStandardMaterial({ map: numTex, roughness: 0.6, metalness: 0.02 });
++  numMat.userData.base = new THREE.Color(0xffffff);
++  mats.push(numMat);
++
++  const addBox = (name, sx, sy, sz, x, y, z, material, rx = 0, ry = 0, rz = 0) => {
++    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
++    mesh.name = name; mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz);
++    root.add(mesh);
++    return mesh;
++  };
++
++  // Long, low fastback body with a black vinyl roof panel.
++  addBox('body-lower', 1.83, 0.60, 4.55, 0, -0.10, 0, paint);
++  addBox('hood', 1.78, 0.10, 1.55, 0, 0.26, 1.35, paint);
++  addBox('trunk-deck', 1.78, 0.10, 1.10, 0, 0.26, -1.55, paint);
++  addBox('cabin', 1.64, 0.44, 1.95, 0, 0.60, -0.05, paint);
++  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(1.40, 0.05, 1.55), [black, black, flagMat, black, black, black]);
++  roofMesh.name = 'roof'; roofMesh.position.set(0, 0.85, -0.10);
++  root.add(roofMesh);
++
++  // Windscreen, backlight and side glass.
++  addBox('windscreen', 1.50, 0.42, 0.04, 0, 0.72, 0.85, glass, -0.35);
++  addBox('backlight', 1.44, 0.40, 0.04, 0, 0.70, -1.00, glass, 0.30);
++  for (const side of [-1, 1]) {
++    addBox('side-window', 0.04, 0.34, 1.55, side * 0.825, 0.66, -0.10, glass);
++    addBox('door-line', 0.06, 0.02, 3.1, side * 0.92, 0.10, -0.05, black);
++    addBox('door-decal', 0.03, 0.42, 0.42, side * 0.93, -0.02, -0.10, numMat);
++    addBox('mirror-arm', 0.05, 0.05, 0.10, side * 0.95, 0.62, 0.75, black);
++    addBox('mirror', 0.10, 0.10, 0.16, side * 1.02, 0.62, 0.80, black);
++  }
++
++  // Front grille, quad headlights, chrome bumper.
++  addBox('grille', 1.10, 0.22, 0.05, 0, -0.02, 2.28, black);
++  for (const side of [-1, 1]) {
++    addBox('headlight', 0.30, 0.24, 0.05, side * 0.62, -0.02, 2.30, chrome);
++    addBox('indicator', 0.20, 0.10, 0.05, side * 0.62, -0.20, 2.30, amber);
++  }
++  addBox('front-bumper', 1.95, 0.18, 0.20, 0, -0.30, 2.30, chrome);
++
++  // Rear panel, tail lights, chrome bumper.
++  addBox('rear-panel', 1.80, 0.30, 0.05, 0, -0.05, -2.28, black);
++  for (const side of [-1, 1]) addBox('tail-light', 0.55, 0.16, 0.05, side * 0.45, -0.05, -2.28, red);
++  addBox('rear-bumper', 1.95, 0.18, 0.20, 0, -0.30, -2.28, chrome);
++
++  // Wheels: black tyres with simple chrome mag hubs.
++  const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
++  wheelGeo.rotateZ(Math.PI / 2);
++  const hubGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.25, 10);
++  hubGeo.rotateZ(Math.PI / 2);
++  for (const x of [-0.85, 0.85]) for (const z of [1.30, -1.40]) {
++    const tyre = new THREE.Mesh(wheelGeo, rubber);
++    tyre.position.set(x, -0.33, z); tyre.name = 'wheel'; root.add(tyre);
++    const hub = new THREE.Mesh(hubGeo, chrome);
++    hub.position.set(x, -0.33, z); hub.name = 'hub'; root.add(hub);
++  }
++
++  for (const child of visual.root.children) if (child !== visual.holder && child.isMesh) child.castShadow = false;
++  root.traverse((o) => {
++    if (!o.isMesh) return;
++    o.castShadow = true;
++    o.receiveShadow = false;
++  });
++
++  while (visual.holder.children.length) visual.holder.remove(visual.holder.children[0]);
++  visual.holder.rotation.set(0, 0, 0);
++  visual.holder.add(root);
++  visual.model = root;
++  visual.mats = mats;
++  visual.loaded = true;
++  visual.hasTexture = false;
++  visual._lookKey = -1;
++  visual.onLoad?.(visual);
++  return root;
++}
+diff --git a/src/proceduralMotorhome.js b/src/proceduralMotorhome.js
+new file mode 100644
+index 0000000..1e22413
+--- /dev/null
++++ b/src/proceduralMotorhome.js
+@@ -0,0 +1,130 @@
++import * as THREE from 'three';
++
++// Lightweight procedural A-class motorhome built from Three.js primitives.
++// The whole thing is only a few hundred triangles, so it is suitable for the
++// low-spec "Poly Vehicles" mode. +Z is the vehicle's driving direction.
++export function installProceduralMotorhome(visual) {
++  const root = new THREE.Group();
++  root.name = 'procedural-motorhome';
++
++  // The first test version appeared backwards in-game, so flip the visual.
++  root.rotation.y = Math.PI;
++
++  const mats = [];
++  const mat = (color, roughness = 0.72, metalness = 0.05) => {
++    const m = new THREE.MeshStandardMaterial({ color, roughness, metalness });
++    m.userData.base = m.color.clone();
++    mats.push(m);
++    return m;
++  };
++
++  const cream = mat(0xd9d1ba, 0.80, 0.05);
++  const cream2 = mat(0xbdb39c, 0.84, 0.04);
++  const trim = mat(0x6f6b62, 0.68, 0.28);
++  const stripe = mat(0x7e5a43, 0.82, 0.05);
++  const dark = mat(0x16191b, 0.62, 0.18);
++  const glass = mat(0x16262d, 0.24, 0.12);
++  const rubber = mat(0x121212, 0.98, 0.0);
++  const steel = mat(0x77736b, 0.58, 0.62);
++  const amber = mat(0xd78425, 0.42, 0.05);
++  const red = mat(0x8d2620, 0.55, 0.08);
++
++  const addBox = (name, sx, sy, sz, x, y, z, material, rx = 0, ry = 0, rz = 0) => {
++    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
++    mesh.name = name;
++    mesh.position.set(x, y, z);
++    mesh.rotation.set(rx, ry, rz);
++    root.add(mesh);
++    return mesh;
++  };
++
++  // Tall coachbuilt shell with a slightly narrower lower skirt.
++  addBox('living-body', 2.10, 1.86, 4.20, 0, 0.66, -0.36, cream);
++  addBox('lower-skirt', 2.04, 0.34, 4.55, 0, -0.18, -0.18, cream2);
++  addBox('roof-cap', 2.02, 0.18, 4.05, 0, 1.63, -0.38, cream2);
++
++  // Integrated A-class cab: broad glass, shallow nose, and a brow above the screen.
++  addBox('cab-lower', 2.08, 0.68, 1.02, 0, 0.00, 2.04, cream);
++  const cabUpper = addBox('cab-upper', 2.03, 0.92, 0.80, 0, 0.75, 2.00, cream);
++  cabUpper.rotation.x = -0.10;
++  addBox('front-brow', 2.04, 0.20, 0.38, 0, 1.43, 2.12, cream2, -0.08);
++
++  // Huge split windscreen, slightly laid back.
++  addBox('windscreen-left', 0.82, 0.73, 0.045, 0.43, 0.90, 2.43, glass, -0.12);
++  addBox('windscreen-right', 0.82, 0.73, 0.045, -0.43, 0.90, 2.43, glass, -0.12);
++  addBox('windscreen-divider', 0.045, 0.76, 0.060, 0, 0.90, 2.46, dark, -0.12);
++  addBox('wiper-left', 0.48, 0.022, 0.032, 0.40, 0.63, 2.49, dark, 0, 0, 0.18);
++  addBox('wiper-right', 0.48, 0.022, 0.032, -0.40, 0.63, 2.49, dark, 0, 0, -0.18);
++
++  // Front grille, lamps and chunky old-school bumper.
++  addBox('grille', 1.10, 0.27, 0.060, 0, 0.02, 2.57, dark);
++  for (const side of [-1, 1]) {
++    addBox('headlight', 0.34, 0.23, 0.065, side * 0.68, 0.05, 2.59, steel);
++    addBox('indicator', 0.24, 0.11, 0.070, side * 0.68, 0.27, 2.59, amber);
++  }
++  addBox('front-bumper', 2.18, 0.20, 0.22, 0, -0.31, 2.57, steel);
++
++  // Three large side windows make the silhouette read as a motorhome at a glance.
++  for (const side of [-1, 1]) {
++    const x = side * 1.065;
++    addBox('cab-side-window', 0.045, 0.65, 0.72, x, 0.83, 1.58, glass);
++    addBox('living-window-front', 0.045, 0.68, 0.90, x, 0.92, 0.42, glass);
++    addBox('living-window-rear', 0.045, 0.68, 0.90, x, 0.92, -1.15, glass);
++    addBox('waist-stripe', 0.050, 0.10, 3.92, x * 1.002, 0.18, -0.26, stripe);
++    addBox('awning-rail', 0.050, 0.075, 3.30, x * 1.006, 1.43, -0.30, trim);
++    addBox('mirror-arm', 0.22, 0.045, 0.045, side * 1.16, 0.76, 1.85, dark);
++    addBox('mirror', 0.08, 0.30, 0.21, side * 1.27, 0.76, 1.91, dark);
++  }
++
++  // Habitation door, vents and lockers.
++  addBox('hab-door', 0.052, 1.38, 0.72, -1.075, 0.56, -0.36, cream2);
++  addBox('hab-door-window', 0.057, 0.52, 0.42, -1.082, 0.94, -0.36, glass);
++  addBox('door-handle', 0.075, 0.08, 0.10, -1.10, 0.54, -0.02, dark);
++  addBox('side-vent', 0.055, 0.25, 0.42, -1.08, -0.02, -1.03, dark);
++  addBox('locker', 0.055, 0.34, 0.58, 1.08, -0.03, -1.25, cream2);
++
++  // Rear face and ladder.
++  addBox('rear-panel', 2.05, 1.70, 0.12, 0, 0.62, -2.48, cream);
++  addBox('rear-bumper', 2.16, 0.18, 0.20, 0, -0.29, -2.55, steel);
++  for (const side of [-1, 1]) addBox('rear-light', 0.15, 0.32, 0.060, side * 0.80, 0.02, -2.56, red);
++  addBox('ladder-left', 0.045, 1.42, 0.045, 0.72, 0.75, -2.58, steel);
++  addBox('ladder-right', 0.045, 1.42, 0.045, 0.98, 0.75, -2.58, steel);
++  for (const y of [0.20, 0.48, 0.76, 1.04, 1.32]) addBox('ladder-rung', 0.30, 0.035, 0.045, 0.85, y, -2.60, steel);
++
++  // Roof rack and two simple boards.
++  for (const side of [-1, 1]) addBox('roof-rail', 0.055, 0.055, 3.45, side * 0.72, 1.80, -0.28, dark);
++  for (const z of [-1.45, -0.50, 0.45, 1.25]) addBox('roof-crossbar', 1.48, 0.045, 0.055, 0, 1.83, z, dark);
++  addBox('roof-board-a', 0.22, 0.07, 2.35, -0.28, 1.91, -0.22, cream2);
++  addBox('roof-board-b', 0.22, 0.07, 2.35, 0.28, 1.91, -0.22, cream2);
++
++  // Low-segment wheels: enough detail at driving distance, very cheap to draw.
++  const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.23, 12);
++  wheelGeo.rotateZ(Math.PI / 2);
++  const hubGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.245, 10);
++  hubGeo.rotateZ(Math.PI / 2);
++  for (const x of [-0.94, 0.94]) for (const z of [1.28, -1.43]) {
++    const tyre = new THREE.Mesh(wheelGeo, rubber);
++    tyre.position.set(x, -0.27, z); tyre.name = 'wheel'; root.add(tyre);
++    const hub = new THREE.Mesh(hubGeo, steel);
++    hub.position.set(x, -0.27, z); hub.name = 'hub'; root.add(hub);
++  }
++
++  // Let this tiny model cast its own shadow rather than the old car-shaped proxy.
++  for (const child of visual.root.children) if (child !== visual.holder && child.isMesh) child.castShadow = false;
++  root.traverse((o) => {
++    if (!o.isMesh) return;
++    o.castShadow = true;
++    o.receiveShadow = false;
++  });
++
++  while (visual.holder.children.length) visual.holder.remove(visual.holder.children[0]);
++  visual.holder.rotation.set(0, 0, 0);
++  visual.holder.add(root);
++  visual.model = root;
++  visual.mats = mats;
++  visual.loaded = true;
++  visual.hasTexture = false;
++  visual._lookKey = -1;
++  visual.onLoad?.(visual);
++  return root;
++}
+diff --git a/src/version.js b/src/version.js
+index 10e482f..c635c24 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -2,5 +2,5 @@
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '14.3';
+-export const NOTE = 'Added a Bonnet camera view (C to cycle) - forward-facing, sitting up over the hood';
++export const VERSION = '14.4';
++export const NOTE = 'Poly Vehicles mode: pick a lightweight Hymer Motorhome or General Lee instead of the real 3D car';

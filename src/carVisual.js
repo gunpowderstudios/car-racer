@@ -19,6 +19,50 @@ export const MODEL = {
   paint: 0xd9482b,
 };
 
+// Put the graphics choice on the opening menu without coupling it to the rest of main.js.
+// Changing either dropdown reloads once so all player/rival visuals use the same asset family.
+function installVehicleModeChooser() {
+  const grid = document.querySelector('.opt-grid');
+  if (!grid || document.getElementById('opt-vehicle-mode')) return;
+  const label = document.createElement('label');
+  label.className = 'sel';
+  label.textContent = 'Vehicle graphics ';
+  const select = document.createElement('select');
+  select.id = 'opt-vehicle-mode';
+  select.setAttribute('aria-label', 'Vehicle graphics');
+  select.innerHTML = '<option value="3d">Real 3D vehicles</option><option value="poly">Poly Vehicles — for crappy old computers!</option>';
+  let saved = '3d';
+  try { saved = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
+  select.value = saved;
+  select.addEventListener('change', () => {
+    try { localStorage.setItem('cr.vehicleMode', select.value); } catch { /* private mode */ }
+    location.reload();
+  });
+  label.appendChild(select);
+
+  // Second, only-shown-in-poly-mode chooser for which lightweight vehicle to use.
+  const polyLabel = document.createElement('label');
+  polyLabel.className = 'sel';
+  polyLabel.textContent = 'Poly vehicle ';
+  polyLabel.style.display = saved === 'poly' ? '' : 'none';
+  const polySelect = document.createElement('select');
+  polySelect.id = 'opt-poly-vehicle';
+  polySelect.setAttribute('aria-label', 'Poly vehicle');
+  polySelect.innerHTML = '<option value="motorhome">Hymer Motorhome</option><option value="general-lee">General Lee</option>';
+  let savedPoly = 'motorhome';
+  try { savedPoly = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
+  polySelect.value = savedPoly;
+  polySelect.addEventListener('change', () => {
+    try { localStorage.setItem('cr.polyVehicle', polySelect.value); } catch { /* private mode */ }
+    location.reload();
+  });
+  polyLabel.appendChild(polySelect);
+
+  grid.prepend(polyLabel);
+  grid.prepend(label);
+}
+installVehicleModeChooser();
+
 // Paint jobs for the rival cars. `rot` turns the hue of the model's (orange) texture; `sat` washes it out.
 // Each look is made once, the first time a rival wears it, and shared by every car with that look.
 export const RIVAL_LOOKS = [
@@ -138,6 +182,21 @@ export class CarVisual {
 
   async load(url = MODEL.url) {
     try {
+      let mode = '3d';
+      try { mode = localStorage.getItem('cr.vehicleMode') || '3d'; } catch { /* private mode */ }
+      if (mode === 'poly') {
+        let polyVehicle = 'motorhome';
+        try { polyVehicle = localStorage.getItem('cr.polyVehicle') || 'motorhome'; } catch { /* private mode */ }
+        if (polyVehicle === 'general-lee') {
+          const { installProceduralGeneralLee } = await import('./proceduralGeneralLee.js');
+          installProceduralGeneralLee(this);
+        } else {
+          const { installProceduralMotorhome } = await import('./proceduralMotorhome.js');
+          installProceduralMotorhome(this);
+        }
+        return;
+      }
+
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
       const model = gltf.scene;
       this.hasTexture = false;
