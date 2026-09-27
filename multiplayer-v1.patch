@@ -1,8 +1,8 @@
 diff --git a/css/style.css b/css/style.css
-index bdc0ce5..c961390 100644
+index bdc0ce5..a668e66 100644
 --- a/css/style.css
 +++ b/css/style.css
-@@ -175,6 +175,28 @@ body.mode-menu #hud, body.mode-edit #hud, body.mode-edit #touch, body.mode-menu
+@@ -175,6 +175,30 @@ body.mode-menu #hud, body.mode-edit #hud, body.mode-edit #touch, body.mode-menu
  /* ---------------------------------------------------------------- editor */
  #editor { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--paper); color: var(--bp-ink); font-family: var(--body); }
  body:not(.mode-edit) #editor { display: none; }
@@ -18,6 +18,8 @@ index bdc0ce5..c961390 100644
 +.mp-field input { display: block; width: 100%; max-width: 320px; margin-top: 6px; background: rgba(246,217,176,.08); border: 1px solid rgba(246,217,176,.3); color: var(--peach); padding: 10px 12px; font-size: 18px; border-radius: 2px; }
 +.mp-field input:focus-visible { outline: 2px solid var(--amber); }
 +.mp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
++.mp-check { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--peach); margin: 0 0 16px; }
++.btn:disabled { opacity: .4; cursor: not-allowed; }
 +.mp-error { color: var(--red); font-size: 14px; max-width: 30em; }
 +#mp-players { list-style: none; margin: 0 0 20px; padding: 0; max-width: 320px; }
 +#mp-players li { padding: 9px 0; border-bottom: 1px dashed rgba(246,217,176,.25); font-family: var(--cond); font-size: 19px; font-weight: 600; }
@@ -32,7 +34,7 @@ index bdc0ce5..c961390 100644
  #ed-name { background: transparent; border: 0; border-bottom: 1px dashed rgba(234,246,255,.5); color: var(--bp-ink); font-family: var(--display); font-weight: 700; font-size: 24px; width: 180px; padding: 2px 4px; }
  .ed-group { display: flex; gap: 0; border: 1px solid rgba(234,246,255,.4); }
 diff --git a/index.html b/index.html
-index b6dfcf2..cc36ad0 100644
+index b6dfcf2..22d111e 100644
 --- a/index.html
 +++ b/index.html
 @@ -111,6 +111,10 @@
@@ -46,7 +48,7 @@ index b6dfcf2..cc36ad0 100644
      <details class="options" open>
        <summary>Options</summary>
        <div class="opt-grid">
-@@ -129,6 +133,42 @@
+@@ -129,6 +133,45 @@
    </div>
  </section>
  
@@ -58,6 +60,7 @@ index b6dfcf2..cc36ad0 100644
 +    <div id="mp-home">
 +      <h2>Multiplayer</h2>
 +      <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
++      <label class="mp-check"><input id="mp-ai" type="checkbox"> AI rival cars</label>
 +      <div class="mp-actions">
 +        <button id="mp-create" class="btn" type="button">Create game</button>
 +        <button id="mp-join-show" class="btn ghost" type="button">Join game</button>
@@ -69,6 +72,7 @@ index b6dfcf2..cc36ad0 100644
 +      <h2>Join game</h2>
 +      <label class="mp-field">Your name<input id="mp-join-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
 +      <label class="mp-field">Room code<input id="mp-code" type="text" maxlength="8" placeholder="GUN42" autocapitalize="characters" autocomplete="off"></label>
++      <label class="mp-check"><input id="mp-join-ai" type="checkbox"> AI rival cars</label>
 +      <button id="mp-join-go" class="btn" type="button">Join</button>
 +      <p id="mp-join-error" class="mp-error" role="alert" hidden></p>
 +    </div>
@@ -78,6 +82,7 @@ index b6dfcf2..cc36ad0 100644
 +      <button id="mp-copy" class="btn ghost" type="button">Copy invite link</button>
 +      <ul id="mp-players"></ul>
 +      <button id="mp-start" class="btn btn-play" type="button" hidden>Start game</button>
++      <p id="mp-need-more" class="fine" hidden>Waiting for at least one more player to join&hellip;</p>
 +      <p id="mp-waiting" class="fine" hidden>Waiting for the host&hellip;</p>
 +      <p id="mp-lobby-error" class="mp-error" role="alert" hidden></p>
 +    </div>
@@ -90,7 +95,7 @@ index b6dfcf2..cc36ad0 100644
  <section id="editor">
    <header id="ed-bar">
 diff --git a/src/main.js b/src/main.js
-index e9bfbeb..a5a6b6c 100644
+index e9bfbeb..8b9ef73 100644
 --- a/src/main.js
 +++ b/src/main.js
 @@ -17,6 +17,7 @@ import { Sound } from './audio.js';
@@ -101,7 +106,7 @@ index e9bfbeb..a5a6b6c 100644
  
  const $ = (id) => document.getElementById(id);
  const DT = 1 / 120;
-@@ -61,6 +62,11 @@ const derbyBest = () => store.get('cr.derby', {});
+@@ -61,6 +62,12 @@ const derbyBest = () => store.get('cr.derby', {});
  let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
  
  let mode = 'menu', track = null, def = null, hasPlayed = false;
@@ -110,10 +115,19 @@ index e9bfbeb..a5a6b6c 100644
 +let net = null;                     // active Multiplayer session, or null in single-player
 +const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 +const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
++let mpAiWanted = true, mpPrevDerby = null;   // this session's AI-rivals choice, and opts.derby to restore after
  let paused = false;
  const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
  const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
-@@ -468,6 +474,11 @@ function frame(now) {
+@@ -268,6 +275,7 @@ function stepPhysics(dt) {
+   while (acc >= DT && n < 6) {
+     prevPos.copy(curPos); prevQ.copy(curQ);
+     car.step(DT, inp, track);
++    if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
+     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
+     props.step(DT, derby.enabled ? derby.cars : car);
+     syncPose(); acc -= DT; n++; simTime += DT;
+@@ -468,6 +476,11 @@ function frame(now) {
      hud.drawMap(car, derby.enabled ? mapDots : null);
      sound.update(car, throttleNow, !derby.over);
      if (!$('debug').hidden) debugText();
@@ -125,7 +139,7 @@ index e9bfbeb..a5a6b6c 100644
    } else {
      drawPos.copy(curPos); drawQ.copy(curQ);
      if (mode === 'menu') {
-@@ -505,7 +516,7 @@ function setMode(m) {
+@@ -505,7 +518,7 @@ function setMode(m) {
    $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
    input.enabled = m === 'drive';
  }
@@ -134,12 +148,28 @@ index e9bfbeb..a5a6b6c 100644
  function startDriving(newDef) {
    sound.init();
    if (newDef) loadTrack(newDef);
-@@ -594,12 +605,117 @@ function bindMenu() {
+@@ -594,12 +607,142 @@ function bindMenu() {
    };
  }
  
 +// -------------------------------------------------------------- multiplayer
 +const mpLabelV = new THREE.Vector3();
++const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
++/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
++ *  bump rather than real physics, computed purely from the last state we received over the network. */
++function mpCollideLocal() {
++  for (const p of remotePlayers.values()) {
++    if (!p.cur) continue;
++    const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
++    if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
++    const distSq = dx * dx + dz * dz;
++    if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
++    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
++    car.pos.x += nx * overlap; car.pos.z += nz * overlap;
++    const vn = car.vel.x * nx + car.vel.z * nz;
++    if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
++  }
++}
 +function mpMakeView(hue) {
 +  let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
 +  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
@@ -155,6 +185,7 @@ index e9bfbeb..a5a6b6c 100644
 +  for (const p of remotePlayers.values()) mpReleasePlayer(p);
 +  remotePlayers.clear();
 +  if (net) { net.leave(); net = null; }
++  if (mpPrevDerby !== null) { opts.derby = mpPrevDerby; mpPrevDerby = null; }
 +}
 +/** Move each remote player's car towards its latest reported state and keep its name label placed. */
 +function mpSyncRemote() {
@@ -192,10 +223,16 @@ index e9bfbeb..a5a6b6c 100644
 +    if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
 +    ul.appendChild(li);
 +  }
-+  if (net) { $('mp-start').hidden = !net.isHost; $('mp-waiting').hidden = net.isHost; }
++  if (net) {
++    $('mp-start').hidden = !net.isHost;
++    $('mp-start').disabled = players.length < 2;
++    $('mp-need-more').hidden = !net.isHost || players.length >= 2;
++    $('mp-waiting').hidden = net.isHost;
++  }
 +}
 +function mpBeginDrive() {
 +  const mine = net.players.get(net.selfId);
++  mpPrevDerby = opts.derby; opts.derby = mpAiWanted;
 +  startDriving(makeTemplate('speedway'));
 +  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
 +  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
@@ -213,23 +250,25 @@ index e9bfbeb..a5a6b6c 100644
 +  onError: (msg) => { toast(msg); showMenu(); },
 +};
 +function bindMultiplayer() {
-+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
++  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); $('mp-ai').checked = store.get('cr.mpai', true); };
 +  $('mp-back').onclick = () => showMenu();
 +  $('mp-create').onclick = async () => {
 +    const name = $('mp-name').value.trim();
 +    if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
 +    store.set('cr.mpname', name);
++    mpAiWanted = $('mp-ai').checked; store.set('cr.mpai', mpAiWanted);
 +    $('mp-create').disabled = true;
 +    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
 +    catch (e) { mpErr('mp-home-error', e.message); net = null; }
 +    $('mp-create').disabled = false;
 +  };
-+  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
++  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); $('mp-join-ai').checked = store.get('cr.mpai', true); };
 +  $('mp-join-go').onclick = async () => {
 +    const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
 +    if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
 +    if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
 +    store.set('cr.mpname', name);
++    mpAiWanted = $('mp-join-ai').checked; store.set('cr.mpai', mpAiWanted);
 +    $('mp-join-go').disabled = true;
 +    try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
 +    catch (e) { mpErr('mp-join-error', e.message); net = null; }
@@ -252,13 +291,14 @@ index e9bfbeb..a5a6b6c 100644
  loadTrack(makeTemplate('speedway'));
  renderMenu();
  setMode('menu');
-@@ -609,4 +725,8 @@ const params = new URLSearchParams(location.search);
+@@ -609,4 +752,9 @@ const params = new URLSearchParams(location.search);
  if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
    const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
    if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
 +} else if (params.get('room')) {
 +  setMode('mp'); mpShow('mp-join');
 +  $('mp-join-name').value = store.get('cr.mpname', '');
++  $('mp-join-ai').checked = store.get('cr.mpai', true);
 +  $('mp-code').value = params.get('room').toUpperCase();
  }
 diff --git a/src/multiplayer.js b/src/multiplayer.js
