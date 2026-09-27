@@ -67,7 +67,6 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 let net = null;                     // active Multiplayer session, or null in single-player
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
-let mpAiWanted = true, mpPrevDerby = null;   // this session's AI-rivals choice, and opts.derby to restore after
 let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
@@ -318,7 +317,8 @@ function propEvents() {
 
 // ------------------------------------------------------- destruction derby
 function derbyStart() {
-  derby.enabled = !!opts.derby;
+  // AI rivals run independently on each browser, so keep multiplayer human-only.
+  derby.enabled = !net && !!opts.derby;
   if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
   visual.setLook(1, 0);
@@ -640,7 +640,6 @@ function mpTeardown() {
   for (const p of remotePlayers.values()) mpReleasePlayer(p);
   remotePlayers.clear();
   if (net) { net.leave(); net = null; }
-  if (mpPrevDerby !== null) { opts.derby = mpPrevDerby; mpPrevDerby = null; }
 }
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */
 function mpSyncRemote() {
@@ -687,7 +686,6 @@ function mpRenderLobby(players, hostId) {
 }
 function mpBeginDrive() {
   const mine = net.players.get(net.selfId);
-  mpPrevDerby = opts.derby; opts.derby = mpAiWanted;
   startDriving(makeTemplate('speedway'));
   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
   mpPlaceOnGrid();
@@ -720,25 +718,23 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); $('mp-ai').checked = store.get('cr.mpai', true); };
+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
   $('mp-back').onclick = () => showMenu();
   $('mp-create').onclick = async () => {
     const name = $('mp-name').value.trim();
     if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
     store.set('cr.mpname', name);
-    mpAiWanted = $('mp-ai').checked; store.set('cr.mpai', mpAiWanted);
     $('mp-create').disabled = true;
     try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
     catch (e) { mpErr('mp-home-error', e.message); net = null; }
     $('mp-create').disabled = false;
   };
-  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); $('mp-join-ai').checked = store.get('cr.mpai', true); };
+  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
   $('mp-join-go').onclick = async () => {
     const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
     if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
     if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
     store.set('cr.mpname', name);
-    mpAiWanted = $('mp-join-ai').checked; store.set('cr.mpai', mpAiWanted);
     $('mp-join-go').disabled = true;
     try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
     catch (e) { mpErr('mp-join-error', e.message); net = null; }
@@ -770,6 +766,5 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
 } else if (params.get('room')) {
   setMode('mp'); mpShow('mp-join');
   $('mp-join-name').value = store.get('cr.mpname', '');
-  $('mp-join-ai').checked = store.get('cr.mpai', true);
   $('mp-code').value = params.get('room').toUpperCase();
 }
