@@ -7,7 +7,7 @@ import * as THREE from 'three';
 export function installProceduralGeneralLee(visual) {
   const root = new THREE.Group();
   root.name = 'procedural-general-lee';
-  root.rotation.y = Math.PI; // built nose towards -Z, like the motorhome
+  // Hood/windscreen are built at +Z, already the vehicle's forward direction.
 
   const mats = [];
   const mat = (color, roughness = 0.4, metalness = 0.25) => {

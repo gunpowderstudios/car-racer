@@ -6,9 +6,8 @@ import * as THREE from 'three';
 export function installProceduralMotorhome(visual) {
   const root = new THREE.Group();
   root.name = 'procedural-motorhome';
-
-  // The first test version appeared backwards in-game, so flip the visual.
-  root.rotation.y = Math.PI;
+  // Body was built with its cab/windscreen at +Z, which is already the
+  // vehicle's forward direction here, so no flip is needed.
 
   const mats = [];
   const mat = (color, roughness = 0.72, metalness = 0.05) => {
