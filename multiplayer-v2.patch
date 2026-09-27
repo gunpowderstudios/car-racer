@@ -12,42 +12,37 @@ index c961390..a668e66 100644
  #mp-players { list-style: none; margin: 0 0 20px; padding: 0; max-width: 320px; }
  #mp-players li { padding: 9px 0; border-bottom: 1px dashed rgba(246,217,176,.25); font-family: var(--cond); font-size: 19px; font-weight: 600; }
 diff --git a/index.html b/index.html
-index cc36ad0..22d111e 100644
+index cc36ad0..2cb5488 100644
 --- a/index.html
 +++ b/index.html
-@@ -141,6 +141,7 @@
-     <div id="mp-home">
-       <h2>Multiplayer</h2>
-       <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
-+      <label class="mp-check"><input id="mp-ai" type="checkbox"> AI rival cars</label>
-       <div class="mp-actions">
-         <button id="mp-create" class="btn" type="button">Create game</button>
-         <button id="mp-join-show" class="btn ghost" type="button">Join game</button>
-@@ -152,6 +153,7 @@
-       <h2>Join game</h2>
-       <label class="mp-field">Your name<input id="mp-join-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
-       <label class="mp-field">Room code<input id="mp-code" type="text" maxlength="8" placeholder="GUN42" autocapitalize="characters" autocomplete="off"></label>
-+      <label class="mp-check"><input id="mp-join-ai" type="checkbox"> AI rival cars</label>
-       <button id="mp-join-go" class="btn" type="button">Join</button>
-       <p id="mp-join-error" class="mp-error" role="alert" hidden></p>
-     </div>
-@@ -161,6 +163,7 @@
+@@ -160,7 +160,9 @@
+       <h2>Room <span id="mp-room-code"></span></h2>
        <button id="mp-copy" class="btn ghost" type="button">Copy invite link</button>
        <ul id="mp-players"></ul>
++      <label id="mp-ai-row" class="mp-check" hidden><input id="mp-ai" type="checkbox" checked> AI rival cars</label>
        <button id="mp-start" class="btn btn-play" type="button" hidden>Start game</button>
 +      <p id="mp-need-more" class="fine" hidden>Waiting for at least one more player to join&hellip;</p>
        <p id="mp-waiting" class="fine" hidden>Waiting for the host&hellip;</p>
        <p id="mp-lobby-error" class="mp-error" role="alert" hidden></p>
      </div>
 diff --git a/src/main.js b/src/main.js
-index ec356cf..5b4bf16 100644
+index ec356cf..005b232 100644
 --- a/src/main.js
 +++ b/src/main.js
+@@ -8,7 +8,7 @@ import { ZONE_LABEL } from './damage.js';
+ import { V3, lerp } from './math.js';
+ import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
+ import { Stage } from './stage.js';
+-import { CarVisual, ChaseCamera, RIVAL_LOOKS } from './carVisual.js';
++import { CarVisual, ChaseCamera, RIVAL_LOOKS, MODEL } from './carVisual.js';
+ import { SkidMarks, Particles, Scorch } from './effects.js';
+ import { Props } from './props.js';
+ import { PropsView } from './propsView.js';
 @@ -67,6 +67,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
  let net = null;                     // active Multiplayer session, or null in single-player
  const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
  const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
-+let mpAiWanted = true, mpPrevDerby = null;   // this session's AI-rivals choice, and opts.derby to restore after
++let mpPrevDerby = null;   // opts.derby value to restore once a multiplayer session ends
  let paused = false;
  const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
  const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
@@ -59,10 +54,11 @@ index ec356cf..5b4bf16 100644
      if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
      props.step(DT, derby.enabled ? derby.cars : car);
      syncPose(); acc -= DT; n++; simTime += DT;
-@@ -607,6 +609,22 @@ function bindMenu() {
+@@ -607,9 +609,27 @@ function bindMenu() {
  
  // -------------------------------------------------------------- multiplayer
  const mpLabelV = new THREE.Vector3();
++const HOST_LOOK = { rot: 0, sat: 1, val: 1, tint: MODEL.paint };   // the host always keeps the plain, untinted car
 +const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
 +/** Push the local car out of any remote car it's overlapping, and kill the closing speed - a soft
 + *  bump rather than real physics, computed purely from the last state we received over the network. */
@@ -80,9 +76,14 @@ index ec356cf..5b4bf16 100644
 +  }
 +}
  function mpMakeView(hue) {
++  const look = hue === -1 ? HOST_LOOK : RIVAL_LOOKS[hue];
    let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
-   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
-@@ -622,6 +640,7 @@ function mpTeardown() {
+-  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
++  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(look.tint); v.hue = hue; }
+   v.root.visible = true; v.root.scale.setScalar(1);
+   return v;
+ }
+@@ -622,6 +642,7 @@ function mpTeardown() {
    for (const p of remotePlayers.values()) mpReleasePlayer(p);
    remotePlayers.clear();
    if (net) { net.leave(); net = null; }
@@ -90,7 +91,14 @@ index ec356cf..5b4bf16 100644
  }
  /** Move each remote player's car towards its latest reported state and keep its name label placed. */
  function mpSyncRemote() {
-@@ -635,6 +654,8 @@ function mpSyncRemote() {
+@@ -629,12 +650,14 @@ function mpSyncRemote() {
+   for (const p of remotePlayers.values()) {
+     if (!p.cur) continue;
+     if (!p.view) p.view = mpMakeView(p.hue);
+-    if (!p.view.loaded && visual.loaded) p.view.adopt(visual, RIVAL_LOOKS[p.hue]);
++    if (!p.view.loaded && visual.loaded) p.view.adopt(visual, p.hue === -1 ? HOST_LOOK : RIVAL_LOOKS[p.hue]);
+     const t = Math.min(1.4, (now - p.recvAt) / 50), c = p.cur, pr = p.prev || c;
+     p.view.root.position.set(lerp(pr.x, c.x, t), lerp(pr.y, c.y, t), lerp(pr.z, c.z, t));
      qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
      p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
      p.view.setLook(c.alive === false ? 0.15 : 1, 0);
@@ -99,7 +107,7 @@ index ec356cf..5b4bf16 100644
      if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
      mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
      const dist = camera.position.distanceTo(p.view.root.position);
-@@ -657,14 +678,35 @@ function mpRenderLobby(players, hostId) {
+@@ -657,17 +680,39 @@ function mpRenderLobby(players, hostId) {
      if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
      ul.appendChild(li);
    }
@@ -108,14 +116,17 @@ index ec356cf..5b4bf16 100644
 +    $('mp-start').hidden = !net.isHost;
 +    $('mp-start').disabled = players.length < 2;
 +    $('mp-need-more').hidden = !net.isHost || players.length >= 2;
++    $('mp-ai-row').hidden = !net.isHost;
 +    $('mp-waiting').hidden = net.isHost;
 +  }
  }
- function mpBeginDrive() {
+-function mpBeginDrive() {
++function mpBeginDrive(ai) {
    const mine = net.players.get(net.selfId);
-+  mpPrevDerby = opts.derby; opts.derby = mpAiWanted;
++  mpPrevDerby = opts.derby; opts.derby = ai;
    startDriving(makeTemplate('speedway'));
-   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
+-  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
++  if (mine && mine.hue !== -1) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
 +  mpPlaceOnGrid();
    hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
  }
@@ -135,44 +146,39 @@ index ec356cf..5b4bf16 100644
 +}
  const mpHandlers = {
    onLobby: (players, hostId) => mpRenderLobby(players, hostId),
-   onStart: () => mpBeginDrive(),
-@@ -678,23 +720,25 @@ const mpHandlers = {
-   onError: (msg) => { toast(msg); showMenu(); },
- };
- function bindMultiplayer() {
--  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
-+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); $('mp-ai').checked = store.get('cr.mpai', true); };
-   $('mp-back').onclick = () => showMenu();
-   $('mp-create').onclick = async () => {
-     const name = $('mp-name').value.trim();
+-  onStart: () => mpBeginDrive(),
++  onStart: (ai) => mpBeginDrive(ai),
+   onState: (id, s) => {
+     if (id === net.selfId) return;
+     let p = remotePlayers.get(id);
+@@ -685,7 +730,11 @@ function bindMultiplayer() {
      if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
      store.set('cr.mpname', name);
-+    mpAiWanted = $('mp-ai').checked; store.set('cr.mpai', mpAiWanted);
      $('mp-create').disabled = true;
-     try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
+-    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
++    try {
++      net = new Multiplayer(mpHandlers); const code = await net.createRoom(name);
++      mpShow('mp-lobby'); $('mp-room-code').textContent = code; $('mp-ai').checked = store.get('cr.mpai', true);
++      mpRenderLobby([...net.players.values()], net.selfId);
++    }
      catch (e) { mpErr('mp-home-error', e.message); net = null; }
      $('mp-create').disabled = false;
    };
--  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
-+  $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); $('mp-join-ai').checked = store.get('cr.mpai', true); };
-   $('mp-join-go').onclick = async () => {
-     const name = $('mp-join-name').value.trim(), code = $('mp-code').value.trim();
-     if (!name) { mpErr('mp-join-error', 'Enter your name first.'); return; }
-     if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
-     store.set('cr.mpname', name);
-+    mpAiWanted = $('mp-join-ai').checked; store.set('cr.mpai', mpAiWanted);
-     $('mp-join-go').disabled = true;
-     try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
+@@ -700,7 +749,11 @@ function bindMultiplayer() {
      catch (e) { mpErr('mp-join-error', e.message); net = null; }
-@@ -726,5 +770,6 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
- } else if (params.get('room')) {
-   setMode('mp'); mpShow('mp-join');
-   $('mp-join-name').value = store.get('cr.mpname', '');
-+  $('mp-join-ai').checked = store.get('cr.mpai', true);
-   $('mp-code').value = params.get('room').toUpperCase();
- }
+     $('mp-join-go').disabled = false;
+   };
+-  $('mp-start').onclick = () => net && net.startGame();
++  $('mp-start').onclick = () => {
++    if (!net) return;
++    const ai = $('mp-ai').checked; store.set('cr.mpai', ai);
++    net.startGame(ai);
++  };
+   $('mp-copy').onclick = async () => {
+     const url = `${location.origin}${location.pathname}?room=${net.roomCode}`;
+     try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); }
 diff --git a/src/multiplayer.js b/src/multiplayer.js
-index 6a5de48..57f2e02 100644
+index 6a5de48..60e37e9 100644
 --- a/src/multiplayer.js
 +++ b/src/multiplayer.js
 @@ -59,6 +59,7 @@ export class Multiplayer {
@@ -183,7 +189,17 @@ index 6a5de48..57f2e02 100644
    }
  
    get selfName() { return this.players.get(this.selfId)?.name; }
-@@ -100,6 +101,7 @@ export class Multiplayer {
+@@ -87,8 +88,7 @@ export class Multiplayer {
+       const peer = new window.Peer(PEER_PREFIX + code);
+       peer.on('open', (id) => {
+         this.peer = peer; this.isHost = true; this.selfId = id; this.roomCode = code;
+-        const hue = this._assignHue();
+-        this.players.set(id, { id, name: myName, hue });
++        this.players.set(id, { id, name: myName, hue: -1 });   // -1: the host always keeps the plain orange car
+         peer.on('connection', (conn) => this._hostAcceptsGuest(conn));
+         peer.on('error', (e) => this._peerError(e));
+         this._broadcastLobby();
+@@ -100,6 +100,7 @@ export class Multiplayer {
  
    _hostAcceptsGuest(conn) {
      conn.on('open', () => {
@@ -191,7 +207,16 @@ index 6a5de48..57f2e02 100644
        if (this.players.size >= 8) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 200); return; }
        this.conns.set(conn.peer, conn);
        conn.on('data', (msg) => this._onHostMessage(conn.peer, msg));
-@@ -142,6 +144,7 @@ export class Multiplayer {
+@@ -120,7 +121,7 @@ export class Multiplayer {
+ 
+   _playerLeft(id) {
+     const p = this.players.get(id);
+-    if (p) this.usedHues.delete(p.hue);
++    if (p && p.hue >= 0) this.usedHues.delete(p.hue);
+     this.players.delete(id); this.conns.delete(id);
+     this.h.onPlayerLeft(id);
+     this._broadcastLobby();
+@@ -142,13 +143,14 @@ export class Multiplayer {
          });
          conn.on('data', (msg) => {
            if (msg.t === 'full') { fail('That room is full.'); return; }
@@ -199,11 +224,29 @@ index 6a5de48..57f2e02 100644
            if (msg.t === 'lobby') {
              for (const p of msg.players) this.players.set(p.id, p);
              for (const id of [...this.players.keys()]) if (!msg.players.some((p) => p.id === id)) this.players.delete(id);
-@@ -176,6 +179,7 @@ export class Multiplayer {
-   /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
-   startGame() {
+             this.h.onLobby(msg.players, msg.players[0]?.id, this.selfId);
+             if (!settled) { settled = true; resolve(roomCode); }
+           } else if (msg.t === 'start') {
+-            this.h.onStart();
++            this.h.onStart(msg.ai);
+           } else if (msg.t === 'state') {
+             this.h.onState(msg.id, msg.s);
+           } else if (msg.t === 'left') {
+@@ -173,11 +175,13 @@ export class Multiplayer {
+ 
+   _peerError(e) { this.h.onError(this._friendlyPeerError(e).message); }
+ 
+-  /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
+-  startGame() {
++  /** Host only: tell every guest (and the caller) to leave the lobby and start driving.
++   *  `ai` (AI rival cars on/off) is the host's call - guests don't get their own say. */
++  startGame(ai) {
      if (!this.isHost) return;
+-    this._sendAll({ t: 'start' });
+-    this.h.onStart();
 +    this.started = true;
-     this._sendAll({ t: 'start' });
-     this.h.onStart();
++    this._sendAll({ t: 'start', ai });
++    this.h.onStart(ai);
    }
+ 
+   /** Call every frame while driving; internally throttled to STATE_HZ. */
