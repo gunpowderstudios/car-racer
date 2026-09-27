@@ -199,7 +199,7 @@ index 759da9d..55956b6 100644
     * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
     * and give it a paint job from RIVAL_LOOKS. Returns false if `src` hasn't finished loading yet.
 diff --git a/src/main.js b/src/main.js
-index ec356cf..d560cf3 100644
+index ec356cf..a5b5a76 100644
 --- a/src/main.js
 +++ b/src/main.js
 @@ -8,7 +8,7 @@ import { ZONE_LABEL } from './damage.js';
@@ -236,7 +236,7 @@ index ec356cf..d560cf3 100644
        mpSyncRemote();
      }
    } else {
-@@ -607,9 +611,51 @@ function bindMenu() {
+@@ -607,9 +611,52 @@ function bindMenu() {
  
  // -------------------------------------------------------------- multiplayer
  const mpLabelV = new THREE.Vector3();
@@ -271,7 +271,8 @@ index ec356cf..d560cf3 100644
 +    }
 +    if (separated) continue;
 +    car.pos.x += mnx * minOverlap * 0.6; car.pos.z += mnz * minOverlap * 0.6;   // resolve mostly at once, not fully - avoids a jolt
-+    const vn = car.vel.x * mnx + car.vel.z * mnz, closing = Math.max(0, -vn);
++    const rvx = car.vel.x - p.cur.vx, rvz = car.vel.z - p.cur.vz;               // relative velocity, not just this car's own -
++    const vn = rvx * mnx + rvz * mnz, closing = Math.max(0, -vn);               // otherwise a stationary car being hit gets almost no kick
 +    car.vel.x += mnx * closing * 1.5; car.vel.z += mnz * closing * 1.5;        // cancel the closing speed, then a shove outward
 +  }
 +}
@@ -289,7 +290,7 @@ index ec356cf..d560cf3 100644
    v.root.visible = true; v.root.scale.setScalar(1);
    return v;
  }
-@@ -622,6 +668,8 @@ function mpTeardown() {
+@@ -622,6 +669,8 @@ function mpTeardown() {
    for (const p of remotePlayers.values()) mpReleasePlayer(p);
    remotePlayers.clear();
    if (net) { net.leave(); net = null; }
@@ -298,7 +299,7 @@ index ec356cf..d560cf3 100644
  }
  /** Move each remote player's car towards its latest reported state and keep its name label placed. */
  function mpSyncRemote() {
-@@ -629,12 +677,14 @@ function mpSyncRemote() {
+@@ -629,12 +678,14 @@ function mpSyncRemote() {
    for (const p of remotePlayers.values()) {
      if (!p.cur) continue;
      if (!p.view) p.view = mpMakeView(p.hue);
@@ -314,7 +315,7 @@ index ec356cf..d560cf3 100644
      if (!p.label) { p.label = document.createElement('div'); p.label.className = 'mp-label'; p.label.textContent = p.name; $('mp-labels').appendChild(p.label); }
      mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
      const dist = camera.position.distanceTo(p.view.root.position);
-@@ -657,17 +707,40 @@ function mpRenderLobby(players, hostId) {
+@@ -657,17 +708,40 @@ function mpRenderLobby(players, hostId) {
      if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
      ul.appendChild(li);
    }
@@ -359,7 +360,7 @@ index ec356cf..d560cf3 100644
    onState: (id, s) => {
      if (id === net.selfId) return;
      let p = remotePlayers.get(id);
-@@ -685,7 +758,11 @@ function bindMultiplayer() {
+@@ -685,7 +759,11 @@ function bindMultiplayer() {
      if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
      store.set('cr.mpname', name);
      $('mp-create').disabled = true;
@@ -372,7 +373,7 @@ index ec356cf..d560cf3 100644
      catch (e) { mpErr('mp-home-error', e.message); net = null; }
      $('mp-create').disabled = false;
    };
-@@ -700,7 +777,11 @@ function bindMultiplayer() {
+@@ -700,7 +778,11 @@ function bindMultiplayer() {
      catch (e) { mpErr('mp-join-error', e.message); net = null; }
      $('mp-join-go').disabled = false;
    };
