@@ -57,11 +57,18 @@ export function installProceduralMotorhome(visual) {
 
   // Front grille, lamps and chunky old-school bumper.
   addBox('grille', 1.10, 0.27, 0.060, 0, 0.02, 2.57, dark);
+  for (const gy of [-0.06, 0.05, 0.16]) addBox('grille-slat', 1.00, 0.02, 0.062, 0, gy, 2.575, steel);
+  const lampGeo = new THREE.CylinderGeometry(0.155, 0.155, 0.07, 14);
+  lampGeo.rotateX(Math.PI / 2);
   for (const side of [-1, 1]) {
-    addBox('headlight', 0.34, 0.23, 0.065, side * 0.68, 0.05, 2.59, steel);
+    const lamp = new THREE.Mesh(lampGeo, steel);
+    lamp.position.set(side * 0.68, 0.05, 2.60); lamp.name = 'headlight'; root.add(lamp);
     addBox('indicator', 0.24, 0.11, 0.070, side * 0.68, 0.27, 2.59, amber);
   }
   addBox('front-bumper', 2.18, 0.20, 0.22, 0, -0.31, 2.57, steel);
+  addBox('sun-visor', 2.06, 0.06, 0.30, 0, 1.30, 2.30, cream2, -0.15);
+  addBox('roof-vent', 0.42, 0.09, 0.42, 0.35, 1.72, 0.55, cream2);
+  addBox('roof-vent-lid', 0.30, 0.03, 0.30, 0.35, 1.775, 0.55, dark);
 
   // Three large side windows make the silhouette read as a motorhome at a glance.
   for (const side of [-1, 1]) {
@@ -81,6 +88,8 @@ export function installProceduralMotorhome(visual) {
   addBox('door-handle', 0.075, 0.08, 0.10, -1.10, 0.54, -0.02, dark);
   addBox('side-vent', 0.055, 0.25, 0.42, -1.08, -0.02, -1.03, dark);
   addBox('locker', 0.055, 0.34, 0.58, 1.08, -0.03, -1.25, cream2);
+  addBox('entry-step', 0.40, 0.05, 0.34, -1.05, -0.42, -0.36, steel);
+  addBox('fuel-cap', 0.03, 0.14, 0.14, 1.085, 0.10, 1.05, steel);
 
   // Rear face and ladder.
   addBox('rear-panel', 2.05, 1.70, 0.12, 0, 0.62, -2.48, cream);
@@ -96,16 +105,23 @@ export function installProceduralMotorhome(visual) {
   addBox('roof-board-a', 0.22, 0.07, 2.35, -0.28, 1.91, -0.22, cream2);
   addBox('roof-board-b', 0.22, 0.07, 2.35, 0.28, 1.91, -0.22, cream2);
 
-  // Low-segment wheels: enough detail at driving distance, very cheap to draw.
-  const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.23, 12);
+  // Wheel arch trim, one per wheel, then the wheels themselves.
+  for (const x of [-0.94, 0.94]) for (const z of [1.28, -1.43]) {
+    addBox('arch-trim', 0.06, 0.10, 0.72, x > 0 ? x - 0.05 : x + 0.05, -0.05, z, dark);
+  }
+  const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.23, 18);
   wheelGeo.rotateZ(Math.PI / 2);
-  const hubGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.245, 10);
+  const hubGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.245, 14);
   hubGeo.rotateZ(Math.PI / 2);
+  const capGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.26, 8);
+  capGeo.rotateZ(Math.PI / 2);
   for (const x of [-0.94, 0.94]) for (const z of [1.28, -1.43]) {
     const tyre = new THREE.Mesh(wheelGeo, rubber);
     tyre.position.set(x, -0.27, z); tyre.name = 'wheel'; root.add(tyre);
     const hub = new THREE.Mesh(hubGeo, steel);
     hub.position.set(x, -0.27, z); hub.name = 'hub'; root.add(hub);
+    const cap = new THREE.Mesh(capGeo, dark);
+    cap.position.set(x, -0.27, z); cap.name = 'hub-cap'; root.add(cap);
   }
 
   // Let this tiny model cast its own shadow rather than the old car-shaped proxy.
