@@ -263,10 +263,10 @@ index e9bfbeb..a5a6b6c 100644
  }
 diff --git a/src/multiplayer.js b/src/multiplayer.js
 new file mode 100644
-index 0000000..6a5de48
+index 0000000..57f2e02
 --- /dev/null
 +++ b/src/multiplayer.js
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,203 @@
 +// Car Racer - online multiplayer (v1: simple P2P via PeerJS, host relays state).
 +//
 +// Architecture: the host's browser tab acts as the "server" - every guest opens a
@@ -328,6 +328,7 @@ index 0000000..6a5de48
 +    this.players = new Map();     // id -> {id,name,hue}  (kept on both host and guests)
 +    this.usedHues = new Set();
 +    this._sendTimer = null;
++    this.started = false;      // host only: once true, the game is underway and new joins are turned away
 +  }
 +
 +  get selfName() { return this.players.get(this.selfId)?.name; }
@@ -369,6 +370,7 @@ index 0000000..6a5de48
 +
 +  _hostAcceptsGuest(conn) {
 +    conn.on('open', () => {
++      if (this.started) { conn.send({ t: 'started' }); setTimeout(() => conn.close(), 200); return; }
 +      if (this.players.size >= 8) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 200); return; }
 +      this.conns.set(conn.peer, conn);
 +      conn.on('data', (msg) => this._onHostMessage(conn.peer, msg));
@@ -411,6 +413,7 @@ index 0000000..6a5de48
 +        });
 +        conn.on('data', (msg) => {
 +          if (msg.t === 'full') { fail('That room is full.'); return; }
++          if (msg.t === 'started') { fail('That game has already started. Ask your friend to create a new room.'); return; }
 +          if (msg.t === 'lobby') {
 +            for (const p of msg.players) this.players.set(p.id, p);
 +            for (const id of [...this.players.keys()]) if (!msg.players.some((p) => p.id === id)) this.players.delete(id);
@@ -445,6 +448,7 @@ index 0000000..6a5de48
 +  /** Host only: tell every guest (and the caller) to leave the lobby and start driving. */
 +  startGame() {
 +    if (!this.isHost) return;
++    this.started = true;
 +    this._sendAll({ t: 'start' });
 +    this.h.onStart();
 +  }
