@@ -3,12 +3,11 @@ import * as THREE from 'three';
 import { BARREL, CHICKEN, barrelNeedsDraw } from './props.js';
 import './chickenBehavior.js';
 
-const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
-const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
-const POP_V0 = 5.5, POP_G = 24, POP_DURATION = 0.22;                    // short knocked-up tumble, not a cartoon rocket
-const MAX_SMEARS = 2048;                                                // safety cap: far beyond a normal race
+const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];
+const HOT = new THREE.Color(3, 2.1, 1.4);
+const POP_V0 = 5.5, POP_G = 24, POP_DURATION = 0.22;
+const MAX_SMEARS = 2048;
 
-/** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
 function drumGeometry() {
   const r = BARREL.radius, h = BARREL.height / 2, k = BARREL.height / 0.9;
   const prof = [[0, -h], [r * 0.9, -h], [r, -h + 0.03 * k], [r, -0.17 * k], [r * 0.95, -0.15 * k], [r, -0.13 * k], [r, 0.13 * k], [r * 0.95, 0.15 * k], [r, 0.17 * k], [r, h - 0.03 * k], [r * 0.9, h], [0, h]];
@@ -22,7 +21,6 @@ function drumGeometry() {
   return g;
 }
 
-/** Concatenate a few small geometries (each tinted a solid colour) into one vertex-coloured mesh. No addons needed. */
 function mergeParts(parts) {
   let vN = 0, iN = 0;
   for (const { geo } of parts) { vN += geo.attributes.position.count; iN += geo.index ? geo.index.count : geo.attributes.position.count; }
@@ -44,12 +42,10 @@ function mergeParts(parts) {
   return g;
 }
 
-/** A proper cartoon chicken: plump body, fanned tail, head with eyes/beak/comb/wattle, and legs. Purely cosmetic. */
 function chickenGeometry() {
   const r = CHICKEN.radius;
   const white = new THREE.Color(0xf7f1e6), orange = new THREE.Color(0xe8912e), red = new THREE.Color(0xc23524), dark = new THREE.Color(0x241f1c);
   const parts = [];
-
   const egg = (x, y, z, sx, sy, sz, color = white, tilt = 0) => {
     const geo = new THREE.SphereGeometry(r, 12, 8);
     geo.scale(sx, sy, sz); geo.rotateX(tilt); geo.translate(x*r, y*r, z*r);
@@ -75,7 +71,6 @@ function chickenGeometry() {
     egg(side*0.43,0.1,0.15,0.21,0.11,0.32,orange);
     for (const toe of [-1,0,1]) egg(side*0.43+toe*0.14,0.075,0.38-Math.abs(toe)*0.05,0.085,0.075,0.26,orange);
   }
-
   return mergeParts(parts);
 }
 
@@ -92,7 +87,6 @@ function smearGeometry() {
     if (i === 0) pool.moveTo(x, y); else pool.lineTo(x, y);
   }
   pool.closePath(); shapes.push(pool);
-
   const drop = (cx, cy, rx, ry, points = 8) => {
     const s = new THREE.Shape();
     for (let i = 0; i < points; i++) {
@@ -104,14 +98,12 @@ function smearGeometry() {
     }
     s.closePath(); shapes.push(s);
   };
-
   drop( 1.38,  0.28, 0.20, 0.13, 7);
   drop(-1.22, -0.38, 0.16, 0.11, 7);
   drop( 0.72, -0.94, 0.12, 0.085, 7);
   drop(-0.45,  1.05, 0.10, 0.07, 7);
   drop( 1.62, -0.55, 0.075, 0.055, 6);
   drop(-1.48,  0.57, 0.065, 0.05, 6);
-
   return new THREE.ShapeGeometry(shapes);
 }
 
@@ -136,14 +128,23 @@ export class PropsView {
     this.smears = []; this._smearsDirty = false; this._lastPropsTime = 0;
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._q2 = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
     this._normal = new THREE.Vector3(); this._upZ = new THREE.Vector3(0, 0, 1);
+    this._upY = new THREE.Vector3(0, 1, 0); this._dir = new THREE.Vector3();
 
-    // Feathers only. Blood is now entirely the flat BOD3D-style road splat below.
     this.featherBurst = new THREE.InstancedMesh(
       new THREE.SphereGeometry(1, 5, 3),
       new THREE.MeshStandardMaterial({color:0xfff2d8, flatShading:true}),
       1536
     );
     this.featherBurst.count = 0; this.featherBurst.frustumCulled = false; this.scene.add(this.featherBurst);
+
+    // Tapered blood streaks rather than red balls: very short-lived, fast fan-shaped spray.
+    this.bloodSpurt = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(0.12, 1, 4),
+      new THREE.MeshStandardMaterial({color:0x8c1613, roughness:0.75, flatShading:true}),
+      768
+    );
+    this.bloodSpurt.count = 0; this.bloodSpurt.frustumCulled = false; this.scene.add(this.bloodSpurt);
+
     this._e = new THREE.Euler();
     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
   }
@@ -153,14 +154,12 @@ export class PropsView {
     if (props) for (const c of props.chickens) c._smearRecordedView = false;
   }
 
-  /** Capture each impact once. Marks persist until the race/track resets, independently of chicken respawns. */
   recordChickenSmears(props) {
     for (let i = 0; i < props.chickens.length; i++) {
       const c = props.chickens[i];
       if (c.deadT < 0) { c._smearRecordedView = false; continue; }
       if (c._smearRecordedView) continue;
       c._smearRecordedView = true;
-
       const seed = (i + 1) * 91.73 + this.smears.length * 37.19 + props.time * 11.7;
       const rand = n => { const v = Math.sin(seed + n * 29.13) * 43758.5453; return v - Math.floor(v); };
       const ny = Number.isFinite(c.ny) ? c.ny : 1;
@@ -196,7 +195,6 @@ export class PropsView {
     this._smearsDirty = false;
   }
 
-  /** (Re)build the instanced meshes for the barrels and chickens a Props currently holds. */
   build(props) {
     if (this.drums) { this.scene.remove(this.drums); this.drums.dispose(); this.drums = null; }
     if (this.chickens) { this.scene.remove(this.chickens); this.chickens.dispose(); this.chickens = null; }
@@ -223,12 +221,15 @@ export class PropsView {
   }
 
   updateChickenBursts(props) {
-    let count = 0;
-    const mesh = this.featherBurst;
+    let featherCount = 0, bloodCount = 0;
+    const feathers = this.featherBurst, blood = this.bloodSpurt;
+
     for (let i = 0; i < props.chickens.length; i++) {
       const c = props.chickens[i], t = c.deadT;
       if (t < 0 || t > 3.2) continue;
-      for (let j = 0; j < 40 && count < mesh.instanceMatrix.count; j++) {
+
+      // Feathers: keep Claude's broad, readable burst.
+      for (let j = 0; j < 40 && featherCount < feathers.instanceMatrix.count; j++) {
         const seed = (i+1)*73.17 + j*19.31;
         const rand = n => { const v = Math.sin(seed+n*31.7)*43758.5453; return v-Math.floor(v); };
         const angle = rand(1)*Math.PI*2, speed = 1.5+rand(2)*4;
@@ -243,15 +244,47 @@ export class PropsView {
         this._e.set(seed+t*7,seed+t*3,Math.sin(t*10+seed));
         this._s.set(0.055*fade, (0.16+rand(4)*0.14)*fade,0.018*fade);
         this._q.setFromEuler(this._e); this._m.compose(this._p,this._q,this._s);
-        mesh.setMatrixAt(count++,this._m);
+        feathers.setMatrixAt(featherCount++,this._m);
+      }
+
+      // Blood spray: a fast tapered fan for the first fraction of a second, never spherical.
+      if (t <= 0.75) {
+        const baseSeed = (i+1)*117.31;
+        const baseRand = n => { const v = Math.sin(baseSeed+n*41.9)*43758.5453; return v-Math.floor(v); };
+        const baseAngle = baseRand(1) * Math.PI * 2;
+        for (let j = 0; j < 20 && bloodCount < blood.instanceMatrix.count; j++) {
+          const seed = baseSeed + j*23.71;
+          const rand = n => { const v = Math.sin(seed+n*17.3)*43758.5453; return v-Math.floor(v); };
+          const angle = baseAngle + (rand(1)-0.5)*2.15;
+          const speed = 4.5 + rand(2)*6.5;
+          const up0 = 2.2 + rand(3)*4.4;
+          const vx = Math.cos(angle)*speed;
+          const vz = Math.sin(angle)*speed;
+          const vy = up0 - 16*t;
+          const x = c.pos.x + vx*t;
+          const y = c.pos.y + 0.52 + up0*t - 0.5*16*t*t;
+          const z = c.pos.z + vz*t;
+          if (y < c.pos.y + 0.025) continue;
+
+          this._p.set(x,y,z);
+          this._dir.set(vx,vy,vz).normalize();
+          this._q.setFromUnitVectors(this._upY,this._dir);
+          const fade = Math.max(0,1-t/0.75);
+          const length = (0.26 + rand(4)*0.42) * (0.55 + fade*0.65);
+          const width = (0.035 + rand(5)*0.028) * Math.max(0.35,fade);
+          this._s.set(width,length,width);
+          this._m.compose(this._p,this._q,this._s);
+          blood.setMatrixAt(bloodCount++,this._m);
+        }
       }
     }
-    mesh.count=count; mesh.instanceMatrix.needsUpdate=true;
+
+    feathers.count=featherCount; feathers.instanceMatrix.needsUpdate=true;
+    blood.count=bloodCount; blood.instanceMatrix.needsUpdate=true;
     this._s.set(1,1,1);
   }
 
   update(props, force = false) {
-    // Props.time restarts from zero with a race reset. Clear old road marks only then, never on chicken respawn.
     if (props.time + 0.001 < this._lastPropsTime) this.clearSmears(props);
     this._lastPropsTime = props.time;
     this.recordChickenSmears(props);
@@ -294,15 +327,12 @@ export class PropsView {
         const bob = moving ? Math.abs(Math.sin(phase)) * (c.state === 'flee' ? 0.045 : 0.025) : 0;
         const roll = moving ? Math.sin(phase) * (c.state === 'flee' ? 0.18 : 0.11) : 0;
         let pitch = 0, yaw = c.heading || 0;
-
         if (c.state === 'peck') {
           const peck = 0.5 + 0.5 * Math.sin(props.time * 12 + c.bob);
           pitch = 0.2 + peck * 0.5;
         } else if (c.state === 'look') {
           yaw += Math.sin(props.time * 4.5 + c.bob) * 0.42;
-        } else if (c.state === 'freeze') {
-          pitch = -0.06;
-        }
+        } else if (c.state === 'freeze') pitch = -0.06;
 
         this._p.set(c.pos.x, c.pos.y + bob, c.pos.z);
         this._e.set(pitch, yaw, roll, 'XYZ');
