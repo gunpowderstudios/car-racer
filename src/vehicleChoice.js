@@ -176,9 +176,13 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url) {
   model.position.x -= center.x;
   model.position.z -= center.z;
 
+  // Align the visible model to the SAME centre-of-mass frame as the physics hull.
+  // Upright, its lowest point sits at body.bottom relative to the vehicle origin. When the
+  // vehicle rolls, both the GLB and the collision hull therefore rotate around the same point.
   model.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(model);
-  model.position.y += -this.restHeight - box.min.y;
+  const bodyBottom = config.physics?.body?.bottom;
+  model.position.y += (Number.isFinite(bodyBottom) ? bodyBottom : -this.restHeight) - box.min.y;
 
   holder.rotation.y = config.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(model);
