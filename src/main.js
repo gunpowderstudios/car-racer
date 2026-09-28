@@ -5,6 +5,7 @@ import { Vehicle } from './vehicle.js';
 import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
 import { ZONE_LABEL, DAMAGE, blastFraction } from './damage.js';
+import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
@@ -65,8 +66,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 
 // ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
 let net = null;                     // active Multiplayer session, or null in single-player
-let mpHealth = 1;                   // 0..1: this player's own health from being rammed by others online
-let mpExploded = false;             // has the local player's health already hit zero this race
+const life = new Life();            // this player's health, being wrecked and respawning in multiplayer (see mplife.js)
 const mpBoomSeen = new Set();       // barrels (by prop index) already announced or heard about, so nothing echoes
 let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps
 let mpRaceStart = null;             // sim time the current multiplayer race began (lap 1 crossing)
@@ -278,7 +278,7 @@ function updateRace(dt) {
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
   const raw = input.read();
-  const inp = derby.over ? IDLE : raw;          // once you are wrecked, nobody is driving
+  const inp = derby.over ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   acc += dt; let n = 0;
   while (acc >= DT && n < 6) {
@@ -489,9 +489,11 @@ function frame(now) {
     sound.update(car, throttleNow, !derby.over);
     if (!$('debug').hidden) debugText();
     if (net) {
+      if (life.respawnDue(simTime)) { respawn(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
+      visual.setLook(life.dead ? 0.15 : 1, 0);                                                       // your own wreck goes dark, as it does on everyone else's screen
       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
-        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: mpHealth,
-        alive: !(derby.enabled && derby.player && derby.player.wrecked) && mpHealth > 0 });
+        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health,
+        alive: !(derby.enabled && derby.player && derby.player.wrecked) && !life.dead });
       mpSyncRemote();
     }
   } else {
@@ -625,6 +627,7 @@ const mpLabelV = new THREE.Vector3();
 const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
 const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps
 const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
+const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
 const MP_BARREL_DAMAGE = 0.35;        // health a barrel takes off at point blank (inside 2 m), falling to nothing at 10 m
 /** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
@@ -637,10 +640,9 @@ function mpImpactFx(x, y, z, speed) {
 }
 /** Take health off the local player. Returns true if this was the blow that finished them (they explode). */
 function mpTakeDamage(amount) {
-  if (mpHealth <= 0) return false;
-  mpHealth = Math.max(0, mpHealth - amount);
-  if (mpHealth > 0 || mpExploded) return false;
-  mpExploded = true; mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
+  if (life.damage(amount, simTime) !== 'died') return false;
+  mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
+  hud.banner('Wrecked! Back in a moment...', LIFE.respawnDelay * 1000);
   return true;
 }
 /** A barrel has gone off on our copy of the track: tell everyone else (unless we only set it off because
@@ -754,7 +756,7 @@ function mpRenderLobby(players, hostId) {
   }
 }
 function mpBeginDrive(trackDef) {
-  mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false; mpBoomSeen.clear();
+  life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
   startDriving(trackDef || makeTemplate('speedway'));
   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
@@ -782,7 +784,9 @@ const mpHandlers = {
     if (id === net.selfId) return;
     let p = remotePlayers.get(id);
     if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
-    p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
+    p.prev = p.cur || s;
+    if (p.cur && Math.hypot(s.x - p.cur.x, s.z - p.cur.z) > 15) p.prev = s;   // a respawn (or back-on-road), not driving: snap, don't slide
+    p.cur = s; p.recvAt = performance.now();
   },
   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },

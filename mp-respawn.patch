@@ -1,0 +1,231 @@
+diff --git a/src/main.js b/src/main.js
+index 77f00ce..6e98284 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -5,6 +5,7 @@ import { Vehicle } from './vehicle.js';
+ import { Derby, DERBY } from './derby.js';
+ import { IDLE } from './ai.js';
+ import { ZONE_LABEL, DAMAGE, blastFraction } from './damage.js';
++import { Life, LIFE } from './mplife.js';
+ import { V3, lerp } from './math.js';
+ import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
+ import { Stage } from './stage.js';
+@@ -65,8 +66,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
+ 
+ // ------------------------------------------------------------------ multiplayer (see src/multiplayer.js)
+ let net = null;                     // active Multiplayer session, or null in single-player
+-let mpHealth = 1;                   // 0..1: this player's own health from being rammed by others online
+-let mpExploded = false;             // has the local player's health already hit zero this race
++const life = new Life();            // this player's health, being wrecked and respawning in multiplayer (see mplife.js)
+ const mpBoomSeen = new Set();       // barrels (by prop index) already announced or heard about, so nothing echoes
+ let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps
+ let mpRaceStart = null;             // sim time the current multiplayer race began (lap 1 crossing)
+@@ -278,7 +278,7 @@ function updateRace(dt) {
+ // ------------------------------------------------------------------ physics
+ function stepPhysics(dt) {
+   const raw = input.read();
+-  const inp = derby.over ? IDLE : raw;          // once you are wrecked, nobody is driving
++  const inp = derby.over ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
+   throttleNow = inp.throttle;
+   acc += dt; let n = 0;
+   while (acc >= DT && n < 6) {
+@@ -489,9 +489,11 @@ function frame(now) {
+     sound.update(car, throttleNow, !derby.over);
+     if (!$('debug').hidden) debugText();
+     if (net) {
++      if (life.respawnDue(simTime)) { respawn(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
++      visual.setLook(life.dead ? 0.15 : 1, 0);                                                       // your own wreck goes dark, as it does on everyone else's screen
+       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
+-        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: mpHealth,
+-        alive: !(derby.enabled && derby.player && derby.player.wrecked) && mpHealth > 0 });
++        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health,
++        alive: !(derby.enabled && derby.player && derby.player.wrecked) && !life.dead });
+       mpSyncRemote();
+     }
+   } else {
+@@ -625,6 +627,7 @@ const mpLabelV = new THREE.Vector3();
+ const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+ const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps
+ const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
++const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
+ const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
+ const MP_BARREL_DAMAGE = 0.35;        // health a barrel takes off at point blank (inside 2 m), falling to nothing at 10 m
+ /** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
+@@ -637,10 +640,9 @@ function mpImpactFx(x, y, z, speed) {
+ }
+ /** Take health off the local player. Returns true if this was the blow that finished them (they explode). */
+ function mpTakeDamage(amount) {
+-  if (mpHealth <= 0) return false;
+-  mpHealth = Math.max(0, mpHealth - amount);
+-  if (mpHealth > 0 || mpExploded) return false;
+-  mpExploded = true; mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
++  if (life.damage(amount, simTime) !== 'died') return false;
++  mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
++  hud.banner('Wrecked! Back in a moment...', LIFE.respawnDelay * 1000);
+   return true;
+ }
+ /** A barrel has gone off on our copy of the track: tell everyone else (unless we only set it off because
+@@ -754,7 +756,7 @@ function mpRenderLobby(players, hostId) {
+   }
+ }
+ function mpBeginDrive(trackDef) {
+-  mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false; mpBoomSeen.clear();
++  life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
+   const mine = net.players.get(net.selfId);
+   startDriving(trackDef || makeTemplate('speedway'));
+   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
+@@ -782,7 +784,9 @@ const mpHandlers = {
+     if (id === net.selfId) return;
+     let p = remotePlayers.get(id);
+     if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
+-    p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
++    p.prev = p.cur || s;
++    if (p.cur && Math.hypot(s.x - p.cur.x, s.z - p.cur.z) > 15) p.prev = s;   // a respawn (or back-on-road), not driving: snap, don't slide
++    p.cur = s; p.recvAt = performance.now();
+   },
+   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
+   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
+diff --git a/src/mplife.js b/src/mplife.js
+new file mode 100644
+index 0000000..dffa8b4
+--- /dev/null
++++ b/src/mplife.js
+@@ -0,0 +1,40 @@
++// A multiplayer driver's life: health, being wrecked, and coming back. Pure logic - no rendering, no network -
++// so the rules can be tested. main.js owns what it looks and sounds like (the explosion, the banner, the repositioning).
++
++export const LIFE = {
++  respawnDelay: 3,   // seconds a wrecked car sits there smoking before it is put back on the road
++  grace: 3,          // seconds of protection after coming back, so you can't be killed again on the spot
++};
++
++export class Life {
++  constructor() { this.reset(); }
++
++  /** Full health, not wrecked, no timers running. */
++  reset() { this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = 0; }
++
++  get dead() { return this.health <= 0; }
++
++  /** Still in the moment of protection after a respawn (`t` is game time in seconds). */
++  invulnerable(t) { return t < this.graceUntil; }
++
++  /**
++   * Take `amount` (a fraction of full health) off at time `t`. Returns 'died' if this was the blow that wrecked you
++   * (explode now - and come back after the delay), 'hurt' if you took damage and are still going, or null if nothing
++   * happened: you're already wrecked, still protected, or the amount was nothing.
++   */
++  damage(amount, t) {
++    if (this.dead || this.invulnerable(t) || !(amount > 0)) return null;
++    this.health = Math.max(0, this.health - amount);
++    if (this.health > 0) return 'hurt';
++    this.exploded = true; this.respawnAt = t + LIFE.respawnDelay;
++    return 'died';
++  }
++
++  /** Call every frame. Once a wrecked car has waited long enough, brings it back (full health, briefly protected) and
++   *  returns true - exactly once per death - so the caller can put the car back on the road. */
++  respawnDue(t) {
++    if (!this.dead || t < this.respawnAt) return false;
++    this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = t + LIFE.grace;
++    return true;
++  }
++}
+diff --git a/src/version.js b/src/version.js
+index 152ddee..ee5a5ec 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -2,5 +2,5 @@
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '15.4';
+-export const NOTE = 'Fixed barrels staying on screen after exploding when set off by another player in multiplayer';
++export const VERSION = '15.5';
++export const NOTE = 'Multiplayer: a wrecked car explodes, sits dimmed for 3 seconds, then respawns on the road with full health and 3 seconds of protection';
+diff --git a/tests/mplife.test.mjs b/tests/mplife.test.mjs
+new file mode 100644
+index 0000000..8a64857
+--- /dev/null
++++ b/tests/mplife.test.mjs
+@@ -0,0 +1,80 @@
++// The multiplayer life cycle: hurt, wrecked (once), wait, come back, protected for a moment.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { Life, LIFE } from '../src/mplife.js';
++
++test('a fresh life is full health, alive, and not protected', () => {
++  const l = new Life();
++  assert.equal(l.health, 1); assert.equal(l.dead, false); assert.equal(l.exploded, false);
++  assert.equal(l.invulnerable(0), false);
++});
++
++test('damage that leaves you standing is "hurt" and lowers health', () => {
++  const l = new Life();
++  assert.equal(l.damage(0.3, 1), 'hurt');
++  assert.ok(Math.abs(l.health - 0.7) < 1e-9);
++  assert.equal(l.dead, false);
++});
++
++test('the blow that empties the bar is "died" exactly once - no second explosion from later hits', () => {
++  const l = new Life();
++  assert.equal(l.damage(0.6, 1), 'hurt');
++  assert.equal(l.damage(0.6, 2), 'died');
++  assert.equal(l.health, 0); assert.equal(l.dead, true); assert.equal(l.exploded, true);
++  assert.equal(l.damage(0.6, 2.5), null, 'already wrecked: nothing more happens');
++  assert.equal(l.damage(1, 2.6), null);
++});
++
++test('a wrecked car stays wrecked until the delay is up, then comes back once with full health', () => {
++  const l = new Life();
++  l.damage(2, 10);
++  assert.equal(l.respawnDue(10 + LIFE.respawnDelay - 0.01), false, 'not yet');
++  assert.equal(l.dead, true);
++  assert.equal(l.respawnDue(10 + LIFE.respawnDelay), true, 'on time');
++  assert.equal(l.health, 1); assert.equal(l.dead, false); assert.equal(l.exploded, false);
++  assert.equal(l.respawnDue(10 + LIFE.respawnDelay + 1), false, 'it only comes back once per death');
++});
++
++test('an alive car is never "due" a respawn', () => {
++  const l = new Life();
++  assert.equal(l.respawnDue(0), false);
++  assert.equal(l.respawnDue(999), false);
++});
++
++test('after coming back you are protected for a moment, then can be hurt again', () => {
++  const l = new Life();
++  l.damage(2, 0);
++  l.respawnDue(LIFE.respawnDelay);
++  const back = LIFE.respawnDelay;
++  assert.equal(l.invulnerable(back + LIFE.grace - 0.01), true);
++  assert.equal(l.damage(1, back + 0.5), null, 'no damage while protected - you cannot be killed again on the spot');
++  assert.equal(l.health, 1);
++  assert.equal(l.damage(0.25, back + LIFE.grace), 'hurt', 'protection over');
++  assert.ok(Math.abs(l.health - 0.75) < 1e-9);
++});
++
++test('you can die and come back more than once in a race', () => {
++  const l = new Life();
++  let t = 0;
++  for (let round = 0; round < 3; round++) {
++    assert.equal(l.damage(1, t), 'died', `round ${round}`);
++    t += LIFE.respawnDelay; assert.equal(l.respawnDue(t), true);
++    t += LIFE.grace + 0.1;
++  }
++});
++
++test('nothing, negative or nonsense damage does nothing', () => {
++  const l = new Life();
++  for (const bad of [0, -0.5, NaN, undefined, null]) assert.equal(l.damage(bad, 1), null);
++  assert.equal(l.health, 1);
++});
++
++test('reset puts everything back: health, wreck state, timers', () => {
++  const l = new Life();
++  l.damage(2, 5); l.respawnDue(5 + LIFE.respawnDelay);
++  l.damage(2, 100);
++  l.reset();
++  assert.equal(l.health, 1); assert.equal(l.dead, false); assert.equal(l.exploded, false);
++  assert.equal(l.invulnerable(0), false);
++  assert.equal(l.respawnDue(1e9), false);
++});
