@@ -23,6 +23,9 @@ export const AI = {
   jumpSpeed: 30,                    // m/s to take a jump gap at
   grudgeTime: 7,                    // s: how long a rival holds a grudge and won't give up the chase, once rammed
   grudgeRangeMul: 2.2,              // hunting range is stretched this much further while holding a grudge
+  catchupStart: 80,                 // m of road lead before a rival starts getting a small helping hand
+  catchupFull: 260,                 // m of road lead where the catch-up bonus reaches its cap
+  catchupSpeed: 0.08,               // max +8% target speed - enough to keep a pack alive, not a teleport/rubber-band
 };
 
 /** Largest corner curvature in the next `span` metres. */
@@ -80,15 +83,21 @@ export class Driver {
     const P = ctx.player;
     this.moodT -= dt;
     this.grudgeT = Math.max(0, this.grudgeT - dt);
-    let pd = Infinity, pRoad = false, pLane = 0;
+    let pd = Infinity, pRoad = false, pLane = 0, playerLead = 0;
     if (P) {
       pd = Math.hypot(P.pos.x - car.pos.x, P.pos.z - car.pos.z);
       if (Math.abs(P.pos.y - car.pos.y) < 6) {
         track.query(P.pos.x, P.pos.y + 0.5, P.pos.z, this.q, 1.5);
         pRoad = this.q.idx >= 0 && Math.abs(this.q.d) < this.q.hw + 0.5;
-        if (pRoad) pLane = clamp(this.q.d / Math.max(2, this.q.hw - 3.6), -0.85, 0.85);   // which lane you are in
+        if (pRoad) {
+          pLane = clamp(this.q.d / Math.max(2, this.q.hw - 3.6), -0.85, 0.85);   // which lane you are in
+          playerLead = this.q.s - s;
+          if (playerLead > track.length / 2) playerLead -= track.length;
+          if (playerLead < -track.length / 2) playerLead += track.length;
+        }
       }
     }
+    const catchup = pRoad ? clamp((playerLead - AI.catchupStart) / Math.max(1, AI.catchupFull - AI.catchupStart), 0, 1) : 0;
     if (this.grudgeT > 0 && P && pRoad) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
     else if (this.moodT <= 0) {
       if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = 4 + this.rng() * 6 / (0.4 + this.aggr); }
@@ -132,6 +141,10 @@ export class Driver {
       ax = f.x + f.lx * this.laneNow * usable; az = f.z + f.lz * this.laneNow * usable;
     }
 
+    // Stage 2 difficulty: a subtle catch-up bonus only when the PLAYER is genuinely ahead on the road.
+    // It raises the AI's chosen target speed; it never moves the car or bypasses normal physics.
+    if (catchup > 0) vT *= 1 + AI.catchupSpeed * catchup;
+
     // ---------------------------------------------------------------- other cars in the way
     let laneBias = 0, brake = 0;
     for (const o of ctx.cars) {
@@ -143,7 +156,8 @@ export class Driver {
       if (Math.abs(side) > 2.6 || Math.abs(o.pos.y - car.pos.y) > 2.5) continue;
       laneBias += side > 0 ? -1 : 1;
       const gap = ahead - 4.7;
-      if (gap < 12 && car.fwdSpeed > o.fwdSpeed) { vT = Math.min(vT, Math.max(4, o.speed - 1 + gap * 0.4)); brake = Math.max(brake, 0.3); }
+      // Be less timid in traffic: keep rolling and change lane before throwing away a lot of speed.
+      if (gap < 9 && car.fwdSpeed > o.fwdSpeed) { vT = Math.min(vT, Math.max(6, o.speed + gap * 0.55)); brake = Math.max(brake, 0.2); }
     }
     // barrels sitting on the road: the same nudge-around, if any are in range (only passed while a derby is running)
     if (ctx.barrels) {
@@ -156,7 +170,7 @@ export class Driver {
         if (Math.abs(side) > 2.2 || Math.abs(b.pos.y - car.pos.y) > 2.5) continue;
         laneBias += side > 0 ? -1 : 1;
         const gap = ahead - 3;
-        if (gap < 10) { vT = Math.min(vT, Math.max(6, gap * 1.2 + 6)); brake = Math.max(brake, 0.25); }
+        if (gap < 8) { vT = Math.min(vT, Math.max(7, gap * 1.35 + 7)); brake = Math.max(brake, 0.2); }
       }
     }
     this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
@@ -176,10 +190,11 @@ export class Driver {
 
     // ---------------------------------------------------------------- pedals
     const err = vT - car.fwdSpeed;
-    let throttle = err > 0 ? clamp(err / 4, 0, 1) : 0;
-    let brk = err < -2 && car.fwdSpeed > 3 ? clamp(-err / 6, 0, 1) : 0;
-    if (hunting && Math.abs(ang) > 1.1 && car.fwdSpeed > 14) { throttle *= 0.4; brk = Math.max(brk, 0.25); }   // turn first, then charge
-    brk = Math.max(brk, err < 0 ? brake : 0);
+    // Harder acceleration and later braking than stage 1, while still driving through the real Vehicle model.
+    let throttle = err > 0 ? clamp(0.08 + err / 3.2, 0, 1) : 0;
+    let brk = err < -3 && car.fwdSpeed > 4 ? clamp((-err - 1) / 7, 0, 1) : 0;
+    if (hunting && Math.abs(ang) > 1.1 && car.fwdSpeed > 14) { throttle *= 0.5; brk = Math.max(brk, 0.2); }   // turn first, then charge
+    brk = Math.max(brk, err < -1 ? brake : 0);
 
     // ---------------------------------------------------------------- stuck: back out
     if (this.reverse > 0) {
@@ -192,8 +207,9 @@ export class Driver {
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
 
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    // The nastier ones fire the nitro for the last run at the player
-    inp.boost = hunting && this.aggr > 0.7 && pd > 18 && pd < 75 && Math.abs(ang) < 0.15 && car.fwdSpeed > 12 && car.boostFuel > 0.3;
+    // Stronger drivers can now use nitro on a clean straight when hunting OR when they are well behind.
+    // The normal boost fuel rules still apply, so this is not infinite AI nitro.
+    inp.boost = this.aggr > 0.55 && (hunting || catchup > 0.35) && Math.abs(ang) < 0.12 && car.fwdSpeed > 14 && car.boostFuel > 0.25 && (!P || playerLead > 20);
     return inp;
   }
 }
