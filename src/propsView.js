@@ -329,14 +329,18 @@ export class PropsView {
         let pitch = 0, yaw = c.heading || 0;
         if (c.state === 'peck') {
           const peck = 0.5 + 0.5 * Math.sin(props.time * 12 + c.bob);
-          pitch = 0.2 + peck * 0.5;
+          pitch = 0.18 + peck * 0.72;
         } else if (c.state === 'look') {
           yaw += Math.sin(props.time * 4.5 + c.bob) * 0.42;
         } else if (c.state === 'freeze') pitch = -0.06;
 
         this._p.set(c.pos.x, c.pos.y + bob, c.pos.z);
-        this._e.set(pitch, yaw, roll, 'XYZ');
-        this._q.setFromEuler(this._e);
+        // Heading first, then local pitch/roll. This keeps pecking aimed down/forward relative to the chicken,
+        // rather than turning into a left/right lean when the chicken is facing across the road.
+        this._q.setFromAxisAngle(this._upY, yaw);
+        this._e.set(pitch, 0, roll, 'XYZ');
+        this._q2.setFromEuler(this._e);
+        this._q.multiply(this._q2);
         this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
       });
       cm.instanceMatrix.needsUpdate = true;
