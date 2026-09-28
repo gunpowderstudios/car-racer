@@ -43,11 +43,41 @@ function addVehicleSelector() {
   grid.prepend(label);
 }
 
+// White/grey motor-home textures do not respond much to the car's hue-rotation recolouring.
+// Keep the original texture detail, but multiply it by the rival/player colour so AI and
+// multiplayer motor homes are easy to tell apart.
+function tintMotorHome(view, look) {
+  if (view.vehicleId !== 'motor-home' || !look) return;
+  for (const m of view.mats || []) {
+    if (!m) continue;
+    m.color.set(look.tint);
+    m.userData.base = m.color.clone();
+    m.needsUpdate = true;
+  }
+  view._lookKey = -1;
+}
+
+const originalApplyOwnLook = CarVisual.prototype._applyOwnLook;
+CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
+  originalApplyOwnLook.call(this);
+  tintMotorHome(this, this._ownLook);
+};
+
+const originalAdopt = CarVisual.prototype.adopt;
+CarVisual.prototype.adopt = function patchedAdopt(src, look) {
+  const ok = originalAdopt.call(this, src, look);
+  if (!ok) return ok;
+  this.vehicleId = src.vehicleId;
+  tintMotorHome(this, look);
+  return ok;
+};
+
 // Keep the existing, carefully measured car alignment. For differently modelled vehicles,
 // load them normally, then fit the visible mesh to the current physics footprint and ground it.
 const originalLoad = CarVisual.prototype.load;
 CarVisual.prototype.load = async function patchedVehicleLoad(url) {
   const config = url ? null : selectedVehicle();
+  if (config) this.vehicleId = config.id;
   await originalLoad.call(this, url || config.url);
 
   if (!config || config.fit !== 'auto' || !this.model) return;
