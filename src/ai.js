@@ -16,9 +16,9 @@ import { Track, SURF } from './track.js';
 export const IDLE = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });
 
 export const AI = {
-  cruiseMin: 22, cruiseMax: 32,     // m/s a rival is happy to cruise at (about 49 - 72 mph) - faster than before
-  huntMax: 40,                      // m/s when chasing the player
-  aLatCruise: 7.0, aLatHunt: 9.0,   // cornering g-budget (m/s^2) used to pick corner speeds
+  cruiseMin: 26, cruiseMax: 36,     // m/s a rival is happy to cruise at (about 58 - 81 mph)
+  huntMax: 44,                      // m/s when chasing the player (about 98 mph)
+  aLatCruise: 7.8, aLatHunt: 9.8,  // slightly higher cornering budget so rivals carry more speed through bends
   huntRange: 110,                   // m: nobody starts hunting from further away than this
   jumpSpeed: 30,                    // m/s to take a jump gap at
   grudgeTime: 7,                    // s: how long a rival holds a grudge and won't give up the chase, once rammed
