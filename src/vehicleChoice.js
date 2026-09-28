@@ -1,20 +1,89 @@
 import * as THREE from 'three';
 import { CarVisual } from './carVisual.js';
+import { CAR } from './vehicle.js';
 
 // Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
+// `physics` is deliberately optional: the normal car continues to use the original,
+// known-good CAR object unchanged.
 export const VEHICLES = [
   { id: 'car', name: 'Car', url: 'cars/car-shrink.glb', fit: 'measured' },
-  { id: 'motor-home', name: 'Motor Home', url: 'cars/motor-home-shrink.glb', fit: 'auto', targetLength: 4.85 },
+  {
+    id: 'motor-home', name: 'Motor Home', url: 'cars/motor-home-shrink.glb',
+    fit: 'auto', targetLength: 4.85,
+    physics: {
+      mass: 2800,
+      wheelbase: 3.15,
+      track: 1.78,
+      wheelRadius: 0.36,
+      mountY: 0.04,
+      // A heavier, softer vehicle: slower to accelerate, more momentum and more body movement.
+      inertia: { x: 6500, y: 7600, z: 3600 },
+      susp: {
+        free: 0.56, travel: 0.30,
+        kFront: 61000, kRear: 57000,
+        cCompFront: 3900, cCompRear: 3700, cRebFront: 5100, cRebRear: 4800,
+        arbFront: 22000, arbRear: 15000, bump: 250000, bumpDamp: 11000,
+      },
+      engine: { peakTorque: 360 },
+      brakeBias: 0.64,
+      wallBounce: 0.22,
+      aero: { drag: 0.88, down: 0.20 },
+      steer: { max: 0.48, rate: 3.6, returnRate: 5.4 },
+      // Physical body dimensions around the centre of mass. These are what stop the
+      // tall motor home falling through the road when it lands on its side or roof.
+      body: { width: 2.08, length: 4.85, bottom: -0.72, shoulder: 0.38, roof: 1.82, roofWidth: 1.92, roofLength: 3.95 },
+    },
+  },
 ];
 
 const KEY = 'cr.vehicle';
 const fallback = VEHICLES[0];
 
-function selectedVehicle() {
+export function selectedVehicle() {
   let id = fallback.id;
   try { id = localStorage.getItem(KEY) || id; } catch { /* storage unavailable */ }
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
+
+function makeHull(b) {
+  const p = [];
+  const hx = b.width / 2, hz = b.length / 2;
+  const rhx = b.roofWidth / 2, rhz = b.roofLength / 2;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    p.push(new THREE.Vector3(hx * sx, b.bottom, hz * sz));
+    p.push(new THREE.Vector3(hx * sx, b.shoulder, hz * sz));
+    p.push(new THREE.Vector3(rhx * sx, b.roof, rhz * sz));
+  }
+  p.push(new THREE.Vector3(hx, b.shoulder, 0), new THREE.Vector3(-hx, b.shoulder, 0));
+  p.push(new THREE.Vector3(0, b.roof, rhz), new THREE.Vector3(0, b.roof, -rhz));
+  return p;
+}
+
+// Apply the selected profile BEFORE main.js creates its Vehicle. This keeps the original
+// car code untouched and makes the change easy to back out. Multiplayer networking is not
+// changed here; this only changes the local physical vehicle selected on this browser.
+function applySelectedPhysics() {
+  const cfg = selectedVehicle();
+  const p = cfg.physics;
+  if (!p) return;
+
+  CAR.mass = p.mass;
+  CAR.wheelbase = p.wheelbase;
+  CAR.track = p.track;
+  CAR.wheelRadius = p.wheelRadius;
+  CAR.mountY = p.mountY;
+  CAR.inertia = { ...p.inertia };
+  CAR.susp = { ...CAR.susp, ...p.susp };
+  CAR.engine = { ...CAR.engine, ...p.engine };
+  CAR.brakeTotal = 1.35 * p.mass * 9.81;
+  CAR.brakeBias = p.brakeBias;
+  CAR.wallBounce = p.wallBounce;
+  CAR.aero = { ...CAR.aero, ...p.aero };
+  CAR.steer = { ...CAR.steer, ...p.steer };
+  CAR.hull = makeHull(p.body);
+}
+
+applySelectedPhysics();
 
 function addVehicleSelector() {
   const grid = document.querySelector('#menu .opt-grid');
@@ -73,7 +142,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
 };
 
 // Keep the existing, carefully measured car alignment. For differently modelled vehicles,
-// load them normally, then fit the visible mesh to the current physics footprint and ground it.
+// load them normally, then fit the visible mesh to the selected physics footprint and ground it.
 const originalLoad = CarVisual.prototype.load;
 CarVisual.prototype.load = async function patchedVehicleLoad(url) {
   const config = url ? null : selectedVehicle();
@@ -98,7 +167,8 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url) {
 
   const size = box.getSize(new THREE.Vector3());
   const longAxis = Math.max(size.x, size.z);
-  if (longAxis > 1e-6) model.scale.setScalar((config.targetLength || 4.85) / longAxis);
+  const targetLength = config.physics?.body?.length || config.targetLength || 4.85;
+  if (longAxis > 1e-6) model.scale.setScalar(targetLength / longAxis);
 
   model.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(model);
