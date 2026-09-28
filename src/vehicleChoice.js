@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CarVisual, RIVAL_LOOKS } from './carVisual.js';
+import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
 import { CAR } from './vehicle.js';
 import { Multiplayer } from './multiplayer.js';
 
@@ -41,6 +41,18 @@ const KEY = 'cr.vehicle';
 const MP_RESTORE_KEY = 'cr.mpVehicleRestore';
 const fallback = VEHICLES[0];
 
+// Keep a pristine copy of the original car dimensions before a selected vehicle profile mutates CAR.
+// Remote multiplayer cars must use THEIR dimensions, not the local player's Motor Home dimensions.
+const BASE_CAR = {
+  mass: CAR.mass,
+  wheelbase: CAR.wheelbase,
+  frontWeight: CAR.frontWeight,
+  track: CAR.track,
+  wheelRadius: CAR.wheelRadius,
+  mountY: CAR.mountY,
+  susp: { ...CAR.susp },
+};
+
 export function selectedVehicle() {
   let id = fallback.id;
   try { id = localStorage.getItem(KEY) || id; } catch { /* storage unavailable */ }
@@ -49,6 +61,23 @@ export function selectedVehicle() {
 
 function vehicleById(id) {
   return VEHICLES.find((v) => v.id === id) || fallback;
+}
+
+function physicsForVehicle(config) {
+  const p = config?.physics;
+  if (!p) return BASE_CAR;
+  return {
+    ...BASE_CAR,
+    ...p,
+    susp: { ...BASE_CAR.susp, ...p.susp },
+  };
+}
+
+function restHeightForVehicle(config) {
+  const sp = physicsForVehicle(config);
+  const sprungFront = sp.mass * sp.frontWeight / 2;
+  const staticCompression = sprungFront * 9.81 / sp.susp.kFront;
+  return sp.wheelRadius + (sp.susp.free - staticCompression) - sp.mountY;
 }
 
 function makeHull(b) {
@@ -213,10 +242,42 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
   if (config) this.vehicleId = config.id;
   await originalLoad.call(this, url || config.url);
 
-  if (!config || config.fit !== 'auto' || !this.model) return;
+  if (!config || !this.model) return;
 
   const model = this.model;
   const holder = this.holder;
+
+  // The built-in loader measures the normal car using the global CAR object. In multiplayer
+  // CAR belongs to the LOCAL player, so a remote normal car seen from a Motor Home browser was
+  // being scaled/aligned with Motor Home wheelbase and ride height. Re-apply the known-good
+  // original car measurements here whenever this is a measured vehicle.
+  if (config.fit === 'measured') {
+    const wb = BASE_CAR.wheelbase;
+    const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
+    const a = (1 - BASE_CAR.frontWeight) * wb;
+    const restHeight = restHeightForVehicle(config);
+
+    model.scale.setScalar(s);
+    if (!MODEL.flip) {
+      holder.rotation.y = Math.PI / 2;
+      model.position.set(-MODEL.frontAxleX * s - a, 0, -MODEL.centerZ * s);
+    } else {
+      holder.rotation.y = -Math.PI / 2;
+      model.position.set(a - MODEL.rearAxleX * s, 0, MODEL.centerZ * s);
+    }
+    model.updateMatrixWorld(true);
+    const groundBox = new THREE.Box3().setFromObject(model);
+    if (!groundBox.isEmpty() && Number.isFinite(groundBox.min.y)) {
+      model.position.y = -restHeight - groundBox.min.y;
+    } else {
+      model.position.y = -restHeight - MODEL.groundY * s;
+    }
+    this.restHeight = restHeight;
+    return;
+  }
+
+  if (config.fit !== 'auto') return;
+
   holder.remove(model);
 
   model.position.set(0, 0, 0);
@@ -246,10 +307,11 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
   model.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(model);
   const bodyBottom = config.physics?.body?.bottom;
-  model.position.y += (Number.isFinite(bodyBottom) ? bodyBottom : -this.restHeight) - box.min.y;
+  model.position.y += (Number.isFinite(bodyBottom) ? bodyBottom : -restHeightForVehicle(config)) - box.min.y;
 
   holder.rotation.y = config.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(model);
+  this.restHeight = restHeightForVehicle(config);
 };
 
 // Rivals normally clone the local player's model. In multiplayer another player may have chosen
