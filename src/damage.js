@@ -76,6 +76,12 @@ export function blastDamage(kind, d) {
   return kind.point * Math.min(1, (kind.radius - d) / (kind.radius - near));
 }
 
+/** How much of an explosion's full punch lands at distance d, 0..1: everything inside two metres, then a straight
+ *  fall to nothing at the blast radius. (Multiplayer scales this onto its single health bar.) */
+export function blastFraction(kind, d) {
+  return kind.point > 0 ? blastDamage(kind, d) / kind.point : 0;
+}
+
 /** The four health bars of one car. */
 export class Health {
   constructor(hp) {

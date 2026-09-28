@@ -174,6 +174,12 @@ export class Props {
   }
 
   get alive() { let n = 0; for (const b of this.barrels) if (b.alive) n++; return n; }
+  /** Multiplayer: another player's copy of the barrel made from prop definition `i` has just gone off, so set
+   *  ours off too (through the normal path: the same blast, scrap and chain reaction). False if it's already gone. */
+  igniteRemote(i) {
+    for (const b of this.barrels) if (b.i === i && b.alive) { b.boom = true; return true; }
+    return false;
+  }
   get aliveChickens() { let n = 0; for (const c of this.chickens) if (c.alive) n++; return n; }
 
   // ---------------------------------------------------------------- step
@@ -431,7 +437,7 @@ export class Props {
     const T = this.track, rnd = this.rng;
     const g = T.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.6, this.bq);
     this.events.push({
-      type: 'blast', x: b.pos.x, y: b.pos.y, z: b.pos.z, gy: g.y, nx: g.nx, ny: g.ny, nz: g.nz,
+      type: 'blast', i: b.i, x: b.pos.x, y: b.pos.y, z: b.pos.z, gy: g.y, nx: g.nx, ny: g.ny, nz: g.nz,
       dist: this._carDist(b.pos.x, b.pos.y, b.pos.z), radius: BLAST.radius,
     });
 

@@ -4,7 +4,7 @@ import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
 import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
-import { ZONE_LABEL } from './damage.js';
+import { ZONE_LABEL, DAMAGE, blastFraction } from './damage.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
@@ -67,6 +67,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 let net = null;                     // active Multiplayer session, or null in single-player
 let mpHealth = 1;                   // 0..1: this player's own health from being rammed by others online
 let mpExploded = false;             // has the local player's health already hit zero this race
+const mpBoomSeen = new Set();       // barrels (by prop index) already announced or heard about, so nothing echoes
 let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps
 let mpRaceStart = null;             // sim time the current multiplayer race began (lap 1 crossing)
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
@@ -310,6 +311,7 @@ function propEvents() {
       sound.explode(e.dist);
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
       if (derby.enabled) derby.blast(e.x, e.y, e.z);
+      if (net) mpBarrelBlast(e);
     } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
     else if (e.type === 'splat') {
       for (let k = 0; k < 7; k++) {
@@ -624,6 +626,7 @@ const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nos
 const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps
 const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
+const MP_BARREL_DAMAGE = 0.35;        // health a barrel takes off at point blank (inside 2 m), falling to nothing at 10 m
 /** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
  *  target's side, so it feels and sounds the same crash from either end. */
 function mpImpactFx(x, y, z, speed) {
@@ -631,6 +634,21 @@ function mpImpactFx(x, y, z, speed) {
   chase.impact(speed);
   for (let i = 0, n = Math.min(8, 3 + speed * 0.3); i < n; i++) particles.spark(x, y, z, (Math.random() - 0.5) * 4, 1 + Math.random() * 2, (Math.random() - 0.5) * 4);
   for (let i = 0; i < 3; i++) particles.puff(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.6, 1 + Math.random() * 0.5, 0x9a9498);
+}
+/** Take health off the local player. Returns true if this was the blow that finished them (they explode). */
+function mpTakeDamage(amount) {
+  if (mpHealth <= 0) return false;
+  mpHealth = Math.max(0, mpHealth - amount);
+  if (mpHealth > 0 || mpExploded) return false;
+  mpExploded = true; mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
+  return true;
+}
+/** A barrel has gone off on our copy of the track: tell everyone else (unless we only set it off because
+ *  they told us to), and hurt ourselves if we're close - the derby's falloff, on the one shared health bar. */
+function mpBarrelBlast(e) {
+  if (e.i != null && !mpBoomSeen.has(e.i)) { mpBoomSeen.add(e.i); net.sendBoom(e.i); }
+  const d = Math.hypot(car.pos.x - e.x, car.pos.y - e.y, car.pos.z - e.z), frac = blastFraction(DAMAGE.barrel, d);
+  if (frac > 0) mpTakeDamage(MP_BARREL_DAMAGE * frac);
 }
 /** A player's health has just hit zero - the same fireball, scorch mark and explosion sound a barrel gives,
  *  wherever the car actually is (yours, or a remote player's last known position). */
@@ -735,7 +753,7 @@ function mpRenderLobby(players, hostId) {
   }
 }
 function mpBeginDrive(trackDef) {
-  mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false;
+  mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
   startDriving(trackDef || makeTemplate('speedway'));
   if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
@@ -766,13 +784,12 @@ const mpHandlers = {
     p.prev = p.cur || s; p.cur = s; p.recvAt = performance.now();
   },
   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
+  onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
     const speed = Math.min(20, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
     car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
     car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
-    mpHealth = Math.max(0, mpHealth - Math.min(MP_MAX_HIT_DAMAGE, speed * MP_DAMAGE_PER_SPEED));
-    if (mpHealth <= 0 && !mpExploded) { mpExploded = true; mpExplodeAt(car.pos.x, car.pos.y, car.pos.z); }
-    else mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
+    if (!mpTakeDamage(Math.min(MP_MAX_HIT_DAMAGE, speed * MP_DAMAGE_PER_SPEED))) mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
   },
   onError: (msg) => { toast(msg); showMenu(); },
 };

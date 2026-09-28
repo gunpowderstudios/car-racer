@@ -128,6 +128,21 @@ test('chickens are 20% bigger than their original size', () => {
   assert.ok(Math.abs(CHICKEN.radius / 0.22 - 1.2) < 0.02);
 });
 
+test('igniteRemote sets off exactly the barrel with that index, once, and the blast event says which', () => {
+  const { props } = setup([[0, -100], [0, 100]]);
+  assert.equal(props.igniteRemote(99), false, 'no barrel has that index');
+  const target = props.barrels[1];
+  assert.equal(props.igniteRemote(target.i), true);
+  props.step(DT, null);
+  const blasts = props.events.filter((e) => e.type === 'blast');
+  assert.equal(blasts.length, 1);
+  assert.equal(blasts[0].i, target.i, 'the event carries the barrel index so it can be announced');
+  assert.equal(target.alive, false);
+  assert.equal(props.barrels[0].alive, true, 'the far barrel is untouched');
+  props.events.length = 0;
+  assert.equal(props.igniteRemote(target.i), false, 'already gone');
+});
+
 test('a dropped barrel bounces, and clangs when it lands', () => {
   const { props } = setup([[0, 0]]);
   const b = props.barrels[0]; b.asleep = false; b.pos.y += 3;

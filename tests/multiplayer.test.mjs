@@ -10,7 +10,7 @@ function mockConn(peerId) {
 }
 
 function noopHandlers(overrides = {}) {
-  return { onLobby: () => {}, onStart: () => {}, onState: () => {}, onHit: () => {}, onPlayerLeft: () => {}, onError: () => {}, ...overrides };
+  return { onLobby: () => {}, onStart: () => {}, onState: () => {}, onHit: () => {}, onBoom: () => {}, onPlayerLeft: () => {}, onError: () => {}, ...overrides };
 }
 
 test('host relays a hit aimed at itself straight to its own onHit handler', () => {
@@ -88,4 +88,42 @@ test('startGame does nothing if called by a guest - only the host can start the 
   assert.equal(called, false);
   assert.equal(mp.started, false);
   assert.equal(hostConn._sent.length, 0);
+});
+
+test('host relays a barrel explosion from one guest to everyone else, and applies it itself', () => {
+  const got = [];
+  const mp = new Multiplayer(noopHandlers({ onBoom: (from, i) => got.push([from, i]) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'boom', i: 7 });
+  assert.deepEqual(got, [['guestA', 7]]);
+  assert.equal(connA._sent.length, 0, 'the sender is not told about their own barrel');
+  assert.deepEqual(connB._sent, [{ t: 'boom', from: 'guestA', i: 7 }]);
+});
+
+test('a barrel message with a nonsense index is ignored, not applied or relayed', () => {
+  let called = 0;
+  const mp = new Multiplayer(noopHandlers({ onBoom: () => { called++; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connB = mockConn('guestB'); mp.conns.set('guestB', connB);
+  for (const bad of ['3', 1.5, null, undefined, NaN]) mp._onHostMessage('guestA', { t: 'boom', i: bad });
+  assert.equal(called, 0);
+  assert.equal(connB._sent.length, 0);
+});
+
+test('sendBoom: the host tells every guest directly; a guest tells the host, who relays it', () => {
+  const host = new Multiplayer(noopHandlers());
+  host.isHost = true; host.selfId = 'host';
+  const a = mockConn('guestA'), b = mockConn('guestB');
+  host.conns.set('guestA', a); host.conns.set('guestB', b);
+  host.sendBoom(4);
+  assert.deepEqual(a._sent, [{ t: 'boom', from: 'host', i: 4 }]);
+  assert.deepEqual(b._sent, [{ t: 'boom', from: 'host', i: 4 }]);
+
+  const guest = new Multiplayer(noopHandlers());
+  guest.isHost = false; guest.selfId = 'guestA';
+  const hostConn = mockConn('host'); guest.hostConn = hostConn;
+  guest.sendBoom(9);
+  assert.deepEqual(hostConn._sent, [{ t: 'boom', i: 9 }]);
 });

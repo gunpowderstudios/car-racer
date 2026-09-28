@@ -9,7 +9,7 @@ import { makeTemplate, TEMPLATE_KEYS } from '../src/templates.js';
 import { Props, placeProp } from '../src/props.js';
 import { Derby, DERBY, POINTS, collideCars, placeOnRoad } from '../src/derby.js';
 import { Driver } from '../src/ai.js';
-import { ZONES, ARMOUR, DAMAGE, Health, zoneAt, crashDamage, wallDamage, blastDamage } from '../src/damage.js';
+import { ZONES, ARMOUR, DAMAGE, Health, zoneAt, crashDamage, wallDamage, blastDamage, blastFraction } from '../src/damage.js';
 import { DRAG_DEF, placeOnTrack, bot, DT } from './harness.mjs';
 
 const dragTrack = () => new Track(DRAG_DEF);
@@ -418,4 +418,12 @@ test('a full derby with six rivals runs cleanly on the bendy tracks, and is repe
   };
   for (const key of ['technical', 'hills']) runOnce(key, 3);
   assert.deepEqual(runOnce('kidney', 9), runOnce('kidney', 9));
+});
+
+test('blastFraction: everything inside two metres, then a straight fall to nothing at the radius', () => {
+  assert.equal(blastFraction(DAMAGE.barrel, 0), 1);
+  assert.equal(blastFraction(DAMAGE.barrel, 2), 1);
+  assert.ok(Math.abs(blastFraction(DAMAGE.barrel, 6) - 0.5) < 1e-9, 'halfway between 2 m and 10 m is half');
+  assert.equal(blastFraction(DAMAGE.barrel, DAMAGE.barrel.radius), 0);
+  assert.equal(blastFraction(DAMAGE.barrel, 50), 0);
 });

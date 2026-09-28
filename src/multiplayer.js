@@ -44,6 +44,7 @@ export class Multiplayer {
    *   onLobby(players, hostId, selfId) - players: [{id,name,hue}], called on any roster change
    *   onStart(trackDef) - host said go, and picked this track (a normalizeTrack()-shaped object)
    *   onState(id, state) - a remote player's latest pose
+   *   onBoom(fromId, i) - their copy of barrel number i just went off
    *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
    *   onPlayerLeft(id)
    *   onError(message) - show this to the user, then multiplayer is done for this session
@@ -118,6 +119,10 @@ export class Multiplayer {
     } else if (msg.t === 'state') {
       this.h.onState(id, msg.s);
       this._sendAll({ t: 'state', id, s: msg.s }, id);
+    } else if (msg.t === 'boom') {
+      if (!Number.isInteger(msg.i)) return;
+      this.h.onBoom(id, msg.i);
+      this._sendAll({ t: 'boom', from: id, i: msg.i }, id);
     } else if (msg.t === 'hit') {
       if (msg.to === this.selfId) this.h.onHit(id, msg.d);
       else { const c = this.conns.get(msg.to); if (c && c.open) c.send({ t: 'hit', from: id, d: msg.d }); }
@@ -160,6 +165,8 @@ export class Multiplayer {
             this.h.onState(msg.id, msg.s);
           } else if (msg.t === 'left') {
             this.h.onPlayerLeft(msg.id);
+          } else if (msg.t === 'boom') {
+            if (Number.isInteger(msg.i)) this.h.onBoom(msg.from, msg.i);
           } else if (msg.t === 'hit') {
             this.h.onHit(msg.from, msg.d);
           }
@@ -193,6 +200,13 @@ export class Multiplayer {
     } else if (this.hostConn && this.hostConn.open) {
       this.hostConn.send({ t: 'hit', to: targetId, d: data });
     }
+  }
+
+  /** A barrel on this player's copy of the track has just gone off: tell everyone else (`i` is the barrel's
+   *  index in the track's prop list, the same on every machine) so it goes off for them too. */
+  sendBoom(i) {
+    if (this.isHost) this._sendAll({ t: 'boom', from: this.selfId, i });
+    else if (this.hostConn && this.hostConn.open) this.hostConn.send({ t: 'boom', i });
   }
 
   /** Host only: tell every guest (and the caller) which track to load, and to leave the lobby and start driving. */
