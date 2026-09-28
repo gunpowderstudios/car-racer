@@ -9,12 +9,13 @@ import { Track } from './track.js';
 // Measurements of cars/car.glb (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
 // cars/car-textured.glb is the textured car.gltf, baked into the same position and scale,
-// so these numbers fit both. Models that carry their own textures keep their materials;
-// untextured ones get the paint colour from the menu.
+// so these numbers fit both. Vertical placement is measured automatically from each model's
+// bounding box, so replacement GLBs can have a different origin without sinking/floating.
+// Models that carry their own textures keep their materials; untextured ones get the paint colour from the menu.
 export const MODEL = {
   url: 'cars/car-textured.glb',
   frontAxleX: -62, rearAxleX: 45,
-  centerZ: 3.5845, groundY: -9.3037,
+  centerZ: 3.5845, groundY: -9.3037, // legacy reference only; Y is now auto-grounded from the model bounds
   flip: false,            // set true if your model's nose points the other way
   paint: 0xd9482b,
 };
@@ -196,13 +197,26 @@ export class CarVisual {
       const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
       const a = (1 - CAR.frontWeight) * wb;                 // COM to front axle
       model.scale.setScalar(s);
+
+      // Keep the established axle/centre alignment in X/Z, but measure the bottom of the actual
+      // loaded GLB instead of assuming every exported model has the same Y origin. This makes
+      // optimized/re-exported vehicles sit on the same road plane automatically.
       if (!MODEL.flip) {
         this.holder.rotation.y = Math.PI / 2;
-        model.position.set(-MODEL.frontAxleX * s - a, -this.restHeight - MODEL.groundY * s, -MODEL.centerZ * s);
+        model.position.set(-MODEL.frontAxleX * s - a, 0, -MODEL.centerZ * s);
       } else {
         this.holder.rotation.y = -Math.PI / 2;
-        model.position.set(a - MODEL.rearAxleX * s, -this.restHeight - MODEL.groundY * s, MODEL.centerZ * s);
+        model.position.set(a - MODEL.rearAxleX * s, 0, MODEL.centerZ * s);
       }
+      model.updateMatrixWorld(true);
+      const groundBox = new THREE.Box3().setFromObject(model);
+      if (!groundBox.isEmpty() && Number.isFinite(groundBox.min.y)) {
+        model.position.y = -this.restHeight - groundBox.min.y;
+      } else {
+        // Defensive fallback for a malformed/empty model: preserve the old known-good offset.
+        model.position.y = -this.restHeight - MODEL.groundY * s;
+      }
+
       this.holder.remove(this.placeholder);
       this.holder.add(model);
       this.model = model; this._lookKey = -1;
