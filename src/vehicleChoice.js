@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { CarVisual } from './carVisual.js';
+import { CarVisual, RIVAL_LOOKS } from './carVisual.js';
 import { CAR } from './vehicle.js';
+import { Multiplayer } from './multiplayer.js';
 
 // Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
 // `physics` is deliberately optional: the normal car continues to use the original,
@@ -45,6 +46,10 @@ export function selectedVehicle() {
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
 
+function vehicleById(id) {
+  return VEHICLES.find((v) => v.id === id) || fallback;
+}
+
 function makeHull(b) {
   const p = [];
   const hx = b.width / 2, hz = b.length / 2;
@@ -60,8 +65,7 @@ function makeHull(b) {
 }
 
 // Apply the selected profile BEFORE main.js creates its Vehicle. This keeps the original
-// car code untouched and makes the change easy to back out. Multiplayer networking is not
-// changed here; this only changes the local physical vehicle selected on this browser.
+// car code untouched and makes the change easy to back out.
 function applySelectedPhysics() {
   const cfg = selectedVehicle();
   const p = cfg.physics;
@@ -132,20 +136,11 @@ CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
   tintMotorHome(this, this._ownLook);
 };
 
-const originalAdopt = CarVisual.prototype.adopt;
-CarVisual.prototype.adopt = function patchedAdopt(src, look) {
-  const ok = originalAdopt.call(this, src, look);
-  if (!ok) return ok;
-  this.vehicleId = src.vehicleId;
-  tintMotorHome(this, look);
-  return ok;
-};
-
 // Keep the existing, carefully measured car alignment. For differently modelled vehicles,
 // load them normally, then fit the visible mesh to the selected physics footprint and ground it.
 const originalLoad = CarVisual.prototype.load;
-CarVisual.prototype.load = async function patchedVehicleLoad(url) {
-  const config = url ? null : selectedVehicle();
+CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig) {
+  const config = explicitConfig || (url ? VEHICLES.find((v) => v.url === url) || null : selectedVehicle());
   if (config) this.vehicleId = config.id;
   await originalLoad.call(this, url || config.url);
 
@@ -186,6 +181,105 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url) {
 
   holder.rotation.y = config.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(model);
+};
+
+// Rivals normally clone the local player's model. In multiplayer another player may have chosen
+// a different vehicle, so load that vehicle once instead of cloning the wrong one.
+const originalAdopt = CarVisual.prototype.adopt;
+CarVisual.prototype.adopt = function patchedAdopt(src, look) {
+  const wanted = vehicleById(look?.vehicleId || src.vehicleId || fallback.id);
+  if (wanted.id !== (src.vehicleId || fallback.id)) {
+    if (this.loaded && this.vehicleId === wanted.id) return true;
+    if (!this._vehicleLoading) {
+      this._vehicleLoading = true;
+      this.load(wanted.url, wanted)
+        .then(() => {
+          if (look) this.setOwnLook(look);
+        })
+        .catch((e) => console.warn('Could not load remote player vehicle.', e))
+        .finally(() => { this._vehicleLoading = false; });
+    }
+    return false;
+  }
+
+  const ok = originalAdopt.call(this, src, look);
+  if (!ok) return ok;
+  this.vehicleId = src.vehicleId;
+  tintMotorHome(this, look);
+  return ok;
+};
+
+// ---------------------------------------------------------------- multiplayer vehicle identity
+// Keep the existing multiplayer protocol intact and add one small optional message. Each player
+// announces their vehicle after joining; the host stores it in the normal lobby roster and
+// broadcasts that roster. Old/missing values safely fall back to the car.
+function syncVehicleLooks(players) {
+  for (const p of players || []) {
+    if (!Number.isInteger(p.hue) || !RIVAL_LOOKS[p.hue]) continue;
+    RIVAL_LOOKS[p.hue].vehicleId = vehicleById(p.vehicleId).id;
+  }
+}
+
+function wrapVehicleHandlers(net) {
+  if (net._vehicleHandlersWrapped) return;
+  net._vehicleHandlersWrapped = true;
+
+  const onLobby = net.h.onLobby;
+  net.h.onLobby = (players, ...rest) => {
+    syncVehicleLooks(players);
+    return onLobby?.(players, ...rest);
+  };
+
+  const onState = net.h.onState;
+  net.h.onState = (id, state) => {
+    const info = net.players.get(id);
+    if (info && Number.isInteger(info.hue) && RIVAL_LOOKS[info.hue]) {
+      RIVAL_LOOKS[info.hue].vehicleId = vehicleById(info.vehicleId).id;
+    }
+    return onState?.(id, state);
+  };
+}
+
+const originalCreateRoom = Multiplayer.prototype.createRoom;
+Multiplayer.prototype.createRoom = async function patchedCreateRoom(name) {
+  wrapVehicleHandlers(this);
+  const code = await originalCreateRoom.call(this, name);
+  const mine = this.players.get(this.selfId);
+  if (mine) {
+    mine.vehicleId = selectedVehicle().id;
+    syncVehicleLooks(this.players.values());
+    this._broadcastLobby();
+  }
+  return code;
+};
+
+const originalJoinRoom = Multiplayer.prototype.joinRoom;
+Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name) {
+  wrapVehicleHandlers(this);
+  const joined = await originalJoinRoom.call(this, code, name);
+  if (this.hostConn && this.hostConn.open) {
+    this.hostConn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
+  }
+  return joined;
+};
+
+const originalHostMessage = Multiplayer.prototype._onHostMessage;
+Multiplayer.prototype._onHostMessage = function patchedHostMessage(id, msg) {
+  if (msg && msg.t === 'vehicle') {
+    const p = this.players.get(id);
+    if (!p) return;
+    p.vehicleId = vehicleById(msg.vehicleId).id;
+    syncVehicleLooks(this.players.values());
+    this._broadcastLobby();
+    return;
+  }
+  return originalHostMessage.call(this, id, msg);
+};
+
+const originalLeave = Multiplayer.prototype.leave;
+Multiplayer.prototype.leave = function patchedLeave() {
+  for (const look of RIVAL_LOOKS) delete look.vehicleId;
+  return originalLeave.call(this);
 };
 
 addVehicleSelector();
