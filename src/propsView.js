@@ -10,7 +10,7 @@ const MAX_SMEARS = 2048;                                                // safet
 
 /** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
 function drumGeometry() {
-  const r = BARREL.radius, h = BARREL.height / 2, k = BARREL.height / 0.9;       // details scale with the drum
+  const r = BARREL.radius, h = BARREL.height / 2, k = BARREL.height / 0.9;
   const prof = [[0, -h], [r * 0.9, -h], [r, -h + 0.03 * k], [r, -0.17 * k], [r * 0.95, -0.15 * k], [r, -0.13 * k], [r, 0.13 * k], [r * 0.95, 0.15 * k], [r, 0.17 * k], [r, h - 0.03 * k], [r * 0.9, h], [0, h]];
   const g = new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 18);
   const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
@@ -50,19 +50,14 @@ function chickenGeometry() {
   const white = new THREE.Color(0xf7f1e6), orange = new THREE.Color(0xe8912e), red = new THREE.Color(0xc23524), dark = new THREE.Color(0x241f1c);
   const parts = [];
 
-  // Broad, faceted shapes remain readable from the driving camera.
   const egg = (x, y, z, sx, sy, sz, color = white, tilt = 0) => {
     const geo = new THREE.SphereGeometry(r, 12, 8);
     geo.scale(sx, sy, sz); geo.rotateX(tilt); geo.translate(x*r, y*r, z*r);
     parts.push({ geo, color });
   };
   egg(0, 1.35, -0.12, 0.95, 1, 1.24);
-  for (const side of [-1, 1]) {
-    egg(side*0.83, 1.4, -0.18, 0.22, 0.59, 0.8, new THREE.Color(0xe8ddc6), -0.2);
-  }
-  for (const [x, y, tilt] of [[-0.3,1.9,-0.65],[0,2.1,-0.8],[0.3,1.85,-0.55]]) {
-    egg(x, y, -1.18, 0.22, 0.72, 0.16, white, tilt);
-  }
+  for (const side of [-1, 1]) egg(side*0.83, 1.4, -0.18, 0.22, 0.59, 0.8, new THREE.Color(0xe8ddc6), -0.2);
+  for (const [x, y, tilt] of [[-0.3,1.9,-0.65],[0,2.1,-0.8],[0.3,1.85,-0.55]]) egg(x, y, -1.18, 0.22, 0.72, 0.16, white, tilt);
   egg(0, 2.55, 0.64, 0.66, 0.73, 0.66);
   for (const side of [-1, 1]) {
     egg(side*0.43, 2.68, 1.12, 0.115, 0.13, 0.095, dark);
@@ -71,34 +66,53 @@ function chickenGeometry() {
   const beak = new THREE.ConeGeometry(r*0.32, r*0.58, 4);
   beak.rotateY(Math.PI/4); beak.scale(1,1,0.7); beak.rotateX(Math.PI/2);
   beak.translate(0,r*2.43,r*1.43); parts.push({geo:beak,color:orange});
-  for (const [z,y] of [[0.26,3.2],[0.57,3.28],[0.88,3.19]]) {
-    egg(0,y,z,0.14,0.34,0.23,red);
-  }
+  for (const [z,y] of [[0.26,3.2],[0.57,3.28],[0.88,3.19]]) egg(0,y,z,0.14,0.34,0.23,red);
   egg(0,2.03,1.18,0.18,0.36,0.14,red);
   for (const side of [-1,1]) {
     const leg = new THREE.CylinderGeometry(r*0.095,r*0.12,r*0.65,6);
     leg.rotateX(0.15); leg.translate(side*r*0.43,r*0.38,0);
     parts.push({geo:leg,color:orange});
     egg(side*0.43,0.1,0.15,0.21,0.11,0.32,orange);
-    for (const toe of [-1,0,1]) {
-      egg(side*0.43+toe*0.14,0.075,0.38-Math.abs(toe)*0.05,0.085,0.075,0.26,orange);
-    }
+    for (const toe of [-1,0,1]) egg(side*0.43+toe*0.14,0.075,0.38-Math.abs(toe)*0.05,0.085,0.075,0.26,orange);
   }
 
   return mergeParts(parts);
 }
 
-/** Low-poly irregular patch for a chicken impact. It lies in XY and is rotated onto the road normal per instance. */
+/** BOD3D-style floor blood: one irregular pool with pointed lobes and detached flat splatter drops. */
 function smearGeometry() {
-  const radii = [1.00,0.78,1.10,0.83,1.04,0.72,1.08,0.80,1.02,0.76,1.12,0.82,1.00,0.74,1.06,0.79];
-  const shape = new THREE.Shape();
+  const shapes = [];
+  const pool = new THREE.Shape();
+  const radii = [1.00,0.72,1.17,0.79,1.08,0.67,1.25,0.76,1.05,0.64,1.14,0.81,1.03,0.69,1.20,0.75,1.07,0.66,1.12,0.80];
   for (let i = 0; i < radii.length; i++) {
-    const a = i / radii.length * Math.PI * 2, r = radii[i];
-    const x = Math.cos(a) * r, y = Math.sin(a) * r;
-    if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+    const a = i / radii.length * Math.PI * 2;
+    const stretch = 1 + 0.18 * Math.sin(a * 3 + 0.7);
+    const x = Math.cos(a) * radii[i] * stretch;
+    const y = Math.sin(a) * radii[i];
+    if (i === 0) pool.moveTo(x, y); else pool.lineTo(x, y);
   }
-  shape.closePath();
-  return new THREE.ShapeGeometry(shape);
+  pool.closePath(); shapes.push(pool);
+
+  const drop = (cx, cy, rx, ry, points = 8) => {
+    const s = new THREE.Shape();
+    for (let i = 0; i < points; i++) {
+      const a = i / points * Math.PI * 2;
+      const wobble = 0.82 + 0.18 * Math.sin(i * 2.71 + cx * 5.3 + cy * 7.1);
+      const x = cx + Math.cos(a) * rx * wobble;
+      const y = cy + Math.sin(a) * ry * wobble;
+      if (i === 0) s.moveTo(x, y); else s.lineTo(x, y);
+    }
+    s.closePath(); shapes.push(s);
+  };
+
+  drop( 1.38,  0.28, 0.20, 0.13, 7);
+  drop(-1.22, -0.38, 0.16, 0.11, 7);
+  drop( 0.72, -0.94, 0.12, 0.085, 7);
+  drop(-0.45,  1.05, 0.10, 0.07, 7);
+  drop( 1.62, -0.55, 0.075, 0.055, 6);
+  drop(-1.48,  0.57, 0.065, 0.05, 6);
+
+  return new THREE.ShapeGeometry(shapes);
 }
 
 export class PropsView {
@@ -113,7 +127,7 @@ export class PropsView {
     this.bitMat = new THREE.MeshStandardMaterial({ color: 0x3b3a40, roughness: 0.6, metalness: 0.6 });
     this.smearGeo = smearGeometry();
     this.smearMat = new THREE.MeshStandardMaterial({
-      color: 0x5b0909, roughness: 1, metalness: 0, side: THREE.DoubleSide,
+      color: 0x7d1714, roughness: 1, metalness: 0, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
     });
     this.smearMesh = new THREE.InstancedMesh(this.smearGeo, this.smearMat, MAX_SMEARS);
@@ -122,12 +136,14 @@ export class PropsView {
     this.smears = []; this._smearsDirty = false; this._lastPropsTime = 0;
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._q2 = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
     this._normal = new THREE.Vector3(); this._upZ = new THREE.Vector3(0, 0, 1);
-    // A bounded pool keeps large chicken groups inexpensive.
-    this.burstMeshes = [
-      new THREE.InstancedMesh(new THREE.SphereGeometry(1, 5, 3), new THREE.MeshStandardMaterial({color:0xfff2d8, flatShading:true}), 1536),
-      new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshStandardMaterial({color:0xb71918, roughness:0.65}), 1024)
-    ];
-    for (const mesh of this.burstMeshes) { mesh.count = 0; mesh.frustumCulled = false; this.scene.add(mesh); }
+
+    // Feathers only. Blood is now entirely the flat BOD3D-style road splat below.
+    this.featherBurst = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(1, 5, 3),
+      new THREE.MeshStandardMaterial({color:0xfff2d8, flatShading:true}),
+      1536
+    );
+    this.featherBurst.count = 0; this.featherBurst.frustumCulled = false; this.scene.add(this.featherBurst);
     this._e = new THREE.Euler();
     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
   }
@@ -153,8 +169,8 @@ export class PropsView {
         x: c.pos.x, y: c.pos.y, z: c.pos.z,
         nx: (c.nx || 0) / len, ny: ny / len, nz: (c.nz || 0) / len,
         angle: rand(1) * Math.PI * 2,
-        sx: 0.48 + rand(2) * 0.28,
-        sy: 0.24 + rand(3) * 0.18,
+        sx: 0.42 + rand(2) * 0.24,
+        sy: 0.27 + rand(3) * 0.18,
       });
       if (this.smears.length > MAX_SMEARS) this.smears.shift();
       this._smearsDirty = true;
@@ -207,39 +223,30 @@ export class PropsView {
   }
 
   updateChickenBursts(props) {
-    const counts = [0, 0];
+    let count = 0;
+    const mesh = this.featherBurst;
     for (let i = 0; i < props.chickens.length; i++) {
       const c = props.chickens[i], t = c.deadT;
       if (t < 0 || t > 3.2) continue;
-      for (let kind = 0; kind < 2; kind++) {
-        const mesh = this.burstMeshes[kind], amount = kind === 0 ? 36 : 24;
-        for (let j = 0; j < amount && counts[kind] < mesh.instanceMatrix.count; j++) {
-          // Stable per-chicken variation: no frame-dependent random jitter.
-          const seed = (i+1)*73.17 + j*19.31 + kind*8.7;
-          const rand = n => { const v = Math.sin(seed+n*31.7)*43758.5453; return v-Math.floor(v); };
-          const angle = rand(1)*Math.PI*2, speed = 1.5+rand(2)*4;
-          const up = 6+rand(3)*5, gravity = kind === 0 ? 7 : 17;
-          const flight = kind === 0 ? (1-Math.exp(-t*1.4))/1.4 : t;
-          const height = 0.65+up*t-0.5*gravity*t*t;
-          const fade = Math.min(1,(3.2-t)/0.65);
-          this._p.set(c.pos.x+Math.cos(angle)*speed*flight,
-            c.pos.y+Math.max(kind === 0 ? 0.04 : 0.015,height),
-            c.pos.z+Math.sin(angle)*speed*flight);
-          if (kind === 0) {
-            this._p.x += Math.sin(t*9+seed)*0.16*t;
-            this._e.set(seed+t*7,seed+t*3,Math.sin(t*10+seed));
-            this._s.set(0.055*fade, (0.16+rand(4)*0.14)*fade,0.018*fade);
-          } else {
-            this._e.set(0,angle,0);
-            const size = (0.055+rand(4)*0.09)*fade;
-            this._s.set(size*(height<0?2.7:1),size*(height<0?0.12:1.6),size*(height<0?2:1));
-          }
-          this._q.setFromEuler(this._e); this._m.compose(this._p,this._q,this._s);
-          mesh.setMatrixAt(counts[kind]++,this._m);
-        }
+      for (let j = 0; j < 40 && count < mesh.instanceMatrix.count; j++) {
+        const seed = (i+1)*73.17 + j*19.31;
+        const rand = n => { const v = Math.sin(seed+n*31.7)*43758.5453; return v-Math.floor(v); };
+        const angle = rand(1)*Math.PI*2, speed = 1.5+rand(2)*4;
+        const up = 6+rand(3)*5;
+        const flight = (1-Math.exp(-t*1.4))/1.4;
+        const height = 0.65+up*t-0.5*7*t*t;
+        const fade = Math.min(1,(3.2-t)/0.65);
+        this._p.set(c.pos.x+Math.cos(angle)*speed*flight,
+          c.pos.y+Math.max(0.04,height),
+          c.pos.z+Math.sin(angle)*speed*flight);
+        this._p.x += Math.sin(t*9+seed)*0.16*t;
+        this._e.set(seed+t*7,seed+t*3,Math.sin(t*10+seed));
+        this._s.set(0.055*fade, (0.16+rand(4)*0.14)*fade,0.018*fade);
+        this._q.setFromEuler(this._e); this._m.compose(this._p,this._q,this._s);
+        mesh.setMatrixAt(count++,this._m);
       }
     }
-    this.burstMeshes.forEach((mesh,k) => {mesh.count=counts[k]; mesh.instanceMatrix.needsUpdate=true;});
+    mesh.count=count; mesh.instanceMatrix.needsUpdate=true;
     this._s.set(1,1,1);
   }
 
@@ -255,10 +262,9 @@ export class PropsView {
       let dirty = force;
       let paint = false;
       props.barrels.forEach((b, i) => {
-        // a lit drum blinks white-hot, faster and faster is not needed: the fuse is short
         const want = b.alive && b.fuse >= 0 && Math.floor(b.fuse * 12) % 2 === 0 ? 1 : 0;
         if (b._col !== want) { im.setColorAt(i, want ? HOT : PAINT[b.paint]); b._col = want; paint = true; }
-        const settled = (!b.alive || b.asleep) && b.fuse < 0;                  // hasn't moved since it was last drawn
+        const settled = (!b.alive || b.asleep) && b.fuse < 0;
         if (!barrelNeedsDraw(b, force)) return;
         if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(i, this._m); }
         else im.setMatrixAt(i, this._zero);
@@ -273,10 +279,10 @@ export class PropsView {
         if (c.deadT >= 0) {
           const t = c.deadT;
           if (t > POP_DURATION) { cm.setMatrixAt(i, this._zero); return; }
-          const h = POP_V0 * t - 0.5 * POP_G * t * t;                      // a short impact tumble, then gone
+          const h = POP_V0 * t - 0.5 * POP_G * t * t;
           this._p.set(c.pos.x, c.pos.y + Math.max(0, h), c.pos.z);
           this._e.set(t * 24, t * 16, t * 10);
-          this._q.setFromEuler(this._e);                                  // tumbling
+          this._q.setFromEuler(this._e);
           this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
           return;
         }
@@ -310,7 +316,7 @@ export class PropsView {
       let n = 0;
       for (const p of props.bits) {
         if (p.life <= 0) continue;
-        const k = Math.min(1, p.life);                                         // shrink away over the last second
+        const k = Math.min(1, p.life);
         this._p.set(p.pos.x, p.pos.y, p.pos.z); this._q.set(p.q.x, p.q.y, p.q.z, p.q.w); this._s.set(p.sx * k, p.sy * k, p.sz * k);
         this._m.compose(this._p, this._q, this._s); bm.setMatrixAt(n++, this._m);
       }
