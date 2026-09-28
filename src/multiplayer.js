@@ -66,10 +66,17 @@ export class Multiplayer {
 
   get selfName() { return this.players.get(this.selfId)?.name; }
 
-  _assignHue() {
+  /** Give the next player a colour at random from those nobody has yet - the host included, so the host isn't
+   *  always yellow. The host is the only one who chooses; everyone (each player too, on their own car) is then
+   *  told the same colour for the same person. `rand` is only a parameter so a test can steer it. */
+  _assignHue(rand = Math.random) {
     const N = 7; // RIVAL_LOOKS.length, kept in sync manually to avoid importing three.js here
-    for (let i = 0; i < N; i++) if (!this.usedHues.has(i)) { this.usedHues.add(i); return i; }
-    return Math.floor(Math.random() * N);  // ran out of unique colours - reuse one
+    const free = [];
+    for (let i = 0; i < N; i++) if (!this.usedHues.has(i)) free.push(i);
+    if (!free.length) return Math.floor(rand() * N);  // ran out of unique colours (an eighth player) - reuse one
+    const hue = free[Math.min(free.length - 1, Math.floor(rand() * free.length))];
+    this.usedHues.add(hue);
+    return hue;
   }
 
   _broadcastLobby() {
@@ -134,6 +141,7 @@ export class Multiplayer {
     if (p) this.usedHues.delete(p.hue);
     this.players.delete(id); this.conns.delete(id);
     this.h.onPlayerLeft(id);
+    this._sendAll({ t: 'left', id });   // the other guests never see the leaver's connection close, so tell them (their car is removed)
     this._broadcastLobby();
   }
 

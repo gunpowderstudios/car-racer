@@ -1,0 +1,185 @@
+diff --git a/src/carVisual.js b/src/carVisual.js
+index 759da9d..9d15cc4 100644
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -31,6 +31,7 @@ export const RIVAL_LOOKS = [
+   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
+ ];
+ const recoloured = new WeakMap();           // source texture -> Map(look -> texture)
++const pristine = new WeakMap();             // a material of the player's own car -> its { map, color } as loaded, before any multiplayer repaint
+ 
+ /** A copy of `tex` with the look applied, or null if the picture can't be read back (then the caller tints instead). */
+ function recolour(tex, look) {
+@@ -88,7 +89,38 @@ export class CarVisual {
+     this.loaded = false;
+   }
+ 
+-  setPaint(hex) { this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1; }
++  setPaint(hex) {
++    this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1;
++    const kept = pristine.get(this.material); if (kept) kept.color.set(hex);
++    if (this._ownLook) this._applyOwnLook();
++  }
++
++  /**
++   * Multiplayer: paint THIS car the way every other player's screen paints it - the same recoloured texture from the
++   * same look - so each player sees their own car in the colour everyone else sees them in. Pass null to put the
++   * original back. (The original is kept aside: rivals and remote cars are copied from this car, and must always
++   * be recoloured from the untouched picture, never from an already-recoloured one.)
++   */
++  setOwnLook(look) {
++    look = look || null;
++    if (look === (this._ownLook || null)) return;
++    this._ownLook = look;
++    if (this.loaded) this._applyOwnLook();
++  }
++  _applyOwnLook() {
++    const look = this._ownLook;
++    for (const m of this.mats || []) {
++      let base = pristine.get(m);
++      if (!base) pristine.set(m, base = { map: m.map, color: m.color.clone() });
++      m.map = base.map; m.color.copy(base.color);
++      if (look) {
++        if (base.map) { const t = recolour(base.map, look); if (t) m.map = t; else m.color.set(look.tint); }
++        else m.color.set(look.tint);
++      }
++      m.userData.base = m.color.clone(); m.needsUpdate = true;
++    }
++    this._lookKey = -1;
++  }
+ 
+   /**
+    * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
+@@ -100,7 +132,8 @@ export class CarVisual {
+     this.mats = [];
+     model.traverse((o) => {
+       if (!o.isMesh) return;
+-      const m = o.material.clone();
++      const m = o.material.clone(), kept = pristine.get(o.material);
++      if (kept) { m.map = kept.map; m.color.copy(kept.color); }       // never recolour a copy that's already been recoloured
+       if (m.map) {
+         const t = recolour(m.map, look);
+         if (t) m.map = t; else m.color.set(look.tint);
+@@ -174,6 +207,7 @@ export class CarVisual {
+       this.holder.add(model);
+       this.model = model; this._lookKey = -1;
+       this.loaded = true;
++      if (this._ownLook) this._applyOwnLook();
+       this.onLoad?.(this);
+     } catch (e) {
+       console.warn('Could not load car model, using a box.', e);
+diff --git a/src/main.js b/src/main.js
+index 475351a..77f00ce 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -695,6 +695,7 @@ function mpTeardown() {
+   for (const p of remotePlayers.values()) mpReleasePlayer(p);
+   remotePlayers.clear();
+   if (net) { net.leave(); net = null; }
++  visual.setOwnLook(null);                                    // back to your own paint
+ }
+ /** Move each remote player's car towards its latest reported state and keep its name label placed. */
+ function mpSyncRemote() {
+@@ -756,7 +757,7 @@ function mpBeginDrive(trackDef) {
+   mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false; mpBoomSeen.clear();
+   const mine = net.players.get(net.selfId);
+   startDriving(trackDef || makeTemplate('speedway'));
+-  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
++  if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
+   mpPlaceOnGrid();
+   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
+ }
+diff --git a/src/multiplayer.js b/src/multiplayer.js
+index be8d3d8..74ad7ee 100644
+--- a/src/multiplayer.js
++++ b/src/multiplayer.js
+@@ -66,10 +66,17 @@ export class Multiplayer {
+ 
+   get selfName() { return this.players.get(this.selfId)?.name; }
+ 
+-  _assignHue() {
++  /** Give the next player a colour at random from those nobody has yet - the host included, so the host isn't
++   *  always yellow. The host is the only one who chooses; everyone (each player too, on their own car) is then
++   *  told the same colour for the same person. `rand` is only a parameter so a test can steer it. */
++  _assignHue(rand = Math.random) {
+     const N = 7; // RIVAL_LOOKS.length, kept in sync manually to avoid importing three.js here
+-    for (let i = 0; i < N; i++) if (!this.usedHues.has(i)) { this.usedHues.add(i); return i; }
+-    return Math.floor(Math.random() * N);  // ran out of unique colours - reuse one
++    const free = [];
++    for (let i = 0; i < N; i++) if (!this.usedHues.has(i)) free.push(i);
++    if (!free.length) return Math.floor(rand() * N);  // ran out of unique colours (an eighth player) - reuse one
++    const hue = free[Math.min(free.length - 1, Math.floor(rand() * free.length))];
++    this.usedHues.add(hue);
++    return hue;
+   }
+ 
+   _broadcastLobby() {
+@@ -134,6 +141,7 @@ export class Multiplayer {
+     if (p) this.usedHues.delete(p.hue);
+     this.players.delete(id); this.conns.delete(id);
+     this.h.onPlayerLeft(id);
++    this._sendAll({ t: 'left', id });   // the other guests never see the leaver's connection close, so tell them (their car is removed)
+     this._broadcastLobby();
+   }
+ 
+diff --git a/src/version.js b/src/version.js
+index 0600f0b..3ee3416 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -2,5 +2,5 @@
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '15.2';
+-export const NOTE = 'Multiplayer: barrels now hurt (35% of your health at point blank) and explode for everyone, not just the player who hit them';
++export const VERSION = '15.3';
++export const NOTE = 'Multiplayer: random colour for every player (host too), you see your own car in the colour everyone else sees, and a player who leaves is removed from everyone screens';
+diff --git a/tests/multiplayer.test.mjs b/tests/multiplayer.test.mjs
+index e9504d3..e3f41e1 100644
+--- a/tests/multiplayer.test.mjs
++++ b/tests/multiplayer.test.mjs
+@@ -127,3 +127,44 @@ test('sendBoom: the host tells every guest directly; a guest tells the host, who
+   guest.sendBoom(9);
+   assert.deepEqual(hostConn._sent, [{ t: 'boom', i: 9 }]);
+ });
++
++test('colours are picked at random from those still free - not lowest-first - and never repeat until they run out', () => {
++  const mp = new Multiplayer(noopHandlers());
++  assert.equal(mp._assignHue(() => 0.999), 6, 'a high roll gets a high colour, so the first player is not always colour 0');
++  assert.equal(mp._assignHue(() => 0), 0, 'a low roll gets the lowest one still free');
++  const got = new Set([6, 0]);
++  for (let i = 0; i < 5; i++) got.add(mp._assignHue());
++  assert.equal(got.size, 7, 'seven players get seven different colours');
++  const eighth = mp._assignHue();
++  assert.ok(Number.isInteger(eighth) && eighth >= 0 && eighth < 7, 'an eighth player shares one, but still gets a real colour');
++});
++
++test('every one of the seven colours can be dealt to the first player (the host)', () => {
++  const first = new Set();
++  for (let k = 0; k < 7; k++) first.add(new Multiplayer(noopHandlers())._assignHue(() => (k + 0.5) / 7));
++  assert.equal(first.size, 7);
++});
++
++test('a colour freed by someone leaving can be dealt again', () => {
++  const mp = new Multiplayer(noopHandlers());
++  mp.isHost = true; mp.selfId = 'host';
++  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 2 }); mp.usedHues.add(2);
++  mp._playerLeft('guestA');
++  assert.equal(mp.usedHues.has(2), false);
++});
++
++test('when a guest leaves, the host removes them and tells the remaining guests (but not the leaver)', () => {
++  const left = [];
++  const mp = new Multiplayer(noopHandlers({ onPlayerLeft: (id) => left.push(id) }));
++  mp.isHost = true; mp.selfId = 'host';
++  const a = mockConn('guestA'), b = mockConn('guestB');
++  mp.conns.set('guestA', a); mp.conns.set('guestB', b);
++  mp.players.set('host', { id: 'host', name: 'H', hue: 0 });
++  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 3 });
++  mp.players.set('guestB', { id: 'guestB', name: 'B', hue: 5 });
++  mp._playerLeft('guestA');
++  assert.deepEqual(left, ['guestA'], 'the host clears the car on its own screen');
++  assert.ok(!mp.players.has('guestA'));
++  assert.ok(b._sent.some((m) => m.t === 'left' && m.id === 'guestA'), 'the other guest is told, so their copy of the car goes too');
++  assert.equal(a._sent.length, 0, 'the leaver is not messaged');
++});

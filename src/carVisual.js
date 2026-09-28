@@ -31,6 +31,7 @@ export const RIVAL_LOOKS = [
   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
 ];
 const recoloured = new WeakMap();           // source texture -> Map(look -> texture)
+const pristine = new WeakMap();             // a material of the player's own car -> its { map, color } as loaded, before any multiplayer repaint
 
 /** A copy of `tex` with the look applied, or null if the picture can't be read back (then the caller tints instead). */
 function recolour(tex, look) {
@@ -88,7 +89,38 @@ export class CarVisual {
     this.loaded = false;
   }
 
-  setPaint(hex) { this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1; }
+  setPaint(hex) {
+    this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1;
+    const kept = pristine.get(this.material); if (kept) kept.color.set(hex);
+    if (this._ownLook) this._applyOwnLook();
+  }
+
+  /**
+   * Multiplayer: paint THIS car the way every other player's screen paints it - the same recoloured texture from the
+   * same look - so each player sees their own car in the colour everyone else sees them in. Pass null to put the
+   * original back. (The original is kept aside: rivals and remote cars are copied from this car, and must always
+   * be recoloured from the untouched picture, never from an already-recoloured one.)
+   */
+  setOwnLook(look) {
+    look = look || null;
+    if (look === (this._ownLook || null)) return;
+    this._ownLook = look;
+    if (this.loaded) this._applyOwnLook();
+  }
+  _applyOwnLook() {
+    const look = this._ownLook;
+    for (const m of this.mats || []) {
+      let base = pristine.get(m);
+      if (!base) pristine.set(m, base = { map: m.map, color: m.color.clone() });
+      m.map = base.map; m.color.copy(base.color);
+      if (look) {
+        if (base.map) { const t = recolour(base.map, look); if (t) m.map = t; else m.color.set(look.tint); }
+        else m.color.set(look.tint);
+      }
+      m.userData.base = m.color.clone(); m.needsUpdate = true;
+    }
+    this._lookKey = -1;
+  }
 
   /**
    * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
@@ -100,7 +132,8 @@ export class CarVisual {
     this.mats = [];
     model.traverse((o) => {
       if (!o.isMesh) return;
-      const m = o.material.clone();
+      const m = o.material.clone(), kept = pristine.get(o.material);
+      if (kept) { m.map = kept.map; m.color.copy(kept.color); }       // never recolour a copy that's already been recoloured
       if (m.map) {
         const t = recolour(m.map, look);
         if (t) m.map = t; else m.color.set(look.tint);
@@ -174,6 +207,7 @@ export class CarVisual {
       this.holder.add(model);
       this.model = model; this._lookKey = -1;
       this.loaded = true;
+      if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);
     } catch (e) {
       console.warn('Could not load car model, using a box.', e);

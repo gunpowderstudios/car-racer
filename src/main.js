@@ -695,6 +695,7 @@ function mpTeardown() {
   for (const p of remotePlayers.values()) mpReleasePlayer(p);
   remotePlayers.clear();
   if (net) { net.leave(); net = null; }
+  visual.setOwnLook(null);                                    // back to your own paint
 }
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */
 function mpSyncRemote() {
@@ -756,7 +757,7 @@ function mpBeginDrive(trackDef) {
   mpHealth = 1; mpFinished = false; mpRaceStart = null; mpExploded = false; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
   startDriving(trackDef || makeTemplate('speedway'));
-  if (mine) visual.setPaint(RIVAL_LOOKS[mine.hue].tint);
+  if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
   mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
 }

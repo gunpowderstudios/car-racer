@@ -127,3 +127,44 @@ test('sendBoom: the host tells every guest directly; a guest tells the host, who
   guest.sendBoom(9);
   assert.deepEqual(hostConn._sent, [{ t: 'boom', i: 9 }]);
 });
+
+test('colours are picked at random from those still free - not lowest-first - and never repeat until they run out', () => {
+  const mp = new Multiplayer(noopHandlers());
+  assert.equal(mp._assignHue(() => 0.999), 6, 'a high roll gets a high colour, so the first player is not always colour 0');
+  assert.equal(mp._assignHue(() => 0), 0, 'a low roll gets the lowest one still free');
+  const got = new Set([6, 0]);
+  for (let i = 0; i < 5; i++) got.add(mp._assignHue());
+  assert.equal(got.size, 7, 'seven players get seven different colours');
+  const eighth = mp._assignHue();
+  assert.ok(Number.isInteger(eighth) && eighth >= 0 && eighth < 7, 'an eighth player shares one, but still gets a real colour');
+});
+
+test('every one of the seven colours can be dealt to the first player (the host)', () => {
+  const first = new Set();
+  for (let k = 0; k < 7; k++) first.add(new Multiplayer(noopHandlers())._assignHue(() => (k + 0.5) / 7));
+  assert.equal(first.size, 7);
+});
+
+test('a colour freed by someone leaving can be dealt again', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 2 }); mp.usedHues.add(2);
+  mp._playerLeft('guestA');
+  assert.equal(mp.usedHues.has(2), false);
+});
+
+test('when a guest leaves, the host removes them and tells the remaining guests (but not the leaver)', () => {
+  const left = [];
+  const mp = new Multiplayer(noopHandlers({ onPlayerLeft: (id) => left.push(id) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const a = mockConn('guestA'), b = mockConn('guestB');
+  mp.conns.set('guestA', a); mp.conns.set('guestB', b);
+  mp.players.set('host', { id: 'host', name: 'H', hue: 0 });
+  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 3 });
+  mp.players.set('guestB', { id: 'guestB', name: 'B', hue: 5 });
+  mp._playerLeft('guestA');
+  assert.deepEqual(left, ['guestA'], 'the host clears the car on its own screen');
+  assert.ok(!mp.players.has('guestA'));
+  assert.ok(b._sent.some((m) => m.t === 'left' && m.id === 'guestA'), 'the other guest is told, so their copy of the car goes too');
+  assert.equal(a._sent.length, 0, 'the leaver is not messaged');
+});
