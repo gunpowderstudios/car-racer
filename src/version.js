@@ -4,5 +4,5 @@ import './vehicleChoice.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '15.9';
-export const NOTE = 'Aligned the Motor Home visual model to the same centre-of-mass frame as its collision hull so rollovers sit correctly on the road';
+export const VERSION = '16.0';
+export const NOTE = 'Multiplayer now shares each player vehicle choice so Car and Motor Home can be mixed in the same race';
