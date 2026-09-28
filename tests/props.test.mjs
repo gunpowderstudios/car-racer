@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { Track, normalizeTrack, TRACK_VERSION } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS } from '../src/templates.js';
-import { Props, placeProp, BARREL, BLAST, CHICKEN } from '../src/props.js';
+import { Props, placeProp, BARREL, BLAST, CHICKEN, barrelNeedsDraw } from '../src/props.js';
 import { DRAG_DEF, placeOnTrack, DT } from './harness.mjs';
 
 /** Drag strip with barrels at the given (x, z); the straight part runs along x = 0 between z = -550 and 550. */
@@ -316,4 +316,30 @@ test('chickens survive a track save/load round trip (PROP_TYPES)', () => {
   assert.equal(def.props.length, 2, 'both survive normalization');
   const again = normalizeTrack(JSON.parse(JSON.stringify(def)));
   assert.deepEqual(again.props, def.props, 'survives an export / import round trip');
+});
+
+test('a resting barrel that goes off with no fuse (a multiplayer sync) is redrawn once, so it disappears', () => {
+  const { props } = setup([[0, -100]]);
+  const b = props.barrels[0];
+  const settle = () => { b._drawn = (!b.alive || b.asleep) && b.fuse < 0; b._shown = b.alive; };   // what the view records after drawing
+  assert.equal(barrelNeedsDraw(b, true), true, 'the first drawing is always forced');
+  settle();
+  assert.equal(barrelNeedsDraw(b), false, 'a resting, already-drawn barrel is left alone (the point of the shortcut)');
+  props.igniteRemote(b.i);
+  props.step(DT, null);
+  assert.equal(b.alive, false);
+  assert.equal(barrelNeedsDraw(b), true, 'it just exploded: it must be redrawn or it stays on screen');
+  settle();
+  assert.equal(barrelNeedsDraw(b), false, 'once drawn as gone, it is skipped again');
+});
+
+test('a barrel that is moving, burning or newly hit is always redrawn', () => {
+  const { props } = setup([[0, -100]]);
+  const b = props.barrels[0];
+  b._drawn = true; b._shown = true;
+  assert.equal(barrelNeedsDraw(b), false);
+  b.asleep = false;
+  assert.equal(barrelNeedsDraw(b), true, 'awake and rolling');
+  b.asleep = true; b.fuse = 0.4;
+  assert.equal(barrelNeedsDraw(b), true, 'fuse burning (it flashes)');
 });

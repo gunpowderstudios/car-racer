@@ -1,6 +1,6 @@
 // Draws the barrels, chickens and scrap metal that props.js simulates.
 import * as THREE from 'three';
-import { BARREL, CHICKEN } from './props.js';
+import { BARREL, CHICKEN, barrelNeedsDraw } from './props.js';
 import './chickenBehavior.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
@@ -180,10 +180,10 @@ export class PropsView {
         const want = b.alive && b.fuse >= 0 && Math.floor(b.fuse * 12) % 2 === 0 ? 1 : 0;
         if (b._col !== want) { im.setColorAt(i, want ? HOT : PAINT[b.paint]); b._col = want; paint = true; }
         const settled = (!b.alive || b.asleep) && b.fuse < 0;                  // hasn't moved since it was last drawn
-        if (!force && settled && b._drawn) return;
+        if (!barrelNeedsDraw(b, force)) return;
         if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(i, this._m); }
         else im.setMatrixAt(i, this._zero);
-        b._drawn = settled; dirty = true;
+        b._drawn = settled; b._shown = b.alive; dirty = true;
       });
       if (dirty) im.instanceMatrix.needsUpdate = true;
       if (paint && im.instanceColor) im.instanceColor.needsUpdate = true;

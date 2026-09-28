@@ -64,6 +64,14 @@ function mulberry(seed) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
+/** Does a barrel's picture need redrawing? Not if it has settled (asleep or gone, no fuse) and was already drawn that way -
+ *  but one that has just gone off while resting does, once, to make it disappear: multiplayer sets barrels off with no
+ *  fuse, so `_drawn` alone can't tell "still standing there" from "just exploded". `_shown` is whether the last drawing had it standing. */
+export function barrelNeedsDraw(b, force = false) {
+  const settled = (!b.alive || b.asleep) && b.fuse < 0;
+  return force || !settled || !b._drawn || b._shown !== b.alive;
+}
+
 /** Rotation taking +Y to the unit vector n. */
 export function qFromUp(nx, ny, nz, q) { q.x = nz; q.y = 0; q.z = -nx; q.w = 1 + ny; return q.normalize(); }
 
