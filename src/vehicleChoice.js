@@ -247,16 +247,17 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
   const model = this.model;
   const holder = this.holder;
 
-  // The built-in loader measures the normal car using the global CAR object. In multiplayer
-  // CAR belongs to the LOCAL player, so a remote normal car seen from a Motor Home browser was
-  // being scaled/aligned with Motor Home wheelbase and ride height. Re-apply the known-good
-  // original car measurements here whenever this is a measured vehicle.
+  // Re-apply the known-good original car measurements for a measured vehicle. Detach the
+  // model while measuring it so Box3 cannot accidentally include the player's current world
+  // position. That race could make the normal car end up far below the road if the GLB finished
+  // loading after the menu/track had already positioned visual.root.
   if (config.fit === 'measured') {
     const wb = BASE_CAR.wheelbase;
     const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
     const a = (1 - BASE_CAR.frontWeight) * wb;
     const restHeight = restHeightForVehicle(config);
 
+    holder.remove(model);
     model.scale.setScalar(s);
     if (!MODEL.flip) {
       holder.rotation.y = Math.PI / 2;
@@ -272,6 +273,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
     } else {
       model.position.y = -restHeight - MODEL.groundY * s;
     }
+    holder.add(model);
     this.restHeight = restHeight;
     return;
   }
