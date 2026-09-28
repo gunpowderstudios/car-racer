@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { BARREL, CHICKEN, barrelNeedsDraw } from './props.js';
 import './chickenBehavior.js';
 
-const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];
+const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xb8351f)];
 const HOT = new THREE.Color(3, 2.1, 1.4);
 const POP_V0 = 5.5, POP_G = 24, POP_DURATION = 0.22;
 const MAX_SMEARS = 2048;
