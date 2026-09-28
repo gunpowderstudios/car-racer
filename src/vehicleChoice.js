@@ -38,6 +38,7 @@ export const VEHICLES = [
 ];
 
 const KEY = 'cr.vehicle';
+const MP_RESTORE_KEY = 'cr.mpVehicleRestore';
 const fallback = VEHICLES[0];
 
 export function selectedVehicle() {
@@ -89,6 +90,17 @@ function applySelectedPhysics() {
 
 applySelectedPhysics();
 
+function fillVehicleSelect(select) {
+  select.innerHTML = '';
+  for (const vehicle of VEHICLES) {
+    const option = document.createElement('option');
+    option.value = vehicle.id;
+    option.textContent = vehicle.name;
+    select.appendChild(option);
+  }
+  select.value = selectedVehicle().id;
+}
+
 function addVehicleSelector() {
   const grid = document.querySelector('#menu .opt-grid');
   if (!grid || document.getElementById('opt-vehicle')) return;
@@ -100,13 +112,7 @@ function addVehicleSelector() {
   const select = document.createElement('select');
   select.id = 'opt-vehicle';
   select.setAttribute('aria-label', 'Player vehicle');
-  for (const vehicle of VEHICLES) {
-    const option = document.createElement('option');
-    option.value = vehicle.id;
-    option.textContent = vehicle.name;
-    select.appendChild(option);
-  }
-  select.value = selectedVehicle().id;
+  fillVehicleSelect(select);
   select.addEventListener('change', () => {
     try { localStorage.setItem(KEY, select.value); } catch { /* storage unavailable */ }
     location.reload();
@@ -114,6 +120,69 @@ function addVehicleSelector() {
 
   label.appendChild(select);
   grid.prepend(label);
+}
+
+// Multiplayer gets its own obvious vehicle selector on BOTH the Create and Join screens.
+// Changing vehicle needs one reload because the local physics profile is chosen before main.js
+// creates the Vehicle. Preserve the form and reopen the same multiplayer screen afterwards.
+function rememberMultiplayerScreen(screen) {
+  const data = {
+    screen,
+    homeName: document.getElementById('mp-name')?.value || '',
+    joinName: document.getElementById('mp-join-name')?.value || '',
+    code: document.getElementById('mp-code')?.value || '',
+  };
+  try { sessionStorage.setItem(MP_RESTORE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
+}
+
+function changeMultiplayerVehicle(id, screen) {
+  rememberMultiplayerScreen(screen);
+  try { localStorage.setItem(KEY, vehicleById(id).id); } catch { /* storage unavailable */ }
+  location.reload();
+}
+
+function addMultiplayerVehicleSelector(containerId, selectId, screen) {
+  const container = document.getElementById(containerId);
+  if (!container || document.getElementById(selectId)) return;
+
+  const nameInput = document.getElementById(screen === 'join' ? 'mp-join-name' : 'mp-name');
+  const nameLabel = nameInput?.closest('label');
+  if (!nameLabel) return;
+
+  const label = document.createElement('label');
+  label.className = 'mp-field';
+  label.append('Vehicle');
+
+  const select = document.createElement('select');
+  select.id = selectId;
+  select.setAttribute('aria-label', 'Vehicle');
+  fillVehicleSelect(select);
+  select.addEventListener('change', () => changeMultiplayerVehicle(select.value, screen));
+
+  label.appendChild(select);
+  nameLabel.insertAdjacentElement('afterend', label);
+}
+
+function restoreMultiplayerScreenAfterReload() {
+  let data = null;
+  try {
+    const raw = sessionStorage.getItem(MP_RESTORE_KEY);
+    if (raw) data = JSON.parse(raw);
+    sessionStorage.removeItem(MP_RESTORE_KEY);
+  } catch { /* storage unavailable */ }
+  if (!data) return;
+
+  addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('btn-multiplayer')?.click();
+      if (data.homeName) document.getElementById('mp-name').value = data.homeName;
+      if (data.screen === 'join') {
+        document.getElementById('mp-join-show')?.click();
+        if (data.joinName) document.getElementById('mp-join-name').value = data.joinName;
+        if (data.code) document.getElementById('mp-code').value = data.code;
+      }
+    }, 0);
+  }, { once: true });
 }
 
 // White/grey motor-home textures do not respond much to the car's hue-rotation recolouring.
@@ -283,3 +352,6 @@ Multiplayer.prototype.leave = function patchedLeave() {
 };
 
 addVehicleSelector();
+addMultiplayerVehicleSelector('mp-home', 'mp-vehicle', 'home');
+addMultiplayerVehicleSelector('mp-join', 'mp-join-vehicle', 'join');
+restoreMultiplayerScreenAfterReload();
