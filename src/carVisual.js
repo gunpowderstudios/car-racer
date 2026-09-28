@@ -6,14 +6,13 @@ import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
 import { Track } from './track.js';
 
-// Measurements of cars/car.glb (model units). The model is a single mesh, 189 units long
+// Measurements of the current car model (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
-// cars/car-textured.glb is the textured car.gltf, baked into the same position and scale,
-// so these numbers fit both. Vertical placement is measured automatically from each model's
-// bounding box, so replacement GLBs can have a different origin without sinking/floating.
+// cars/car-shrink.glb is the current player car. Vertical placement is measured automatically
+// from each model's bounding box, so replacement GLBs can have a different origin without sinking/floating.
 // Models that carry their own textures keep their materials; untextured ones get the paint colour from the menu.
 export const MODEL = {
-  url: 'cars/car-textured.glb',
+  url: 'cars/car-shrink.glb',
   frontAxleX: -62, rearAxleX: 45,
   centerZ: 3.5845, groundY: -9.3037, // legacy reference only; Y is now auto-grounded from the model bounds
   flip: false,            // set true if your model's nose points the other way
