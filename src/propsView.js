@@ -5,7 +5,8 @@ import './chickenBehavior.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xd39b1c)];    // red drums, with the odd yellow one
 const HOT = new THREE.Color(3, 2.1, 1.4);                               // over-bright, so a lit drum glows white-hot
-const POP_V0 = 10, POP_G = 16, POP_DURATION = 0.18;      // a splatted chicken's comedic launch: up, tumble, gone
+const POP_V0 = 5.5, POP_G = 24, POP_DURATION = 0.22;                    // short knocked-up tumble, not a cartoon rocket
+const MAX_SMEARS = 2048;                                                // safety cap: far beyond a normal race
 
 /** An oil drum: a lathe profile with two pressed rings and a rolled rim, darker at the ends. */
 function drumGeometry() {
@@ -87,6 +88,19 @@ function chickenGeometry() {
   return mergeParts(parts);
 }
 
+/** Low-poly irregular patch for a chicken impact. It lies in XY and is rotated onto the road normal per instance. */
+function smearGeometry() {
+  const radii = [1.00,0.78,1.10,0.83,1.04,0.72,1.08,0.80,1.02,0.76,1.12,0.82,1.00,0.74,1.06,0.79];
+  const shape = new THREE.Shape();
+  for (let i = 0; i < radii.length; i++) {
+    const a = i / radii.length * Math.PI * 2, r = radii[i];
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
+
 export class PropsView {
   constructor(scene) {
     this.scene = scene;
@@ -97,7 +111,17 @@ export class PropsView {
     this.chickenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true });
     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
     this.bitMat = new THREE.MeshStandardMaterial({ color: 0x3b3a40, roughness: 0.6, metalness: 0.6 });
-    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
+    this.smearGeo = smearGeometry();
+    this.smearMat = new THREE.MeshStandardMaterial({
+      color: 0x5b0909, roughness: 1, metalness: 0, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+    });
+    this.smearMesh = new THREE.InstancedMesh(this.smearGeo, this.smearMat, MAX_SMEARS);
+    this.smearMesh.count = 0; this.smearMesh.receiveShadow = true; this.smearMesh.frustumCulled = false;
+    this.scene.add(this.smearMesh);
+    this.smears = []; this._smearsDirty = false; this._lastPropsTime = 0;
+    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._q2 = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
+    this._normal = new THREE.Vector3(); this._upZ = new THREE.Vector3(0, 0, 1);
     // A bounded pool keeps large chicken groups inexpensive.
     this.burstMeshes = [
       new THREE.InstancedMesh(new THREE.SphereGeometry(1, 5, 3), new THREE.MeshStandardMaterial({color:0xfff2d8, flatShading:true}), 1536),
@@ -108,10 +132,60 @@ export class PropsView {
     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
   }
 
+  clearSmears(props = null) {
+    this.smears.length = 0; this.smearMesh.count = 0; this._smearsDirty = true;
+    if (props) for (const c of props.chickens) c._smearRecordedView = false;
+  }
+
+  /** Capture each impact once. Marks persist until the race/track resets, independently of chicken respawns. */
+  recordChickenSmears(props) {
+    for (let i = 0; i < props.chickens.length; i++) {
+      const c = props.chickens[i];
+      if (c.deadT < 0) { c._smearRecordedView = false; continue; }
+      if (c._smearRecordedView) continue;
+      c._smearRecordedView = true;
+
+      const seed = (i + 1) * 91.73 + this.smears.length * 37.19 + props.time * 11.7;
+      const rand = n => { const v = Math.sin(seed + n * 29.13) * 43758.5453; return v - Math.floor(v); };
+      const ny = Number.isFinite(c.ny) ? c.ny : 1;
+      const len = Math.hypot(c.nx || 0, ny, c.nz || 0) || 1;
+      this.smears.push({
+        x: c.pos.x, y: c.pos.y, z: c.pos.z,
+        nx: (c.nx || 0) / len, ny: ny / len, nz: (c.nz || 0) / len,
+        angle: rand(1) * Math.PI * 2,
+        sx: 0.48 + rand(2) * 0.28,
+        sy: 0.24 + rand(3) * 0.18,
+      });
+      if (this.smears.length > MAX_SMEARS) this.smears.shift();
+      this._smearsDirty = true;
+    }
+  }
+
+  updateSmears(force = false) {
+    if (!force && !this._smearsDirty) return;
+    let n = 0;
+    for (const s of this.smears) {
+      this._normal.set(s.nx, s.ny, s.nz).normalize();
+      this._p.set(s.x + s.nx * 0.012, s.y + s.ny * 0.012, s.z + s.nz * 0.012);
+      this._q.setFromUnitVectors(this._upZ, this._normal);
+      this._q2.setFromAxisAngle(this._upZ, s.angle);
+      this._q.multiply(this._q2);
+      this._s.set(s.sx, s.sy, 1);
+      this._m.compose(this._p, this._q, this._s);
+      this.smearMesh.setMatrixAt(n++, this._m);
+    }
+    this.smearMesh.count = n;
+    this.smearMesh.instanceMatrix.needsUpdate = true;
+    this._s.set(1, 1, 1);
+    this._smearsDirty = false;
+  }
+
   /** (Re)build the instanced meshes for the barrels and chickens a Props currently holds. */
   build(props) {
     if (this.drums) { this.scene.remove(this.drums); this.drums.dispose(); this.drums = null; }
     if (this.chickens) { this.scene.remove(this.chickens); this.chickens.dispose(); this.chickens = null; }
+    this.clearSmears(props);
+    this._lastPropsTime = props.time;
     const n = props.barrels.length;
     if (n) {
       const im = this.drums = new THREE.InstancedMesh(this.drumGeo, this.drumMat, n);
@@ -170,6 +244,11 @@ export class PropsView {
   }
 
   update(props, force = false) {
+    // Props.time restarts from zero with a race reset. Clear old road marks only then, never on chicken respawn.
+    if (props.time + 0.001 < this._lastPropsTime) this.clearSmears(props);
+    this._lastPropsTime = props.time;
+    this.recordChickenSmears(props);
+    this.updateSmears(force);
     this.updateChickenBursts(props);
     const im = this.drums;
     if (im) {
@@ -194,9 +273,9 @@ export class PropsView {
         if (c.deadT >= 0) {
           const t = c.deadT;
           if (t > POP_DURATION) { cm.setMatrixAt(i, this._zero); return; }
-          const h = POP_V0 * t - 0.5 * POP_G * t * t;                      // a quick comedic launch, then it drops
+          const h = POP_V0 * t - 0.5 * POP_G * t * t;                      // a short impact tumble, then gone
           this._p.set(c.pos.x, c.pos.y + Math.max(0, h), c.pos.z);
-          this._e.set(t * 26, t * 17, t * 11);
+          this._e.set(t * 24, t * 16, t * 10);
           this._q.setFromEuler(this._e);                                  // tumbling
           this._m.compose(this._p, this._q, this._s); cm.setMatrixAt(i, this._m);
           return;
@@ -240,4 +319,3 @@ export class PropsView {
     }
   }
 }
-
