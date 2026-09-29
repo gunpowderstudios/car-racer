@@ -7,9 +7,10 @@
 // broker is only used to introduce peers to each other, all game traffic then
 // flows peer-to-peer.
 //
-// This module knows nothing about rendering or physics - it just moves plain
-// objects around and calls the callbacks it was given. main.js owns turning
-// remote state into visuals.
+// This module mostly knows nothing about rendering or physics. The one explicit
+// gameplay hook is multiplayer off-track recovery, updated from sendState() so it
+// shares the normal multiplayer frame path instead of monkey-patching prototypes.
+import { updateMultiplayerOffTrack, resetMultiplayerOffTrack } from './multiplayerOffTrackRecovery.js';
 
 const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the shared public broker
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
@@ -225,8 +226,9 @@ export class Multiplayer {
     this.h.onStart(trackDef);
   }
 
-  /** Call every frame while driving; internally throttled to STATE_HZ. */
+  /** Call every frame while driving; recovery updates every call, network traffic stays at STATE_HZ. */
   sendState(state) {
+    state = updateMultiplayerOffTrack(state);
     const now = performance.now();
     if (this._lastSend && now - this._lastSend < 1000 / STATE_HZ) return;
     this._lastSend = now;
@@ -235,6 +237,7 @@ export class Multiplayer {
   }
 
   leave() {
+    resetMultiplayerOffTrack();
     if (this.isHost) this._sendAll({ t: 'left', id: this.selfId });
     try { this.peer && this.peer.destroy(); } catch { /* already gone */ }
     this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear();
