@@ -9,6 +9,7 @@ const oldStep = Derby.prototype.step;
 const q = Track.newQuery();
 const OFFTRACK_EXPLODE_DELAY = 2.5;
 const LEGACY_GUARD_DELAY = 1.3;   // main.js legacy auto-reset fires at 1.4 s, so hold it off first
+const EXPLOSION_LIFT = 3.2;       // small upward kick (m/s) so the blast visibly lifts the wreck
 
 function showCountdown(n) {
   if (typeof document === 'undefined') return;
@@ -45,7 +46,10 @@ function beginPlayerReset(derby, f) {
   // Keep the legacy main.js auto-respawn blocked throughout the cinematic reset.
   derby.over = true;
 
-  // Deliberately keep velocity and angular velocity: the wreck should continue its fall/tumble.
+  // Keep existing forward/spin momentum, but give the explosion a small upward punch so the
+  // wreck visibly lifts before gravity takes over again.
+  c.vel.y += EXPLOSION_LIFT;
+
   derby.events.push({
     type: 'wreck', id: f.id, isPlayer: true, zone: 'front',
     x: c.pos.x, y: c.pos.y, z: c.pos.z,
