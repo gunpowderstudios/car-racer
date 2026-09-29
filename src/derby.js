@@ -40,11 +40,14 @@ export const DERBY = {
   gridPerRow: 2,          // cars per row (a real grid staggers pole/second etc.)
 };
 
-// Five spheres along the car stand in for its body when cars meet.
+// Five spheres along the car stand in for its body when cars meet. The normal car keeps the
+// original 0.85 m radius, while wider vehicles can provide physics.body.width and get a matching
+// collision radius. This stops wide Motor Homes visually merging before the physics sees contact.
 const BALL_R = 0.85, BALL_Y = 0.05;
 const BALL_LOCAL = [-1.5, -0.75, 0, 0.75, 1.5].map((z) => new V3(0, BALL_Y, z));
 const wa = BALL_LOCAL.map(() => new V3()), wb = BALL_LOCAL.map(() => new V3());
 const sN = new V3(), sP = new V3(), sVa = new V3(), sVb = new V3(), sT = new V3(), dn = new V3();
+const collisionRadius = (car) => Math.max(0.55, car?.spec?.body?.width ? car.spec.body.width * 0.5 : BALL_R);
 
 /**
  * Collide two cars (their frames must be current). Applies the impulses and pushes them apart, and
@@ -56,7 +59,8 @@ export function collideCars(A, B, out) {
   out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0;
   if (cx0 * cx0 + cy0 * cy0 + cz0 * cz0 > 36) return false;
   for (let k = 0; k < BALL_LOCAL.length; k++) { A.toWorld(BALL_LOCAL[k], wa[k]); B.toWorld(BALL_LOCAL[k], wb[k]); }
-  const D = BALL_R * 2, D2 = D * D;
+  const rA = collisionRadius(A), rB = collisionRadius(B);
+  const D = rA + rB, D2 = D * D;
   let deepest = 0;
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < wa.length; i++) {
@@ -65,7 +69,7 @@ export function collideCars(A, B, out) {
         if (d2 >= D2) continue;
         const d = Math.sqrt(d2) || 1e-6, pen = D - d;
         sN.set(cx / d, cy / d, cz / d);                          // from A towards B
-        sP.set(wa[i].x + sN.x * BALL_R, wa[i].y + sN.y * BALL_R, wa[i].z + sN.z * BALL_R);
+        sP.set(wa[i].x + sN.x * rA, wa[i].y + sN.y * rA, wa[i].z + sN.z * rA);
         if (pass === 0 && pen > deepest) { deepest = pen; dn.copy(sN); }
         A.velocityAt(sP, sVa); B.velocityAt(sP, sVb);
         const vn = (sVb.x - sVa.x) * sN.x + (sVb.y - sVa.y) * sN.y + (sVb.z - sVa.z) * sN.z;
