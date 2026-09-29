@@ -6,8 +6,16 @@ export const LIFE = {
   grace: 3,          // seconds of protection after coming back, so you can't be killed again on the spot
 };
 
+let currentLife = null;
+
+/** The live multiplayer Life instance owned by main.js, if one has been created. */
+export function getCurrentLife() { return currentLife; }
+
 export class Life {
-  constructor() { this.reset(); }
+  constructor() {
+    currentLife = this;
+    this.reset();
+  }
 
   /** Full health, not wrecked, no timers running. */
   reset() { this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = 0; }
