@@ -19,6 +19,7 @@ const state = {
   t: 0,
   shown: 0,
   oldOver: false,
+  guardActive: false,
   lastNetState: null,
   particles: null,
   life: null,
@@ -85,7 +86,10 @@ function begin(game) {
   state.active = true;
   state.t = RESET_DELAY;
   state.shown = 3;
-  state.oldOver = !!game.derby.over;
+  // If the legacy-reset guard is already holding derby.over=true, keep the ORIGINAL value
+  // from before the guard so the final respawn can restore it correctly.
+  if (!state.guardActive) state.oldOver = !!game.derby.over;
+  state.guardActive = false;
   game.derby.over = true;                 // also blocks the old main.js auto-respawn
   game.car.vel.y += EXPLOSION_LIFT;       // exactly the same lift as single-player
   localBlast(game);
@@ -102,7 +106,9 @@ function finish(game) {
 }
 
 function clearGuard(game) {
-  if (!state.active && game.derby.over && !state.oldOver) game.derby.over = false;
+  if (!state.guardActive) return;
+  game.derby.over = state.oldOver;
+  state.guardActive = false;
 }
 
 function tick(now) {
@@ -113,6 +119,7 @@ function tick(now) {
 
   const game = window.__game;
   if (!game?.track || !game.car || !game.derby || !multiplayerLive()) {
+    if (game?.derby && !state.active) clearGuard(game);
     state.offT = 0;
     return;
   }
@@ -127,6 +134,7 @@ function tick(now) {
 
   // Do not start a second off-track reset while the normal multiplayer damage/death respawn is running.
   if (state.lastNetState && (state.lastNetState.alive === false || (state.lastNetState.health ?? 1) <= 0)) {
+    clearGuard(game);
     state.offT = 0;
     return;
   }
@@ -139,8 +147,9 @@ function tick(now) {
 
   // main.js still has its old 1.4 s lost-car reset. Hold that system off after 1.3 s,
   // but wait the full 2.5 s before the explosion, exactly like single-player.
-  if (off && state.offT > LEGACY_GUARD_DELAY && !game.derby.over) {
+  if (off && state.offT > LEGACY_GUARD_DELAY && !state.guardActive) {
     state.oldOver = !!game.derby.over;
+    state.guardActive = true;
     game.derby.over = true;
   }
   if (!off) clearGuard(game);
