@@ -9,7 +9,7 @@ import './cameraChoice.js';
 import './menuVehicle.js';
 import './sparkEffects.js';
 import './derbyOffTrackRecovery.js?v=16.25';
-import './multiplayerOffTrackRespawn.js?v=16.22';
+import './multiplayerOffTrackRespawn.js?v=16.26';
 import './multiplayerTrackLock.js?v=16.23';
 import './gapEndCollision.js';
 
