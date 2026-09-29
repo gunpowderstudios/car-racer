@@ -1,9 +1,11 @@
 import { Vehicle } from './vehicle.js';
+import { V3 } from './math.js';
 
 // The jump/bridge end caps are visibly solid in trackGeometry.js, but until now the
 // analytic vehicle collision only knew about side barriers. Add collision against the
 // vertical road-slab faces at both ends of every gap so cars cannot pass through them.
 const oldWalls = Vehicle.prototype._walls;
+const hitN = new V3(), hitV = new V3();
 
 function gapEnds(track) {
   if (track._solidGapEnds) return track._solidGapEnds;
@@ -58,13 +60,12 @@ Vehicle.prototype._walls = function patchedWalls(track, dt) {
   this.pos.x += best.nx * Math.min(best.pen, 0.45);
   this.pos.z += best.nz * Math.min(best.pen, 0.45);
 
-  const n = { x: best.nx, y: 0, z: best.nz };
-  const v = { x: 0, y: 0, z: 0 };
-  this.velocityAt(best.p, v);
-  const vn = v.x * n.x + v.z * n.z;
+  hitN.set(best.nx, 0, best.nz);
+  this.velocityAt(best.p, hitV);
+  const vn = hitV.dot(hitN);
   if (vn < 0) {
-    const inv = this.invMassAt(n, best.p);
-    if (inv > 1e-6) this.impulseAt(n, -(1 + this.spec.wallBounce) * vn / inv, best.p);
+    const inv = this.invMassAt(hitN, best.p);
+    if (inv > 1e-6) this.impulseAt(hitN, -(1 + this.spec.wallBounce) * vn / inv, best.p);
     this.scraping = true;
     if (-vn > 1.5) this.events.push({ type: 'wall', speed: -vn, x: best.p.x, y: best.p.y, z: best.p.z });
   }
