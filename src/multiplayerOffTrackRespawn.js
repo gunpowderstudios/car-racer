@@ -1,12 +1,14 @@
 import { Multiplayer } from './multiplayer.js';
-import { Vehicle } from './vehicle.js';
-import { Life } from './mplife.js';
+import { getCurrentLife } from './mplife.js';
 import { SURF } from './track.js';
 import { Particles } from './effects.js';
 
-// Keep multiplayer off-track recovery in step with the single-player derby version:
+// Multiplayer off-track recovery mirrors the single-player timing:
 // 2.5 s genuinely off the road -> explosion + small lift -> keep real momentum/tumble
 // through 3-2-1 -> respawn with full health.
+//
+// Cleanup note: this module no longer patches Life or Vehicle. main.js already sends IDLE input
+// whenever derby.over is true, so the real Vehicle physics keep running without driver input.
 const OFFTRACK_EXPLODE_DELAY = 2.5;
 const LEGACY_GUARD_DELAY = 1.3;
 const RESET_DELAY = 3;
@@ -22,36 +24,17 @@ const state = {
   guardActive: false,
   lastNetState: null,
   particles: null,
-  life: null,
   lastFrame: performance.now(),
 };
 
-// main.js owns the multiplayer Life object. Capture it when multiplayer starts (it calls reset()).
-const oldLifeReset = Life.prototype.reset;
-Life.prototype.reset = function patchedLifeReset(...args) {
-  const out = oldLifeReset.apply(this, args);
-  state.life = this;
-  return out;
-};
-
-// main.js calls sendState every multiplayer frame. Use that as a clean multiplayer heartbeat,
-// and make remote clients see an off-track wreck as dead/zero-health so they show the same explosion.
+// main.js calls sendState every multiplayer frame. Keep this one small networking hook so remote
+// clients see an off-track cinematic as a wreck/explosion instead of a live car snapping home.
 const oldSendState = Multiplayer.prototype.sendState;
 Multiplayer.prototype.sendState = function patchedSendState(s, ...rest) {
   state.heartbeat = performance.now();
   state.lastNetState = s;
   if (state.active) s = { ...s, health: 0, alive: false };
   return oldSendState.call(this, s, ...rest);
-};
-
-// While the cinematic reset is active, nobody is driving the local car. The normal Vehicle physics
-// still run, so its existing speed, fall and angular velocity continue naturally after the blast.
-const oldVehicleStep = Vehicle.prototype.step;
-Vehicle.prototype.step = function patchedVehicleStep(dt, inp, track, ...rest) {
-  if (state.active && this === window.__game?.car) {
-    inp = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
-  }
-  return oldVehicleStep.call(this, dt, inp, track, ...rest);
 };
 
 function banner(n) {
@@ -90,8 +73,8 @@ function begin(game) {
   // from before the guard so the final respawn can restore it correctly.
   if (!state.guardActive) state.oldOver = !!game.derby.over;
   state.guardActive = false;
-  game.derby.over = true;                 // also blocks the old main.js auto-respawn
-  game.car.vel.y += EXPLOSION_LIFT;       // exactly the same lift as single-player
+  game.derby.over = true;                 // blocks legacy respawn and makes main.js feed IDLE input
+  game.car.vel.y += EXPLOSION_LIFT;       // same lift as single-player
   localBlast(game);
   banner(3);
 }
@@ -101,7 +84,7 @@ function finish(game) {
   state.active = false;
   state.offT = 0;
   game.derby.over = state.oldOver;
-  state.life?.reset();                    // off-track reset returns at full multiplayer health
+  getCurrentLife()?.reset();              // off-track reset returns at full multiplayer health
   game.respawn();                         // same lap, last safe road position
 }
 
@@ -132,7 +115,7 @@ function tick(now) {
     return;
   }
 
-  // Do not start a second off-track reset while the normal multiplayer damage/death respawn is running.
+  // Do not start a second off-track reset while normal multiplayer damage/death respawn is running.
   if (state.lastNetState && (state.lastNetState.alive === false || (state.lastNetState.health ?? 1) <= 0)) {
     clearGuard(game);
     state.offT = 0;
@@ -146,7 +129,7 @@ function tick(now) {
   state.offT = off ? state.offT + dt : 0;
 
   // main.js still has its old 1.4 s lost-car reset. Hold that system off after 1.3 s,
-  // but wait the full 2.5 s before the explosion, exactly like single-player.
+  // but wait the full 2.5 s before the explosion, matching single-player.
   if (off && state.offT > LEGACY_GUARD_DELAY && !state.guardActive) {
     state.oldOver = !!game.derby.over;
     state.guardActive = true;
