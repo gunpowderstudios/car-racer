@@ -85,6 +85,8 @@ export class CarVisual {
     this.root.add(body, cabin);
     this.placeholder = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.75, 4.85), this.material);
     this.placeholder.position.y = -0.1;
+    // Keep the fallback box hidden while the real vehicle is loading. It is only shown if the GLB fails.
+    this.placeholder.visible = false;
     this.holder.add(this.placeholder);
     this.loaded = false;
   }
@@ -223,6 +225,8 @@ export class CarVisual {
       if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);
     } catch (e) {
+      // If the real model genuinely fails, reveal the simple box as a last-resort fallback.
+      this.placeholder.visible = true;
       console.warn('Could not load car model, using a box.', e);
     }
   }
