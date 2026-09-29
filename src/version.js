@@ -6,5 +6,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.39';
-export const NOTE = 'Vehicle loading placeholders are now hidden so cars and motor homes appear only when their real 3D models are ready; the box is kept only as a fallback if a model fails';
+export const VERSION = '16.40';
+export const NOTE = 'The new src/app-icon.png is now used as the browser favicon, iPhone/iPad home-screen icon and installable web-app icon';
