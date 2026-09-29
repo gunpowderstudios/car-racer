@@ -6,7 +6,6 @@
 import './vehicleChoice.js';
 import './cameraChoice.js';
 import './menuVehicle.js';
-import './sparkEffects.js';
 import './derbyOffTrackRecovery.js?v=16.25';
 import './multiplayerTrackLock.js?v=16.28';
 import './gapEndCollision.js';
