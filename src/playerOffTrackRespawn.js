@@ -75,9 +75,7 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
     } else if (!f.wrecked && !this.over) {
       const c = f.car;
       this.track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, q, 1.2);
-      let off = this._q?.idx < 0 || q.surface === SURF.BASE;
-      // If this Derby implementation uses its own query scratch, prefer our explicit q result.
-      off = q.idx < 0 || q.surface === SURF.BASE;
+      let off = q.idx < 0 || q.surface === SURF.BASE;
 
       // A real jump gap is intentionally empty road. Do not count a car that is still
       // travelling through the centre of a gap as "off track" just because there is no deck below it.
