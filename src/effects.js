@@ -62,10 +62,18 @@ export class Particles {
     s.position.set(x, y + 0.2, z); d.v.set(vx * 0.15 + (Math.random() - 0.5), 0.9 + Math.random() * 0.6, vz * 0.15 + (Math.random() - 0.5));
     d.life = d.max = life; d.size = size; s.material.color.setHex(tint); s.visible = true;
   }
-  spark(x, y, z, vx, vy, vz) {
+  _sparkOne(x, y, z, vx, vy, vz, lifeScale = 1, sizeScale = 1) {
     const s = this.sparks[this.pi++ % this.sparks.length], d = s.userData;
     s.position.set(x, y, z); d.v.set(vx + (Math.random() - 0.5) * 5, vy + Math.random() * 4, vz + (Math.random() - 0.5) * 5);
-    d.life = d.max = 0.25 + Math.random() * 0.3; d.size = 0.35; s.visible = true;
+    d.life = (0.25 + Math.random() * 0.3) * lifeScale; d.max = d.life; d.size = 0.35 * sizeScale;
+    s.material.opacity = 1; s.visible = true;
+  }
+  /** Collision spark: brighter/longer than the original, with extra fragments on harder hits. */
+  spark(x, y, z, vx, vy, vz) {
+    const speed = Math.hypot(vx, vy, vz);
+    this._sparkOne(x, y, z, vx, vy, vz, 1.2, 1.08);
+    if (speed > 3) this._sparkOne(x, y, z, vx * 0.8, vy * 0.9 + 0.6, vz * 0.8, 1.3, 0.95);
+    if (speed > 7) this._sparkOne(x, y, z, vx * 0.6, vy * 0.75 + 1.2, vz * 0.6, 1.4, 0.9);
   }
   /** Boost exhaust flame: short-lived, hot at the pipe, fading to orange. */
   flame(x, y, z, vx, vy, vz) {
