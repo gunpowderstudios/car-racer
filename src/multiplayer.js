@@ -139,10 +139,19 @@ export class Multiplayer {
     } else if (msg.t === 'hit') {
       if (msg.to === this.selfId) this.h.onHit(id, msg.d);
       else { const c = this.conns.get(msg.to); if (c && c.open) c.send({ t: 'hit', from: id, d: msg.d }); }
+    } else if (msg.t === 'leave') {
+      // A deliberate leave should remove the car immediately instead of waiting for
+      // WebRTC/PeerJS to notice the socket has disappeared. The later close event is harmless.
+      const c = this.conns.get(id);
+      this._playerLeft(id);
+      try { c && c.close(); } catch { /* already closed */ }
     }
   }
 
   _playerLeft(id) {
+    // The explicit leave message and the subsequent connection close can both arrive.
+    // Treat cleanup as idempotent so the roster and left notification are only sent once.
+    if (!this.players.has(id) && !this.conns.has(id)) return;
     const p = this.players.get(id);
     if (p) this.usedHues.delete(p.hue);
     this.players.delete(id); this.conns.delete(id);
@@ -243,8 +252,22 @@ export class Multiplayer {
 
   leave() {
     resetMultiplayerOffTrack();
-    if (this.isHost) this._sendAll({ t: 'left', id: this.selfId });
-    try { this.peer && this.peer.destroy(); } catch { /* already gone */ }
+
+    // Tell the host explicitly before tearing down a guest connection. PeerJS close detection can
+    // otherwise take long enough that the departed player's last pose looks like a parked/static car.
+    const peer = this.peer;
+    const guestConn = !this.isHost ? this.hostConn : null;
+    if (this.isHost) {
+      this._sendAll({ t: 'left', id: this.selfId });
+      try { peer && peer.destroy(); } catch { /* already gone */ }
+    } else if (guestConn && guestConn.open) {
+      try { guestConn.send({ t: 'leave' }); } catch { /* connection already failing */ }
+      // Give the reliable data channel a moment to flush the leave packet, then close locally.
+      setTimeout(() => { try { peer && peer.destroy(); } catch { /* already gone */ } }, 80);
+    } else {
+      try { peer && peer.destroy(); } catch { /* already gone */ }
+    }
+
     this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear();
     if (currentMultiplayer === this) currentMultiplayer = null;
   }
