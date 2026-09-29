@@ -1,0 +1,12 @@
+{
+  "name": "Bangers and Smash!",
+  "short_name": "Bangers & Smash",
+  "description": "Free multiplayer browser car racing game with crashes, jumps, destruction derby and a track editor.",
+  "start_url": "/car-racer/",
+  "scope": "/car-racer/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "lang": "en-GB",
+  "categories": ["games", "racing", "multiplayer"]
+}
