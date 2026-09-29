@@ -67,13 +67,13 @@ export class Hud {
     this._last.ds = this._last.dmg = null;
   }
 
-  /** Score, wrecks and how many rivals are still running. */
-  setScore(score, wrecked, rivals) {
-    const k = score + '|' + wrecked + '|' + rivals;
+  /** Score, credited takedowns and how many rivals are still running. */
+  setScore(score, takedowns, rivals) {
+    const k = score + '|' + takedowns + '|' + rivals;
     if (k === this._last.ds) return;
     this._last.ds = k;
     this.d.num.textContent = score.toLocaleString('en-GB');
-    this.d.sub.textContent = `${wrecked} wrecked \u00b7 ${rivals} rivals`;
+    this.d.sub.textContent = `${takedowns} takedowns \u00b7 ${rivals} rivals`;
   }
 
   /** The four-part damage chart. `health` is a damage.js Health. */
