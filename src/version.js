@@ -6,5 +6,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.33';
-export const NOTE = 'Derby rival count now caps every physical rival car including wrecks; hulks remain briefly, fade out, then their replacement can spawn instead of cars piling up';
+export const VERSION = '16.34';
+export const NOTE = 'Multiplayer guests now send an explicit leave message before disconnecting so departed players are removed immediately instead of lingering as static cars';
