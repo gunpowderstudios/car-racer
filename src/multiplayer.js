@@ -15,6 +15,7 @@ import { updateMultiplayerOffTrack, resetMultiplayerOffTrack } from './multiplay
 const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the shared public broker
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
 const STATE_HZ = 20;
+const STALE_PLAYER_MS = 5000;               // after the race starts, no state for this long means the player has gone
 let currentMultiplayer = null;
 
 /** The live multiplayer session owned by main.js, if one exists. */
@@ -29,6 +30,16 @@ function randomCode(len = 5) {
 /** Plain-text, short, no markup. Used for both player names and room codes coming from the network. */
 function sanitizeName(s) {
   return String(s || '').replace(/[<>&"']/g, '').trim().slice(0, 20) || 'Driver';
+}
+
+function showLeaveNotice(name) {
+  if (typeof document === 'undefined') return;
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = `${name || 'A player'} left the game`;
+  t.classList.add('show');
+  clearTimeout(showLeaveNotice._t);
+  showLeaveNotice._t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
 function loadPeerJs() {
@@ -67,6 +78,8 @@ export class Multiplayer {
     this.players = new Map();     // id -> {id,name,hue}  (kept on both host and guests)
     this.usedHues = new Set();
     this._sendTimer = null;
+    this._lastSeen = new Map();
+    this._staleTimer = null;
     this.started = false;      // host only: once true, the game is underway and new joins are turned away
   }
 
@@ -95,6 +108,17 @@ export class Multiplayer {
     for (const [id, c] of this.conns) if (id !== exceptId && c.open) c.send(msg);
   }
 
+  _startStaleWatch() {
+    if (this._staleTimer) return;
+    this._staleTimer = setInterval(() => {
+      if (!this.isHost || !this.started) return;
+      const now = performance.now();
+      for (const id of [...this.conns.keys()]) {
+        if (now - (this._lastSeen.get(id) || now) > STALE_PLAYER_MS) this._playerLeft(id);
+      }
+    }, 1000);
+  }
+
   async createRoom(name) {
     await loadPeerJs();
     const myName = sanitizeName(name);
@@ -107,6 +131,7 @@ export class Multiplayer {
         this.players.set(id, { id, name: myName, hue });
         peer.on('connection', (conn) => this._hostAcceptsGuest(conn));
         peer.on('error', (e) => this._peerError(e));
+        this._startStaleWatch();
         this._broadcastLobby();
         resolve(code);
       });
@@ -119,12 +144,14 @@ export class Multiplayer {
       if (this.started) { conn.send({ t: 'started' }); setTimeout(() => conn.close(), 200); return; }
       if (this.players.size >= 8) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 200); return; }
       this.conns.set(conn.peer, conn);
+      this._lastSeen.set(conn.peer, performance.now());
       conn.on('data', (msg) => this._onHostMessage(conn.peer, msg));
       conn.on('close', () => this._playerLeft(conn.peer));
     });
   }
 
   _onHostMessage(id, msg) {
+    this._lastSeen.set(id, performance.now());
     if (msg.t === 'join') {
       const hue = this._assignHue();
       this.players.set(id, { id, name: sanitizeName(msg.name), hue });
@@ -149,13 +176,14 @@ export class Multiplayer {
   }
 
   _playerLeft(id) {
-    // The explicit leave message and the subsequent connection close can both arrive.
+    // The explicit leave message, stale-player watchdog and later connection close can all arrive.
     // Treat cleanup as idempotent so the roster and left notification are only sent once.
     if (!this.players.has(id) && !this.conns.has(id)) return;
     const p = this.players.get(id);
     if (p) this.usedHues.delete(p.hue);
-    this.players.delete(id); this.conns.delete(id);
+    this.players.delete(id); this.conns.delete(id); this._lastSeen.delete(id);
     this.h.onPlayerLeft(id);
+    if (p && id !== this.selfId) showLeaveNotice(p.name);
     this._sendAll({ t: 'left', id });   // the other guests never see the leaver's connection close, so tell them (their car is removed)
     this._broadcastLobby();
   }
@@ -187,7 +215,10 @@ export class Multiplayer {
           } else if (msg.t === 'state') {
             this.h.onState(msg.id, msg.s);
           } else if (msg.t === 'left') {
+            const p = this.players.get(msg.id);
+            this.players.delete(msg.id);
             this.h.onPlayerLeft(msg.id);
+            if (p && msg.id !== this.selfId) showLeaveNotice(p.name);
           } else if (msg.t === 'boom') {
             if (Number.isInteger(msg.i)) this.h.onBoom(msg.from, msg.i);
           } else if (msg.t === 'hit') {
@@ -236,6 +267,8 @@ export class Multiplayer {
   startGame(trackDef) {
     if (!this.isHost) return;
     this.started = true;
+    const now = performance.now();
+    for (const id of this.conns.keys()) this._lastSeen.set(id, now);
     this._sendAll({ t: 'start', track: trackDef });
     this.h.onStart(trackDef);
   }
@@ -252,6 +285,7 @@ export class Multiplayer {
 
   leave() {
     resetMultiplayerOffTrack();
+    if (this._staleTimer) { clearInterval(this._staleTimer); this._staleTimer = null; }
 
     // Tell the host explicitly before tearing down a guest connection. PeerJS close detection can
     // otherwise take long enough that the departed player's last pose looks like a parked/static car.
@@ -268,7 +302,7 @@ export class Multiplayer {
       try { peer && peer.destroy(); } catch { /* already gone */ }
     }
 
-    this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear();
+    this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear(); this._lastSeen.clear();
     if (currentMultiplayer === this) currentMultiplayer = null;
   }
 }
