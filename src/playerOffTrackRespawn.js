@@ -52,7 +52,7 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
   if (this.enabled && this.track && f) {
     const r = f._playerOffTrackReset;
     if (r) {
-      // main.js advances the local Vehicle before derby.step(). derby.over also makes its input IDLE,
+      // main.js advances the local Vehicle before derby.step(). this.over also makes its input IDLE,
       // so momentum, gravity, drag, impacts and angular velocity continue naturally with no driver input.
       r.t -= dt;
       const n = Math.max(1, Math.ceil(r.t));
@@ -66,7 +66,7 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
         f.flash = 0;
         f.lastHit = null;
         f.health = new Health(SPECS.player.hp);
-        derby.over = !!r.oldOver;
+        this.over = !!r.oldOver;
         placeOnRoad(f.car, this.track, r.s, 0, 0);
         this._pose(f, f.cur);
         this._pose(f, f.prev);
@@ -75,7 +75,9 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
     } else if (!f.wrecked && !this.over) {
       const c = f.car;
       this.track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, q, 1.2);
-      let off = q.idx < 0 || q.surface === SURF.BASE;
+      let off = this._q?.idx < 0 || q.surface === SURF.BASE;
+      // If this Derby implementation uses its own query scratch, prefer our explicit q result.
+      off = q.idx < 0 || q.surface === SURF.BASE;
 
       // A real jump gap is intentionally empty road. Do not count a car that is still
       // travelling through the centre of a gap as "off track" just because there is no deck below it.
