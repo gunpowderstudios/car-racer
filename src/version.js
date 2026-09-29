@@ -6,5 +6,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.36';
-export const NOTE = 'Derby HUD now labels credited kills as takedowns instead of wrecks, so visible hulks no longer make the score display look incorrect';
+export const VERSION = '16.37';
+export const NOTE = 'Multiplayer hosts now remove silent/disconnected guests after five seconds with no state updates and show a player-left message, while deliberate leaves still disappear immediately';
