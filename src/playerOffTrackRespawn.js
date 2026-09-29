@@ -7,6 +7,8 @@ import { SURF, Track } from './track.js';
 // 3-2-1 countdown (so a flying/tumbling car keeps moving), then reset on road.
 const oldStep = Derby.prototype.step;
 const q = Track.newQuery();
+const OFFTRACK_EXPLODE_DELAY = 2.5;
+const LEGACY_GUARD_DELAY = 1.3;   // main.js legacy auto-reset fires at 1.4 s, so hold it off first
 
 function showCountdown(n) {
   if (typeof document === 'undefined') return;
@@ -23,19 +25,24 @@ function clearCountdown() {
   b.classList.remove('show');
 }
 
+function clearLegacyGuard(derby, f) {
+  if (!f._playerOffTrackGuard) return;
+  derby.over = !!f._playerOffTrackGuard.oldOver;
+  f._playerOffTrackGuard = null;
+}
+
 function beginPlayerReset(derby, f) {
   const c = f.car;
   let s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
   s = (s - 8 + derby.track.length) % derby.track.length;
-  f._playerOffTrackReset = { t: 3, s, shown: 3, oldOver: derby.over };
+  const oldOver = f._playerOffTrackGuard ? f._playerOffTrackGuard.oldOver : derby.over;
+  f._playerOffTrackReset = { t: 3, s, shown: 3, oldOver };
+  f._playerOffTrackGuard = null;
   f._playerOffT = 0;
   f.gone = false;
   f.wrecked = true;       // disables further damage/targeting, but main.js still steps the Vehicle normally
 
-  // main.js still contains the old automatic recovery (roof/lost/below-world -> respawn()).
-  // Its respawn() already refuses to run while derby.over is true, so temporarily use that
-  // existing guard during our cinematic reset. This prevents the legacy system from snapping
-  // the car back in the middle of the explosion/countdown while leaving Vehicle physics alive.
+  // Keep the legacy main.js auto-respawn blocked throughout the cinematic reset.
   derby.over = true;
 
   // Deliberately keep velocity and angular velocity: the wreck should continue its fall/tumble.
@@ -72,7 +79,7 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
         this._pose(f, f.prev);
         this._refreshCars();
       }
-    } else if (!f.wrecked && !this.over) {
+    } else if (!f.wrecked) {
       const c = f.car;
       this.track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, q, 1.2);
       let off = q.idx < 0 || q.surface === SURF.BASE;
@@ -86,8 +93,16 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
       if (this.track.gap[gi] && lane < fr.hw + 2.5) off = false;
 
       f._playerOffT = off ? (f._playerOffT || 0) + dt : 0;
-      // Start before the old 1.4 s legacy recovery threshold can fire.
-      if (c.pos.y < -8 || f._playerOffT > 1.15) beginPlayerReset(this, f);
+
+      // The old recovery in main.js would still snap the car back after 1.4 seconds. Block that
+      // without exploding yet, so the new player-facing delay can be a full 2.5 seconds.
+      if (off && f._playerOffT > LEGACY_GUARD_DELAY && !f._playerOffTrackGuard) {
+        f._playerOffTrackGuard = { oldOver: this.over };
+        this.over = true;
+      }
+      if (!off) clearLegacyGuard(this, f);
+
+      if (c.pos.y < -8 || f._playerOffT > OFFTRACK_EXPLODE_DELAY) beginPlayerReset(this, f);
     }
   }
 
