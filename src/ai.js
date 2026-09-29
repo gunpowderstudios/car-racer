@@ -16,16 +16,16 @@ import { Track, SURF } from './track.js';
 export const IDLE = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });
 
 export const AI = {
-  cruiseMin: 26, cruiseMax: 36,     // m/s a rival is happy to cruise at (about 58 - 81 mph)
-  huntMax: 44,                      // m/s when chasing the player (about 98 mph)
-  aLatCruise: 7.8, aLatHunt: 9.8,  // slightly higher cornering budget so rivals carry more speed through bends
-  huntRange: 110,                   // m: nobody starts hunting from further away than this
-  jumpSpeed: 30,                    // m/s to take a jump gap at
+  cruiseMin: 29, cruiseMax: 40,     // m/s a rival is happy to cruise at (about 65 - 89 mph)
+  huntMax: 48,                      // m/s when chasing the player (about 107 mph)
+  aLatCruise: 8.6, aLatHunt: 10.8, // stage 3: carry still more speed through bends
+  huntRange: 125,                   // m: faster rivals can start a hunt from a little further away
+  jumpSpeed: 32,                    // m/s to take a jump gap at
   grudgeTime: 7,                    // s: how long a rival holds a grudge and won't give up the chase, once rammed
   grudgeRangeMul: 2.2,              // hunting range is stretched this much further while holding a grudge
-  catchupStart: 80,                 // m of road lead before a rival starts getting a small helping hand
-  catchupFull: 260,                 // m of road lead where the catch-up bonus reaches its cap
-  catchupSpeed: 0.08,               // max +8% target speed - enough to keep a pack alive, not a teleport/rubber-band
+  catchupStart: 70,                 // m of road lead before a rival starts getting a small helping hand
+  catchupFull: 240,                 // m of road lead where the catch-up bonus reaches its cap
+  catchupSpeed: 0.10,               // max +10% target speed, still entirely through normal car physics
 };
 
 /** Largest corner curvature in the next `span` metres. */
@@ -135,13 +135,13 @@ export class Driver {
       }
       if (clear) { ax = tx; az = tz; }
       else { ax = f.x + f.lx * pLane * usable; az = f.z + f.lz * pLane * usable; }
-      vT = Math.max(vT, Math.min(AI.huntMax, P.speed + 3 + pd * 0.12));
+      vT = Math.max(vT, Math.min(AI.huntMax, P.speed + 4 + pd * 0.14));
       if (pd < 14 && clear) vT = AI.huntMax;                 // committed: just go for it
     } else {
       ax = f.x + f.lx * this.laneNow * usable; az = f.z + f.lz * this.laneNow * usable;
     }
 
-    // Stage 2 difficulty: a subtle catch-up bonus only when the PLAYER is genuinely ahead on the road.
+    // Stage 3 difficulty: faster base pace plus a modest catch-up bonus when the PLAYER is genuinely ahead.
     // It raises the AI's chosen target speed; it never moves the car or bypasses normal physics.
     if (catchup > 0) vT *= 1 + AI.catchupSpeed * catchup;
 
@@ -156,8 +156,8 @@ export class Driver {
       if (Math.abs(side) > 2.6 || Math.abs(o.pos.y - car.pos.y) > 2.5) continue;
       laneBias += side > 0 ? -1 : 1;
       const gap = ahead - 4.7;
-      // Be less timid in traffic: keep rolling and change lane before throwing away a lot of speed.
-      if (gap < 9 && car.fwdSpeed > o.fwdSpeed) { vT = Math.min(vT, Math.max(6, o.speed + gap * 0.55)); brake = Math.max(brake, 0.2); }
+      // Stage 3: change lane first and shed less speed before committing to the pass.
+      if (gap < 8 && car.fwdSpeed > o.fwdSpeed) { vT = Math.min(vT, Math.max(7, o.speed + gap * 0.7)); brake = Math.max(brake, 0.15); }
     }
     // barrels sitting on the road: the same nudge-around, if any are in range (only passed while a derby is running)
     if (ctx.barrels) {
@@ -170,7 +170,7 @@ export class Driver {
         if (Math.abs(side) > 2.2 || Math.abs(b.pos.y - car.pos.y) > 2.5) continue;
         laneBias += side > 0 ? -1 : 1;
         const gap = ahead - 3;
-        if (gap < 8) { vT = Math.min(vT, Math.max(7, gap * 1.35 + 7)); brake = Math.max(brake, 0.2); }
+        if (gap < 7) { vT = Math.min(vT, Math.max(8, gap * 1.5 + 8)); brake = Math.max(brake, 0.15); }
       }
     }
     this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
@@ -190,11 +190,11 @@ export class Driver {
 
     // ---------------------------------------------------------------- pedals
     const err = vT - car.fwdSpeed;
-    // Harder acceleration and later braking than stage 1, while still driving through the real Vehicle model.
-    let throttle = err > 0 ? clamp(0.08 + err / 3.2, 0, 1) : 0;
-    let brk = err < -3 && car.fwdSpeed > 4 ? clamp((-err - 1) / 7, 0, 1) : 0;
-    if (hunting && Math.abs(ang) > 1.1 && car.fwdSpeed > 14) { throttle *= 0.5; brk = Math.max(brk, 0.2); }   // turn first, then charge
-    brk = Math.max(brk, err < -1 ? brake : 0);
+    // Stage 3: harder throttle, later braking, but still entirely through the real Vehicle model.
+    let throttle = err > 0 ? clamp(0.10 + err / 2.8, 0, 1) : 0;
+    let brk = err < -3.5 && car.fwdSpeed > 4 ? clamp((-err - 1) / 8, 0, 1) : 0;
+    if (hunting && Math.abs(ang) > 1.1 && car.fwdSpeed > 14) { throttle *= 0.6; brk = Math.max(brk, 0.18); }   // turn first, then charge
+    brk = Math.max(brk, err < -1.5 ? brake : 0);
 
     // ---------------------------------------------------------------- stuck: back out
     if (this.reverse > 0) {
@@ -207,9 +207,9 @@ export class Driver {
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
 
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    // Stronger drivers can now use nitro on a clean straight when hunting OR when they are well behind.
+    // Stage 3 drivers use nitro more readily on a clean straight when hunting or falling behind.
     // The normal boost fuel rules still apply, so this is not infinite AI nitro.
-    inp.boost = this.aggr > 0.55 && (hunting || catchup > 0.35) && Math.abs(ang) < 0.12 && car.fwdSpeed > 14 && car.boostFuel > 0.25 && (!P || playerLead > 20);
+    inp.boost = this.aggr > 0.45 && (hunting || catchup > 0.2) && Math.abs(ang) < 0.15 && car.fwdSpeed > 13 && car.boostFuel > 0.2 && (!P || playerLead > 10);
     return inp;
   }
 }
