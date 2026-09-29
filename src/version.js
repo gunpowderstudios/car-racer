@@ -7,5 +7,5 @@ import './menuVehicle.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.9';
-export const NOTE = 'Motor Home keeps its slower heavy handling, naturally hits harder through its extra mass, and now takes 20% less body damage than the normal Car';
+export const VERSION = '16.10';
+export const NOTE = 'Vehicle-to-vehicle collision width now follows each vehicle body width, so wide Motor Homes no longer visually merge side-by-side';
