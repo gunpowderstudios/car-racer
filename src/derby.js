@@ -26,18 +26,18 @@ export const POINTS = {
 };
 
 export const DERBY = {
-  rivals: 6,             // how many rivals are on the track at once
+  rivals: 6,             // maximum rival cars physically on the track at once, wrecks included
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
-  wreckLife: 14,         // how long a wrecked rival actively burns before the fire dies down
-  wreckFade: 1.6,        // how long the oldest hulk takes to shrink away when maxWrecks is exceeded
+  wreckLife: 14,         // how long a wrecked rival stays as an obstacle before it starts fading
+  wreckFade: 1.6,        // fade/shrink time before the wreck is removed and its replacement may spawn
   spawnEvery: 2.5,       // seconds between replacements
-  maxWrecks: 8,           // wrecked rivals stay on the track as obstacles forever, up to this many at once
+  maxWrecks: 8,          // safety cap for very large fields; normally the selected rival count is the real cap
   creditNear: 30,        // m: a blast this close to you counts as yours
   gridLead: 12,          // m: gap from the player to the first row of the starting grid
   gridRow: 8,            // m: gap between grid rows
-  gridPerRow: 2,          // cars per row (a real grid staggers pole/second etc.)
+  gridPerRow: 2,         // cars per row (a real grid staggers pole/second etc.)
 };
 
 // Five spheres along the car stand in for its body when cars meet. The normal car keeps the
@@ -282,6 +282,10 @@ export class Derby {
         f.wreckT += dt;
         if (!f.isPlayer) {
           wrecks++;
+          // A real wreck occupies one of the selected rival slots while it burns. Once it has
+          // had time to be part of the carnage, fade it away; only then can a replacement spawn.
+          // Off-track cinematic resets also use wrecked=true, but must return after their 3-2-1.
+          if (!f._offTrackReset && !f.expire && f.wreckT > DERBY.wreckLife) f.expire = true;
           if (f.expire) { f.expireT += dt; if (f.expireT > DERBY.wreckFade) this._remove(f); }
         }
       }
@@ -289,17 +293,19 @@ export class Derby {
       else f.flipT = 0;
       this._snap(f);
     }
-    if (wrecks > DERBY.maxWrecks) {                         // too many hulks: fade the oldest to make room
+    if (wrecks > DERBY.maxWrecks) {                         // safety valve for unusually large fields
       let old = null;
-      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && (!old || f.wreckT > old.wreckT)) old = f;
+      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && !f._offTrackReset && (!old || f.wreckT > old.wreckT)) old = f;
       if (old) old.expire = true;
     }
 
     // -------- replacements
+    // The selected rival count is a cap on physical rival cars, not merely live AI drivers.
+    // Wrecks and off-track-reset cars therefore keep their slot until they are actually removed.
     this._spawnT -= dt;
     if (this._spawnT <= 0) {
       this._spawnT = 0.5;
-      if (this.alive < this.count && !this.over) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
+      if (this.rivals.length < this.count && !this.over) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
     }
   }
 
