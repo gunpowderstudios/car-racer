@@ -8,5 +8,13 @@
   "background_color": "#141414",
   "theme_color": "#141414",
   "lang": "en-GB",
-  "categories": ["games", "racing", "multiplayer"]
+  "categories": ["games", "racing", "multiplayer"],
+  "icons": [
+    {
+      "src": "src/app-icon.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
