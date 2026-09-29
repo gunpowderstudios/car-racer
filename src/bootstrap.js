@@ -4,7 +4,6 @@
 // patches can be folded back into core modules here without making script-tag order
 // part of the game's behaviour.
 import './vehicleChoice.js';
-import './vehicleDamage.js';
 import './cameraChoice.js';
 import './menuVehicle.js';
 import './sparkEffects.js';
