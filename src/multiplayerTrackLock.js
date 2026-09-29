@@ -1,12 +1,15 @@
-import { Multiplayer } from './multiplayer.js';
+import { getCurrentMultiplayer } from './multiplayer.js';
 import { normalizeTrack } from './track.js';
 
 // Multiplayer track policy:
 // - the host may choose built-in, random, or one of their locally saved editor tracks in the lobby;
 // - the exact chosen track definition is sent to every player when the race starts;
 // - once a multiplayer race is running, the editor is locked for host and guests alike.
+//
+// This module deliberately does not patch Multiplayer methods. It reads the explicit live-session
+// reference exported by multiplayer.js and only owns the small piece of UI policy described above.
 
-let activeNet = null;
+let multiplayerFlow = new URLSearchParams(location.search).has('room');
 
 function savedTracks() {
   try {
@@ -40,7 +43,7 @@ function refreshCustomTrackOptions() {
 }
 
 function multiplayerRaceRunning() {
-  return !!activeNet && document.body.classList.contains('mode-drive');
+  return multiplayerFlow && document.body.classList.contains('mode-drive');
 }
 
 function showLockedMessage() {
@@ -62,52 +65,8 @@ function syncEditorLock() {
   }
 }
 
-// Remember the live Multiplayer object without changing main.js's networking code.
-const oldCreateRoom = Multiplayer.prototype.createRoom;
-Multiplayer.prototype.createRoom = async function patchedCreateRoom(...args) {
-  activeNet = this;
-  try {
-    const out = await oldCreateRoom.apply(this, args);
-    refreshCustomTrackOptions();
-    syncEditorLock();
-    return out;
-  } catch (e) {
-    if (activeNet === this) activeNet = null;
-    throw e;
-  }
-};
-
-const oldJoinRoom = Multiplayer.prototype.joinRoom;
-Multiplayer.prototype.joinRoom = async function patchedJoinRoom(...args) {
-  activeNet = this;
-  try {
-    const out = await oldJoinRoom.apply(this, args);
-    syncEditorLock();
-    return out;
-  } catch (e) {
-    if (activeNet === this) activeNet = null;
-    throw e;
-  }
-};
-
-const oldStartGame = Multiplayer.prototype.startGame;
-Multiplayer.prototype.startGame = function patchedStartGame(trackDef, ...rest) {
-  activeNet = this;
-  const out = oldStartGame.call(this, trackDef, ...rest);
-  queueMicrotask(syncEditorLock);
-  return out;
-};
-
-const oldLeave = Multiplayer.prototype.leave;
-Multiplayer.prototype.leave = function patchedLeave(...args) {
-  const out = oldLeave.apply(this, args);
-  if (activeNet === this) activeNet = null;
-  queueMicrotask(syncEditorLock);
-  return out;
-};
-
 // The normal main.js click handler only understands built-in template keys. Intercept a saved-track
-// choice first, validate/normalise it, then send that exact definition through the existing startGame path.
+// choice first, validate/normalise it, then send that exact definition through the normal session.
 const startBtn = document.getElementById('mp-start');
 startBtn?.addEventListener('click', (e) => {
   const sel = document.getElementById('mp-track');
@@ -116,7 +75,8 @@ startBtn?.addEventListener('click', (e) => {
 
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (!activeNet?.isHost) return;
+  const net = getCurrentMultiplayer();
+  if (!net?.isHost) return;
 
   const name = value.slice(7);
   const raw = savedTracks()[name];
@@ -126,16 +86,20 @@ startBtn?.addEventListener('click', (e) => {
   }
 
   try {
-    activeNet.startGame(normalizeTrack(raw));
+    net.startGame(normalizeTrack(raw));
   } catch {
     showLockedMessage();
   }
 }, true);
 
-// Keep the host's list fresh each time multiplayer is opened.
-document.getElementById('btn-multiplayer')?.addEventListener('click', () => setTimeout(refreshCustomTrackOptions, 0));
+// Entering multiplayer marks the following drive session as networked; returning to the normal
+// menu clears that flag. Direct invite links start in the multiplayer flow as well.
+document.getElementById('btn-multiplayer')?.addEventListener('click', () => {
+  multiplayerFlow = true;
+  setTimeout(refreshCustomTrackOptions, 0);
+});
 
-// Block the E shortcut before Input sees it. This applies to both the host and every guest once driving.
+// Block the E shortcut before Input sees it. This applies to host and guests once driving.
 addEventListener('keydown', (e) => {
   if (!multiplayerRaceRunning()) return;
   if (e.code !== 'KeyE' && String(e.key || '').toLowerCase() !== 'e') return;
@@ -152,7 +116,9 @@ document.querySelector('#controls button[data-act="edit"]')?.addEventListener('c
   showLockedMessage();
 }, true);
 
-// mode-drive is set by main.js only after the multiplayer start message is received. Watching the body class
-// therefore locks the editor at the right moment on guests as well as on the host.
-new MutationObserver(syncEditorLock).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(() => {
+  if (document.body.classList.contains('mode-menu')) multiplayerFlow = false;
+  syncEditorLock();
+}).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
 setTimeout(() => { refreshCustomTrackOptions(); syncEditorLock(); }, 0);
