@@ -15,6 +15,10 @@ import { updateMultiplayerOffTrack, resetMultiplayerOffTrack } from './multiplay
 const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the shared public broker
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
 const STATE_HZ = 20;
+let currentMultiplayer = null;
+
+/** The live multiplayer session owned by main.js, if one exists. */
+export function getCurrentMultiplayer() { return currentMultiplayer; }
 
 function randomCode(len = 5) {
   let s = '';
@@ -52,6 +56,7 @@ export class Multiplayer {
    * }
    */
   constructor(handlers) {
+    currentMultiplayer = this;
     this.h = handlers;
     this.peer = null;
     this.conns = new Map();       // host only: playerId -> DataConnection
@@ -241,6 +246,7 @@ export class Multiplayer {
     if (this.isHost) this._sendAll({ t: 'left', id: this.selfId });
     try { this.peer && this.peer.destroy(); } catch { /* already gone */ }
     this.peer = null; this.conns.clear(); this.hostConn = null; this.players.clear(); this.usedHues.clear();
+    if (currentMultiplayer === this) currentMultiplayer = null;
   }
 }
 
