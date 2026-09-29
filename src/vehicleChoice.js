@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
 import { CAR } from './vehicle.js';
+import { SPECS } from './damage.js';
 import { Multiplayer } from './multiplayer.js';
 
 // Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
@@ -11,6 +12,7 @@ export const VEHICLES = [
   {
     id: 'motor-home', name: 'Motor Home', url: 'cars/motor-home-shrink.glb',
     fit: 'auto', targetLength: 4.85,
+    damageMul: 0.8,
     physics: {
       mass: 2800,
       wheelbase: 3.15,
@@ -94,30 +96,40 @@ function makeHull(b) {
   return p;
 }
 
-// Apply the selected profile BEFORE main.js creates its Vehicle. This keeps the original
-// car code untouched and makes the change easy to back out.
-function applySelectedPhysics() {
+// Apply the selected profile BEFORE main.js creates its Vehicle. Physics and damage toughness
+// now live in the same vehicle definition instead of a separate side-effect module.
+function applySelectedProfile() {
   const cfg = selectedVehicle();
   const p = cfg.physics;
-  if (!p) return;
+  if (p) {
+    CAR.mass = p.mass;
+    CAR.wheelbase = p.wheelbase;
+    CAR.track = p.track;
+    CAR.wheelRadius = p.wheelRadius;
+    CAR.mountY = p.mountY;
+    CAR.inertia = { ...p.inertia };
+    CAR.susp = { ...CAR.susp, ...p.susp };
+    CAR.engine = { ...CAR.engine, ...p.engine };
+    CAR.brakeTotal = 1.35 * p.mass * 9.81;
+    CAR.brakeBias = p.brakeBias;
+    CAR.wallBounce = p.wallBounce;
+    CAR.aero = { ...CAR.aero, ...p.aero };
+    CAR.steer = { ...CAR.steer, ...p.steer };
+    CAR.hull = makeHull(p.body);
+  }
 
-  CAR.mass = p.mass;
-  CAR.wheelbase = p.wheelbase;
-  CAR.track = p.track;
-  CAR.wheelRadius = p.wheelRadius;
-  CAR.mountY = p.mountY;
-  CAR.inertia = { ...p.inertia };
-  CAR.susp = { ...CAR.susp, ...p.susp };
-  CAR.engine = { ...CAR.engine, ...p.engine };
-  CAR.brakeTotal = 1.35 * p.mass * 9.81;
-  CAR.brakeBias = p.brakeBias;
-  CAR.wallBounce = p.wallBounce;
-  CAR.aero = { ...CAR.aero, ...p.aero };
-  CAR.steer = { ...CAR.steer, ...p.steer };
-  CAR.hull = makeHull(p.body);
+  if (cfg.damageMul && cfg.damageMul !== 1) {
+    const base = SPECS.player.mul || {};
+    SPECS.player.mul = {
+      front: (base.front ?? 1) * cfg.damageMul,
+      back: (base.back ?? 1) * cfg.damageMul,
+      left: (base.left ?? 1) * cfg.damageMul,
+      right: (base.right ?? 1) * cfg.damageMul,
+    };
+  }
 }
 
-applySelectedPhysics();
+applySelectedProfile();
 
 function fillVehicleSelect(select) {
   select.innerHTML = '';
