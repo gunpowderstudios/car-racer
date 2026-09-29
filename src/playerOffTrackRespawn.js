@@ -3,7 +3,8 @@ import { Health, SPECS } from './damage.js';
 import { SURF, Track } from './track.js';
 
 // Player off-track recovery in single-player derby mode. If the player is genuinely
-// lost off the circuit, explode, hold for a visible 3-2-1 countdown, then reset on road.
+// lost off the circuit, explode, keep the real Vehicle physics running for a visible
+// 3-2-1 countdown (so a flying/tumbling car keeps moving), then reset on road.
 const oldStep = Derby.prototype.step;
 const q = Track.newQuery();
 
@@ -28,10 +29,9 @@ function beginPlayerReset(derby, f) {
   s = (s - 8 + derby.track.length) % derby.track.length;
   f._playerOffTrackReset = { t: 3, s, shown: 3 };
   f._playerOffT = 0;
-  f.gone = true;
-  f.wrecked = true;
-  c.vel.set(0, 0, 0);
-  c.angVel.set(0, 0, 0);
+  f.gone = false;
+  f.wrecked = true;       // disables further damage/targeting, but main.js still steps the Vehicle normally
+  // Deliberately keep velocity and angular velocity: the wreck should continue its fall/tumble.
   derby.events.push({
     type: 'wreck', id: f.id, isPlayer: true, zone: 'front',
     x: c.pos.x, y: c.pos.y, z: c.pos.z,
@@ -45,9 +45,8 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
   if (this.enabled && this.track && f) {
     const r = f._playerOffTrackReset;
     if (r) {
-      // main.js still advances the local Vehicle before derby.step(), so pin it while the countdown runs.
-      f.car.vel.set(0, 0, 0);
-      f.car.angVel.set(0, 0, 0);
+      // main.js advances the local Vehicle before derby.step(), so simply leave its momentum alone.
+      // With no player control applied to a wreck it continues under gravity, drag, ground and wall physics.
       r.t -= dt;
       const n = Math.max(1, Math.ceil(r.t));
       if (r.t > 0 && n !== r.shown) { r.shown = n; showCountdown(n); }
