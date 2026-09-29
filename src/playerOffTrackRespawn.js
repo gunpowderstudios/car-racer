@@ -27,10 +27,17 @@ function beginPlayerReset(derby, f) {
   const c = f.car;
   let s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
   s = (s - 8 + derby.track.length) % derby.track.length;
-  f._playerOffTrackReset = { t: 3, s, shown: 3 };
+  f._playerOffTrackReset = { t: 3, s, shown: 3, oldOver: derby.over };
   f._playerOffT = 0;
   f.gone = false;
   f.wrecked = true;       // disables further damage/targeting, but main.js still steps the Vehicle normally
+
+  // main.js still contains the old automatic recovery (roof/lost/below-world -> respawn()).
+  // Its respawn() already refuses to run while derby.over is true, so temporarily use that
+  // existing guard during our cinematic reset. This prevents the legacy system from snapping
+  // the car back in the middle of the explosion/countdown while leaving Vehicle physics alive.
+  derby.over = true;
+
   // Deliberately keep velocity and angular velocity: the wreck should continue its fall/tumble.
   derby.events.push({
     type: 'wreck', id: f.id, isPlayer: true, zone: 'front',
@@ -45,8 +52,8 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
   if (this.enabled && this.track && f) {
     const r = f._playerOffTrackReset;
     if (r) {
-      // main.js advances the local Vehicle before derby.step(), so simply leave its momentum alone.
-      // With no player control applied to a wreck it continues under gravity, drag, ground and wall physics.
+      // main.js advances the local Vehicle before derby.step(). derby.over also makes its input IDLE,
+      // so momentum, gravity, drag, impacts and angular velocity continue naturally with no driver input.
       r.t -= dt;
       const n = Math.max(1, Math.ceil(r.t));
       if (r.t > 0 && n !== r.shown) { r.shown = n; showCountdown(n); }
@@ -59,6 +66,7 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
         f.flash = 0;
         f.lastHit = null;
         f.health = new Health(SPECS.player.hp);
+        derby.over = !!r.oldOver;
         placeOnRoad(f.car, this.track, r.s, 0, 0);
         this._pose(f, f.cur);
         this._pose(f, f.prev);
@@ -78,7 +86,8 @@ Derby.prototype.step = function patchedPlayerOffTrackStep(dt, barrels = null) {
       if (this.track.gap[gi] && lane < fr.hw + 2.5) off = false;
 
       f._playerOffT = off ? (f._playerOffT || 0) + dt : 0;
-      if (c.pos.y < -8 || f._playerOffT > 1.5) beginPlayerReset(this, f);
+      // Start before the old 1.4 s legacy recovery threshold can fire.
+      if (c.pos.y < -8 || f._playerOffT > 1.15) beginPlayerReset(this, f);
     }
   }
 
