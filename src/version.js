@@ -11,5 +11,5 @@ import './gapEndCollision.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.14';
-export const NOTE = 'Player off-track crashes now explode and reset after a centre-screen 3-2-1 countdown, and jump/bridge vertical end faces are solid collisions';
+export const VERSION = '16.15';
+export const NOTE = 'Off-track wrecks now keep their real momentum and tumble/fall naturally throughout the 3-2-1 reset countdown instead of freezing in place';
