@@ -6,5 +6,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.31';
-export const NOTE = 'Added a small Gunpowder Studios link at the bottom of the main menu so players can discover our other games';
+export const VERSION = '16.32';
+export const NOTE = 'Moved the open-source/inspiration copy to the bottom of the menu and grouped it with the Gunpowder Studios games link';
