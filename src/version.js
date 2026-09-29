@@ -6,5 +6,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.26';
-export const NOTE = 'Cleanup phase 3: multiplayer off-track recovery no longer monkey-patches Life or Vehicle; it now uses explicit Life access and the existing derby-over idle-input path, leaving only the small network-state hook';
+export const VERSION = '16.27';
+export const NOTE = 'Cleanup phase 4: multiplayer off-track recovery now runs explicitly inside the normal Multiplayer.sendState frame path, removing the last sendState monkey patch and the separate recovery animation loop';
