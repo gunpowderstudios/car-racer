@@ -4,8 +4,8 @@ import { IDLE } from './ai.js';
 import { SURF } from './track.js';
 
 // Rival off-track recovery: if an AI car is genuinely lost off the circuit, explode it,
-// hide it for a 3-2-1 countdown, then put the same rival back on the road with fresh health.
-// This replaces the older instant "teleport back" recovery for badly lost rivals.
+// let the physical car keep tumbling/coasting for a 3-2-1 countdown, then put the same rival
+// back on the road with fresh health. Momentum is deliberately NOT zeroed at the explosion.
 const oldWatch = Derby.prototype._watch;
 const oldStep = Derby.prototype.step;
 
@@ -33,13 +33,11 @@ function beginReset(derby, f) {
   const c = f.car;
   const s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
   f._offTrackReset = { t: 3, s: (s + 10) % derby.track.length, shown: 3 };
-  f.gone = true;
   f.inp = IDLE;
-  c.vel.set(0, 0, 0);
-  c.angVel.set(0, 0, 0);
-  derby._refreshCars();
+  f.wrecked = true;          // no AI throttle / further damage, but the Vehicle still runs physics
+  f.gone = false;            // keep the tumbling car visible for the full countdown
 
-  // Reuse the normal wreck visual/audio event without actually wrecking the rival permanently.
+  // Reuse the normal wreck visual/audio event without removing the physical car.
   derby.events.push({
     type: 'wreck', id: f.id, isPlayer: false, zone: 'front',
     x: c.pos.x, y: c.pos.y, z: c.pos.z,
@@ -108,3 +106,21 @@ Derby.prototype.step = function patchedStep(dt, barrels = null) {
 
   return oldStep.call(this, dt, barrels);
 };
+
+// Resetting rivals are temporarily marked wrecked so normal AI/damage ignores them. Count them as
+// active for population purposes so the derby does not spawn an unnecessary replacement during 3-2-1.
+const aliveDesc = Object.getOwnPropertyDescriptor(Derby.prototype, 'alive');
+if (aliveDesc?.get && !Derby.prototype.__offTrackAlivePatched) {
+  Object.defineProperty(Derby.prototype, 'alive', {
+    configurable: true,
+    get() {
+      let n = 0;
+      for (const f of this.fighters) {
+        if (f.isPlayer || f.gone) continue;
+        if (!f.wrecked || f._offTrackReset) n++;
+      }
+      return n;
+    },
+  });
+  Derby.prototype.__offTrackAlivePatched = true;
+}
