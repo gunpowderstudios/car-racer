@@ -1,8 +1,8 @@
 // Multiplayer race layer: 3-lap finishing order and live race position.
 //
 // Multiplayer remains a banger/destruction race: cars can ram, take damage, wreck and
-// respawn. This module only adds race progress, an authoritative finish order from the
-// host, and a small HUD card showing where the local player is in the field.
+// respawn. This module adds race progress, authoritative finishing order, winner messages,
+// and a live Position X of Y readout inside the existing score card.
 import { Multiplayer, getCurrentMultiplayer } from './multiplayer.js';
 
 const RACE_LAPS = 3;
@@ -18,6 +18,34 @@ function ensureRaceData(net) {
   if (!net._raceStates) net._raceStates = new Map();
   if (!net._raceFinishPlaces) net._raceFinishPlaces = new Map();
   return net;
+}
+
+function ensurePositionRow() {
+  const score = document.getElementById('derby-score');
+  if (!score) return {};
+
+  let row = document.getElementById('hud-race-position-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'hud-race-position-row';
+    row.hidden = true;
+    row.innerHTML = '<span class="hud-race-pos-label">Position</span><strong id="hud-race-position-value">1 of 1</strong>';
+    score.appendChild(row);
+  }
+
+  if (!document.getElementById('hud-race-position-style')) {
+    const style = document.createElement('style');
+    style.id = 'hud-race-position-style';
+    style.textContent = `
+#hud-race-position-row{margin-top:6px;padding-top:5px;border-top:1px solid rgba(246,217,176,.22);text-align:center}
+#hud-race-position-row .hud-race-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#f6d9b0;opacity:.85}
+#hud-race-position-value{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:22px;line-height:1;color:#ffb31f}
+@media(max-width:600px){#hud-race-position-row{margin-top:4px;padding-top:4px}#hud-race-position-value{font-size:19px}}
+`;
+    document.head.appendChild(style);
+  }
+
+  return { row, value: document.getElementById('hud-race-position-value') };
 }
 
 function emitFinish(net, result) {
@@ -107,12 +135,8 @@ Multiplayer.prototype.leave = function raceLeave() {
 };
 
 function installHud() {
-  if (document.getElementById('mp-race-position')) return;
-  const card = document.createElement('div');
-  card.id = 'mp-race-position';
-  card.hidden = true;
-  card.innerHTML = '<span class="mp-pos-label">Position</span><strong id="mp-pos-value">1 of 1</strong>';
-  document.getElementById('hud')?.appendChild(card);
+  ensurePositionRow();
+  if (document.getElementById('mp-race-finish')) return;
 
   const finish = document.createElement('div');
   finish.id = 'mp-race-finish';
@@ -122,13 +146,10 @@ function installHud() {
 
   const style = document.createElement('style');
   style.textContent = `
-#mp-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 180px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
-#mp-race-position .mp-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#b9a9d6}
-#mp-race-position strong{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:26px;line-height:1;color:#ffb31f}
 #mp-race-finish{position:absolute;left:50%;top:13%;transform:translateX(-50%) skewX(-7deg);min-width:min(520px,88vw);padding:14px 28px;text-align:center;background:rgba(27,18,51,.92);border-block:4px solid #ffb31f;box-shadow:0 12px 35px rgba(0,0,0,.35)}
 #mp-finish-title{font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(38px,7vw,76px);line-height:.95;text-transform:uppercase;color:#ffb31f;text-shadow:3px 3px 0 #e8392c}
 #mp-finish-sub{margin-top:5px;font-family:"Barlow Condensed",Arial,sans-serif;font-size:20px;color:#f6d9b0;text-shadow:none}
-@media(max-width:600px){#mp-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 190px);left:10px}#mp-race-position strong{font-size:22px}#mp-race-finish{top:18%}}
+@media(max-width:600px){#mp-race-finish{top:18%}}
 `;
   document.head.appendChild(style);
 }
@@ -163,12 +184,11 @@ window.addEventListener('carracer-race-finish', (e) => showFinish(e.detail));
 function updateRaceHud() {
   requestAnimationFrame(updateRaceHud);
   const net = getCurrentMultiplayer();
-  const card = document.getElementById('mp-race-position');
-  const value = document.getElementById('mp-pos-value');
-  if (!card || !value) return;
+  const { row, value } = ensurePositionRow();
+  if (!row || !value) return;
 
   if (!net || !document.body.classList.contains('mode-drive')) {
-    card.hidden = true;
+    row.hidden = true;
     currentSession = null;
     return;
   }
@@ -199,7 +219,7 @@ function updateRaceHud() {
 
   const position = Math.max(1, entries.findIndex((p) => p.id === net.selfId) + 1);
   value.textContent = `${position} of ${Math.max(1, entries.length)}`;
-  card.hidden = false;
+  row.hidden = false;
 }
 
 if (!window[patched]) {
