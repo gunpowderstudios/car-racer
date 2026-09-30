@@ -95,8 +95,10 @@ Multiplayer.prototype.joinRoom = async function raceJoinRoom(code, name) {
   ensureRaceData(this);
   if (this.hostConn && !this._raceDataListener) {
     this._raceDataListener = (msg) => {
-      if (msg?.t === 'start') this._raceLaps = clampLaps(msg.track?.raceLaps || 1);
-      else if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
+      if (msg?.t === 'start') {
+        this._raceLaps = clampLaps(msg.track?.raceLaps || 1);
+        window.__raceLaps?.set?.(this._raceLaps);
+      } else if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
       else if (msg?.t === 'race-finish-result' && msg.id && Number.isInteger(msg.place)) emitFinish(this, msg);
       else if (msg?.t === 'left' && msg.id) {
         this._raceStates.delete(msg.id);
