@@ -92,7 +92,6 @@ export const VEHICLE_PHYSICS_PROFILES = {
     boost: { accel: 3.2 },
   },
 
-  // Ready for Paul's Escort once its model is wired into the vehicle selector.
   escort: {
     reference: '1970s Ford Escort-style lightweight RWD saloon',
     mass: 920,
@@ -116,7 +115,10 @@ function selectedId() {
 function patch(dst, src) {
   if (!src) return dst;
   for (const [k, v] of Object.entries(src)) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) dst[k] = { ...(dst[k] || {}), ...v };
+    // A profile may deliberately omit a section because vehicleChoice.js already supplied it
+    // (Escort suspension is one example). Missing values must never erase the working base setup.
+    if (v == null) continue;
+    if (typeof v === 'object' && !Array.isArray(v)) dst[k] = { ...(dst[k] || {}), ...v };
     else dst[k] = v;
   }
   return dst;
