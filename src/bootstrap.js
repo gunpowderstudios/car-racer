@@ -4,7 +4,7 @@
 // patches can be folded back into core modules here without making script-tag order
 // part of the game's behaviour.
 import './vehicleChoice.js?v=16.50';
-import './vehiclePhysicsProfiles.js?v=16.49';
+import './vehiclePhysicsProfiles.js?v=16.51';
 import './cameraChoice.js';
 import './menuVehicle.js';
 import './derbyOffTrackRecovery.js?v=16.25';
