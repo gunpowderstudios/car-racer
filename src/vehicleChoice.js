@@ -18,8 +18,10 @@ export const VEHICLES = [
       wheelbase: 2.40,
       track: 1.32,
       wheelRadius: 0.29,
-      mountY: 0.06,
-      inertia: { x: 1800, y: 1750, z: 560 },
+      // Slightly lower effective centre of gravity than before, so the Escort slides
+      // and oversteers before it tries to trip over its outside tyres.
+      mountY: 0.12,
+      inertia: { x: 1800, y: 1750, z: 820 },
       susp: {
         free: 0.42, travel: 0.22,
         kFront: 26000, kRear: 24000,
