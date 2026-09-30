@@ -10,6 +10,31 @@ import { Multiplayer } from './multiplayer.js';
 export const VEHICLES = [
   { id: 'car', name: 'Car', url: 'cars/car-shrink.glb', fit: 'measured' },
   {
+    id: 'escort', name: "Paul's Escort", url: 'cars/escort-shrink.glb',
+    fit: 'auto', targetLength: 4.05,
+    physics: {
+      mass: 920,
+      frontWeight: 0.53,
+      wheelbase: 2.40,
+      track: 1.32,
+      wheelRadius: 0.29,
+      mountY: 0.06,
+      inertia: { x: 1800, y: 1750, z: 560 },
+      susp: {
+        free: 0.42, travel: 0.22,
+        kFront: 26000, kRear: 24000,
+        cCompFront: 2000, cCompRear: 1850, cRebFront: 2900, cRebRear: 2700,
+        arbFront: 14500, arbRear: 10000, bump: 180000, bumpDamp: 8000,
+      },
+      engine: { peakTorque: 170 },
+      brakeBias: 0.60,
+      wallBounce: 0.28,
+      aero: { drag: 0.42, down: 0.28 },
+      steer: { max: 0.57, rate: 4.8, returnRate: 7.0 },
+      body: { width: 1.57, length: 4.05, bottom: -0.40, shoulder: 0.32, roof: 0.96, roofWidth: 1.38, roofLength: 2.40 },
+    },
+  },
+  {
     id: 'motor-home', name: 'Motor Home', url: 'cars/motor-home-shrink.glb',
     fit: 'auto', targetLength: 4.85,
     damageMul: 0.8,
