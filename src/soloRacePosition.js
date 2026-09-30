@@ -1,25 +1,32 @@
 // Single-player race position HUD: ranks the player against AI rivals by track progress.
-// Uses the player's existing unwrapped race distance and each rival's real position on the track.
+// The position readout lives inside the existing score card so the HUD stays compact on all devices.
 
-function ensureCard() {
-  let card = document.getElementById('solo-race-position');
-  if (card) return card;
+function ensurePositionRow() {
+  const score = document.getElementById('derby-score');
+  if (!score) return {};
 
-  card = document.createElement('div');
-  card.id = 'solo-race-position';
-  card.hidden = true;
-  card.innerHTML = '<span class="solo-pos-label">Position</span><strong id="solo-pos-value">1 of 1</strong>';
-  document.getElementById('hud')?.appendChild(card);
+  let row = document.getElementById('hud-race-position-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'hud-race-position-row';
+    row.hidden = true;
+    row.innerHTML = '<span class="hud-race-pos-label">Position</span><strong id="hud-race-position-value">1 of 1</strong>';
+    score.appendChild(row);
+  }
 
-  const style = document.createElement('style');
-  style.textContent = `
-#solo-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 180px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
-#solo-race-position .solo-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#b9a9d6}
-#solo-race-position strong{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:26px;line-height:1;color:#ffb31f}
-@media(max-width:600px){#solo-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 190px);left:10px}#solo-race-position strong{font-size:22px}}
+  if (!document.getElementById('hud-race-position-style')) {
+    const style = document.createElement('style');
+    style.id = 'hud-race-position-style';
+    style.textContent = `
+#hud-race-position-row{margin-top:6px;padding-top:5px;border-top:1px solid rgba(246,217,176,.22);text-align:center}
+#hud-race-position-row .hud-race-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#f6d9b0;opacity:.85}
+#hud-race-position-value{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:22px;line-height:1;color:#ffb31f}
+@media(max-width:600px){#hud-race-position-row{margin-top:4px;padding-top:4px}#hud-race-position-value{font-size:19px}}
 `;
-  document.head.appendChild(style);
-  return card;
+    document.head.appendChild(style);
+  }
+
+  return { row, value: document.getElementById('hud-race-position-value') };
 }
 
 function unwrapNear(s, playerProgress, length) {
@@ -48,21 +55,21 @@ function getSoloField(game) {
 
 function update() {
   requestAnimationFrame(update);
-  const card = ensureCard();
-  const value = document.getElementById('solo-pos-value');
-  const game = window.__game;
+  const { row, value } = ensurePositionRow();
+  if (!row || !value) return;
 
-  // Multiplayer has its own position HUD. Hide this card outside an active solo race.
+  const game = window.__game;
   const isMp = document.body.classList.contains('mode-mp');
   const hudVisible = game && !document.getElementById('hud')?.hidden;
+
   if (!hudVisible || isMp) {
-    card.hidden = true;
+    if (!isMp) row.hidden = true;
     return;
   }
 
   const field = getSoloField(game);
   if (!field || field.rivals.length === 0) {
-    card.hidden = true;
+    row.hidden = true;
     return;
   }
 
@@ -70,7 +77,7 @@ function update() {
   for (const p of field.rivals) if (p > field.player) place++;
   const total = field.rivals.length + 1;
   value.textContent = `${place} of ${total}`;
-  card.hidden = false;
+  row.hidden = false;
 }
 
 requestAnimationFrame(update);
