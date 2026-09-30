@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.51';
-export const NOTE = 'Fixed Escort startup crash by preserving vehicle physics sections that the handling profile does not override, so the 3D scene and Escort can load normally';
+export const VERSION = '16.52';
+export const NOTE = 'Renamed the vehicle choices to Charger, Escort and Hymer without changing their underlying IDs, models or physics';
