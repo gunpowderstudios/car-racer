@@ -36,7 +36,6 @@ function recordFinishAsHost(net, id) {
   emitFinish(net, result);
 }
 
-// Enrich the existing 20 Hz state packet with race progress. No extra network stream is needed.
 const originalSendState = Multiplayer.prototype.sendState;
 Multiplayer.prototype.sendState = function raceSendState(state) {
   ensureRaceData(this);
@@ -53,9 +52,6 @@ Multiplayer.prototype.sendState = function raceSendState(state) {
   return originalSendState.call(this, state);
 };
 
-// Host sees every guest packet before relaying it, so keep the latest progress and accept
-// finish reports here. vehicleChoice already wraps this method; bootstrap imports this module
-// afterwards, so both extensions remain in the chain.
 const originalHostMessage = Multiplayer.prototype._onHostMessage;
 Multiplayer.prototype._onHostMessage = function raceHostMessage(id, msg) {
   ensureRaceData(this);
@@ -67,8 +63,6 @@ Multiplayer.prototype._onHostMessage = function raceHostMessage(id, msg) {
   return originalHostMessage.call(this, id, msg);
 };
 
-// Guests already receive relayed state packets on their host connection. Add a second harmless
-// listener after joining so the race HUD can read them without changing multiplayer.js core logic.
 const originalJoinRoom = Multiplayer.prototype.joinRoom;
 Multiplayer.prototype.joinRoom = async function raceJoinRoom(code, name) {
   const joined = await originalJoinRoom.call(this, code, name);
@@ -128,13 +122,13 @@ function installHud() {
 
   const style = document.createElement('style');
   style.textContent = `
-#mp-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 108px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
+#mp-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 180px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
 #mp-race-position .mp-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#b9a9d6}
 #mp-race-position strong{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:26px;line-height:1;color:#ffb31f}
 #mp-race-finish{position:absolute;left:50%;top:13%;transform:translateX(-50%) skewX(-7deg);min-width:min(520px,88vw);padding:14px 28px;text-align:center;background:rgba(27,18,51,.92);border-block:4px solid #ffb31f;box-shadow:0 12px 35px rgba(0,0,0,.35)}
 #mp-finish-title{font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(38px,7vw,76px);line-height:.95;text-transform:uppercase;color:#ffb31f;text-shadow:3px 3px 0 #e8392c}
 #mp-finish-sub{margin-top:5px;font-family:"Barlow Condensed",Arial,sans-serif;font-size:20px;color:#f6d9b0;text-shadow:none}
-@media(max-width:600px){#mp-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 94px);left:10px}#mp-race-position strong{font-size:22px}#mp-race-finish{top:18%}}
+@media(max-width:600px){#mp-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 190px);left:10px}#mp-race-position strong{font-size:22px}#mp-race-finish{top:18%}}
 `;
   document.head.appendChild(style);
 }
@@ -173,8 +167,6 @@ function updateRaceHud() {
   const value = document.getElementById('mp-pos-value');
   if (!card || !value) return;
 
-  // Guests do not set Multiplayer.started locally; being in drive mode with a live
-  // multiplayer session is the reliable indication that the race has begun on every client.
   if (!net || !document.body.classList.contains('mode-drive')) {
     card.hidden = true;
     currentSession = null;
