@@ -1,5 +1,5 @@
 // Single-player race position HUD: ranks the player against AI rivals by track progress.
-// Uses the existing lap/progress state from the game and AI cars, and only displays during normal solo races.
+// Uses the player's existing unwrapped race distance and each rival's real position on the track.
 
 function ensureCard() {
   let card = document.getElementById('solo-race-position');
@@ -22,26 +22,26 @@ function ensureCard() {
   return card;
 }
 
-function progressOf(obj) {
-  if (!obj) return null;
-  const race = obj.race || obj.raceState || obj.progress;
-  if (race && Number.isFinite(race.unwrapped)) return race.unwrapped;
-  if (Number.isFinite(obj.raceProgress)) return obj.raceProgress;
-  if (Number.isFinite(obj.unwrapped)) return obj.unwrapped;
-  if (Number.isFinite(obj.progress)) return obj.progress;
-  return null;
+function unwrapNear(s, playerProgress, length) {
+  let u = Math.floor(playerProgress / length) * length + s;
+  while (u - playerProgress > length / 2) u -= length;
+  while (playerProgress - u > length / 2) u += length;
+  return u;
 }
 
 function getSoloField(game) {
-  if (!game) return null;
-  const player = progressOf(game.race) ?? progressOf(game.car) ?? progressOf(game.player);
-  if (!Number.isFinite(player)) return null;
+  const track = game?.track;
+  const player = game?.race?.unwrapped;
+  const length = track?.length;
+  if (!track || !Number.isFinite(player) || !Number.isFinite(length) || length <= 0) return null;
 
-  const candidates = game.derby?.rivals || game.rivals || game.aiCars || game.ais || [];
+  const fighters = game.derby?.rivals || [];
   const rivals = [];
-  for (const item of candidates) {
-    const p = progressOf(item?.race) ?? progressOf(item);
-    if (Number.isFinite(p) && !item?.wrecked && !item?.wreck) rivals.push(p);
+  for (const fighter of fighters) {
+    if (!fighter || fighter.gone || fighter.wrecked || !fighter.car) continue;
+    const c = fighter.car;
+    const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
+    if (Number.isFinite(s)) rivals.push(unwrapNear(s, player, length));
   }
   return { player, rivals };
 }
@@ -52,7 +52,7 @@ function update() {
   const value = document.getElementById('solo-pos-value');
   const game = window.__game;
 
-  // Multiplayer has its own position HUD. Hide this card outside an active solo game.
+  // Multiplayer has its own position HUD. Hide this card outside an active solo race.
   const isMp = document.body.classList.contains('mode-mp');
   const hudVisible = game && !document.getElementById('hud')?.hidden;
   if (!hudVisible || isMp) {
