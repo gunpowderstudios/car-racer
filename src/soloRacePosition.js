@@ -1,5 +1,6 @@
 // Single-player race position HUD: ranks the player against AI rivals by track progress.
 // The position readout lives inside the existing score card so the HUD stays compact on all devices.
+import { getCurrentMultiplayer } from './multiplayer.js';
 
 function raceLaps() { return window.__raceLaps?.get?.() || 1; }
 function ordinal(n) {
@@ -93,12 +94,12 @@ function update() {
   if (!row || !value) return;
 
   const game = window.__game;
-  const isMp = document.body.classList.contains('mode-mp');
+  const isMp = !!getCurrentMultiplayer();
   const hudVisible = game && !document.getElementById('hud')?.hidden;
 
   if (!hudVisible || isMp) {
     if (!isMp) row.hidden = true;
-    if (!hudVisible && finish) finish.hidden = true;
+    if (finish) finish.hidden = true;
     return;
   }
 
