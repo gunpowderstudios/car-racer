@@ -1,6 +1,6 @@
 // Damage model for the destruction derby. No three.js in here, so it runs (and is tested) in Node.
 //
-// Every car has four zones - front, back, left, right - each with its own hit points.
+// Every car has five zones - front, back, left, right and roof - each with its own hit points.
 // A hit lands on the zone nearest to where the cars touched. The moment ANY zone reaches
 // zero the car is wrecked and goes up in flames, so where you get hit matters as much as
 // how hard. Your car is a banger built for the job: the front has extra plate welded on
@@ -8,13 +8,13 @@
 //
 // All the numbers you would want to tune are in ARMOUR and DAMAGE below.
 
-export const ZONES = ['front', 'back', 'left', 'right'];
-export const ZONE_LABEL = { front: 'Front', back: 'Rear', left: 'Left side', right: 'Right side' };
+export const ZONES = ['front', 'back', 'left', 'right', 'roof'];
+export const ZONE_LABEL = { front: 'Front', back: 'Rear', left: 'Left side', right: 'Right side', roof: 'Roof' };
 
 /** Hit points per zone. */
 export const ARMOUR = {
-  player: { front: 320, back: 160, left: 180, right: 180 },
-  rival: { front: 95, back: 85, left: 85, right: 85 },
+  player: { front: 320, back: 160, left: 180, right: 180, roof: 150 },
+  rival: { front: 95, back: 85, left: 85, right: 85, roof: 75 },
 };
 
 export const DAMAGE = {
@@ -23,7 +23,7 @@ export const DAMAGE = {
   // hard head-on is many times worse than a nudge, and a heavy hit is capped by maxHit.
   perKJ: 0.65,
   minSpeed: 3,          // m/s of closing speed that is simply shrugged off (nudges, bumping in a queue)
-  bleed: 0.25,          // share of a hit that also crumples the two neighbouring zones (a rear hit dents the sides too)
+  bleed: 0.25,          // share of a hit that also crumples the neighbouring zones
   maxHit: 110,          // most one crash can take off one zone: from full health, a single hit never kills you
   // Barriers and the ground hurt much less than another car: they are softer than a bumper.
   wall: 0.12, ground: 0.04,
@@ -31,12 +31,15 @@ export const DAMAGE = {
   // A player takes a fraction (the "mul" in each car's spec): the bodywork is thicker.
   barrel: { radius: 10, point: 90 },
   wreck: { radius: 8, point: 60, push: 4.5 },      // a wrecked car going up hurts its neighbours too
-  burnPerSecond: 16,    // a rival lying on its roof cooks its own front end at this rate
+  burnPerSecond: 16,    // a rival lying on its roof cooks itself at this rate
 };
 
-/** What each kind of car is made of. */
-/** Which zones sit either side of each one. */
-export const NEIGHBOURS = { front: ['left', 'right'], back: ['left', 'right'], left: ['front', 'back'], right: ['front', 'back'] };
+/** Which zones sit beside each one for secondary crumple damage. */
+export const NEIGHBOURS = {
+  front: ['left', 'right'], back: ['left', 'right'],
+  left: ['front', 'back'], right: ['front', 'back'],
+  roof: ['left', 'right'],
+};
 
 export const SPECS = {
   // `mul` scales the damage a zone takes: the plate welded across your front end soaks up half of every hit.
@@ -48,8 +51,16 @@ export const SPECS = {
 export function zoneAt(car, x, y, z) {
   const dx = x - car.pos.x, dy = y - car.pos.y, dz = z - car.pos.z;
   const lx = dx * car.ax.x + dy * car.ax.y + dz * car.ax.z;
+  const ly = dx * car.ay.x + dy * car.ay.y + dz * car.ay.z;
   const lz = dx * car.az.x + dy * car.az.y + dz * car.az.z;
-  // Compare how far along each axis the point is as a share of the car's half length / half width.
+
+  // A roof-ground impact has a contact point well above the centre of mass in the car's own
+  // local Y axis. Keep the threshold above bonnet/shoulder contacts so ordinary side and front
+  // crashes are still classified exactly as before.
+  const shoulder = car?.spec?.body?.shoulder ?? 0.25;
+  if (ly > shoulder + 0.12 && ly > Math.abs(lx) * 0.4 && ly > Math.abs(lz) * 0.12) return 'roof';
+
+  // Compare how far along each horizontal axis the point is as a share of the car's half length / half width.
   if (Math.abs(lz) / 2.35 >= Math.abs(lx) / 0.93) return lz >= 0 ? 'front' : 'back';
   return lx >= 0 ? 'left' : 'right';
 }
@@ -82,7 +93,7 @@ export function blastFraction(kind, d) {
   return kind.point > 0 ? blastDamage(kind, d) / kind.point : 0;
 }
 
-/** The four health bars of one car. */
+/** The zone health of one car. */
 export class Health {
   constructor(hp) {
     this.max = { ...hp };
