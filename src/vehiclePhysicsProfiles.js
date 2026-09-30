@@ -125,11 +125,10 @@ function patch(dst, src) {
 export function applyVehiclePhysicsProfile(id = selectedId()) {
   const p = VEHICLE_PHYSICS_PROFILES[id] || VEHICLE_PHYSICS_PROFILES.car;
 
-  // vehicleChoice.js may already have applied model-specific dimensions/hull data (notably the motor home).
-  // Patch only the dynamics here so visual/body alignment work remains untouched.
-  for (const k of ['mass', 'frontWeight', 'wheelbase', 'track', 'wheelRadius']) {
-    if (Number.isFinite(p[k])) CAR[k] = p[k];
-  }
+  // vehicleChoice.js remains the authority for wheelbase, track, wheel radius and body/hull dimensions,
+  // because those values must stay aligned with the visible GLB. This layer changes driving dynamics only.
+  if (Number.isFinite(p.mass)) CAR.mass = p.mass;
+  if (Number.isFinite(p.frontWeight)) CAR.frontWeight = p.frontWeight;
   patch(CAR, { inertia: p.inertia, susp: p.susp, tyre: p.tyre, engine: p.engine, aero: p.aero, steer: p.steer, boost: p.boost });
   if (Number.isFinite(p.brakeG)) CAR.brakeTotal = p.brakeG * CAR.mass * G;
   if (Number.isFinite(p.brakeBias)) CAR.brakeBias = p.brakeBias;
