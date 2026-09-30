@@ -10,7 +10,7 @@ import { Multiplayer } from './multiplayer.js';
 export const VEHICLES = [
   { id: 'car', name: 'Car', url: 'cars/car-shrink.glb', fit: 'measured' },
   {
-    id: 'escort', name: "Paul's Escort", url: 'cars/escort-shrink.glb',
+    id: 'escort', name: 'Escort', url: 'cars/escort-shrink.glb',
     fit: 'auto', targetLength: 4.05,
     physics: {
       mass: 920,
@@ -89,6 +89,10 @@ export function selectedVehicle() {
 function vehicleById(id) {
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
+
+// Kick off the selected GLB request as soon as this module loads. GLTFLoader will then normally
+// hit the browser cache when the scene asks for the model a moment later, reducing the blank wait.
+try { fetch(selectedVehicle().url, { cache: 'force-cache' }).catch(() => {}); } catch { /* preload is optional */ }
 
 function physicsForVehicle(config) {
   const p = config?.physics;
@@ -277,6 +281,13 @@ const originalLoad = CarVisual.prototype.load;
 CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig) {
   const config = explicitConfig || (url ? VEHICLES.find((v) => v.url === url) || null : selectedVehicle());
   if (config) this.vehicleId = config.id;
+
+  // Size the temporary loading car roughly like the selected vehicle so the player never starts
+  // a race with an apparently empty track while a larger GLB is still downloading/decoding.
+  if (config?.physics?.body && this.placeholder) {
+    this.placeholder.scale.set(config.physics.body.width / 1.85, 1, (config.targetLength || config.physics.body.length) / 4.85);
+  }
+
   await originalLoad.call(this, url || config.url);
 
   if (!config || !this.model) return;
