@@ -75,6 +75,8 @@ function getSoloField(game) {
 
 let finishShown = false;
 let finishTimer = null;
+let lastPlace = 1;
+let lastTotal = 1;
 
 function showFinish(place, total) {
   const box = document.getElementById('solo-race-finish');
@@ -100,26 +102,29 @@ function update() {
   if (!hudVisible || isMp) {
     if (!isMp) row.hidden = true;
     if (finish) finish.hidden = true;
-    return;
-  }
-
-  const field = getSoloField(game);
-  if (!field || field.rivals.length === 0) {
-    row.hidden = true;
     finishShown = false;
     return;
   }
 
-  let place = 1;
-  for (const p of field.rivals) if (p > field.player) place++;
-  const total = field.rivals.length + 1;
-  value.textContent = `${place} of ${total}`;
-  row.hidden = false;
+  const field = getSoloField(game);
+  if (field && field.rivals.length > 0) {
+    let place = 1;
+    for (const p of field.rivals) if (p > field.player) place++;
+    const total = field.rivals.length + 1;
+    lastPlace = place;
+    lastTotal = total;
+    value.textContent = `${place} of ${total}`;
+    row.hidden = false;
+  } else {
+    row.hidden = true;
+  }
 
-  const finished = game.race.index >= raceLaps();
+  // Finish detection is independent of the rival field. That way a completed race
+  // always produces a result even if the AI list is briefly empty while cars respawn/wreck.
+  const finished = !!game?.race && game.race.index >= raceLaps();
   if (finished && !finishShown) {
     finishShown = true;
-    showFinish(place, total);
+    showFinish(lastPlace, lastTotal);
   } else if (!finished) {
     finishShown = false;
   }
