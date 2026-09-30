@@ -1,12 +1,10 @@
-// Multiplayer race layer: 3-lap finishing order and live race position.
-//
-// Multiplayer remains a banger/destruction race: cars can ram, take damage, wreck and
-// respawn. This module adds race progress, authoritative finishing order, winner messages,
-// and a live Position X of Y readout inside the existing score card.
+// Multiplayer race layer: configurable finishing order and live race position.
+// Multiplayer remains a banger/destruction race: cars can ram, take damage, wreck and respawn.
 import { Multiplayer, getCurrentMultiplayer } from './multiplayer.js';
 
-const RACE_LAPS = 3;
 const patched = Symbol('multiplayerRacePatched');
+const clampLaps = (v) => Math.max(1, Math.min(3, Math.round(+v || 1)));
+const raceLaps = (net) => clampLaps(net?._raceLaps || window.__raceLaps?.get?.() || 1);
 
 function ordinal(n) {
   const v = n % 100;
@@ -58,7 +56,7 @@ function recordFinishAsHost(net, id) {
   if (!net.isHost || net._raceFinishPlaces.has(id)) return;
   const place = net._raceFinishPlaces.size + 1;
   const p = net.players.get(id);
-  const result = { id, name: p?.name || 'Driver', place };
+  const result = { id, name: p?.name || 'Driver', place, laps: raceLaps(net) };
   net._raceFinishPlaces.set(id, place);
   net._sendAll({ t: 'race-finish-result', ...result });
   emitFinish(net, result);
@@ -73,7 +71,7 @@ Multiplayer.prototype.sendState = function raceSendState(state) {
       ...state,
       raceProgress: Number.isFinite(race.unwrapped) ? race.unwrapped : 0,
       raceLaps: Number.isFinite(race.laps) ? race.laps : 0,
-      raceFinished: this._raceFinishPlaces.has(this.selfId),
+      raceFinished: race.index >= raceLaps(this),
     };
   }
   this._raceStates.set(this.selfId, state);
@@ -97,7 +95,8 @@ Multiplayer.prototype.joinRoom = async function raceJoinRoom(code, name) {
   ensureRaceData(this);
   if (this.hostConn && !this._raceDataListener) {
     this._raceDataListener = (msg) => {
-      if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
+      if (msg?.t === 'start') this._raceLaps = clampLaps(msg.track?.raceLaps || 1);
+      else if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
       else if (msg?.t === 'race-finish-result' && msg.id && Number.isInteger(msg.place)) emitFinish(this, msg);
       else if (msg?.t === 'left' && msg.id) {
         this._raceStates.delete(msg.id);
@@ -120,6 +119,7 @@ Multiplayer.prototype.reportRaceFinish = function reportRaceFinish() {
 const originalStartGame = Multiplayer.prototype.startGame;
 Multiplayer.prototype.startGame = function raceStartGame(trackDef) {
   ensureRaceData(this);
+  this._raceLaps = clampLaps(trackDef?.raceLaps || window.__raceLaps?.get?.() || 1);
   this._raceStates.clear();
   this._raceFinishPlaces.clear();
   this._raceFinishReported = false;
@@ -167,7 +167,7 @@ function showFinish(result) {
 
   if (result.place === 1) {
     title.textContent = result.id === net.selfId ? 'You win!' : `${result.name} wins!`;
-    sub.textContent = '3-lap destruction race winner';
+    sub.textContent = `${result.laps || raceLaps(net)}-lap destruction race winner`;
   } else if (result.id === net.selfId) {
     title.textContent = `Finished ${ordinal(result.place)}`;
     sub.textContent = 'Race complete';
@@ -202,7 +202,7 @@ function updateRaceHud() {
   }
 
   const race = window.__game?.race;
-  if (race && race.laps >= RACE_LAPS && !net._raceFinishReported) net.reportRaceFinish();
+  if (race && race.index >= raceLaps(net) && !net._raceFinishReported) net.reportRaceFinish();
 
   const entries = [...net.players.values()].map((p) => {
     const finishPlace = net._raceFinishPlaces.get(p.id) || null;
