@@ -3,8 +3,8 @@
 // Keep runtime extensions in one explicit order, then start main.js. Stable feature
 // patches can be folded back into core modules here without making script-tag order
 // part of the game's behaviour.
-import './vehicleChoice.js?v=16.52';
-import './vehiclePhysicsProfiles.js?v=16.51';
+import './vehicleChoice.js?v=16.53';
+import './vehiclePhysicsProfiles.js?v=16.53';
 import './cameraChoice.js';
 import './menuVehicle.js';
 import './derbyOffTrackRecovery.js?v=16.25';
