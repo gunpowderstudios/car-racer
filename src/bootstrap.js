@@ -13,7 +13,7 @@ import './raceSettings.js?v=16.45';
 import './aiDifficulty.js?v=16.45';
 import './multiplayerRace.js?v=16.45';
 import './soloRacePosition.js?v=16.46';
-import './roofDamage.js?v=16.54';
+import './roofDamage.js?v=16.55';
 import './gapEndCollision.js';
 
 // Start the game only after every runtime extension above has been installed.
