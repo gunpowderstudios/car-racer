@@ -30,10 +30,9 @@ export const RIVAL_LOOKS = [
   { name: 'Pink', rot: 320, sat: 0.95, val: 1.05, tint: 0xd8558f },
   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
 ];
-const recoloured = new WeakMap();           // source texture -> Map(look -> texture)
-const pristine = new WeakMap();             // a material of the player's own car -> its { map, color } as loaded, before any multiplayer repaint
+const recoloured = new WeakMap();
+const pristine = new WeakMap();
 
-/** A copy of `tex` with the look applied, or null if the picture can't be read back (then the caller tints instead). */
 function recolour(tex, look) {
   let per = recoloured.get(tex);
   if (!per) recoloured.set(tex, per = new Map());
@@ -47,7 +46,6 @@ function recolour(tex, look) {
     g.drawImage(img, 0, 0);
     const data = g.getImageData(0, 0, w, h), px = data.data;
     const a = look.rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
-    // the standard hue-rotation matrix
     const m0 = 0.213 + c * 0.787 - sn * 0.213, m1 = 0.715 - c * 0.715 - sn * 0.715, m2 = 0.072 - c * 0.072 + sn * 0.928;
     const m3 = 0.213 - c * 0.213 + sn * 0.143, m4 = 0.715 + c * 0.285 + sn * 0.140, m5 = 0.072 - c * 0.072 - sn * 0.283;
     const m6 = 0.213 - c * 0.213 - sn * 0.787, m7 = 0.715 - c * 0.715 + sn * 0.715, m8 = 0.072 + c * 0.928 + sn * 0.072;
@@ -76,7 +74,6 @@ export class CarVisual {
     this.root.add(this.holder);
     scene.add(this.root);
     this.material = new THREE.MeshStandardMaterial({ color: MODEL.paint, roughness: 0.4, metalness: 0.35, side: THREE.DoubleSide });
-    // cheap invisible shadow caster (the real mesh is 200k triangles)
     const shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.62, 4.85), shadowMat);
     body.position.set(0, -0.05, 0); body.castShadow = true;
@@ -85,8 +82,8 @@ export class CarVisual {
     this.root.add(body, cabin);
     this.placeholder = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.75, 4.85), this.material);
     this.placeholder.position.y = -0.1;
-    // Keep the fallback box hidden while the real vehicle is loading. It is only shown if the GLB fails.
-    this.placeholder.visible = false;
+    // Keep a simple car visible while the GLB is downloading/decoding so the race never starts blank.
+    this.placeholder.visible = true;
     this.holder.add(this.placeholder);
     this.loaded = false;
   }
@@ -97,12 +94,6 @@ export class CarVisual {
     if (this._ownLook) this._applyOwnLook();
   }
 
-  /**
-   * Multiplayer: paint THIS car the way every other player's screen paints it - the same recoloured texture from the
-   * same look - so each player sees their own car in the colour everyone else sees them in. Pass null to put the
-   * original back. (The original is kept aside: rivals and remote cars are copied from this car, and must always
-   * be recoloured from the untouched picture, never from an already-recoloured one.)
-   */
   setOwnLook(look) {
     look = look || null;
     if (look === (this._ownLook || null)) return;
@@ -124,10 +115,6 @@ export class CarVisual {
     this._lookKey = -1;
   }
 
-  /**
-   * Become a rival: copy the loaded model from `src` (sharing its geometry, so it costs almost nothing)
-   * and give it a paint job from RIVAL_LOOKS. Returns false if `src` hasn't finished loading yet.
-   */
   adopt(src, look) {
     if (this.loaded || !src.loaded || !src.model) return false;
     const model = src.model.clone(true);
@@ -135,7 +122,7 @@ export class CarVisual {
     model.traverse((o) => {
       if (!o.isMesh) return;
       const m = o.material.clone(), kept = pristine.get(o.material);
-      if (kept) { m.map = kept.map; m.color.copy(kept.color); }       // never recolour a copy that's already been recoloured
+      if (kept) { m.map = kept.map; m.color.copy(kept.color); }
       if (m.map) {
         const t = recolour(m.map, look);
         if (t) m.map = t; else m.color.set(look.tint);
@@ -152,10 +139,6 @@ export class CarVisual {
     return true;
   }
 
-  /**
-   * Show damage: `dark` (1 = fresh, 0 = burnt black) dims the paint, `flash` (0..1) lights the car up red for a moment.
-   * Nothing is touched until the values change, so calling it every frame is cheap.
-   */
   setLook(dark, flash = 0) {
     const key = Math.round(dark * 50) * 100 + Math.round(flash * 20);
     if (key === this._lookKey) return;
@@ -168,7 +151,6 @@ export class CarVisual {
     }
   }
 
-  /** True once a model with its own texture is showing (the paint colour no longer applies). */
   get textured() { return this.hasTexture === true; }
 
   async load(url = MODEL.url) {
@@ -196,12 +178,9 @@ export class CarVisual {
       });
       const wb = CAR.wheelbase;
       const s = wb / (MODEL.rearAxleX - MODEL.frontAxleX);
-      const a = (1 - CAR.frontWeight) * wb;                 // COM to front axle
+      const a = (1 - CAR.frontWeight) * wb;
       model.scale.setScalar(s);
 
-      // Keep the established axle/centre alignment in X/Z, but measure the bottom of the actual
-      // loaded GLB instead of assuming every exported model has the same Y origin. This makes
-      // optimized/re-exported vehicles sit on the same road plane automatically.
       if (!MODEL.flip) {
         this.holder.rotation.y = Math.PI / 2;
         model.position.set(-MODEL.frontAxleX * s - a, 0, -MODEL.centerZ * s);
@@ -214,7 +193,6 @@ export class CarVisual {
       if (!groundBox.isEmpty() && Number.isFinite(groundBox.min.y)) {
         model.position.y = -this.restHeight - groundBox.min.y;
       } else {
-        // Defensive fallback for a malformed/empty model: preserve the old known-good offset.
         model.position.y = -this.restHeight - MODEL.groundY * s;
       }
 
@@ -225,19 +203,17 @@ export class CarVisual {
       if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);
     } catch (e) {
-      // If the real model genuinely fails, reveal the simple box as a last-resort fallback.
       this.placeholder.visible = true;
       console.warn('Could not load car model, using a box.', e);
     }
   }
 }
 
-/** Driver-style chase camera: sits low behind the car and lags into corners. */
 export class ChaseCamera {
   constructor(camera) {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
-    this.boosting = false; this.kick = 0;   // widens the view while boosting
+    this.boosting = false; this.kick = 0;
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
   cycle() { this.mode = (this.mode + 1) % 4; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet'][this.mode]; }
