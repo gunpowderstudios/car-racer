@@ -173,7 +173,9 @@ function updateRaceHud() {
   const value = document.getElementById('mp-pos-value');
   if (!card || !value) return;
 
-  if (!net || !net.started || !document.body.classList.contains('mode-drive')) {
+  // Guests do not set Multiplayer.started locally; being in drive mode with a live
+  // multiplayer session is the reliable indication that the race has begun on every client.
+  if (!net || !document.body.classList.contains('mode-drive')) {
     card.hidden = true;
     currentSession = null;
     return;
