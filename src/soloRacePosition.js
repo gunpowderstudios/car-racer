@@ -13,10 +13,10 @@ function ensureCard() {
 
   const style = document.createElement('style');
   style.textContent = `
-#solo-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 108px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
+#solo-race-position{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 180px);left:16px;padding:7px 22px 8px 12px;background:rgba(42,29,74,.86);border-left:5px solid #ffb31f;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-shadow:0 2px 6px rgba(0,0,0,.5)}
 #solo-race-position .solo-pos-label{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#b9a9d6}
 #solo-race-position strong{display:block;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:26px;line-height:1;color:#ffb31f}
-@media(max-width:600px){#solo-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 94px);left:10px}#solo-race-position strong{font-size:22px}}
+@media(max-width:600px){#solo-race-position{top:calc(max(10px,env(safe-area-inset-top)) + 190px);left:10px}#solo-race-position strong{font-size:22px}}
 `;
   document.head.appendChild(style);
   return card;
