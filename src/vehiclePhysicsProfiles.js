@@ -99,8 +99,10 @@ export const VEHICLE_PHYSICS_PROFILES = {
     wheelbase: 2.40,
     track: 1.32,
     wheelRadius: 0.29,
-    inertia: { x: 1800, y: 1750, z: 560 },
-    tyre: { muFront: 1.24, muRear: 1.29, B: 11.3, C: 1.27, slideMu: 0.90, loadSens: 0.055, rolling: 0.013 },
+    // More roll inertia and slightly lower peak lateral grip make the car scrub/slide
+    // progressively instead of tripping into a rollover during normal hard cornering.
+    inertia: { x: 1800, y: 1750, z: 820 },
+    tyre: { muFront: 1.18, muRear: 1.22, B: 11.0, C: 1.25, slideMu: 0.88, loadSens: 0.055, rolling: 0.013 },
     engine: { peakTorque: 170, efficiency: 0.89, finalDrive: 3.90 },
     brakeG: 1.38,
     steer: { max: 0.57, rate: 4.8, returnRate: 7.0 },
