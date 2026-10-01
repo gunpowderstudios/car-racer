@@ -40,17 +40,20 @@ const camper = {
       slideMu: 0.84, rolling: 0.016,
     },
     engine: {
-      idle: 850, limiter: 5200, stall: 1800,
-      // A little stronger than the first pass so the van can reach roughly 60 mph
-      // on a normal straight without boost, while remaining much slower than the Charger.
+      idle: 850,
+      // The core automatic gearbox shifts around 6300 rpm at full throttle. A 5200 rpm
+      // limiter meant the Campervan hit the limiter before it could upshift, leaving it
+      // effectively stuck in a low gear. The higher game limiter lets the box shift while
+      // the torque curve still falls away like an old VW engine.
+      limiter: 6900, stall: 1800,
       peakTorque: 175, efficiency: 0.88,
-      curve: [[850, 0.64], [1600, 0.86], [2600, 1.0], [3400, 0.98], [4300, 0.88], [5200, 0.68]],
+      curve: [[850, 0.64], [1600, 0.86], [2600, 1.0], [3400, 0.98], [4300, 0.88], [5200, 0.72], [6200, 0.52], [6900, 0.34]],
       gears: [3.8, 2.2, 1.4, 0.93], reverse: 3.8, finalDrive: 4.13,
       engineBrake: 20,
     },
     brakeBias: 0.58,
     wallBounce: 0.24,
-    aero: { drag: 0.64, down: 0.16 },
+    aero: { drag: 0.62, down: 0.16 },
     steer: { max: 0.55, rate: 4.0, returnRate: 6.0 },
     boost: { accel: 3.9, airShare: 0.32, burn: 3.2, refill: 9, restart: 0.2 },
     body: {
@@ -120,12 +123,13 @@ addOption(document.getElementById('mp-join-vehicle'));
 
 applyCamperPhysics();
 
-// Solo rivals normally clone the selected player's visual. Because Campervan is added after
-// vehicleChoice.js initialises, explicitly identify it here so the rival-adoption code never
-// falls back to the default Charger while the Campervan is selected.
+// In solo, rivals clone the player's loaded visual. Force the source and requested look to the
+// Campervan whenever Campervan is selected, rather than relying on a timing-sensitive vehicleId tag.
+// That guarantees a Campervan player gets a full grid of Campervan AI rivals.
 const previousAdopt = CarVisual.prototype.adopt;
 CarVisual.prototype.adopt = function campervanAdopt(src, look) {
-  if (selectedId() === ID && src?.vehicleId === ID) {
+  if (selectedId() === ID) {
+    if (src) src.vehicleId = ID;
     const camperLook = look ? { ...look, vehicleId: ID } : { vehicleId: ID };
     return previousAdopt.call(this, src, camperLook);
   }
