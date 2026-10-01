@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ChaseCamera } from './carVisual.js';
 
 // Mouse/touch orbit for the third-person cameras.
-// Dragging the game canvas rotates the view around the vehicle. The offset stays where
+// Dragging the game view rotates the camera around the vehicle. The offset stays where
 // the player leaves it until the normal camera snap/reset path runs (respawn, restart etc.).
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 let currentCamera = null;
@@ -10,19 +10,36 @@ let drag = null;
 let listenersInstalled = false;
 const target = new THREE.Vector3();
 
+function isUiControl(el) {
+  if (!(el instanceof Element)) return false;
+  return !!el.closest('button, a, input, select, textarea, label, [role="button"], #menu, #editor, .modal, .dialog');
+}
+
+function gameCanvas() {
+  return document.querySelector('canvas');
+}
+
 function installListeners() {
   if (listenersInstalled || typeof document === 'undefined') return;
   listenersInstalled = true;
 
+  // Capture phase is intentional: desktop HUD layers can sit above the canvas and may stop
+  // bubbling pointer events. We still ignore real controls so menus/buttons behave normally.
   document.addEventListener('pointerdown', (e) => {
     const cam = currentCamera;
-    if (!cam || cam.mode >= 2 || e.button !== 0) return;
-    const el = e.target;
-    if (!(el instanceof HTMLCanvasElement)) return;
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, cam, el };
-    try { el.setPointerCapture(e.pointerId); } catch { /* optional */ }
+    if (!cam || cam.mode >= 2) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (isUiControl(e.target)) return;
+
+    const canvas = gameCanvas();
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, cam, el: canvas };
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* optional */ }
     e.preventDefault();
-  }, { passive: false });
+  }, { passive: false, capture: true });
 
   document.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -33,15 +50,15 @@ function installListeners() {
     drag.cam._orbitYaw = (drag.cam._orbitYaw || 0) - dx * 0.008;
     drag.cam._orbitPitch = clamp((drag.cam._orbitPitch || 0) + dy * 0.005, -0.32, 0.42);
     e.preventDefault();
-  }, { passive: false });
+  }, { passive: false, capture: true });
 
   const end = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     try { drag.el.releasePointerCapture(e.pointerId); } catch { /* optional */ }
     drag = null;
   };
-  document.addEventListener('pointerup', end);
-  document.addEventListener('pointercancel', end);
+  document.addEventListener('pointerup', end, { capture: true });
+  document.addEventListener('pointercancel', end, { capture: true });
 }
 
 const originalUpdate = ChaseCamera.prototype.update;
