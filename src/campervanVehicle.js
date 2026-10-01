@@ -123,15 +123,24 @@ addOption(document.getElementById('mp-join-vehicle'));
 
 applyCamperPhysics();
 
-// In solo, rivals clone the player's loaded visual. Force the source and requested look to the
-// Campervan whenever Campervan is selected, rather than relying on a timing-sensitive vehicleId tag.
-// That guarantees a Campervan player gets a full grid of Campervan AI rivals.
+// Solo rivals normally adopt/clone the player's visual. For Campervan, do not depend on the
+// source visual's timing-sensitive vehicleId at all: each rival explicitly loads the Campervan
+// config. The GLB request itself is browser-cached, so this is deterministic without repeated downloads.
 const previousAdopt = CarVisual.prototype.adopt;
 CarVisual.prototype.adopt = function campervanAdopt(src, look) {
   if (selectedId() === ID) {
-    if (src) src.vehicleId = ID;
-    const camperLook = look ? { ...look, vehicleId: ID } : { vehicleId: ID };
-    return previousAdopt.call(this, src, camperLook);
+    if (this.loaded && this.vehicleId === ID) return true;
+    if (!this._campervanSoloLoading) {
+      this._campervanSoloLoading = true;
+      this.load(camper.url, camper)
+        .then(() => {
+          this.vehicleId = ID;
+          if (look) this.setOwnLook({ ...look, vehicleId: ID });
+        })
+        .catch((e) => console.warn('Could not load Campervan rival.', e))
+        .finally(() => { this._campervanSoloLoading = false; });
+    }
+    return false;
   }
   return previousAdopt.call(this, src, look);
 };
