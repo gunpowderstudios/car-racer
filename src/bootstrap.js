@@ -14,6 +14,7 @@ import './aiDifficulty.js?v=16.45';
 import './multiplayerRace.js?v=16.45';
 import './soloRacePosition.js?v=16.46';
 import './roofDamage.js?v=16.55';
+import './roofFxGuard.js?v=16.59';
 import './hardLandingFix.js?v=16.56';
 import './gapEndCollision.js';
 
