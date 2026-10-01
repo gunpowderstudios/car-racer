@@ -8,6 +8,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 let currentCamera = null;
 let drag = null;
 let listenersInstalled = false;
+let resetButtonInstalled = false;
 const target = new THREE.Vector3();
 
 function isUiControl(el) {
@@ -17,6 +18,66 @@ function isUiControl(el) {
 
 function gameCanvas() {
   return document.querySelector('canvas');
+}
+
+function installResetButton() {
+  if (resetButtonInstalled || typeof document === 'undefined') return;
+  const hud = document.getElementById('hud');
+  if (!hud) return;
+  resetButtonInstalled = true;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    #reset-view {
+      position:absolute;
+      top:calc(max(14px, env(safe-area-inset-top)) + 232px);
+      right:16px;
+      z-index:3;
+      width:42px;
+      height:42px;
+      display:grid;
+      place-items:center;
+      padding:0;
+      border:2px solid rgba(246,217,176,.42);
+      border-radius:50%;
+      background:rgba(42,29,74,.82);
+      color:#f6d9b0;
+      font:700 25px/1 "Big Shoulders Display", Impact, sans-serif;
+      text-shadow:none;
+      pointer-events:auto;
+      cursor:pointer;
+      box-shadow:0 3px 10px rgba(0,0,0,.28);
+    }
+    #reset-view:hover { border-color:#ffb31f; color:#ffb31f; }
+    #reset-view:active { transform:scale(.94); }
+    @media (pointer: coarse) and (max-width: 760px) {
+      #mirror {
+        top:calc(max(14px, env(safe-area-inset-top)) + 188px) !important;
+      }
+      #reset-view {
+        left:10px;
+        right:auto;
+        top:calc(max(14px, env(safe-area-inset-top)) + 154px);
+        width:40px;
+        height:40px;
+        font-size:24px;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const button = document.createElement('button');
+  button.id = 'reset-view';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Reset camera view');
+  button.title = 'Reset view';
+  button.textContent = '↺';
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    currentCamera?.snap();
+  });
+  hud.appendChild(button);
 }
 
 function installListeners() {
@@ -65,6 +126,7 @@ const originalUpdate = ChaseCamera.prototype.update;
 ChaseCamera.prototype.update = function updateWithOrbit(dt, p, quat, vel, track) {
   currentCamera = this;
   installListeners();
+  installResetButton();
   originalUpdate.call(this, dt, p, quat, vel, track);
 
   // Bumper view remains fixed. Chase and High can orbit around the vehicle.
