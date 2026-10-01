@@ -5,10 +5,10 @@
 // part of the game's behaviour.
 import './vehicleChoice.js?v=16.53';
 import './vehiclePhysicsProfiles.js?v=16.53';
-import './campervanVehicle.js?v=16.63';
+import './campervanVehicle.js?v=16.64';
 import './cameraChoice.js';
 import './menuVehicle.js';
-import './derbyOffTrackRecovery.js?v=16.25';
+import './derbyOffTrackRecovery.js?v=16.64';
 import './multiplayerTrackLock.js?v=16.28';
 import './raceSettings.js?v=16.45';
 import './aiDifficulty.js?v=16.45';
