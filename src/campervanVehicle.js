@@ -41,14 +41,16 @@ const camper = {
     },
     engine: {
       idle: 850, limiter: 5200, stall: 1800,
-      peakTorque: 145, efficiency: 0.87,
-      curve: [[850, 0.62], [1600, 0.84], [2600, 1.0], [3400, 0.96], [4300, 0.80], [5200, 0.55]],
+      // A little stronger than the first pass so the van can reach roughly 60 mph
+      // on a normal straight without boost, while remaining much slower than the Charger.
+      peakTorque: 175, efficiency: 0.88,
+      curve: [[850, 0.64], [1600, 0.86], [2600, 1.0], [3400, 0.98], [4300, 0.88], [5200, 0.68]],
       gears: [3.8, 2.2, 1.4, 0.93], reverse: 3.8, finalDrive: 4.13,
       engineBrake: 20,
     },
     brakeBias: 0.58,
     wallBounce: 0.24,
-    aero: { drag: 0.72, down: 0.16 },
+    aero: { drag: 0.64, down: 0.16 },
     steer: { max: 0.55, rate: 4.0, returnRate: 6.0 },
     boost: { accel: 3.9, airShare: 0.32, burn: 3.2, refill: 9, restart: 0.2 },
     body: {
