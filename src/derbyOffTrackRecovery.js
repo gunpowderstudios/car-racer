@@ -57,6 +57,33 @@ function isGapFlight(track, car) {
   return !!track.gap[gi] && lane < fr.hw + 2.5;
 }
 
+// If the player fell through/alongside a bridge gap, find the solid road immediately after that
+// gap and respawn a little way beyond it. This prevents recovery putting the player back on the
+// approach side and making them repeat the same failed bridge jump forever.
+function afterNearbyGap(track, car) {
+  if (!track?.gap?.length || !track.n || !track.ds) return null;
+  const L = track.length;
+  const s = ((track.progressAt(car.pos.x, car.pos.y, car.pos.z) % L) + L) % L;
+  const i0 = Math.floor(s / track.ds) % track.n;
+
+  // Falling cars can project a sample or two away from the actual gap, so search locally first.
+  let gapIndex = -1;
+  for (let d = -3; d <= 3; d++) {
+    const i = (i0 + d + track.n) % track.n;
+    if (track.gap[i]) { gapIndex = i; break; }
+  }
+  if (gapIndex < 0) return null;
+
+  // Walk in race direction until the gap ends, then leave a short landing margin.
+  let i = gapIndex, steps = 0;
+  while (track.gap[i] && steps < track.n) {
+    i = (i + 1) % track.n;
+    steps++;
+  }
+  if (steps >= track.n) return null;
+  return (i * track.ds + 8) % L;
+}
+
 function beginRivalReset(derby, f) {
   const c = f.car;
   const s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
@@ -104,8 +131,13 @@ function clearPlayerGuard(derby, f) {
 
 function beginPlayerReset(derby, f) {
   const c = f.car;
-  let s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
-  s = (s - 8 + derby.track.length) % derby.track.length;
+  const L = derby.track.length;
+  const gapRespawn = afterNearbyGap(derby.track, c);
+  let s = gapRespawn;
+  if (!Number.isFinite(s)) {
+    s = derby.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
+    s = (s - 8 + L) % L;
+  }
   const oldOver = f._playerOffTrackGuard ? f._playerOffTrackGuard.oldOver : derby.over;
   f._playerOffTrackReset = { t: RESET_DELAY, s, shown: 3, oldOver };
   f._playerOffTrackGuard = null;
