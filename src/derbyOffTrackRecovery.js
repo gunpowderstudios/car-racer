@@ -57,40 +57,46 @@ function isGapFlight(track, car) {
   return !!track.gap[gi] && lane < fr.hw + 2.5;
 }
 
-// If the player falls at a bridge gap, respawn on the solid road on the OTHER side in
-// the direction the car was travelling. The previous version searched -3..+3 and could
-// grab a gap sample behind the car first, which sent the player back to the approach side.
+// Find the nearest contiguous bridge-gap block, then always use its FORWARD/end edge in
+// track-progress order. This deliberately ignores the car's heading/velocity while falling:
+// those can point back toward the takeoff and previously caused a near-side respawn.
 function afterNearbyGap(track, car) {
   if (!track?.gap?.length || !track.n || !track.ds) return null;
   const L = track.length;
   const s = ((track.progressAt(car.pos.x, car.pos.y, car.pos.z) % L) + L) % L;
   const i0 = Math.floor(s / track.ds) % track.n;
 
-  // Decide which way along the centreline the car was moving. If it is almost stationary,
-  // use the direction its nose is pointing instead. Positive means increasing track progress.
-  const tx = track.tx?.[i0] ?? 0, tz = track.tz?.[i0] ?? 0;
-  let along = (car.vel?.x ?? 0) * tx + (car.vel?.z ?? 0) * tz;
-  if (Math.abs(along) < 0.5) along = (car.az?.x ?? 0) * tx + (car.az?.z ?? 0) * tz;
-  const dir = along < 0 ? -1 : 1;
-
-  // Search current sample first, then samples AHEAD in the travel direction before looking behind.
-  const offsets = [0, dir, dir * 2, dir * 3, -dir, -dir * 2, -dir * 3];
+  // Find the closest gap sample around the projected car position.
   let gapIndex = -1;
-  for (const d of offsets) {
-    const i = (i0 + d + track.n) % track.n;
-    if (track.gap[i]) { gapIndex = i; break; }
+  for (let d = 0; d <= 12 && gapIndex < 0; d++) {
+    const ahead = (i0 + d) % track.n;
+    if (track.gap[ahead]) { gapIndex = ahead; break; }
+    if (d > 0) {
+      const behind = (i0 - d + track.n) % track.n;
+      if (track.gap[behind]) { gapIndex = behind; break; }
+    }
   }
   if (gapIndex < 0) return null;
 
-  // Walk through the gap in the direction of travel until we reach solid road, then add
-  // an 8 m safety margin so the car cannot be placed on the lip/edge of the gap.
-  let i = gapIndex, steps = 0;
-  while (track.gap[i] && steps < track.n) {
-    i = (i + dir + track.n) % track.n;
-    steps++;
+  // Walk backward to the first sample of this gap block.
+  let start = gapIndex, guard = 0;
+  while (track.gap[(start - 1 + track.n) % track.n] && guard < track.n) {
+    start = (start - 1 + track.n) % track.n;
+    guard++;
   }
-  if (steps >= track.n) return null;
-  return ((i * track.ds + dir * 8) % L + L) % L;
+  if (guard >= track.n) return null;
+
+  // Walk forward to the first SOLID sample after the gap. This is always the far side
+  // in race-progress order, regardless of which way the car was pointing when it fell.
+  let end = start;
+  guard = 0;
+  while (track.gap[end] && guard < track.n) {
+    end = (end + 1) % track.n;
+    guard++;
+  }
+  if (guard >= track.n) return null;
+
+  return (end * track.ds + 8) % L;
 }
 
 function beginRivalReset(derby, f) {
