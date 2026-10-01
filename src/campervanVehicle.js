@@ -2,6 +2,7 @@
 // Adds the model to the shared vehicle catalogue and applies a real-world-inspired
 // physics setup before main.js creates the player's Vehicle.
 import { VEHICLES } from './vehicleChoice.js';
+import { CarVisual } from './carVisual.js';
 import { CAR } from './vehicle.js';
 import { V3 } from './math.js';
 
@@ -13,7 +14,8 @@ const camper = {
   name: 'Campervan',
   url: 'cars/campervan.glb',
   fit: 'auto',
-  targetLength: 4.42,
+  // Slightly game-scaled so the tall T2 body does not look oversized beside the Charger.
+  targetLength: 4.05,
   physics: {
     // Approximate early-1970s VW Type 2 proportions, game-tuned for enjoyable handling.
     mass: 1280,
@@ -50,9 +52,9 @@ const camper = {
     steer: { max: 0.55, rate: 4.0, returnRate: 6.0 },
     boost: { accel: 3.9, airShare: 0.32, burn: 3.2, refill: 9, restart: 0.2 },
     body: {
-      width: 1.72, length: 4.42,
-      bottom: -0.48, shoulder: 0.35,
-      roof: 1.28, roofWidth: 1.60, roofLength: 3.55,
+      width: 1.68, length: 4.05,
+      bottom: -0.46, shoulder: 0.34,
+      roof: 1.18, roofWidth: 1.56, roofLength: 3.25,
     },
   },
 };
@@ -115,3 +117,15 @@ addOption(document.getElementById('mp-vehicle'));
 addOption(document.getElementById('mp-join-vehicle'));
 
 applyCamperPhysics();
+
+// Solo rivals normally clone the selected player's visual. Because Campervan is added after
+// vehicleChoice.js initialises, explicitly identify it here so the rival-adoption code never
+// falls back to the default Charger while the Campervan is selected.
+const previousAdopt = CarVisual.prototype.adopt;
+CarVisual.prototype.adopt = function campervanAdopt(src, look) {
+  if (selectedId() === ID && src?.vehicleId === ID) {
+    const camperLook = look ? { ...look, vehicleId: ID } : { vehicleId: ID };
+    return previousAdopt.call(this, src, camperLook);
+  }
+  return previousAdopt.call(this, src, look);
+};
