@@ -1,0 +1,80 @@
+diff --git a/src/carVisual.js b/src/carVisual.js
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -161,18 +161,24 @@ export class CarVisual {
+ 
+   /**
+    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
+-   * a plain box in the car's paint colour (a few pixels on screen, so nobody can tell). Callers add their
+-   * own hysteresis. Does nothing until the real model has loaded - the loading box is showing till then.
++   * a simple two-box silhouette in the car's paint colour. Callers add their own hysteresis. Does nothing
++   * until the real model has loaded - the loading box is showing till then.
+    */
+   setFar(far) {
+     if (!this.loaded || !this.model) return;
+     if (far === this._far) return;
+     this._far = far;
+     if (far && !this.proxy) {
+-      this.proxy = new THREE.Mesh(this.placeholder.geometry, this.material);
+-      this.proxy.scale.copy(this.placeholder.scale);
+-      this.proxy.position.copy(this.placeholder.position);
+-      this.root.add(this.proxy);
++      const proxy = new THREE.Group();
++      const body = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 4.85), this.material);
++      body.position.set(0, -0.16, 0);
++      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.46, 2.35), this.material);
++      cabin.position.set(0, 0.32, -0.18);
++      proxy.add(body, cabin);
++      proxy.scale.copy(this.placeholder.scale);
++      proxy.position.copy(this.placeholder.position);
++      this.proxy = proxy;
++      this.root.add(proxy);
+     }
+     this.model.visible = !far;
+     if (this.proxy) this.proxy.visible = far;
+diff --git a/src/main.js b/src/main.js
+--- a/src/main.js
++++ b/src/main.js
+@@ -447,7 +447,7 @@ function syncViews(a) {
+     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
+     const d2 = dx * dx + dz * dz;
+     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
+-    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);   // far away: a plain box instead of the full model
++    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);   // wide hysteresis stops LOD flicker near the boundary
+     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
+   }
+ }
+@@ -772,7 +772,7 @@ function mpSyncRemote() {
+     const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
+     const d2 = dx * dx + dz * dz;
+     p.view.root.visible = d2 < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
+-    if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);
++    if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);
+     if (!p.label) {
+       p.label = document.createElement('div'); p.label.className = 'mp-label';
+       const nameEl = document.createElement('div'); nameEl.className = 'mp-name'; nameEl.textContent = p.name;
+diff --git a/src/quality.js b/src/quality.js
+--- a/src/quality.js
++++ b/src/quality.js
+@@ -17,8 +17,8 @@
+  * minScale     lowest the adaptive resolution is allowed to go (fraction of pixelRatio)
+  */
+ export const TIERS = {
+-  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 35, minScale: 0.55 },
+-  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 60, minScale: 0.6 },
++  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, minScale: 0.55 },
++  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, minScale: 0.6 },
+   high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  minScale: 0.75 },
+ };
+ export const TIER_NAMES = Object.keys(TIERS);
+diff --git a/src/version.js b/src/version.js
+--- a/src/version.js
++++ b/src/version.js
+@@ -3,5 +3,5 @@ import './bootstrap.js';
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '16.70';
+-export const NOTE = 'Performance pass for older phones: graphics quality tiers (auto-detected, Graphics option in settings), adaptive resolution, 60 Hz physics on low-end, cheaper shadows and mirror, plain-box detail level for distant rivals, asset caching, ?perf overlay';
++export const VERSION = '16.71';
++export const NOTE = 'Distant rival LOD is less noticeable: much farther switch distances, wider hysteresis and a two-piece car-shaped proxy instead of a single box';
