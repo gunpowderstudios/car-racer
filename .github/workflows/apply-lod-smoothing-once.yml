@@ -1,0 +1,32 @@
+name: Apply LOD smoothing once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-lod-smoothing-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: |
+          git apply --check car-racer-lod-smoothing-v16.71.patch
+          git apply car-racer-lod-smoothing-v16.71.patch
+      - name: Run tests
+        run: npm test
+      - name: Commit result and remove helper files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm car-racer-lod-smoothing-v16.71.patch .github/workflows/apply-lod-smoothing-once.yml
+          git add src/carVisual.js src/main.js src/quality.js src/version.js
+          git commit -m "Smooth distant vehicle LOD on mobile"
+          git push
