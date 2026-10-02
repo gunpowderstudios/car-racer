@@ -168,8 +168,10 @@ function showFinish(result) {
   if (!box || !title || !sub) return;
 
   if (result.place === 1) {
-    title.textContent = result.id === net.selfId ? 'You win!' : `${result.name} wins!`;
+    const selfWon = result.id === net.selfId;
+    title.textContent = selfWon ? 'You win!' : `${result.name} wins!`;
     sub.textContent = `${result.laps || raceLaps(net)}-lap destruction race winner`;
+    if (selfWon) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail: { mode: 'multiplayer', place: 1, laps: result.laps || raceLaps(net) } }));
   } else if (result.id === net.selfId) {
     title.textContent = `Finished ${ordinal(result.place)}`;
     sub.textContent = 'Race complete';
