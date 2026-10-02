@@ -86,6 +86,7 @@ function showFinish(place, total) {
   title.textContent = place === 1 ? 'You won!' : `Finished ${ordinal(place)}`;
   sub.textContent = place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`;
   box.hidden = false;
+  if (place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail: { mode: 'solo', place, laps: raceLaps() } }));
   clearTimeout(finishTimer);
   finishTimer = setTimeout(() => { box.hidden = true; }, place === 1 ? 4500 : 3200);
 }
