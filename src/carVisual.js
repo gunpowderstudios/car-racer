@@ -67,6 +67,7 @@ function recolour(tex, look) {
 }
 
 export class CarVisual {
+  static aniso = 8;   // texture anisotropy; main.js sets this from the quality tier before any model loads
   constructor(scene, restHeight) {
     this.restHeight = restHeight;
     this.root = new THREE.Group();
@@ -132,6 +133,7 @@ export class CarVisual {
       this.mats.push(m);
     });
     this.holder.rotation.copy(src.holder.rotation);
+    this.placeholder.scale.copy(src.placeholder.scale);   // the plain box used by setFar() should match this vehicle's footprint
     this.holder.remove(this.placeholder);
     this.holder.add(model);
     this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
@@ -149,6 +151,30 @@ export class CarVisual {
       m.color.copy(base).multiplyScalar(dark);
       m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
     }
+    if (this.proxy && !list.includes(this.material)) {   // keep the distant box in step with damage and wreck darkening
+      const m = this.material, base = m.userData.base || (m.userData.base = m.color.clone());
+      m.color.copy(base).multiplyScalar(dark);
+      m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
+    }
+  }
+
+  /**
+   * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
+   * a plain box in the car's paint colour (a few pixels on screen, so nobody can tell). Callers add their
+   * own hysteresis. Does nothing until the real model has loaded - the loading box is showing till then.
+   */
+  setFar(far) {
+    if (!this.loaded || !this.model) return;
+    if (far === this._far) return;
+    this._far = far;
+    if (far && !this.proxy) {
+      this.proxy = new THREE.Mesh(this.placeholder.geometry, this.material);
+      this.proxy.scale.copy(this.placeholder.scale);
+      this.proxy.position.copy(this.placeholder.position);
+      this.root.add(this.proxy);
+    }
+    this.model.visible = !far;
+    if (this.proxy) this.proxy.visible = far;
   }
 
   get textured() { return this.hasTexture === true; }
@@ -167,7 +193,7 @@ export class CarVisual {
         if (mats.some((m) => m && m.map)) {
           this.hasTexture = true;
           for (const m of mats) {
-            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = 8;
+            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = CarVisual.aniso;
             m.envMapIntensity = 0.8;
             this.mats.push(m);
           }

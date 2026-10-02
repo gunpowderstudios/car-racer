@@ -12,11 +12,12 @@ function mulberry(seed) {
 }
 
 export class Stage {
-  constructor(renderer) {
+  /** `q` is a quality tier from quality.js (aniso, shadowSize, shadowRange); the defaults match the old fixed values. */
+  constructor(renderer, q = {}) {
     this.renderer = renderer;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(FOG, 320, 2600);
-    const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    const aniso = Math.min(q.aniso ?? 8, renderer.capabilities.getMaxAnisotropy());
     this.aniso = aniso;
 
     // environment for reflections on the car paint
@@ -44,8 +45,9 @@ export class Stage {
     this.scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xffd0a0, 2.6);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
-    const sc = this.sun.shadow.camera; sc.left = -70; sc.right = 70; sc.top = 70; sc.bottom = -70; sc.near = 1; sc.far = 700;
+    this.sun.shadow.mapSize.set(q.shadowSize ?? 2048, q.shadowSize ?? 2048);
+    const R = q.shadowRange ?? 70;
+    const sc = this.sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 700;
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.35;
     this.sunOffset = new THREE.Vector3(-170, 210, -120);
     this.scene.add(this.sun, this.sun.target);

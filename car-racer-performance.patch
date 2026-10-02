@@ -1,0 +1,581 @@
+diff --git a/index.html b/index.html
+index 9255e43..b58ef96 100644
+--- a/index.html
++++ b/index.html
+@@ -226,6 +226,7 @@ html.invite-loading #invite-loading {
+         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
+         <label><input id="opt-music" type="checkbox"> Music</label>
+         <label><input id="opt-shadow" type="checkbox" checked> Shadows</label>
++        <label class="sel">Graphics <select id="opt-quality" aria-label="Graphics quality"><option value="auto">Auto</option><option value="low">Low (older phones)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+         <div class="swatches" id="swatches" role="radiogroup" aria-label="Car colour"></div>
+       </div>
+     </details>
+diff --git a/src/carVisual.js b/src/carVisual.js
+index 947b1d4..dec06be 100644
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -67,6 +67,7 @@ function recolour(tex, look) {
+ }
+ 
+ export class CarVisual {
++  static aniso = 8;   // texture anisotropy; main.js sets this from the quality tier before any model loads
+   constructor(scene, restHeight) {
+     this.restHeight = restHeight;
+     this.root = new THREE.Group();
+@@ -132,6 +133,7 @@ export class CarVisual {
+       this.mats.push(m);
+     });
+     this.holder.rotation.copy(src.holder.rotation);
++    this.placeholder.scale.copy(src.placeholder.scale);   // the plain box used by setFar() should match this vehicle's footprint
+     this.holder.remove(this.placeholder);
+     this.holder.add(model);
+     this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
+@@ -149,6 +151,30 @@ export class CarVisual {
+       m.color.copy(base).multiplyScalar(dark);
+       m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
+     }
++    if (this.proxy && !list.includes(this.material)) {   // keep the distant box in step with damage and wreck darkening
++      const m = this.material, base = m.userData.base || (m.userData.base = m.color.clone());
++      m.color.copy(base).multiplyScalar(dark);
++      m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
++    }
++  }
++
++  /**
++   * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
++   * a plain box in the car's paint colour (a few pixels on screen, so nobody can tell). Callers add their
++   * own hysteresis. Does nothing until the real model has loaded - the loading box is showing till then.
++   */
++  setFar(far) {
++    if (!this.loaded || !this.model) return;
++    if (far === this._far) return;
++    this._far = far;
++    if (far && !this.proxy) {
++      this.proxy = new THREE.Mesh(this.placeholder.geometry, this.material);
++      this.proxy.scale.copy(this.placeholder.scale);
++      this.proxy.position.copy(this.placeholder.position);
++      this.root.add(this.proxy);
++    }
++    this.model.visible = !far;
++    if (this.proxy) this.proxy.visible = far;
+   }
+ 
+   get textured() { return this.hasTexture === true; }
+@@ -167,7 +193,7 @@ export class CarVisual {
+         if (mats.some((m) => m && m.map)) {
+           this.hasTexture = true;
+           for (const m of mats) {
+-            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = 8;
++            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = CarVisual.aniso;
+             m.envMapIntensity = 0.8;
+             this.mats.push(m);
+           }
+diff --git a/src/main.js b/src/main.js
+index 6e98284..3b4a331 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -19,9 +19,10 @@ import { Hud, fmtTime } from './hud.js';
+ import { Editor } from './editor.js';
+ import { EditorPreview } from './editorPreview.js';
+ import { Multiplayer } from './multiplayer.js';
++import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
+ 
+ const $ = (id) => document.getElementById(id);
+-const DT = 1 / 120;
++let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
+ const PAINTS = [['Tail-light red', 0xd9482b], ['Sodium yellow', 0xe8b02a], ['Racing green', 0x2f6b4a], ['Police white', 0xe4e1d8], ['Midnight', 0x2a2f5c]];
+ 
+ // ------------------------------------------------------------------ storage
+@@ -29,18 +30,27 @@ const store = {
+   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or blocked */ } },
+ };
+-const opts = Object.assign({ assist: true, kmh: false, shadow: true, paint: 0, derby: true, rivals: DERBY.rivals }, store.get('cr.opts', {}));
++const savedOpts = store.get('cr.opts', {});
++const qParam = new URLSearchParams(location.search).get('q');
++const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes(savedOpts.quality) ? savedOpts.quality : null;   // ?q=low|medium|high beats the saved choice
++const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
++const tier = TIERS[tierName];
++// Shadows and rival count default from the tier until the player picks their own.
++const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto' }, savedOpts);
++DT = 1 / tier.physicsHz;
++CarVisual.aniso = tier.aniso;
+ const userTracks = () => store.get('cr.tracks', {});
+ const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
+ 
+ // ------------------------------------------------------------------- set-up
+ const canvas = $('gl');
+-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+-renderer.shadowMap.enabled = opts.shadow; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
++const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier.aa, powerPreference: 'high-performance' });
++const baseRatio = Math.min(devicePixelRatio || 1, tier.pixelRatio);
++renderer.setPixelRatio(baseRatio);
++renderer.shadowMap.enabled = opts.shadow; renderer.shadowMap.type = tier.shadowType === 'pcfsoft' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+ const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 7000);
+-const stage = new Stage(renderer);
++const stage = new Stage(renderer, tier);
+ stage.setShadows(opts.shadow);
+ const car = new Vehicle();
+ const visual = new CarVisual(stage.scene, car.restHeight);
+@@ -75,13 +85,44 @@ const mpViewPool = [];              // spare CarVisuals for remote players, kept
+ let paused = false;
+ const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
+ const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
+-let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0;
++let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
+ let throttleNow = 0, wallSpot = null;
+ const race = { unwrapped: 0, max: 0, lastS: null, index: -1, lapStart: null, laps: 0, best: null, reverseT: 0, lastTime: null };
+ const safe = { s: 0, off: 0, t: 0 };
+ const mapDots = [];
+ const trouble = { flipped: 0, lost: 0 };
+ 
++// ------------------------------------------------------------------ adaptive resolution and the ?perf overlay
++// While driving, a second of slow frames (twice running) lowers the render resolution a step; a long smooth
++// run raises it again. At the floor it turns off shadows, then the mirror, rather than stay choppy.
++const adapt = new AdaptiveRes({ min: tier.minScale });
++function applyResolution() { renderer.setPixelRatio(baseRatio * adapt.scale); }
++function adaptFeed(rawDt) {
++  const r = adapt.feed(rawDt);
++  if (!r) return;
++  if (r === 'floor') {
++    if (opts.shadow) { opts.shadow = false; stage.setShadows(false); $('opt-shadow').checked = false; toast('Shadows turned off to keep the game smooth.'); }
++    else if (mirror.on) { toggleMirror(); toast('Mirror turned off to keep the game smooth.'); }
++    return;
++  }
++  applyResolution();
++}
++const perf = new URLSearchParams(location.search).has('perf') ? { el: null, nextAt: 0 } : null;
++if (perf) renderer.info.autoReset = false;   // several render() calls per frame (main view + mirror): count them all
++function perfUpdate(now) {
++  if (!perf || now < perf.nextAt) return;
++  perf.nextAt = now + 500;
++  if (!perf.el) {
++    perf.el = document.createElement('pre');
++    perf.el.style.cssText = 'position:fixed;left:6px;bottom:6px;margin:0;padding:4px 6px;z-index:9999;pointer-events:none;font:11px/1.35 monospace;color:#9f9;background:rgba(0,0,0,.6);border-radius:4px;white-space:pre';
++    document.body.appendChild(perf.el);
++  }
++  const i = renderer.info;
++  perf.el.textContent = `${tierName}  ${fps.toFixed(0)} fps  res ${(baseRatio * adapt.scale).toFixed(2)}x  ${physicsLabel}\n` +
++    `calls ${i.render.calls}  tris ${(i.render.triangles / 1000).toFixed(0)}k  geo ${i.memory.geometries}  tex ${i.memory.textures}`;
++}
++const physicsLabel = `${tier.physicsHz}Hz`;
++
+ const input = new Input({
+   onReset: () => mode === 'drive' && respawn(),
+   onRestart: () => mode === 'drive' && restartRace(),
+@@ -99,7 +140,7 @@ const input = new Input({
+ const mirror = {
+   on: false, el: $('mirror'),
+   cam: new THREE.PerspectiveCamera(48, 4, 0.3, 1800),
+-  rt: new THREE.WebGLRenderTarget(1, 1, { samples: 4 }),
++  rt: new THREE.WebGLRenderTarget(1, 1, { samples: tier.aa ? 4 : 0 }),
+   scene: new THREE.Scene(), ortho: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2),
+   off: new THREE.Vector3(), tilt: new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.05, 0, 0)),
+ };
+@@ -108,7 +149,7 @@ const mirror = {
+   quad.scale.x = -1;   // the mirror flip
+   mirror.scene.add(quad); mirror.ortho.position.z = 1;
+ }
+-function toggleMirror() { mirror.on = !mirror.on; mirror.el.hidden = !mirror.on; hud.banner('Mirror ' + (mirror.on ? 'on' : 'off'), 900); }
++function toggleMirror() { mirror.on = !mirror.on; mirror.drawn = false; mirror.el.hidden = !mirror.on; hud.banner('Mirror ' + (mirror.on ? 'on' : 'off'), 900); }
+ function renderMirror() {
+   const r = mirror.el.getBoundingClientRect();
+   if (r.width < 2 || r.height < 2) return;
+@@ -117,15 +158,18 @@ function renderMirror() {
+   if (!score.hidden) { mirror.el.style.top = score.getBoundingClientRect().bottom + 6 + 'px'; feed.style.top = r.bottom + 6 + 'px'; }
+   else if (mirror.el.style.top) { mirror.el.style.top = ''; feed.style.top = ''; }
+   const pr = renderer.getPixelRatio(), bw = 3, w = r.width - bw * 2, h = r.height - bw * 2;
+-  const tw = Math.round(w * pr), th = Math.round(h * pr);
+-  if (mirror.rt.width !== tw || mirror.rt.height !== th) mirror.rt.setSize(tw, th);
++  const tw = Math.round(w * pr * tier.mirrorScale), th = Math.round(h * pr * tier.mirrorScale);
++  if (mirror.rt.width !== tw || mirror.rt.height !== th) { mirror.rt.setSize(tw, th); mirror.drawn = false; }
+   mirror.cam.aspect = w / h; mirror.cam.updateProjectionMatrix();
+   mirror.cam.position.copy(drawPos).add(mirror.off.set(0, 1.35, -2.7).applyQuaternion(drawQ));
+   mirror.cam.quaternion.copy(drawQ).multiply(mirror.tilt);   // camera looks down -Z, which is the car's rear
+-  const shadows = renderer.shadowMap.autoUpdate;
+-  renderer.shadowMap.autoUpdate = false;                     // reuse the shadow map from the main view
+-  renderer.setRenderTarget(mirror.rt); renderer.render(stage.scene, mirror.cam); renderer.setRenderTarget(null);
+-  renderer.shadowMap.autoUpdate = shadows;
++  if (!mirror.drawn || frameNo % tier.mirrorEvery === 0) {   // lower tiers redraw the mirror every 2nd/3rd frame and show the last picture in between
++    const shadows = renderer.shadowMap.autoUpdate;
++    renderer.shadowMap.autoUpdate = false;                   // reuse the shadow map from the main view
++    renderer.setRenderTarget(mirror.rt); renderer.render(stage.scene, mirror.cam); renderer.setRenderTarget(null);
++    renderer.shadowMap.autoUpdate = shadows;
++    mirror.drawn = true;
++  }
+   const x = r.left + bw, y = innerHeight - r.bottom + bw;
+   renderer.setScissorTest(true); renderer.setScissor(x, y, w, h); renderer.setViewport(x, y, w, h);
+   renderer.autoClear = false; renderer.render(mirror.scene, mirror.ortho); renderer.autoClear = true;
+@@ -170,7 +214,7 @@ function loadTrack(newDef) {
+   race.laps = 0; race.lapStart = null; race.lastTime = null;
+   placeCar(track.startS(12), 0, 0);
+   derbyStart();
+-  window.__game = { car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
++  window.__game = { tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+ }
+ 
+ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
+@@ -401,7 +445,9 @@ function syncViews(a) {
+     if (f.expire) k = 1 - f.expireT / DERBY.wreckFade;                         // making room: shrink this one away
+     v.root.scale.setScalar(Math.max(k, 0.001));
+     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
+-    v.root.visible = dx * dx + dz * dz < 300 * 300;                            // 200,000 triangles each: skip the far ones
++    const d2 = dx * dx + dz * dz;
++    v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
++    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);   // far away: a plain box instead of the full model
+     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
+   }
+ }
+@@ -458,8 +504,12 @@ function effects(dt) {
+ // -------------------------------------------------------------------- frame
+ function frame(now) {
+   requestAnimationFrame(frame);
+-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
++  const rawDt = (now - last) / 1000;
++  const dt = Math.min(0.05, rawDt); last = now;
+   fps += (1 / Math.max(dt, 1e-4) - fps) * 0.05;
++  frameNo++;
++  if (perf) renderer.info.reset();
++  if (mode === 'drive' && !paused) adaptFeed(rawDt); else adapt.reset();
+   const w = innerWidth, h = innerHeight;
+   if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+@@ -513,6 +563,7 @@ function frame(now) {
+   stage.update(drawPos, camera.position);
+   renderer.render(stage.scene, camera);
+   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
++  perfUpdate(now);
+ }
+ 
+ function debugText() {
+@@ -602,6 +653,13 @@ function bindMenu() {
+   $('go-menu').onclick = () => showMenu();
+   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
+   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
++  // Graphics quality: antialiasing, shadow type/size and texture filtering are fixed when the page loads, so a change reloads it.
++  const qsel = $('opt-quality'); qsel.value = TIER_NAMES.includes(opts.quality) ? opts.quality : 'auto';
++  qsel.onchange = () => {
++    opts.quality = qsel.value; store.set('cr.opts', opts);
++    if (net) { toast('Graphics quality will change next time the game loads.'); return; }   // don't drop a multiplayer room
++    location.reload();
++  };
+   bindOpt('opt-sfx', 'sfx', (v) => { sound.setEnabled('sfx', v); syncSoundUI(); });
+   bindOpt('opt-music', 'music', (v) => { if (v) sound.init(); sound.setEnabled('music', v); syncSoundUI(); });
+   const sw = $('swatches');
+@@ -712,7 +770,9 @@ function mpSyncRemote() {
+     p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
+     p.view.setLook(c.alive === false ? 0.15 : 1, 0);
+     const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
+-    p.view.root.visible = dx * dx + dz * dz < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
++    const d2 = dx * dx + dz * dz;
++    p.view.root.visible = d2 < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
++    if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);
+     if (!p.label) {
+       p.label = document.createElement('div'); p.label.className = 'mp-label';
+       const nameEl = document.createElement('div'); nameEl.className = 'mp-name'; nameEl.textContent = p.name;
+@@ -841,6 +901,8 @@ document.addEventListener('visibilitychange', () => { last = performance.now();
+ 
+ bindMenu();
+ bindMultiplayer();
++// Cache the heavy files (car models, sounds, three.js) so repeat visits - especially on mobile data - load fast.
++if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+ loadTrack(makeTemplate('speedway'));
+ renderMenu();
+ setMode('menu');
+diff --git a/src/quality.js b/src/quality.js
+new file mode 100644
+index 0000000..8dc2bf6
+--- /dev/null
++++ b/src/quality.js
+@@ -0,0 +1,104 @@
++// Graphics quality: three tiers, a guess at which one a device should start on, and an adaptive
++// resolution controller that backs off when the frame rate sags. Pure logic - no DOM at import time -
++// so it can be unit-tested with `npm test`.
++
++/**
++ * pixelRatio   cap on the canvas pixel ratio (the biggest single cost on a high-DPI phone)
++ * aa           MSAA; fixed when the renderer is made, so changing tier reloads the page
++ * shadow       default for the Shadows checkbox when the player has not chosen yet
++ * shadowSize   shadow map resolution; shadowRange is the half-width (m) of the area it covers
++ * shadowType   'pcf' (cheap) or 'pcfsoft' (prettier)
++ * aniso        anisotropic filtering cap for the ground, road and car textures
++ * mirrorEvery  redraw the rear-view mirror every N frames; mirrorScale is its resolution multiplier
++ * physicsHz    fixed physics step rate. 60 gives the same handling as 120 in the headless lap tests
++ * rivals       default number of derby rivals when the player has not chosen
++ * lodDist      rivals/remote cars further than this (m) are drawn as a plain box instead of the
++ *              full model. 0 = never. Each full model is 190k-620k triangles.
++ * minScale     lowest the adaptive resolution is allowed to go (fraction of pixelRatio)
++ */
++export const TIERS = {
++  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 35, minScale: 0.55 },
++  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 60, minScale: 0.6 },
++  high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  minScale: 0.75 },
++};
++export const TIER_NAMES = Object.keys(TIERS);
++
++// Mobile GPUs from roughly 2016 and earlier (Adreno 2xx-5xx, Mali-4xx/T-series, PowerVR SGX/GE8xxx).
++const OLD_GPU = /adreno[^0-9]*[2-5]\d\d\b|mali-?(4\d\d|t\d+)|powervr\s*(sgx|ge8)|\bsgx\b/i;
++
++/**
++ * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Desktops start on high - the
++ * adaptive resolution still protects weak laptops. Touch devices start on medium and drop to low when
++ * something says the phone is old or data-saving. Phones that give no hints (iPhones) start on medium
++ * and rely on the adaptive resolution.
++ */
++export function detectTier({ forced, touch = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
++  if (forced && TIERS[forced]) return forced;
++  if (!touch) return 'high';
++  if (saveData) return 'low';
++  if (memory && memory <= 3) return 'low';
++  if (cores && cores <= 4) return 'low';
++  if (gpu && OLD_GPU.test(gpu)) return 'low';
++  return 'medium';
++}
++
++/** Read the device hints from the browser. Browser-only; kept out of detectTier so that stays testable. */
++export function probeDevice(win = globalThis) {
++  const nav = win.navigator || {};
++  let gpu = '';
++  try {
++    const cv = win.document.createElement('canvas');
++    const gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
++    const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
++    if (ext) gpu = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
++    const lose = gl && gl.getExtension('WEBGL_lose_context');
++    if (lose) lose.loseContext();
++  } catch { /* no WebGL probe; the hints below still work */ }
++  return {
++    touch: !!(win.matchMedia && win.matchMedia('(pointer: coarse)').matches),
++    memory: nav.deviceMemory || 0,
++    cores: nav.hardwareConcurrency || 0,
++    saveData: !!(nav.connection && nav.connection.saveData),
++    gpu,
++  };
++}
++
++/**
++ * Watches frame times in one-second windows and moves a resolution multiplier (0..1 of the tier's pixel
++ * ratio). Two slow windows in a row step it down; a long run of smooth windows steps it back up, and
++ * each step down doubles how long it waits before trying again, so it settles instead of flapping.
++ * If it is already at the floor and still slow, `feed` reports 'floor' so the caller can drop a feature.
++ */
++export class AdaptiveRes {
++  constructor({ min = 0.6, max = 1, slowFps = 45, smoothFps = 57, down = 0.15, up = 0.1 } = {}) {
++    Object.assign(this, { min, max, slowFps, smoothFps, down, up });
++    this.scale = max;
++    this.reset();
++    this.upNeeded = 5;       // smooth windows required before stepping up (doubles after every step down)
++  }
++  reset() { this.t = 0; this.frames = 0; this.slow = 0; this.smooth = 0; }
++  /** Feed one real frame time in seconds. Returns {scale} when the multiplier changed, 'floor' at the floor, else null. */
++  feed(dt) {
++    if (!(dt > 0) || dt > 0.5) { this.t = 0; this.frames = 0; return null; }   // a stall or a hidden tab says nothing about speed
++    this.t += dt; this.frames++;
++    if (this.t < 1) return null;
++    const fps = this.frames / this.t;
++    this.t = 0; this.frames = 0;
++    if (fps < this.slowFps) { this.smooth = 0; this.slow++; }
++    else if (fps >= this.smoothFps) { this.slow = 0; this.smooth++; }
++    else { this.slow = 0; this.smooth = 0; }
++    if (this.slow >= 2) {
++      this.slow = 0;
++      this.upNeeded = Math.min(this.upNeeded * 2, 60);
++      if (this.scale <= this.min + 1e-6) return 'floor';
++      this.scale = Math.max(this.min, +(this.scale - this.down).toFixed(3));
++      return { scale: this.scale };
++    }
++    if (this.smooth >= this.upNeeded && this.scale < this.max - 1e-6) {
++      this.smooth = 0;
++      this.scale = Math.min(this.max, +(this.scale + this.up).toFixed(3));
++      return { scale: this.scale };
++    }
++    return null;
++  }
++}
+diff --git a/src/stage.js b/src/stage.js
+index 0d4aee9..40d9854 100644
+--- a/src/stage.js
++++ b/src/stage.js
+@@ -12,11 +12,12 @@ function mulberry(seed) {
+ }
+ 
+ export class Stage {
+-  constructor(renderer) {
++  /** `q` is a quality tier from quality.js (aniso, shadowSize, shadowRange); the defaults match the old fixed values. */
++  constructor(renderer, q = {}) {
+     this.renderer = renderer;
+     this.scene = new THREE.Scene();
+     this.scene.fog = new THREE.Fog(FOG, 320, 2600);
+-    const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
++    const aniso = Math.min(q.aniso ?? 8, renderer.capabilities.getMaxAnisotropy());
+     this.aniso = aniso;
+ 
+     // environment for reflections on the car paint
+@@ -44,8 +45,9 @@ export class Stage {
+     this.scene.add(this.hemi);
+     this.sun = new THREE.DirectionalLight(0xffd0a0, 2.6);
+     this.sun.castShadow = true;
+-    this.sun.shadow.mapSize.set(2048, 2048);
+-    const sc = this.sun.shadow.camera; sc.left = -70; sc.right = 70; sc.top = 70; sc.bottom = -70; sc.near = 1; sc.far = 700;
++    this.sun.shadow.mapSize.set(q.shadowSize ?? 2048, q.shadowSize ?? 2048);
++    const R = q.shadowRange ?? 70;
++    const sc = this.sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 700;
+     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.35;
+     this.sunOffset = new THREE.Vector3(-170, 210, -120);
+     this.scene.add(this.sun, this.sun.target);
+diff --git a/src/version.js b/src/version.js
+index c38ac43..6be7226 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -3,5 +3,5 @@ import './bootstrap.js';
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '16.69';
+-export const NOTE = 'Moved the rear-view mirror lower on phones and added an always-available reset-view button that recentres the orbit camera while driving';
++export const VERSION = '16.70';
++export const NOTE = 'Performance pass for older phones: graphics quality tiers (auto-detected, Graphics option in settings), adaptive resolution, 60 Hz physics on low-end, cheaper shadows and mirror, plain-box detail level for distant rivals, asset caching, ?perf overlay';
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..e0c4ecd
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,56 @@
++// Service worker: speeds up repeat visits (and flaky mobile data) without ever trapping the game on old code.
++//  - the page, scripts and styles: network first, cached copy only if the network fails
++//  - car models, sounds, images: served from the cache straight away and refreshed in the background, so a
++//    replaced model shows up on the visit after next reload rather than never
++//  - three.js from the CDN: it is pinned to an exact version, so cache first
++// Anything else (multiplayer traffic, other sites, range requests) is left alone.
++const CACHE = 'car-racer-v1';
++const CODE = /\.(?:html|js|mjs|css|webmanifest|json)$/i;
++const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@';
++
++self.addEventListener('install', () => self.skipWaiting());
++self.addEventListener('activate', (e) => {
++  e.waitUntil((async () => {
++    for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
++    await self.clients.claim();
++  })());
++});
++
++async function networkFirst(req) {
++  const cache = await caches.open(CACHE);
++  try {
++    const res = await fetch(req);
++    if (res.ok) cache.put(req, res.clone());
++    return res;
++  } catch (err) {
++    const hit = await cache.match(req);
++    if (hit) return hit;
++    throw err;
++  }
++}
++
++async function staleWhileRevalidate(req) {
++  const cache = await caches.open(CACHE);
++  const hit = await cache.match(req);
++  const refresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => null);
++  return hit || (await refresh) || Response.error();
++}
++
++async function cacheFirst(req) {
++  const cache = await caches.open(CACHE);
++  const hit = await cache.match(req);
++  if (hit) return hit;
++  const res = await fetch(req);
++  if (res.ok) cache.put(req, res.clone());
++  return res;
++}
++
++self.addEventListener('fetch', (e) => {
++  const req = e.request;
++  if (req.method !== 'GET' || req.headers.has('range')) return;
++  const url = new URL(req.url);
++  if (url.href.startsWith(THREE_CDN)) { e.respondWith(cacheFirst(req)); return; }
++  if (url.origin !== self.location.origin) return;
++  if (req.mode === 'navigate' || CODE.test(url.pathname) || url.pathname.endsWith('/')) e.respondWith(networkFirst(req));
++  else e.respondWith(staleWhileRevalidate(req));
++});
+diff --git a/tests/quality.test.mjs b/tests/quality.test.mjs
+new file mode 100644
+index 0000000..4c536ad
+--- /dev/null
++++ b/tests/quality.test.mjs
+@@ -0,0 +1,74 @@
++// Run with:  npm test
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { TIERS, TIER_NAMES, detectTier, AdaptiveRes } from '../src/quality.js';
++
++test('tiers get cheaper from high to low in every setting that costs frames', () => {
++  const { low, medium, high } = TIERS;
++  assert.deepEqual([...TIER_NAMES].sort(), ['high', 'low', 'medium']);
++  for (const k of ['pixelRatio', 'shadowSize', 'shadowRange', 'aniso', 'mirrorScale', 'physicsHz', 'rivals', 'minScale']) {
++    assert.ok(low[k] <= medium[k] && medium[k] <= high[k], `${k} should not rise towards the lower tiers`);
++  }
++  assert.ok(low.mirrorEvery >= medium.mirrorEvery && medium.mirrorEvery >= high.mirrorEvery);
++  assert.ok(low.lodDist > 0 && medium.lodDist > low.lodDist && high.lodDist === 0, 'high keeps full models at every distance');
++  assert.equal(high.aa, true); assert.equal(low.aa, false);
++});
++
++test('device detection: desktop high, phones medium, old or data-saving phones low, a forced tier wins', () => {
++  assert.equal(detectTier({ touch: false, memory: 2, cores: 2 }), 'high');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8 }), 'medium');
++  assert.equal(detectTier({ touch: true }), 'medium');                       // iPhone: no hints at all
++  assert.equal(detectTier({ touch: true, memory: 2, cores: 8 }), 'low');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 4 }), 'low');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8, saveData: true }), 'low');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8, gpu: 'Adreno (TM) 506' }), 'low');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8, gpu: 'Mali-T830' }), 'low');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8, gpu: 'Adreno (TM) 740' }), 'medium');
++  assert.equal(detectTier({ touch: true, memory: 8, cores: 8, gpu: 'Apple GPU' }), 'medium');
++  assert.equal(detectTier({ forced: 'high', touch: true, memory: 2 }), 'high');
++  assert.equal(detectTier({ forced: 'nonsense', touch: false }), 'high');
++});
++
++const feedSeconds = (a, seconds, fps) => { let last = null; for (let i = 0; i < Math.round(seconds * fps); i++) { const r = a.feed(1 / fps); if (r) last = r; } return last; };
++
++test('adaptive resolution: two slow seconds step down, one does not', () => {
++  const a = new AdaptiveRes({ min: 0.6 });
++  assert.equal(feedSeconds(a, 1.1, 30), null);
++  assert.equal(a.scale, 1);
++  assert.deepEqual(feedSeconds(a, 1, 30), { scale: 0.85 });
++  assert.equal(a.scale, 0.85);
++});
++
++test('adaptive resolution: a smooth second in between resets the slow count', () => {
++  const a = new AdaptiveRes({ min: 0.6 });
++  feedSeconds(a, 1.05, 30); feedSeconds(a, 1.05, 60); feedSeconds(a, 1.05, 30);
++  assert.equal(a.scale, 1);
++});
++
++test('adaptive resolution: never goes below the floor, and says so instead', () => {
++  const a = new AdaptiveRes({ min: 0.6 });
++  const seen = [];
++  for (let i = 0; i < 30; i++) { const r = feedSeconds(a, 1, 25); if (r) seen.push(r); }
++  assert.ok(a.scale >= 0.6 - 1e-9 && a.scale <= 0.61);
++  assert.ok(seen.includes('floor'));
++});
++
++test('adaptive resolution: climbs back up after a long smooth run, and waits longer each time it has dropped', () => {
++  const a = new AdaptiveRes({ min: 0.6 });
++  feedSeconds(a, 2.2, 30);                      // down once
++  assert.equal(a.scale, 0.85);
++  assert.equal(a.upNeeded, 10);
++  feedSeconds(a, 8, 60);
++  assert.equal(a.scale, 0.85, 'still waiting - 10 smooth seconds are needed after a drop');
++  feedSeconds(a, 3, 60);
++  assert.equal(a.scale, 0.95);
++  feedSeconds(a, 30, 60);
++  assert.equal(a.scale, 1, 'never above max');
++});
++
++test('adaptive resolution: stalls and hidden-tab gaps are ignored', () => {
++  const a = new AdaptiveRes({ min: 0.6 });
++  for (let i = 0; i < 20; i++) { a.feed(2); a.feed(0.9); }   // tab switches, loading hitches
++  assert.equal(a.scale, 1);
++  assert.equal(a.feed(NaN), null); assert.equal(a.feed(-1), null);
++});
