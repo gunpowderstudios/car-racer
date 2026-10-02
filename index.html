@@ -227,6 +227,7 @@ html.invite-loading #invite-loading {
         <label><input id="opt-music" type="checkbox"> Music</label>
         <label><input id="opt-shadow" type="checkbox" checked> Shadows</label>
         <label class="sel">Graphics <select id="opt-quality" aria-label="Graphics quality"><option value="auto">Auto</option><option value="low">Low (older phones)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+        <label class="sel">Chat <select id="opt-chat" aria-label="Multiplayer chat"><option value="all">Everything</option><option value="quick">Quick chat only</option><option value="off">Off</option></select></label>
         <div class="swatches" id="swatches" role="radiogroup" aria-label="Car colour"></div>
       </div>
     </details>
@@ -240,10 +241,12 @@ html.invite-loading #invite-loading {
 <section id="mp">
   <div class="menu-inner mp-inner">
     <button id="mp-back" class="btn ghost mp-back" type="button">&larr; Back</button>
+    <p id="mp-status" class="fine mp-status" role="status" hidden></p>
 
     <div id="mp-home">
       <h2>Multiplayer</h2>
       <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
+      <button id="mp-resume" class="btn" type="button" hidden>Resume your room</button>
       <div class="mp-actions">
         <button id="mp-create" class="btn" type="button">Create game</button>
         <button id="mp-join-show" class="btn ghost" type="button">Join game</button>
@@ -261,6 +264,7 @@ html.invite-loading #invite-loading {
 
     <div id="mp-lobby" hidden>
       <h2>Room <span id="mp-room-code"></span></h2>
+      <button id="mp-share" class="btn" type="button" hidden>Share invite</button>
       <button id="mp-copy" class="btn ghost" type="button">Copy invite link</button>
       <ul id="mp-players"></ul>
       <div id="mp-track-field">

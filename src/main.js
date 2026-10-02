@@ -20,6 +20,7 @@ import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
 import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
+import { createChatUI } from './mpChat.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -36,7 +37,7 @@ const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes
 const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 const userTracks = () => store.get('cr.tracks', {});
@@ -214,7 +215,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { get chatUI() { return chatUI; }, get mpHandlers() { return mpHandlers; }, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -655,6 +656,8 @@ function bindMenu() {
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
   // Graphics quality: antialiasing, shadow type/size and texture filtering are fixed when the page loads, so a change reloads it.
   const qsel = $('opt-quality'); qsel.value = TIER_NAMES.includes(opts.quality) ? opts.quality : 'auto';
+  const csel = $('opt-chat'); csel.value = ['all', 'quick', 'off'].includes(opts.chat) ? opts.chat : 'all';
+  csel.onchange = () => { opts.chat = csel.value; store.set('cr.opts', opts); chatUI.applyMode(); };
   qsel.onchange = () => {
     opts.quality = qsel.value; store.set('cr.opts', opts);
     if (net) { toast('Graphics quality will change next time the game loads.'); return; }   // don't drop a multiplayer room
@@ -751,6 +754,8 @@ function mpReleasePlayer(p) {
   if (p.label) { p.label.remove(); p.label = null; }
 }
 function mpTeardown() {
+  chatUI.setActive(false);
+  clearSavedRoom();                                           // leaving on purpose: nothing to resume
   if (!net && !remotePlayers.size) return;
   for (const p of remotePlayers.values()) mpReleasePlayer(p);
   remotePlayers.clear();
@@ -790,7 +795,8 @@ function mpSyncRemote() {
     mpLabelV.project(camera);
     if (mpLabelV.z > 1 || dist > 220) { p.label.style.display = 'none'; continue; }
     p.label.style.display = ''; p.label.style.opacity = String(Math.max(0.15, 1 - dist / 220));
-    p.label.style.left = (mpLabelV.x * 0.5 + 0.5) * innerWidth + 'px';
+    const lx = (mpLabelV.x * 0.5 + 0.5) * innerWidth;
+    p.label.style.left = (p.bubble ? Math.min(Math.max(lx, 110), innerWidth - 110) : lx) + 'px';   // keep a speech bubble on screen
     p.label.style.top = (-mpLabelV.y * 0.5 + 0.5) * innerHeight + 'px';
   }
 }
@@ -837,7 +843,43 @@ function mpPlaceOnGrid() {
   const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : 0;
   placeCar(s, off, 0);
 }
+// ----- keeping a hosted room across a page reload (the phone threw the tab away while you were in another app)
+const ROOM_KEY = 'cr.mproom', ROOM_TTL = 15 * 60 * 1000;
+const savedRoom = () => { const r = store.get(ROOM_KEY, null); return r && r.code && r.name && Date.now() - r.t < ROOM_TTL ? r : null; };
+const saveRoom = (code, name) => store.set(ROOM_KEY, { code, name, t: Date.now() });
+function clearSavedRoom() { try { localStorage.removeItem(ROOM_KEY); } catch { /* storage blocked */ } }
+setInterval(() => { if (net && net.isHost && !net.started && net.selfName) saveRoom(net.roomCode, net.selfName); }, 30000);   // keep it fresh while you wait in the lobby
+function updateResume() {
+  const r = savedRoom(), b = $('mp-resume');
+  b.hidden = !r; if (r) b.textContent = `Resume your room (${r.code})`;
+}
+/** A line of status in the multiplayer screens ("Reconnecting...", "The host is away..."); null clears it. */
+function mpStatus(text) { const e = $('mp-status'); e.textContent = text || ''; e.hidden = !text; }
+
+// ----- chat (see src/chat.js and src/mpChat.js)
+const hueCss = (hue) => (hue != null && RIVAL_LOOKS[hue] ? '#' + RIVAL_LOOKS[hue].tint.toString(16).padStart(6, '0') : '#f6d9b0');
+const chatUI = createChatUI({
+  send: (m) => !!(net && net.sendChat(m)),
+  nameOf: (id) => (net && net.players.get(id) ? net.players.get(id).name : 'Driver'),
+  colorOf: (id) => hueCss(net && net.players.get(id) ? net.players.get(id).hue : null),
+  isSelf: (id) => !!net && id === net.selfId,
+  bubble: (id, text) => mpShowBubble(id, text),
+  getMode: () => opts.chat,
+  toast,
+});
+/** A speech bubble over a remote player's car (their name label already follows the car). */
+function mpShowBubble(id, text) {
+  const p = remotePlayers.get(id);
+  if (!p || !p.label) return;
+  if (p.bubble) { p.bubble.remove(); clearTimeout(p.bubbleTimer); }
+  const b = document.createElement('div'); b.className = 'mp-bubble'; b.textContent = text;
+  p.label.prepend(b); p.bubble = b;
+  p.bubbleTimer = setTimeout(() => { b.remove(); if (p.bubble === b) p.bubble = null; }, 4500);
+}
+
 const mpHandlers = {
+  onChat: (id, m) => chatUI.receive(id, m),
+  onStatus: (text) => mpStatus(text),
   onLobby: (players, hostId) => mpRenderLobby(players, hostId),
   onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {
@@ -861,16 +903,26 @@ const mpHandlers = {
 function bindMultiplayer() {
   $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Random circuit' : makeTemplate(k).name}</option>`).join('');
   $('mp-track').value = 'random';
-  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); };
-  $('mp-back').onclick = () => showMenu();
+  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); updateResume(); };
+  $('mp-back').onclick = () => { clearSavedRoom(); showMenu(); };
   $('mp-create').onclick = async () => {
     const name = $('mp-name').value.trim();
     if (!name) { mpErr('mp-home-error', 'Enter your name first.'); return; }
     store.set('cr.mpname', name);
     $('mp-create').disabled = true;
-    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
+    try { net = new Multiplayer(mpHandlers); const code = await net.createRoom(name); saveRoom(code, name); chatUI.setActive(true); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId); }
     catch (e) { mpErr('mp-home-error', e.message); net = null; }
     $('mp-create').disabled = false;
+  };
+  $('mp-resume').onclick = async () => {
+    const r = savedRoom(); if (!r) { updateResume(); return; }
+    $('mp-resume').disabled = true; $('mp-create').disabled = true;
+    try {
+      net = new Multiplayer(mpHandlers);
+      const code = await net.createRoom(r.name, r.code);
+      saveRoom(code, r.name); chatUI.setActive(true); mpStatus(null); mpShow('mp-lobby'); $('mp-room-code').textContent = code; mpRenderLobby([...net.players.values()], net.selfId);
+    } catch (e) { mpStatus(null); mpErr('mp-home-error', e.message); net = null; }
+    $('mp-resume').disabled = false; $('mp-create').disabled = false;
   };
   $('mp-join-show').onclick = () => { mpShow('mp-join'); $('mp-join-name').value = store.get('cr.mpname', ''); };
   $('mp-join-go').onclick = async () => {
@@ -879,25 +931,34 @@ function bindMultiplayer() {
     if (!code) { mpErr('mp-join-error', 'Enter the room code.'); return; }
     store.set('cr.mpname', name);
     $('mp-join-go').disabled = true;
-    try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
+    try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); chatUI.setActive(true); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
     catch (e) { mpErr('mp-join-error', e.message); net = null; }
     $('mp-join-go').disabled = false;
   };
   $('mp-start').onclick = () => {
     if (!net) return;
     const key = $('mp-track').value;
+    clearSavedRoom();                                           // a started race is not something to resume
     net.startGame(key === 'random' ? makeRandomTrack() : makeTemplate(key));
   };
-  $('mp-copy').onclick = async () => {
-    const url = `${location.origin}${location.pathname}?room=${net.roomCode}`;
-    try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); }
+  const inviteUrl = () => `${location.origin}${location.pathname}?room=${net.roomCode}`;
+  const copyInvite = async (url) => { try { await navigator.clipboard.writeText(url); toast('Invite link copied.'); } catch { toast(url); } };
+  $('mp-copy').onclick = () => net && copyInvite(inviteUrl());
+  // The phone's own share sheet: on an iPhone you can pick WhatsApp and send from inside the sheet, without leaving the game.
+  $('mp-share').hidden = typeof navigator.share !== 'function';
+  $('mp-share').onclick = async () => {
+    if (!net) return;
+    const url = inviteUrl();
+    try { await navigator.share({ title: 'Bangers and Smash!', text: `Join my game of Bangers and Smash! Room ${net.roomCode}`, url }); }
+    catch (e) { if (!(e && e.name === 'AbortError')) copyInvite(url); }
   };
 }
 
 // ---------------------------------------------------------------------- boot
 addEventListener('error', (e) => { const f = $('fatal'); f.hidden = false; f.textContent = 'Something broke:\n' + (e.error?.stack || e.message); });
 addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
-document.addEventListener('visibilitychange', () => { last = performance.now(); });
+document.addEventListener('visibilitychange', () => { last = performance.now(); if (!document.hidden && net) net.resume(); });
+addEventListener('online', () => { if (net) net.resume(); });
 
 bindMenu();
 bindMultiplayer();
@@ -912,6 +973,9 @@ const params = new URLSearchParams(location.search);
 if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
   if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
+} else if (!params.get('room') && savedRoom()) {
+  const r = savedRoom();                                        // you were hosting a room and the page went away: offer to bring it back
+  setMode('mp'); mpShow('mp-home'); $('mp-name').value = r.name; updateResume();
 } else if (params.get('room')) {
   setMode('mp'); mpShow('mp-join');
   $('mp-join-name').value = store.get('cr.mpname', '');

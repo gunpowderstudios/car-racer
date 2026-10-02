@@ -333,3 +333,41 @@ body:not(.mode-drive) .mp-label { display: none; }
   body.mode-drive, #hud, #touch, #touch button, #controls .ctl {
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 }
+
+/* ------------------------------------------------------------------- multiplayer chat */
+.mp-status { color: var(--amber); margin: 6px 0 10px; }
+#mp-resume { margin-bottom: 14px; }
+#mp-share { margin-right: 8px; }
+.chat-box { max-width: 340px; margin: 0 0 18px; }
+.chat-log { min-height: 54px; max-height: 120px; overflow-y: auto; margin-bottom: 8px; padding: 6px 8px; background: rgba(27,18,51,.45); border-radius: 4px; font-family: var(--cond); font-size: 16px; text-align: left; }
+.chat-log:empty::before { content: "No messages yet."; color: var(--ink-dim); font-size: 14px; }
+.chat-line { margin: 2px 0; overflow-wrap: anywhere; }
+.chat-row { display: flex; gap: 8px; }
+.chat-row input { flex: 1 1 auto; min-width: 0; padding: 8px 10px; font-size: 16px; border-radius: 4px; border: 1px solid rgba(246,217,176,.35); background: rgba(27,18,51,.7); color: var(--peach); }
+.chat-send { flex: 0 0 auto; }
+.chat-quick { margin-top: 8px; }
+.chat-quick summary { cursor: pointer; color: var(--ink-dim); font-size: 14px; }
+.chat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+.chat-q { padding: 9px 8px; border-radius: 6px; border: 1px solid rgba(246,217,176,.35); background: rgba(42,29,74,.9); color: var(--peach); font-family: var(--cond); font-size: 15px; font-weight: 600; line-height: 1.15; cursor: pointer; text-align: center; }
+.chat-q:active { background: var(--amber); color: #2a1a00; }
+
+#chat-btn, #chat-feed, #chat-panel { display: none; }
+html.mp-on body.mode-drive #chat-btn { display: block; position: fixed; z-index: 14; right: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 232px); width: 40px; height: 40px; padding: 8px;
+  border-radius: 50%; border: 2px solid rgba(246,217,176,.35); background: rgba(42,29,74,.82); color: var(--peach); cursor: pointer; }
+html.mp-on body.mode-drive #chat-btn svg { display: block; width: 100%; height: 100%; }
+html.mp-on body.mode-drive #chat-btn:hover, html.mp-on.chat-open body.mode-drive #chat-btn { border-color: var(--amber); color: var(--amber); }
+html.mp-on body.mode-drive #chat-feed { display: flex; flex-direction: column; gap: 3px; position: fixed; z-index: 13; left: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 150px); max-width: min(360px, 62vw); pointer-events: none;
+  font-family: var(--cond); font-size: 17px; font-weight: 600; color: var(--peach); text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+#chat-feed .chat-line { padding: 3px 9px; background: rgba(27,18,51,.6); border-radius: 4px; animation: chat-line-fade 8s linear forwards; }
+@keyframes chat-line-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+html.mp-on body.mode-drive #chat-panel:not([hidden]) { display: block; position: fixed; z-index: 40; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(520px, calc(100vw - 20px)); max-height: 72vh; overflow-y: auto; padding: 10px 12px 12px; background: rgba(27,18,51,.96); border: 2px solid rgba(246,217,176,.4); border-radius: 10px; pointer-events: auto; }
+#chat-panel .chat-head { display: flex; align-items: center; justify-content: space-between; font-family: var(--display); font-weight: 700; color: var(--amber); }
+#chat-panel .chat-close { width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--peach); font-size: 26px; line-height: 1; cursor: pointer; }
+.mp-bubble { display: block; width: max-content; max-width: 200px; margin: 0 auto 5px; padding: 4px 9px; white-space: normal; border-radius: 10px; background: var(--peach); color: #1b1233; font-size: 14px; line-height: 1.2; }
+html.chat-off #mp-chat, html.chat-off #chat-btn, html.chat-off #chat-panel, html.chat-off #chat-feed { display: none !important; }
+html.chat-quick-only .chat-row { display: none; }
+@media (max-width: 760px), (pointer: coarse) {
+  html.mp-on body.mode-drive #chat-btn { right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 38px; height: 38px; padding: 7px; }
+  html.mp-on body.mode-drive #chat-feed { left: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 232px); max-width: 66vw; font-size: 15px; }
+}
