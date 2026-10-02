@@ -17,8 +17,8 @@
  * minScale     lowest the adaptive resolution is allowed to go (fraction of pixelRatio)
  */
 export const TIERS = {
-  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 35, minScale: 0.55 },
-  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 60, minScale: 0.6 },
+  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, minScale: 0.55 },
+  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, minScale: 0.6 },
   high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  minScale: 0.75 },
 };
 export const TIER_NAMES = Object.keys(TIERS);

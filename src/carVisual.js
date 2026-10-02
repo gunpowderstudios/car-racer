@@ -160,18 +160,24 @@ export class CarVisual {
 
   /**
    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
-   * a plain box in the car's paint colour (a few pixels on screen, so nobody can tell). Callers add their
-   * own hysteresis. Does nothing until the real model has loaded - the loading box is showing till then.
+   * a simple two-box silhouette in the car's paint colour. Callers add their own hysteresis. Does nothing
+   * until the real model has loaded - the loading box is showing till then.
    */
   setFar(far) {
     if (!this.loaded || !this.model) return;
     if (far === this._far) return;
     this._far = far;
     if (far && !this.proxy) {
-      this.proxy = new THREE.Mesh(this.placeholder.geometry, this.material);
-      this.proxy.scale.copy(this.placeholder.scale);
-      this.proxy.position.copy(this.placeholder.position);
-      this.root.add(this.proxy);
+      const proxy = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 4.85), this.material);
+      body.position.set(0, -0.16, 0);
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.46, 2.35), this.material);
+      cabin.position.set(0, 0.32, -0.18);
+      proxy.add(body, cabin);
+      proxy.scale.copy(this.placeholder.scale);
+      proxy.position.copy(this.placeholder.position);
+      this.proxy = proxy;
+      this.root.add(proxy);
     }
     this.model.visible = !far;
     if (this.proxy) this.proxy.visible = far;

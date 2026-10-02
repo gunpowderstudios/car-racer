@@ -447,7 +447,7 @@ function syncViews(a) {
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
-    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);   // far away: a plain box instead of the full model
+    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);   // wide hysteresis stops LOD flicker near the boundary
     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
   }
 }
@@ -772,7 +772,7 @@ function mpSyncRemote() {
     const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     p.view.root.visible = d2 < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
-    if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.85 : tier.lodDist) ** 2);
+    if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);
     if (!p.label) {
       p.label = document.createElement('div'); p.label.className = 'mp-label';
       const nameEl = document.createElement('div'); nameEl.className = 'mp-name'; nameEl.textContent = p.name;
