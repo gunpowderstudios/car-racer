@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '16.81';
-export const NOTE = 'Campervan AI rivals now have clearly distinct colours, and every local race finish uses one large centred checkered-flag result message without clashing with the HUD';
+export const VERSION = '16.82';
+export const NOTE = 'Campervan AI rivals now recolour only the original red lower body texture, keeping the classic cream/white roof, glass and trim unchanged';
