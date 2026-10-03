@@ -167,20 +167,32 @@ function showFinish(result) {
   const sub = document.getElementById('mp-finish-sub');
   if (!box || !title || !sub) return;
 
+  const selfFinished = result.id === net.selfId;
   if (result.place === 1) {
-    const selfWon = result.id === net.selfId;
-    title.textContent = selfWon ? 'You win!' : `${result.name} wins!`;
+    title.textContent = selfFinished ? 'You win!' : `${result.name} wins!`;
     sub.textContent = `${result.laps || raceLaps(net)}-lap destruction race winner`;
-    if (selfWon) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail: { mode: 'multiplayer', place: 1, laps: result.laps || raceLaps(net) } }));
-  } else if (result.id === net.selfId) {
+  } else if (selfFinished) {
     title.textContent = `Finished ${ordinal(result.place)}`;
     sub.textContent = 'Race complete';
   } else {
     return;
   }
+
   box.hidden = false;
+
+  if (selfFinished) {
+    const detail = {
+      mode: 'multiplayer',
+      place: result.place,
+      total: Math.max(1, net.players.size),
+      laps: result.laps || raceLaps(net),
+    };
+    window.dispatchEvent(new CustomEvent('carracer-player-finish', { detail }));
+    if (result.place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail }));
+  }
+
   clearTimeout(finishHideTimer);
-  finishHideTimer = setTimeout(() => { box.hidden = true; }, result.place === 1 ? 4500 : 3000);
+  finishHideTimer = setTimeout(() => { box.hidden = true; }, selfFinished ? 4500 : 3000);
 }
 
 window.addEventListener('carracer-race-finish', (e) => showFinish(e.detail));
