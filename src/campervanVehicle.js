@@ -11,7 +11,7 @@ const KEY = 'cr.vehicle';
 
 const camper = {
   id: ID,
-  name: 'Campervan',
+  name: 'Happy Camper',
   url: 'cars/campervan.glb',
   fit: 'auto',
   // Slightly game-scaled so the tall T2 body does not look oversized beside the Charger.
