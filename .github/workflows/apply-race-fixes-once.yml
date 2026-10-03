@@ -27,3 +27,5 @@ jobs:
           git add src/main.js src/soloRacePosition.js src/bootstrap.js src/version.js tests/recent-fixes.test.mjs
           git commit -m "Fix race result edge cases"
           git push
+
+# One-shot helper: it removes itself after a successful tested commit.
