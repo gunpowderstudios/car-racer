@@ -5,7 +5,7 @@
 // part of the game's behaviour.
 import './vehicleChoice.js?v=16.53';
 import './vehiclePhysicsProfiles.js?v=16.53';
-import './campervanVehicle.js?v=16.79';
+import './campervanVehicle.js?v=16.81';
 import './cameraChoice.js';
 import './cameraOrbit.js?v=16.69';
 import './menuVehicle.js';
@@ -13,9 +13,9 @@ import './derbyOffTrackRecovery.js?v=16.66';
 import './multiplayerTrackLock.js?v=16.28';
 import './raceSettings.js?v=16.45';
 import './aiDifficulty.js?v=16.45';
-import './multiplayerRace.js?v=16.72';
-import './soloRacePosition.js?v=16.80';
-import './raceCelebration.js?v=16.75';
+import './multiplayerRace.js?v=16.81';
+import './soloRacePosition.js?v=16.81';
+import './raceCelebration.js?v=16.81';
 import './roofDamage.js?v=16.55';
 import './roofFxGuard.js?v=16.59';
 import './hardLandingFix.js?v=16.56';
