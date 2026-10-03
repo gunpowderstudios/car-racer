@@ -12,6 +12,11 @@ def replace_once(path, old, new):
 
 replace_once(
     "src/main.js",
+    "let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps\n",
+    "let mpFinished = false;             // multiplayer only: has this player completed the selected race distance\n",
+)
+replace_once(
+    "src/main.js",
     "const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps\n",
     "const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length\n",
 )
@@ -19,6 +24,11 @@ replace_once(
     "src/main.js",
     "      if (net && !mpFinished && race.laps >= MP_RACE_LAPS) {\n",
     "      if (net && !mpFinished && idx >= mpRaceLaps()) {\n",
+)
+replace_once(
+    "src/main.js",
+    "          maxLap: net ? MP_RACE_LAPS : null, finished: mpFinished });\n",
+    "          maxLap: net ? mpRaceLaps() : null, finished: mpFinished });\n",
 )
 replace_once(
     "src/soloRacePosition.js",
@@ -51,6 +61,7 @@ const solo = readFileSync(new URL('../src/soloRacePosition.js', import.meta.url)
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \\(\\) =>/);
   assert.match(main, /idx >= mpRaceLaps\\(\\)/);
+  assert.match(main, /maxLap: net \\? mpRaceLaps\\(\\) : null/);
   assert.doesNotMatch(main, /MP_RACE_LAPS/);
 });
 
