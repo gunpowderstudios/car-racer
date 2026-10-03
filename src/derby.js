@@ -118,6 +118,7 @@ export class Derby {
     this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
+    this._replacementS = [];              // track positions of real rival wrecks waiting for a replacement
     this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
     this._ctx = { player: null, cars: [], barrels: null };
     this._q = Track.newQuery();
@@ -133,6 +134,7 @@ export class Derby {
     this.fighters.length = 0; this.events.length = 0;
     this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
+    this._replacementS.length = 0;
     const p = this.player = {
       id: 0, isPlayer: true, car: playerCar, health: new Health(SPECS.player.hp), spec: SPECS.player,
       wrecked: false, wreckT: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
@@ -145,7 +147,7 @@ export class Derby {
 
   /** Place rival `k` of `of` in a starting grid ahead of the player: a couple of cars per
    *  row, stationary, like a real race lineup. Only used for the initial field in `start()` -
-   *  a rival wrecked mid-race is replaced by `_spawn()`, which drops it in anywhere on the track. */
+   *  a rival wrecked mid-race is replaced by `_spawn()` near where that wreck happened. */
   _spawnGrid(k, of) {
     const T = this.track, P = this.player, L = T.length, rnd = this.rng;
     const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
@@ -178,10 +180,17 @@ export class Derby {
     const T = this.track, P = this.player, L = T.length, rnd = this.rng;
     const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
     const margin = Math.min(140, L * 0.18);
+    const replacementS = k < 0 && this._replacementS.length ? this._replacementS[0] : null;
     let s = 0, off = 0, ok = false;
     for (let t = 0; t < 14 && !ok; t++) {
-      s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)
-        : ps + margin + rnd() * (L - 2 * margin);
+      if (replacementS != null) {
+        // First choice is just beyond the wreck. If that road space is occupied, walk farther
+        // forward in small steps rather than teleporting the replacement elsewhere on the lap.
+        s = replacementS + 22 + t * 7 + (t ? (rnd() - 0.5) * 4 : 0);
+      } else {
+        s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)
+          : ps + margin + rnd() * (L - 2 * margin);
+      }
       s = ((s % L) + L) % L;
       const fr = T.frameAt(s);
       off = (rnd() - 0.5) * Math.max(2, fr.hw - 4) * 1.2;
@@ -193,6 +202,7 @@ export class Derby {
       }
     }
     if (!ok) return null;
+    if (replacementS != null) this._replacementS.shift();
     const car = new Vehicle();
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, driver.cruise * 0.85);
@@ -351,6 +361,10 @@ export class Derby {
     const c = f.car, rnd = this.rng;
     f.wrecked = true; f.wreckT = 0;
     c.refreshFrame();
+    if (!f.isPlayer) {
+      const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
+      if (Number.isFinite(wreckS)) this._replacementS.push(wreckS);
+    }
     this.events.push({ type: 'wreck', id: f.id, isPlayer: f.isPlayer, zone, x: c.pos.x, y: c.pos.y, z: c.pos.z, dist: this._dist(c.pos.x, c.pos.y, c.pos.z) });
     // the blast heaves the hulk into the air and sets it spinning
     c.vel.y += 4.5 + rnd() * 2.5;
