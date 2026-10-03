@@ -1,0 +1,58 @@
+name: rename vehicles once
+on:
+  push:
+    paths:
+      - '.github/workflows/rename-vehicles-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rename player-facing vehicles
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Missing expected text in {path}: {old!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_exact('src/vehicleChoice.js', "{ id: 'car', name: 'Charger',", "{ id: 'car', name: 'The Bruiser',")
+          replace_exact('src/vehicleChoice.js', "id: 'escort', name: 'Escort',", "id: 'escort', name: '70s Saloon',")
+          replace_exact('src/vehicleChoice.js', "id: 'motor-home', name: 'Hymer',", "id: 'motor-home', name: 'Motorhome',")
+          replace_exact('src/campervanVehicle.js', "name: 'Campervan',", "name: 'Happy Camper',")
+
+          replace_exact('src/bootstrap.js', "./vehicleChoice.js?v=16.53", "./vehicleChoice.js?v=16.83")
+          replace_exact('src/bootstrap.js', "./campervanVehicle.js?v=16.82", "./campervanVehicle.js?v=16.83")
+
+          p = Path('src/version.js')
+          text = p.read_text()
+          text = text.replace("export const VERSION = '16.82';", "export const VERSION = '16.83';", 1)
+          old_note = "export const NOTE = 'Campervan AI rivals now recolour only the original red lower body texture, keeping the classic cream/white roof, glass and trim unchanged';"
+          new_note = "export const NOTE = 'Vehicle dropdown names are now The Bruiser, 70s Saloon, Motorhome and Happy Camper while internal vehicle IDs remain unchanged';"
+          if old_note not in text:
+              raise SystemExit('Expected v16.82 note not found')
+          p.write_text(text.replace(old_note, new_note, 1))
+          PY
+      - name: Run tests
+        run: npm test
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm .github/workflows/rename-vehicles-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/vehicleChoice.js src/campervanVehicle.js src/bootstrap.js src/version.js .github/workflows/rename-vehicles-once.yml
+          git commit -m "Rename vehicle display names"
+          git push
