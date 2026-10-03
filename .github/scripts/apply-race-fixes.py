@@ -6,49 +6,49 @@ def replace_once(path, old, new):
     s = p.read_text()
     n = s.count(old)
     if n != 1:
-        raise SystemExit(f"{path}: expected exactly one match, found {n}")
+        raise SystemExit(f"{path}: expected exactly one match for {old!r}, found {n}")
     p.write_text(s.replace(old, new, 1))
 
 
 replace_once(
     "src/main.js",
-    "let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps\n",
-    "let mpFinished = false;             // multiplayer only: has this player completed the selected race distance\n",
+    "completed MP_RACE_LAPS laps",
+    "completed the selected race distance",
 )
 replace_once(
     "src/main.js",
-    "const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps\n",
-    "const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length\n",
+    "const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps",
+    "const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length",
 )
 replace_once(
     "src/main.js",
-    "      if (net && !mpFinished && race.laps >= MP_RACE_LAPS) {\n",
-    "      if (net && !mpFinished && idx >= mpRaceLaps()) {\n",
+    "if (net && !mpFinished && race.laps >= MP_RACE_LAPS)",
+    "if (net && !mpFinished && idx >= mpRaceLaps())",
 )
 replace_once(
     "src/main.js",
-    "          maxLap: net ? MP_RACE_LAPS : null, finished: mpFinished });\n",
-    "          maxLap: net ? mpRaceLaps() : null, finished: mpFinished });\n",
+    "maxLap: net ? MP_RACE_LAPS : null",
+    "maxLap: net ? mpRaceLaps() : null",
 )
 replace_once(
     "src/soloRacePosition.js",
-    "  return { player, rivals };\n",
-    "  return { player, rivals, total: startingRivalCount + 1 };\n",
+    "return { player, rivals };",
+    "return { player, rivals, total: startingRivalCount + 1 };",
 )
 replace_once(
     "src/soloRacePosition.js",
-    "  if (field && field.rivals.length > 0) {\n    let place = 1;\n    for (const p of field.rivals) if (p > field.player) place++;\n    const total = field.rivals.length + 1;\n    lastPlace = place;\n    lastTotal = total;\n    value.textContent = `${place} of ${total}`;\n    row.hidden = false;\n  } else {\n    row.hidden = true;\n  }\n",
-    "  if (field && field.total > 1) {\n    let place = 1;\n    for (const p of field.rivals) if (p > field.player) place++;\n    const total = field.total;\n    lastPlace = place;\n    lastTotal = total;\n    value.textContent = `${place} of ${total}`;\n    row.hidden = false;\n  } else {\n    row.hidden = true;\n  }\n",
+    "if (field && field.rivals.length > 0) {\n    let place = 1;\n    for (const p of field.rivals) if (p > field.player) place++;\n    const total = field.rivals.length + 1;",
+    "if (field && field.total > 1) {\n    let place = 1;\n    for (const p of field.rivals) if (p > field.player) place++;\n    const total = field.total;",
 )
 replace_once(
     "src/bootstrap.js",
-    "import './soloRacePosition.js?v=16.77';\n",
-    "import './soloRacePosition.js?v=16.80';\n",
+    "import './soloRacePosition.js?v=16.77';",
+    "import './soloRacePosition.js?v=16.80';",
 )
 replace_once(
     "src/version.js",
-    "export const VERSION = '16.79';\nexport const NOTE = 'Campervan has a lower effective centre of gravity and more roll inertia, making it much less prone to tipping over while keeping its tall van handling character';\n",
-    "export const VERSION = '16.80';\nexport const NOTE = 'Bug audit: solo race field size stays fixed when rivals wreck, and multiplayer finish banners use the selected 1-3 lap target without an off-by-one';\n",
+    "export const VERSION = '16.79';\nexport const NOTE = 'Campervan has a lower effective centre of gravity and more roll inertia, making it much less prone to tipping over while keeping its tall van handling character';",
+    "export const VERSION = '16.80';\nexport const NOTE = 'Bug audit: solo race field size stays fixed when rivals wreck, and multiplayer finish banners use the selected 1-3 lap target without an off-by-one';",
 )
 
 Path("tests/recent-fixes.test.mjs").write_text("""import test from 'node:test';
