@@ -94,7 +94,7 @@ function getSoloField(game) {
     const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
     if (Number.isFinite(s)) rivals.push(continuousRivalProgress(fighter, s, player, length));
   }
-  return { player, rivals };
+  return { player, rivals, total: startingRivalCount + 1 };
 }
 
 let finishShown = false;
@@ -132,10 +132,10 @@ function update() {
   }
 
   const field = getSoloField(game);
-  if (field && field.rivals.length > 0) {
+  if (field && field.total > 1) {
     let place = 1;
     for (const p of field.rivals) if (p > field.player) place++;
-    const total = field.rivals.length + 1;
+    const total = field.total;
     lastPlace = place;
     lastTotal = total;
     value.textContent = `${place} of ${total}`;

@@ -80,7 +80,7 @@ let mode = 'menu', track = null, def = null, hasPlayed = false;
 let net = null;                     // active Multiplayer session, or null in single-player
 const life = new Life();            // this player's health, being wrecked and respawning in multiplayer (see mplife.js)
 const mpBoomSeen = new Set();       // barrels (by prop index) already announced or heard about, so nothing echoes
-let mpFinished = false;             // multiplayer only: has this player completed MP_RACE_LAPS laps
+let mpFinished = false;             // multiplayer only: has this player completed the selected race distance
 let mpRaceStart = null;             // sim time the current multiplayer race began (lap 1 crossing)
 const remotePlayers = new Map();    // peer id -> {name, hue, view, prev, cur, recvAt, label}
 const mpViewPool = [];              // spare CarVisuals for remote players, kept apart from the AI-rival pool
@@ -297,7 +297,7 @@ function updateRace(dt) {
       const improved = race.best == null || t < race.best;
       if (improved) { race.best = t; const b = store.get('cr.best', {}); b[bestKey(track)] = t; store.set('cr.best', b); }
       race.lapStart = simTime; race.laps = idx + 1;
-      if (net && !mpFinished && race.laps >= MP_RACE_LAPS) {
+      if (net && !mpFinished && idx >= mpRaceLaps()) {
         mpFinished = true;
         hud.banner(`Finished! ${fmtTime(simTime - (mpRaceStart ?? simTime))}`, 3200);
       } else {
@@ -527,7 +527,7 @@ function frame(now) {
     chase.update(dt, drawPos, drawQ, velV, track);
     effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
-      maxLap: net ? MP_RACE_LAPS : null, finished: mpFinished });
+      maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
     if (derby.enabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
@@ -687,7 +687,7 @@ function bindMenu() {
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
 const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
-const MP_RACE_LAPS = 3;     // a multiplayer race is this many laps
+const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
 const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
