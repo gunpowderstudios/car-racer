@@ -23,8 +23,11 @@ const camper = {
     wheelbase: 2.40,
     track: 1.40,
     wheelRadius: 0.32,
-    mountY: 0.05,
-    inertia: { x: 3400, y: 3200, z: 1900 },
+    // A taller vehicle needs a lower effective centre of mass than the old 0.05 setting gave it.
+    // Raising the suspension mount relative to the body COM lowers the simulated COM without adding
+    // artificial tyre grip, so the van can still lean and slide but is much less eager to trip over.
+    mountY: 0.18,
+    inertia: { x: 3400, y: 3200, z: 2450 },
     susp: {
       free: 0.48, travel: 0.27,
       kFront: 30000, kRear: 32000,
