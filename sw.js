@@ -4,7 +4,7 @@
 //    replaced model shows up on the visit after next reload rather than never
 //  - three.js from the CDN: it is pinned to an exact version, so cache first
 // Anything else (multiplayer traffic, other sites, range requests) is left alone.
-const CACHE = 'car-racer-v1';
+const CACHE = 'car-racer-v2';
 const CODE = /\.(?:html|js|mjs|css|webmanifest|json)$/i;
 const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@';
 
@@ -19,7 +19,10 @@ self.addEventListener('activate', (e) => {
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(req);
+    // 'no-cache' = always check with the server (a cheap 304 if unchanged). Without it GitHub Pages' 10-minute browser cache can
+    // hand out an old copy of one script next to a new copy of another, and the game runs half old, half new after an update.
+    // (a page navigation can't be re-fetched with extra options, so it is rebuilt from its URL; scripts and styles are copied)
+    const res = await fetch(req.mode === 'navigate' ? new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : new Request(req, { cache: 'no-cache' }));
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch (err) {

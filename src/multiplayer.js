@@ -20,6 +20,8 @@ const STALE_PLAYER_MS = 5000;               // after the race starts, no state f
 const STALE_FIRST_MS = 25000;               // ...but a player who has not sent their first state yet is still loading the track - a slow phone can take a while
 let currentMultiplayer = null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** A version string from the network: short, plain characters only ('16.73'), or '' if missing. */
+const cleanVersion = (v) => (typeof v === 'string' ? v.replace(/[^0-9A-Za-z.\-]/g, '').slice(0, 12) : '');
 // PeerJS errors that only mean "the link to the matchmaking server dropped" - what happens to a phone's tab when you
 // switch to another app. Existing player-to-player connections are unaffected, so these are recoverable, not fatal.
 const BROKER_LOSS = new Set(['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected']);
@@ -167,7 +169,7 @@ export class Multiplayer {
         opened = true;
         this.peer = peer; this.isHost = true; this.selfId = id; this.roomCode = code;
         const hue = this._assignHue();
-        this.players.set(id, { id, name: myName, hue });
+        this.players.set(id, { id, name: myName, hue, v: this._myVersion() });
         peer.on('connection', (conn) => this._hostAcceptsGuest(conn));
         peer.on('disconnected', () => this._brokerLost(peer));
         this._startStaleWatch();
@@ -234,7 +236,7 @@ export class Multiplayer {
       else if (back && Date.now() - back.at < 120000 && !this.usedHues.has(back.hue)) { hue = back.hue; this.usedHues.add(hue); }
       else hue = this._assignHue();
       this._recentHue.delete(id);
-      this.players.set(id, { id, name: sanitizeName(msg.name), hue });
+      this.players.set(id, { id, name: sanitizeName(msg.name), hue, v: cleanVersion(msg.v) });
       this._broadcastLobby();
     } else if (msg.t === 'state') {
       this._gotState.add(id);
@@ -297,7 +299,7 @@ export class Multiplayer {
     const conn = this.peer.connect(PEER_PREFIX + this._guest.code, { reliable: true });
     if (!conn) return null;                                       // PeerJS gives nothing back while it is itself disconnected
     this._pendingConn = conn;
-    conn.on('open', () => { this.hostConn = conn; conn.send({ t: 'join', name: this._guest.name }); });
+    conn.on('open', () => { this.hostConn = conn; conn.send({ t: 'join', name: this._guest.name, v: this._myVersion() }); if (this._rejoining) this._onRejoinOpen(conn); });
     conn.on('data', (msg) => this._onGuestMessage(msg, onFirstLobby, onFail));
     conn.on('close', () => this._hostConnClosed(conn));
     conn.on('error', () => { if (onFail) onFail('Could not connect to that room.', false); });
@@ -334,6 +336,15 @@ export class Multiplayer {
     } else if (msg.t === 'bye') {
       this._hostBye = true;                                       // the host closed the room on purpose: do not wait for them to come back
     }
+  }
+
+  /** This game's version number (main.js supplies it; importing version.js here would be circular). Sent so the lobby can show who is on a different version. */
+  _myVersion() { return cleanVersion(this.h.version ? this.h.version() : ''); }
+
+  /** A new link to the host has just opened during a rejoin. Extensions that listened on the old link (the race results
+   *  listener in multiplayerRace.js) get re-attached here, and vehicleChoice.js wraps this to re-send the chosen car. */
+  _onRejoinOpen(conn) {
+    if (this._raceDataListener) conn.on('data', this._raceDataListener);
   }
 
   _hostConnClosed(conn) {

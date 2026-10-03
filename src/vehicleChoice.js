@@ -424,9 +424,9 @@ function wrapVehicleHandlers(net) {
 }
 
 const originalCreateRoom = Multiplayer.prototype.createRoom;
-Multiplayer.prototype.createRoom = async function patchedCreateRoom(name) {
+Multiplayer.prototype.createRoom = async function patchedCreateRoom(name, ...rest) {   // ...rest: createRoom(name, resumeCode) re-opens a saved room
   wrapVehicleHandlers(this);
-  const code = await originalCreateRoom.call(this, name);
+  const code = await originalCreateRoom.call(this, name, ...rest);
   const mine = this.players.get(this.selfId);
   if (mine) {
     mine.vehicleId = selectedVehicle().id;
@@ -444,6 +444,13 @@ Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name) {
     this.hostConn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
   }
   return joined;
+};
+
+// A guest who rejoined a lobby (the host's tab was paused or reloaded) tells the host which car they picked, as on first joining.
+const originalRejoinOpen = Multiplayer.prototype._onRejoinOpen;
+Multiplayer.prototype._onRejoinOpen = function patchedRejoinOpen(conn) {
+  originalRejoinOpen.call(this, conn);
+  conn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
 };
 
 const originalHostMessage = Multiplayer.prototype._onHostMessage;

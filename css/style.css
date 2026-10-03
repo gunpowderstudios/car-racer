@@ -371,3 +371,5 @@ html.chat-quick-only .chat-row { display: none; }
   html.mp-on body.mode-drive #chat-btn { right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 38px; height: 38px; padding: 7px; }
   html.mp-on body.mode-drive #chat-feed { left: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 232px); max-width: 66vw; font-size: 15px; }
 }
+
+.mp-old-tag { margin-left: 8px; color: var(--red); font-size: 13px; font-weight: 600; }

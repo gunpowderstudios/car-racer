@@ -16,6 +16,7 @@ async function until(fn, ms = 1500, what = 'condition') {
   while (!fn()) { if (Date.now() - t0 > ms) assert.fail('timed out waiting for ' + what); await wait(5); }
 }
 
+const ver = {};                                      // per-test: which version each fake game reports
 function world() {
   const broker = new Broker();
   window.Peer = makePeerClass(broker);
@@ -29,6 +30,7 @@ function world() {
       onError: (m) => rec.errors.push(m),
       onStatus: (m) => rec.status.push(m),
       onChat: (id, m) => rec.chats.push({ id, ...m }),
+      version: () => ver[name] ?? '1.0',
     });
     mp.reconnectDelayMs = 10; mp.rejoinDelayMs = 20; mp.rejoinMs = 600;
     ALL.push(mp);
@@ -218,4 +220,23 @@ test('after the race starts a guest still loading the track (no state yet) is no
   await wait(1200);                                                  // the watchdog ticks once a second
   assert.ok(h.mp.players.has(a.mp.selfId), 'Sam is still loading: kept');
   assert.ok(!h.mp.players.has(b.mp.selfId), 'Kit played, then 6 s of silence: gone');
+});
+
+test('the lobby carries each player\'s game version, so a player on a different version can be spotted', async () => {
+  const w = world(), h = w.make('H'), a = w.make('A'), b = w.make('B');
+  ver.H = '16.73'; ver.A = '16.73'; ver.B = '16.72';
+  const code = await h.mp.createRoom('Tim');
+  await a.mp.joinRoom(code, 'Sam'); await b.mp.joinRoom(code, 'Kit');
+  await until(() => lastLobby(a.rec).length === 3);
+  const seen = [...a.mp.players.values()].map((p) => `${p.name}:${p.v}`).sort();
+  assert.deepEqual(seen, ['Kit:16.72', 'Sam:16.73', 'Tim:16.73']);
+  // a guest whose game is too old to report a version, or sends junk, shows up with none rather than breaking anything
+  a.mp.hostConn.send({ t: 'join', name: 'Sam', v: '<img src=x onerror=1>' + 'x'.repeat(50) });
+  await wait(40);
+  const v = h.mp.players.get(a.mp.selfId).v;
+  assert.ok(v.length <= 12 && !/[<>=\s]/.test(v), 'version text is cleaned: ' + v);
+  a.mp.hostConn.send({ t: 'join', name: 'Sam' });
+  await wait(40);
+  assert.equal(h.mp.players.get(a.mp.selfId).v, '');
+  delete ver.H; delete ver.A; delete ver.B;
 });

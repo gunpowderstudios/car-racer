@@ -21,6 +21,7 @@ import { EditorPreview } from './editorPreview.js';
 import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
 import { createChatUI } from './mpChat.js';
+import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -807,11 +808,17 @@ function mpShow(id) {
 function mpErr(id, msg) { const el = $(id); el.textContent = msg; el.hidden = false; }
 function mpRenderLobby(players, hostId) {
   const ul = $('mp-players'); ul.innerHTML = '';
+  let differs = false;
   for (const p of players) {
     const li = document.createElement('li'); li.textContent = p.name;
     if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
+    if (p.v !== VERSION) {                                   // a different (or, for older games, unreported) version: chat and newer features may not work for them
+      const old = document.createElement('span'); old.className = 'mp-old-tag'; old.textContent = p.v ? `(v${p.v})` : '(older version)'; li.appendChild(old);
+      differs = true;
+    }
     ul.appendChild(li);
   }
+  $('mp-version-warning').hidden = !differs;
   if (net) {
     $('mp-start').hidden = !net.isHost;
     $('mp-start').disabled = players.length < 2;
@@ -878,6 +885,7 @@ function mpShowBubble(id, text) {
 }
 
 const mpHandlers = {
+  version: () => VERSION,                                      // read when joining, not at load: version.js is still loading when this file runs
   onChat: (id, m) => chatUI.receive(id, m),
   onStatus: (text) => mpStatus(text),
   onLobby: (players, hostId) => mpRenderLobby(players, hostId),
