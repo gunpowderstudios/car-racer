@@ -126,12 +126,34 @@ addOption(document.getElementById('mp-join-vehicle'));
 
 applyCamperPhysics();
 
+// The Campervan texture does not shift colour strongly enough with the generic hue rotation.
+// Multiply its textured materials by the rival tint, as we do for the pale Motor Home, so the
+// AI grid is clearly yellow/green/teal/blue/violet/pink/grey while transparent glass stays neutral.
+function tintCampervan(view, look) {
+  if (view.vehicleId !== ID || !look?.tint) return;
+  for (const m of view.mats || []) {
+    if (!m || m.transparent || m.opacity < 0.98) continue;
+    m.color.set(look.tint);
+    m.userData.base = m.color.clone();
+    m.needsUpdate = true;
+  }
+  view._lookKey = -1;
+}
+
+const previousApplyOwnLook = CarVisual.prototype._applyOwnLook;
+CarVisual.prototype._applyOwnLook = function campervanApplyOwnLook() {
+  previousApplyOwnLook.call(this);
+  tintCampervan(this, this._ownLook);
+};
+
 // Solo rivals normally adopt/clone the player's visual. For Campervan, do not depend on the
 // source visual's timing-sensitive vehicleId at all: each rival explicitly loads the Campervan
 // config. The GLB request itself is browser-cached, so this is deterministic without repeated downloads.
 const previousAdopt = CarVisual.prototype.adopt;
 CarVisual.prototype.adopt = function campervanAdopt(src, look) {
-  if (selectedId() === ID) {
+  // In solo the rival look has no vehicleId. In multiplayer, respect another player's explicitly
+  // selected vehicle instead of forcing every remote player to be a Campervan just because we are.
+  if (selectedId() === ID && (!look?.vehicleId || look.vehicleId === ID)) {
     if (this.loaded && this.vehicleId === ID) return true;
     if (!this._campervanSoloLoading) {
       this._campervanSoloLoading = true;
