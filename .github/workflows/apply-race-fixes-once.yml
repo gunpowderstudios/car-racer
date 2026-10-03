@@ -28,4 +28,4 @@ jobs:
           git commit -m "Fix race result edge cases"
           git push
 
-# One-shot helper: it removes itself after a successful tested commit.
+# One-shot helper: it removes itself after a successful tested commit. Retry after whitespace-safe matching.
