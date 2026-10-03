@@ -8,7 +8,7 @@ import { Multiplayer } from './multiplayer.js';
 // `physics` is deliberately optional: the normal car continues to use the original,
 // known-good CAR object unchanged.
 export const VEHICLES = [
-  { id: 'car', name: 'The Bruiser', url: 'cars/car-shrink.glb', fit: 'measured' },
+  { id: 'car', name: 'Mr Muscle', url: 'cars/car-shrink.glb', fit: 'measured' },
   {
     id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb',
     fit: 'auto', targetLength: 4.05,
