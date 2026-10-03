@@ -16,10 +16,50 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply patch
+      - name: Apply source changes
         run: |
-          git apply --check replacement-near-wreck-v16.78.patch
-          git apply replacement-near-wreck-v16.78.patch
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/derby.js')
+          s = p.read_text()
+
+          old = "    this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;\n    this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };"
+          new = "    this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;\n    this._replacementS = [];              // track positions of real rival wrecks waiting for a replacement\n    this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };"
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = "    this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;\n    const p = this.player = {"
+          new = "    this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;\n    this._replacementS.length = 0;\n    const p = this.player = {"
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          s = s.replace("   *  a rival wrecked mid-race is replaced by `_spawn()`, which drops it in anywhere on the track. */",
+                        "   *  a rival wrecked mid-race is replaced by `_spawn()` near where that wreck happened. */", 1)
+
+          old = """    const margin = Math.min(140, L * 0.18);\n    let s = 0, off = 0, ok = false;\n    for (let t = 0; t < 14 && !ok; t++) {\n      s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)\n        : ps + margin + rnd() * (L - 2 * margin);\n      s = ((s % L) + L) % L;"""
+          new = """    const margin = Math.min(140, L * 0.18);\n    const replacementS = k < 0 && this._replacementS.length ? this._replacementS[0] : null;\n    let s = 0, off = 0, ok = false;\n    for (let t = 0; t < 14 && !ok; t++) {\n      if (replacementS != null) {\n        // First choice is just beyond the wreck. If that road space is occupied, walk farther\n        // forward in small steps rather than teleporting the replacement elsewhere on the lap.\n        s = replacementS + 22 + t * 7 + (t ? (rnd() - 0.5) * 4 : 0);\n      } else {\n        s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)\n          : ps + margin + rnd() * (L - 2 * margin);\n      }\n      s = ((s % L) + L) % L;"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = "    if (!ok) return null;\n    const car = new Vehicle();"
+          new = "    if (!ok) return null;\n    if (replacementS != null) this._replacementS.shift();\n    const car = new Vehicle();"
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = "    f.wrecked = true; f.wreckT = 0;\n    c.refreshFrame();\n    this.events.push({ type: 'wreck', id: f.id, isPlayer: f.isPlayer, zone, x: c.pos.x, y: c.pos.y, z: c.pos.z, dist: this._dist(c.pos.x, c.pos.y, c.pos.z) });"
+          new = "    f.wrecked = true; f.wreckT = 0;\n    c.refreshFrame();\n    if (!f.isPlayer) {\n      const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);\n      if (Number.isFinite(wreckS)) this._replacementS.push(wreckS);\n    }\n    this.events.push({ type: 'wreck', id: f.id, isPlayer: f.isPlayer, zone, x: c.pos.x, y: c.pos.y, z: c.pos.z, dist: this._dist(c.pos.x, c.pos.y, c.pos.z) });"
+          assert old in s
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('src/version.js')
+          s = p.read_text()
+          old = "export const VERSION = '16.77';\nexport const NOTE = 'Solo race standings now ignore mid-race replacement cars, so a newly spawned derby rival cannot appear ahead and steal your finishing position';"
+          new = "export const VERSION = '16.78';\nexport const NOTE = 'Wrecked rivals now respawn near their wreck position, normally about 22 metres farther along the track, instead of appearing at a random point on the circuit';"
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Run tests
         run: npm test
       - name: Commit result and remove helper files
