@@ -49,11 +49,33 @@ function ensurePositionRow() {
   return { row, value: document.getElementById('hud-race-position-value'), finish };
 }
 
-function unwrapNear(s, playerProgress, length) {
-  let u = Math.floor(playerProgress / length) * length + s;
-  while (u - playerProgress > length / 2) u -= length;
-  while (playerProgress - u > length / 2) u += length;
+function unwrapNear(s, reference, length) {
+  let u = Math.floor(reference / length) * length + s;
+  while (u - reference > length / 2) u -= length;
+  while (reference - u > length / 2) u += length;
   return u;
+}
+
+// Each rival keeps its own continuous progress. Re-guessing a rival's lap relative to the
+// player every frame makes cars behind the start/finish line jump onto the next lap as the
+// player approaches the line, which can incorrectly turn 1st place into 2nd at the finish.
+const rivalProgress = new WeakMap();
+function continuousRivalProgress(fighter, s, playerProgress, length) {
+  let state = rivalProgress.get(fighter);
+  if (!state) {
+    state = { s, unwrapped: unwrapNear(s, playerProgress, length) };
+    rivalProgress.set(fighter, state);
+    return state.unwrapped;
+  }
+
+  let d = s - state.s;
+  if (d < -length / 2) d += length;
+  if (d > length / 2) d -= length;
+  // Match the player's race tracker: ignore implausibly large one-frame jumps caused by
+  // a respawn/teleport, but keep ordinary forward and backward movement continuous.
+  if (Math.abs(d) < 60) state.unwrapped += d;
+  state.s = s;
+  return state.unwrapped;
 }
 
 function getSoloField(game) {
@@ -68,7 +90,7 @@ function getSoloField(game) {
     if (!fighter || fighter.gone || fighter.wrecked || !fighter.car) continue;
     const c = fighter.car;
     const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
-    if (Number.isFinite(s)) rivals.push(unwrapNear(s, player, length));
+    if (Number.isFinite(s)) rivals.push(continuousRivalProgress(fighter, s, player, length));
   }
   return { player, rivals };
 }
