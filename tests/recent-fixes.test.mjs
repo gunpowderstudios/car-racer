@@ -29,8 +29,10 @@ test('all local race finishes use the shared large finish overlay', () => {
   assert.match(celebration, /race-finish-active #dmg-card/);
 });
 
-test('campervan rivals get a strong explicit colour tint', () => {
-  assert.match(camper, /function tintCampervan/);
-  assert.match(camper, /m\.color\.set\(look\.tint\)/);
-  assert.match(camper, /this\.vehicleId === ID/);
+test('campervan rivals recolour only the original red body texture', () => {
+  assert.match(camper, /function recolourCamperBodyTexture/);
+  assert.match(camper, /dominance = r - Math\.max\(g, b\)/);
+  assert.match(camper, /r < g \* 1\.12/);
+  assert.match(camper, /m\.map = tex/);
+  assert.doesNotMatch(camper, /m\.color\.set\(look\.tint\)/);
 });
