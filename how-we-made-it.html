@@ -125,6 +125,7 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const wrap = document.getElementById('muscle-car-viewer');
 const canvas = document.getElementById('muscle-car-canvas');
@@ -149,7 +150,7 @@ try {
   const holder = new THREE.Group();
   scene.add(holder);
 
-  const gltf = await new GLTFLoader().loadAsync('cars/car-shrink.glb');
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('cars/car-shrink.glb');
   const model = gltf.scene;
   holder.add(model);
 
