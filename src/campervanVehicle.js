@@ -12,7 +12,7 @@ const KEY = 'cr.vehicle';
 const camper = {
   id: ID,
   name: 'Happy Camper',
-  url: 'cars/campervan.glb',
+  url: 'cars/campervan-shrink.glb',
   fit: 'auto',
   // Slightly game-scaled so the tall T2 body does not look oversized beside the Charger.
   targetLength: 4.05,
