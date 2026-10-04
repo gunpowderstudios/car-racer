@@ -139,6 +139,7 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { assetUrl } from './src/assetVersion.js';
 
 const wrap = document.getElementById('muscle-car-viewer');
 const canvas = document.getElementById('muscle-car-canvas');
@@ -203,7 +204,7 @@ try {
   };
 
   const getModel = async (car) => {
-    if (!cache.has(car.url)) cache.set(car.url, loader.loadAsync(car.url));
+    if (!cache.has(car.url)) cache.set(car.url, loader.loadAsync(assetUrl(car.url)));
     const gltf = await cache.get(car.url);
     return gltf.scene.clone(true);
   };
