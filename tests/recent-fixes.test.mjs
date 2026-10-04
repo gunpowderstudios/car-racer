@@ -169,3 +169,10 @@ test('development story recommends a structured changelog for AI-assisted develo
   assert.match(howMade, /known issues/i);
   assert.match(howMade, /Claude, ChatGPT/);
 });
+
+
+test('auto-fitted vehicles ground their visible model at suspension rest height', () => {
+  assert.match(vehicleChoice, /const restHeight = restHeightForVehicle\(config\);/);
+  assert.match(vehicleChoice, /model\.position\.y \+= -restHeight - box\.min\.y/);
+  assert.doesNotMatch(vehicleChoice, /Number\.isFinite\(bodyBottom\) \? bodyBottom/);
+});
