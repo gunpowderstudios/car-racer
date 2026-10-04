@@ -99,3 +99,10 @@ test('zero key resets the track editor 3D view', () => {
   assert.match(editor, /e\.key === '0'.*resetView/);
   assert.match(indexHtml, /<b>0<\/b> resets the 3D view/);
 });
+
+
+test('development page loads compressed GLB with Meshopt', () => {
+  assert.match(howMade, /MeshoptDecoder/);
+  assert.match(howMade, /setMeshoptDecoder\(MeshoptDecoder\)/);
+  assert.match(howMade, /cars\/car-shrink\.glb/);
+});
