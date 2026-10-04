@@ -12,6 +12,8 @@ const vehicleProfiles = readFileSync(new URL('../src/vehiclePhysicsProfiles.js',
 const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const howMade = readFileSync(new URL('../how-we-made-it.html', import.meta.url), 'utf8');
+const editor = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
+const editorPreview = readFileSync(new URL('../src/editorPreview.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -85,4 +87,15 @@ test('development page has an interactive Mr Muscle viewer and visible yellow fo
   assert.match(howMade, /pointerdown/);
   assert.match(indexHtml, /How we made this game<\/a> &middot;/);
   assert.match(indexHtml, /style="color:#ffb31f">View the source on GitHub/);
+});
+
+
+test('zero key resets the track editor 3D view', () => {
+  assert.match(editorPreview, /resetView\(\) \{/);
+  assert.match(editorPreview, /this\.yaw = 0\.6/);
+  assert.match(editorPreview, /this\.pitch = 0\.5/);
+  assert.match(editorPreview, /this\.zoom = 1/);
+  assert.match(editorPreview, /dblclick', \(\) => this\.resetView\(\)/);
+  assert.match(editor, /e\.key === '0'.*resetView/);
+  assert.match(indexHtml, /<b>0<\/b> resets the 3D view/);
 });
