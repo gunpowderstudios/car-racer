@@ -66,14 +66,15 @@ test('random circuits scatter more barrels and chickens', () => {
 });
 
 
-test('German Beema keeps local paint and recolours only adopted AI or remote views', () => {
+test('German Beema keeps local paint and loads clean independently-coloured rival copies', () => {
   assert.match(vehicleChoice, /function recolourBmwPaintTexture/);
   assert.match(vehicleChoice, /const colourVariant = view\._bmwColourVariant === true/);
-  assert.match(vehicleChoice, /colourVariant && look && !isBmwDetailMaterial/);
-  assert.match(vehicleChoice, /this\._bmwColourVariant = this\.vehicleId === 'bmw'/);
-  assert.match(vehicleChoice, /this\._bmwColourVariant = wanted\.id === 'bmw'/);
+  assert.match(vehicleChoice, /if \(wanted\.id === 'bmw' && look\)/);
+  assert.match(vehicleChoice, /this\.load\(wanted\.url, wanted\)/);
+  assert.match(vehicleChoice, /this\._bmwColourVariant = true/);
+  assert.match(vehicleChoice, /this\.setOwnLook\(look\)/);
   assert.match(vehicleChoice, /if \(config\.id === 'bmw'\) this\._bmwColourVariant = false/);
-  assert.doesNotMatch(vehicleChoice, /view\.setPaint\?\.\(look\.tint\)/);
+  assert.doesNotMatch(vehicleChoice, /applyBmwLook\(this, look, src\)/);
 });
 
 
