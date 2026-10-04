@@ -197,8 +197,8 @@ function buildRandomTrack(seed) {
       props.push({ type, x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
     }
   };
-  scatter('barrel', 3 + Math.floor(rnd() * 6));
-  scatter('chicken', 2 + Math.floor(rnd() * 5));
+  scatter('barrel', 6 + Math.floor(rnd() * 7));   // 6-12 drums: enough to make random races lively
+  scatter('chicken', 4 + Math.floor(rnd() * 6));  // 4-9 chickens scattered around the circuit
 
   return normalizeTrack({ ...def, props });
 }
