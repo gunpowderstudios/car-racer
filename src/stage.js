@@ -56,6 +56,8 @@ export class Stage {
     const gm = new THREE.MeshStandardMaterial({ map: grassTexture(aniso), roughness: 1, metalness: 0 });
     this.ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), gm);
     this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = true;
+    this.groundLevel = -0.35; // keep grass safely below low/banked road edges to prevent z-fighting
+    this.ground.position.y = this.groundLevel;
     this.scene.add(this.ground);
 
     this.trackGroup = null;
@@ -69,7 +71,7 @@ export class Stage {
     this.sun.position.copy(focus).add(this.sunOffset);
     this.sun.target.position.copy(focus);
     this.sky.position.copy(camPos);
-    this.ground.position.set(camPos.x, 0, camPos.z);
+    this.ground.position.set(camPos.x, this.groundLevel, camPos.z);
     const t = this.ground.material.map;
     // keep the grass pattern fixed in world space while the plane follows the camera
     t.offset.set(camPos.x / 9000 * 400, -camPos.z / 9000 * 400);
