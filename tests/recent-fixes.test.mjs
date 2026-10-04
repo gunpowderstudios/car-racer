@@ -56,3 +56,12 @@ test('random circuits scatter more barrels and chickens', () => {
   assert.match(templates, /scatter\('barrel', 6 \+ Math\.floor\(rnd\(\) \* 7\)\)/);
   assert.match(templates, /scatter\('chicken', 4 \+ Math\.floor\(rnd\(\) \* 6\)\)/);
 });
+
+
+test('German Beema rivals receive a strong colour tint while obvious trim stays neutral', () => {
+  assert.match(vehicleChoice, /function tintStrongVehicle/);
+  assert.match(vehicleChoice, /view\.vehicleId !== 'motor-home' && view\.vehicleId !== 'bmw'/);
+  assert.match(vehicleChoice, /glass\|window\|windscreen/);
+  assert.match(vehicleChoice, /m\.color\.set\(look\.tint\)/);
+  assert.match(vehicleChoice, /tintStrongVehicle\(this, look\)/);
+});
