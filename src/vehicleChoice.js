@@ -523,6 +523,28 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
 const originalAdopt = CarVisual.prototype.adopt;
 CarVisual.prototype.adopt = function patchedAdopt(src, look) {
   const wanted = vehicleById(look?.vehicleId || src.vehicleId || fallback.id);
+
+  // BMW rivals/remotes must start from a clean GLB, not from the already-recoloured clone path.
+  // This keeps the local player's real dark paint untouched and gives every rival its own colour.
+  if (wanted.id === 'bmw' && look) {
+    if (this.loaded && this.vehicleId === 'bmw') {
+      this._bmwColourVariant = true;
+      this.setOwnLook(look);
+      return true;
+    }
+    if (!this._bmwLoading) {
+      this._bmwLoading = true;
+      this.load(wanted.url, wanted)
+        .then(() => {
+          this.vehicleId = 'bmw';
+          this._bmwColourVariant = true;
+          this.setOwnLook(look);
+        })
+        .catch((e) => console.warn('Could not load German Beema rival.', e))
+        .finally(() => { this._bmwLoading = false; });
+    }
+    return false;
+  }
   if (wanted.id !== (src.vehicleId || fallback.id)) {
     if (this.loaded && this.vehicleId === wanted.id) return true;
     if (!this._vehicleLoading) {
@@ -541,8 +563,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
   const ok = originalAdopt.call(this, src, look);
   if (!ok) return ok;
   this.vehicleId = src.vehicleId;
-  this._bmwColourVariant = this.vehicleId === 'bmw';
-  if (!applyBmwLook(this, look, src)) tintMotorHome(this, look);
+  tintMotorHome(this, look);
   return ok;
 };
 
