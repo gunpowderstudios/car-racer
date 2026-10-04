@@ -364,6 +364,7 @@ function recolourBmwPaintTexture(source, look) {
 
 function applyBmwLook(view, look, sourceView = null) {
   if (view.vehicleId !== 'bmw') return false;
+  const colourVariant = view._bmwColourVariant === true;
   const sourceMats = sourceView?.mats || null;
 
   for (let i = 0; i < (view.mats || []).length; i++) {
@@ -383,7 +384,7 @@ function applyBmwLook(view, look, sourceView = null) {
     m.map = base.map;
     m.color.copy(base.color);
 
-    if (look && !isBmwDetailMaterial(m)) {
+    if (colourVariant && look && !isBmwDetailMaterial(m)) {
       if (base.map) {
         const tex = recolourBmwPaintTexture(base.map, look);
         if (tex) m.map = tex;
@@ -396,8 +397,12 @@ function applyBmwLook(view, look, sourceView = null) {
     m.needsUpdate = true;
   }
 
-  // Keep the simple far-distance proxy colour-coded too.
-  if (look) view.setPaint?.(look.tint);
+  // Keep the simple far-distance proxy colour-coded without calling setPaint(), which would
+  // re-enter _applyOwnLook. The player's own BMW is deliberately left in its original paint.
+  if (colourVariant && look && view.material) {
+    view.material.color.set(look.tint);
+    view.material.userData.base = view.material.color.clone();
+  }
   view._lookKey = -1;
   return true;
 }
@@ -425,7 +430,11 @@ CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
 const originalLoad = CarVisual.prototype.load;
 CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig) {
   const config = explicitConfig || (url ? VEHICLES.find((v) => v.url === url) || null : selectedVehicle());
-  if (config) this.vehicleId = config.id;
+  if (config) {
+    this.vehicleId = config.id;
+    // A directly loaded BMW is the local/player car unless an adopt path marks this visual as remote afterwards.
+    if (config.id === 'bmw') this._bmwColourVariant = false;
+  }
 
   // Size the temporary loading car roughly like the selected vehicle so the player never starts
   // a race with an apparently empty track while a larger GLB is still downloading/decoding.
@@ -520,6 +529,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
       this._vehicleLoading = true;
       this.load(wanted.url, wanted)
         .then(() => {
+          this._bmwColourVariant = wanted.id === 'bmw';
           if (look) this.setOwnLook(look);
         })
         .catch((e) => console.warn('Could not load remote player vehicle.', e))
@@ -531,6 +541,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
   const ok = originalAdopt.call(this, src, look);
   if (!ok) return ok;
   this.vehicleId = src.vehicleId;
+  this._bmwColourVariant = this.vehicleId === 'bmw';
   if (!applyBmwLook(this, look, src)) tintMotorHome(this, look);
   return ok;
 };
