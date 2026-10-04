@@ -130,6 +130,8 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
   <section class="note">
     <h2>What we learned</h2>
     <p>You do not need to begin with a giant design document or a finished 3D pipeline. Start with one thing that works, put it in front of people, laugh at what breaks, fix it, and then add the next thing. GitHub gave us somewhere to keep the project, browser technology meant anyone could try it, and AI helped us move quickly between an idea and something playable.</p>
+    <p>One thing we would strongly recommend is keeping a proper <strong>CHANGELOG.md</strong> from the start. Give every release its own section — for example <strong>v2.25, v2.24, v2.23...</strong> — and write down the things that are easy to forget later: the current version, which core engine version is still underneath it, the architecture you are using, which files or systems should <em>not</em> be overwritten, the version-bump rule, and any known issues that are still open.</p>
+    <p>This becomes especially useful when working with more than one AI coding assistant. You can tell Claude, ChatGPT or another assistant to read the changelog first, compare what each one suggests, and use them to challenge each other's assumptions when fixing bugs. It gives every assistant the same project memory instead of making each new session rediscover how the game works.</p>
     <p class="signoff"><strong>Happy gaming—and drive safely.</strong><br>Tim Sharville<br>Gunpowder Studios</p>
     <p class="small">Bangers and Smash! is an independent experimental browser game. References to other games and vehicles here describe our inspirations and development process; they are not affiliations or endorsements.</p>
   </section>
