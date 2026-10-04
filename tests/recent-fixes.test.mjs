@@ -7,6 +7,8 @@ const solo = readFileSync(new URL('../src/soloRacePosition.js', import.meta.url)
 const multiplayer = readFileSync(new URL('../src/multiplayerRace.js', import.meta.url), 'utf8');
 const celebration = readFileSync(new URL('../src/raceCelebration.js', import.meta.url), 'utf8');
 const camper = readFileSync(new URL('../src/campervanVehicle.js', import.meta.url), 'utf8');
+const vehicleChoice = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+const vehicleProfiles = readFileSync(new URL('../src/vehiclePhysicsProfiles.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -35,4 +37,15 @@ test('campervan rivals recolour only the original red body texture', () => {
   assert.match(camper, /r < g \* 1\.12/);
   assert.match(camper, /m\.map = tex/);
   assert.doesNotMatch(camper, /m\.color\.set\(look\.tint\)/);
+});
+
+
+test('German Beema is available with its own size and handling profile', () => {
+  assert.match(vehicleChoice, /id: 'bmw', name: 'German Beema', url: 'cars\/bmw-shrink\.glb'/);
+  assert.match(vehicleChoice, /targetLength: 4\.33/);
+  assert.match(vehicleChoice, /wheelbase: 2\.57/);
+  assert.match(vehicleChoice, /body: \{ width: 1\.65, length: 4\.33/);
+  assert.match(vehicleProfiles, /bmw: \{/);
+  assert.match(vehicleProfiles, /mass: 1080/);
+  assert.match(vehicleProfiles, /peakTorque: 190/);
 });
