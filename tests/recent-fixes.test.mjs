@@ -66,14 +66,14 @@ test('random circuits scatter more barrels and chickens', () => {
 });
 
 
-test('German Beema rivals recolour dark body paint while obvious trim stays neutral', () => {
+test('German Beema keeps local paint and recolours only adopted AI or remote views', () => {
   assert.match(vehicleChoice, /function recolourBmwPaintTexture/);
-  assert.match(vehicleChoice, /function applyBmwLook/);
-  assert.match(vehicleChoice, /luma < 18 \|\| luma > 150 \|\| sat > 58/);
-  assert.match(vehicleChoice, /glass\|window\|windscreen/);
-  assert.match(vehicleChoice, /if \(applyBmwLook\(this, this\._ownLook\)\) return/);
-  assert.match(vehicleChoice, /applyBmwLook\(this, look, src\)/);
-  assert.doesNotMatch(vehicleChoice, /function tintStrongVehicle/);
+  assert.match(vehicleChoice, /const colourVariant = view\._bmwColourVariant === true/);
+  assert.match(vehicleChoice, /colourVariant && look && !isBmwDetailMaterial/);
+  assert.match(vehicleChoice, /this\._bmwColourVariant = this\.vehicleId === 'bmw'/);
+  assert.match(vehicleChoice, /this\._bmwColourVariant = wanted\.id === 'bmw'/);
+  assert.match(vehicleChoice, /if \(config\.id === 'bmw'\) this\._bmwColourVariant = false/);
+  assert.doesNotMatch(vehicleChoice, /view\.setPaint\?\.\(look\.tint\)/);
 });
 
 
