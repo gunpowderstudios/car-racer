@@ -110,9 +110,13 @@ function showFinish(place, total) {
   title.textContent = place === 1 ? 'You won!' : `Finished ${ordinal(place)}`;
   sub.textContent = place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`;
   box.hidden = false;
-  if (place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail: { mode: 'solo', place, laps: raceLaps() } }));
+
+  const detail = { mode: 'solo', place, total, laps: raceLaps() };
+  window.dispatchEvent(new CustomEvent('carracer-player-finish', { detail }));
+  if (place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail }));
+
   clearTimeout(finishTimer);
-  finishTimer = setTimeout(() => { box.hidden = true; }, place === 1 ? 4500 : 3200);
+  finishTimer = setTimeout(() => { box.hidden = true; }, 4500);
 }
 
 function update() {
