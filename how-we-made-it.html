@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How we made Bangers and Smash! – Gunpowder Studios</title>
+<meta name="description" content="How Gunpowder Studios made Bangers and Smash! in the browser using GitHub, AI, Meshy, SHRINK3D, playtesting, multiplayer and a track editor.">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#1b1233">
+<link rel="canonical" href="https://gunpowderstudios.github.io/car-racer/how-we-made-it.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#f6d9b0; --dim:#c6ae91; --amber:#ffb31f; --red:#ef4938;
+  --violet:#2a1d4a; --deep:#1b1233; --panel:#24183f;
+}
+*{box-sizing:border-box}
+html{background:var(--deep)}
+body{
+  margin:0; color:var(--ink); background:
+  radial-gradient(circle at 80% 0%,rgba(239,73,56,.19),transparent 28rem),
+  linear-gradient(180deg,#311938 0,#1b1233 42rem);
+  font-family:Barlow,Arial,sans-serif; line-height:1.65;
+}
+a{color:var(--amber)}
+.wrap{width:min(900px,calc(100% - 34px));margin:0 auto;padding:30px 0 70px}
+.back{display:inline-block;margin:0 0 34px;text-decoration:none;font-family:"Barlow Condensed",sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.hero{border-left:7px solid var(--red);padding:5px 0 7px 22px;margin-bottom:38px}
+.eyebrow{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.18em;color:var(--amber);font-weight:600}
+h1{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:clamp(52px,10vw,96px);line-height:.86;text-transform:uppercase;margin:8px 0 16px;color:var(--amber)}
+.intro{font-size:clamp(18px,3vw,23px);max-width:720px;margin:0;color:#f7e3c7}
+.steps{counter-reset:build;display:grid;gap:18px}
+.step{counter-increment:build;background:rgba(42,29,74,.8);border-top:3px solid rgba(255,179,31,.65);padding:22px 24px 24px;position:relative}
+.step:before{content:counter(build,decimal-leading-zero);font-family:"Big Shoulders Display",Impact,sans-serif;font-size:48px;font-weight:900;line-height:1;color:var(--red);display:block;margin-bottom:4px}
+h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-height:1;text-transform:uppercase;color:var(--amber);margin:0 0 10px}
+.step p{margin:0;font-size:18px}
+.note{margin-top:34px;padding:24px;border:2px dashed rgba(246,217,176,.32);background:rgba(18,11,32,.42)}
+.note h2{font-size:40px}
+.signoff{font-size:19px;margin:20px 0 0}
+.small{color:var(--dim);font-size:15px}
+@media(max-width:600px){.wrap{padding-top:20px}.step{padding:18px}.hero{padding-left:16px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="./">&larr; Back to Bangers and Smash!</a>
+
+  <header class="hero">
+    <div class="eyebrow">Gunpowder Studios &middot; Dev diary</div>
+    <h1>How we made Bangers and Smash!</h1>
+    <p class="intro">Partly a guide for anyone who wants to try making a browser game, and partly a notebook so I remember how we did it.</p>
+  </header>
+
+  <section class="steps" aria-label="How the game was made">
+    <article class="step">
+      <h2>Start simple</h2>
+      <p>We started with a basic GitHub repository and asked AI to help us create a simple driving game inspired by the games we loved: <em>Stunt Car Racer</em>, <em>Driver</em> and the crash-heavy spirit of <em>Wreckfest</em>. The important rule from the start was that everything had to run directly in a web browser.</p>
+    </article>
+
+    <article class="step">
+      <h2>Make the first car</h2>
+      <p>I took a few photos of a toy model of the orange muscle car I had at home and put the images into Meshy to create a 3D model. That gave us something recognisable and fun to drive while the game was still very rough.</p>
+    </article>
+
+    <article class="step">
+      <h2>Shrink it for the web</h2>
+      <p>I downloaded the model as a GLB and ran it through <strong>SHRINK3D</strong>, another little app we built to reduce 3D models for games and 3D printing. We then asked AI to help wire that smaller GLB into the game. Keeping the models small matters because every car has to download and run in the browser.</p>
+    </article>
+
+    <article class="step">
+      <h2>Play it as early as possible</h2>
+      <p>Once there was a simple working game, we stopped polishing and played it. We sent it to friends, they had a laugh crashing around, and—more importantly—they started sending us photos of cars they wanted to see in the game. That told us the idea had some life in it.</p>
+    </article>
+
+    <article class="step">
+      <h2>Add multiplayer</h2>
+      <p>Next came multiplayer. Again, the rule was: no installation and no special app. Create a room, send a link or code to a friend, and play in the browser. We tested it the same way we had tested the first version—with real people rather than trying to predict every problem ourselves.</p>
+    </article>
+
+    <article class="step">
+      <h2>Turn friends' cars into game cars</h2>
+      <p>We added more vehicles, mostly from friends and family. The 1970s Saloon started from my brother Paul's old Ford Escort, the German Beema came from Dom's BMW, and the Happy Camper is based on my own old VW campervan—which is sitting on my drive as I write this. Each one starts with photos, becomes a 3D model, gets reduced for the web, then is fitted into the same game system.</p>
+    </article>
+
+    <article class="step">
+      <h2>Tune the physics</h2>
+      <p>Adding the model is only half the job. We then adjusted the physics so the cars feel different: weight, wheelbase, grip, steering, suspension, torque, stability and damage all change the character. It is not meant to be a perfect engineering simulation; the aim is that every vehicle feels believable and, most of all, fun.</p>
+    </article>
+
+    <article class="step">
+      <h2>Build a track editor</h2>
+      <p>Once we had cars worth driving, we added a track editor so we could quickly make new circuits, hills, jumps and overpasses without hand-coding every track. Then we added barrels and chickens, because sensible development plans only get you so far.</p>
+    </article>
+
+    <article class="step">
+      <h2>What comes next?</h2>
+      <p>It is now fairly easy for <em>us</em> to add a new car, but the next challenge is to make it easy for players to add their own vehicles. Ideally you will be able to bring your own favourite car into the game without touching the code. Watch this space.</p>
+    </article>
+  </section>
+
+  <section class="note">
+    <h2>What we learned</h2>
+    <p>You do not need to begin with a giant design document or a finished 3D pipeline. Start with one thing that works, put it in front of people, laugh at what breaks, fix it, and then add the next thing. GitHub gave us somewhere to keep the project, browser technology meant anyone could try it, and AI helped us move quickly between an idea and something playable.</p>
+    <p class="signoff"><strong>Happy gaming—and drive safely.</strong><br>Tim Sharville<br>Gunpowder Studios</p>
+    <p class="small">Bangers and Smash! is an independent experimental browser game. References to other games and vehicles here describe our inspirations and development process; they are not affiliations or endorsements.</p>
+  </section>
+</main>
+</body>
+</html>
