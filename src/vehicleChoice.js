@@ -393,17 +393,17 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
   model.position.x -= center.x;
   model.position.z -= center.z;
 
-  // Align the visible model to the SAME centre-of-mass frame as the physics hull.
-  // Upright, its lowest point sits at body.bottom relative to the vehicle origin. When the
-  // vehicle rolls, both the GLB and the collision hull therefore rotate around the same point.
+  // Ground every auto-fitted visible vehicle by the same suspension/rest-height rule as
+  // the measured original car. Using body.bottom here made several cars look 5-11 cm airborne
+  // even though their physics wheels were correctly resting on the road.
+  const restHeight = restHeightForVehicle(config);
   model.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(model);
-  const bodyBottom = config.physics?.body?.bottom;
-  model.position.y += (Number.isFinite(bodyBottom) ? bodyBottom : -restHeightForVehicle(config)) - box.min.y;
+  model.position.y += -restHeight - box.min.y;
 
   holder.rotation.y = config.flip ? -Math.PI / 2 : Math.PI / 2;
   holder.add(model);
-  this.restHeight = restHeightForVehicle(config);
+  this.restHeight = restHeight;
 };
 
 // Rivals normally clone the local player's model. In multiplayer another player may have chosen
