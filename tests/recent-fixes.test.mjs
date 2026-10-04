@@ -72,7 +72,7 @@ test('German Beema rivals receive a strong colour tint while obvious trim stays 
 
 
 test('main menu links to the development story', () => {
-  assert.match(indexHtml, /href="how-we-made-it\.html">How we made this game<\/a>/);
+  assert.match(indexHtml, /href="how-we-made-it\.html"[^>]*>How we made this game<\/a>/);
   assert.match(howMade, /How we made Bangers and Smash!/);
   assert.match(howMade, /SHRINK3D/);
   assert.match(howMade, /Happy Camper/);
