@@ -15,6 +15,9 @@ const howMade = readFileSync(new URL('../how-we-made-it.html', import.meta.url),
 const editor = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
 const editorPreview = readFileSync(new URL('../src/editorPreview.js', import.meta.url), 'utf8');
 const cameraOrbit = readFileSync(new URL('../src/cameraOrbit.js', import.meta.url), 'utf8');
+const assetVersion = readFileSync(new URL('../src/assetVersion.js', import.meta.url), 'utf8');
+const versionFile = readFileSync(new URL('../src/version.js', import.meta.url), 'utf8');
+const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -142,4 +145,16 @@ test('development page car viewer is a five-car swipe carousel', () => {
 test('Happy Camper carousel uses the shrunk model', () => {
   assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
   assert.doesNotMatch(howMade, /cars\/campervan\.glb/);
+});
+
+
+test('vehicle model cache busting follows the game version', () => {
+  const gameVersion = versionFile.match(/VERSION = '([^']+)'/)?.[1];
+  const modelVersion = assetVersion.match(/ASSET_VERSION = '([^']+)'/)?.[1];
+  assert.equal(modelVersion, gameVersion);
+  assert.match(vehicleChoice, /assetUrl\(url \|\| config\.url\)/);
+  assert.match(vehicleChoice, /fetch\(assetUrl\(selectedVehicle\(\)\.url\)/);
+  assert.match(howMade, /loader\.loadAsync\(assetUrl\(car\.url\)\)/);
+  assert.match(serviceWorker, /const MODEL = \/\\\.glb\$\/i/);
+  assert.match(serviceWorker, /MODEL\.test\(url\.pathname\)/);
 });
