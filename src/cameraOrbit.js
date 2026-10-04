@@ -120,6 +120,29 @@ function installListeners() {
   };
   document.addEventListener('pointerup', end, { capture: true });
   document.addEventListener('pointercancel', end, { capture: true });
+
+  // Reset an orbited gameplay camera with a double-click/tap on the game view.
+  document.addEventListener('dblclick', (e) => {
+    const cam = currentCamera;
+    if (!cam || cam.mode >= 2 || isUiControl(e.target)) return;
+    const canvas = gameCanvas();
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    e.preventDefault();
+    e.stopPropagation();
+    cam.snap();
+  }, { capture: true });
+
+  // 0 = reset gameplay camera view. Ignore text-entry controls.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '0' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isUiControl(document.activeElement)) return;
+    const cam = currentCamera;
+    if (!cam || cam.mode >= 2) return;
+    e.preventDefault();
+    cam.snap();
+  }, { capture: true });
 }
 
 const originalUpdate = ChaseCamera.prototype.update;
