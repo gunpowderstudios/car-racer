@@ -76,3 +76,13 @@ test('main menu links to the development story', () => {
   assert.match(howMade, /Happy Camper/);
   assert.match(howMade, /track editor/i);
 });
+
+
+test('development page has an interactive Mr Muscle viewer and visible yellow footer links', () => {
+  assert.match(howMade, /id="muscle-car-canvas"/);
+  assert.match(howMade, /cars\/car-shrink\.glb/);
+  assert.match(howMade, /GLTFLoader/);
+  assert.match(howMade, /pointerdown/);
+  assert.match(indexHtml, /How we made this game<\/a> &middot;/);
+  assert.match(indexHtml, /style="color:#ffb31f">View the source on GitHub/);
+});
