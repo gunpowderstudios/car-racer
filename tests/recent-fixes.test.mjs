@@ -131,9 +131,15 @@ test('development page car viewer is a five-car swipe carousel', () => {
   assert.match(howMade, /70s Saloon.*escort-shrink\.glb/s);
   assert.match(howMade, /German Beema.*bmw-shrink\.glb/s);
   assert.match(howMade, /Motorhome.*motor-home-shrink\.glb/s);
-  assert.match(howMade, /Happy Camper.*campervan\.glb/s);
+  assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
   assert.match(howMade, /id="car-prev"/);
   assert.match(howMade, /id="car-next"/);
   assert.match(howMade, /swipeArea\.addEventListener\('pointerup'/);
   assert.match(howMade, /className = 'car-dot'/);
+});
+
+
+test('Happy Camper carousel uses the shrunk model', () => {
+  assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
+  assert.doesNotMatch(howMade, /cars\/campervan\.glb/);
 });
