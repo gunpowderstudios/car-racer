@@ -1,11 +1,12 @@
 // Service worker: speeds up repeat visits (and flaky mobile data) without ever trapping the game on old code.
 //  - the page, scripts and styles: network first, cached copy only if the network fails
-//  - car models, sounds, images: served from the cache straight away and refreshed in the background, so a
-//    replaced model shows up on the visit after next reload rather than never
+//  - car models (.glb): network first, so replacing a model under the same filename is visible on the next reload
+//  - sounds and images: served from cache straight away and refreshed in the background
 //  - three.js from the CDN: it is pinned to an exact version, so cache first
 // Anything else (multiplayer traffic, other sites, range requests) is left alone.
 const CACHE = 'car-racer-v2';
 const CODE = /\.(?:html|js|mjs|css|webmanifest|json)$/i;
+const MODEL = /\.glb$/i;
 const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -54,6 +55,6 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.href.startsWith(THREE_CDN)) { e.respondWith(cacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return;
-  if (req.mode === 'navigate' || CODE.test(url.pathname) || url.pathname.endsWith('/')) e.respondWith(networkFirst(req));
+  if (req.mode === 'navigate' || CODE.test(url.pathname) || MODEL.test(url.pathname) || url.pathname.endsWith('/')) e.respondWith(networkFirst(req));
   else e.respondWith(staleWhileRevalidate(req));
 });
