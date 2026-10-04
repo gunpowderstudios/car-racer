@@ -176,3 +176,11 @@ test('auto-fitted vehicles ground their visible model at suspension rest height'
   assert.match(vehicleChoice, /model\.position\.y \+= -restHeight - box\.min\.y/);
   assert.doesNotMatch(vehicleChoice, /Number\.isFinite\(bodyBottom\) \? bodyBottom/);
 });
+
+
+test('grass plane stays below low road sections to avoid z-fighting', () => {
+  const stage = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
+  assert.match(stage, /this\.groundLevel = -0\.35/);
+  assert.match(stage, /this\.ground\.position\.set\(camPos\.x, this\.groundLevel, camPos\.z\)/);
+  assert.doesNotMatch(stage, /this\.ground\.position\.set\(camPos\.x, 0, camPos\.z\)/);
+});
