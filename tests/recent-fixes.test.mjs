@@ -158,3 +158,14 @@ test('vehicle model cache busting follows the game version', () => {
   assert.match(serviceWorker, /const MODEL = \/\\\.glb\$\/i/);
   assert.match(serviceWorker, /MODEL\.test\(url\.pathname\)/);
 });
+
+
+test('development story recommends a structured changelog for AI-assisted development', () => {
+  assert.match(howMade, /CHANGELOG\.md/);
+  assert.match(howMade, /v2\.25, v2\.24, v2\.23/);
+  assert.match(howMade, /core engine version/i);
+  assert.match(howMade, /should <em>not<\/em> be overwritten/);
+  assert.match(howMade, /version-bump rule/);
+  assert.match(howMade, /known issues/i);
+  assert.match(howMade, /Claude, ChatGPT/);
+});
