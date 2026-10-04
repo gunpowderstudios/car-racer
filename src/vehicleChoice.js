@@ -37,6 +37,33 @@ export const VEHICLES = [
     },
   },
   {
+    id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb',
+    fit: 'auto', targetLength: 4.33,
+    physics: {
+      // Late-1980s compact RWD sports saloon proportions. The visible GLB is auto-fitted
+      // to these dimensions so its source/export scale does not affect how large it looks.
+      mass: 1080,
+      frontWeight: 0.52,
+      wheelbase: 2.57,
+      track: 1.41,
+      wheelRadius: 0.30,
+      mountY: 0.13,
+      inertia: { x: 2050, y: 2100, z: 760 },
+      susp: {
+        free: 0.43, travel: 0.23,
+        kFront: 30000, kRear: 28000,
+        cCompFront: 2150, cCompRear: 2050, cRebFront: 3050, cRebRear: 2900,
+        arbFront: 15500, arbRear: 11500, bump: 195000, bumpDamp: 8500,
+      },
+      engine: { peakTorque: 190 },
+      brakeBias: 0.59,
+      wallBounce: 0.27,
+      aero: { drag: 0.43, down: 0.27 },
+      steer: { max: 0.55, rate: 4.7, returnRate: 6.9 },
+      body: { width: 1.65, length: 4.33, bottom: -0.40, shoulder: 0.30, roof: 0.92, roofWidth: 1.40, roofLength: 2.32 },
+    },
+  },
+  {
     id: 'motor-home', name: 'Motorhome', url: 'cars/motor-home-shrink.glb',
     fit: 'auto', targetLength: 4.85,
     damageMul: 0.8,
