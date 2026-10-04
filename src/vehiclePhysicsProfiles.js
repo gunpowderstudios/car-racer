@@ -92,6 +92,34 @@ export const VEHICLE_PHYSICS_PROFILES = {
     boost: { accel: 3.2 },
   },
 
+  // Late-1980s BMW E30 318i-style compact RWD saloon: light, balanced and tidy.
+  // Game-tuned to sit between the 70s Saloon and Mr Muscle: responsive without becoming twitchy.
+  bmw: {
+    reference: 'late-1980s German compact RWD saloon',
+    mass: 1080,
+    frontWeight: 0.52,
+    wheelbase: 2.57,
+    track: 1.41,
+    wheelRadius: 0.30,
+    inertia: { x: 2050, y: 2100, z: 760 },
+    tyre: {
+      muFront: 1.22, muRear: 1.26,
+      B: 11.2, C: 1.26, slideMu: 0.90,
+      loadSens: 0.055, rolling: 0.013,
+    },
+    engine: {
+      peakTorque: 190,
+      efficiency: 0.90,
+      curve: [[900, 0.55], [1800, 0.76], [3000, 0.91], [4200, 1.0], [5200, 0.95], [6200, 0.78], [6900, 0.58]],
+      finalDrive: 3.91,
+    },
+    brakeG: 1.42,
+    brakeBias: 0.59,
+    aero: { drag: 0.43, down: 0.27 },
+    steer: { max: 0.55, rate: 4.7, returnRate: 6.9 },
+    boost: { accel: 4.8 },
+  },
+
   escort: {
     reference: '1970s Ford Escort-style lightweight RWD saloon',
     mass: 920,
