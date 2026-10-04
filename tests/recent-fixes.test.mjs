@@ -66,12 +66,14 @@ test('random circuits scatter more barrels and chickens', () => {
 });
 
 
-test('German Beema rivals receive a strong colour tint while obvious trim stays neutral', () => {
-  assert.match(vehicleChoice, /function tintStrongVehicle/);
-  assert.match(vehicleChoice, /view\.vehicleId !== 'motor-home' && view\.vehicleId !== 'bmw'/);
+test('German Beema rivals recolour dark body paint while obvious trim stays neutral', () => {
+  assert.match(vehicleChoice, /function recolourBmwPaintTexture/);
+  assert.match(vehicleChoice, /function applyBmwLook/);
+  assert.match(vehicleChoice, /luma < 18 \|\| luma > 150 \|\| sat > 58/);
   assert.match(vehicleChoice, /glass\|window\|windscreen/);
-  assert.match(vehicleChoice, /m\.color\.set\(look\.tint\)/);
-  assert.match(vehicleChoice, /tintStrongVehicle\(this, look\)/);
+  assert.match(vehicleChoice, /if \(applyBmwLook\(this, this\._ownLook\)\) return/);
+  assert.match(vehicleChoice, /applyBmwLook\(this, look, src\)/);
+  assert.doesNotMatch(vehicleChoice, /function tintStrongVehicle/);
 });
 
 
