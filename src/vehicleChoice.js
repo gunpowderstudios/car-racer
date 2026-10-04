@@ -286,24 +286,126 @@ function restoreMultiplayerScreenAfterReload() {
 }
 
 // White/grey motor-home textures do not respond much to the car's hue-rotation recolouring.
-// Keep the original texture detail, but multiply it by the rival/player colour so AI and
-// multiplayer motor homes are easy to tell apart.
-function tintStrongVehicle(view, look) {
-  if (!look || (view.vehicleId !== 'motor-home' && view.vehicleId !== 'bmw')) return;
+// Keep the Motorhome's existing broad tint, but give the dark BMW its own texture recolouring
+// so the paint becomes a proper rival colour instead of black with coloured edges.
+const bmwTextureCache = new WeakMap();
+const bmwMaterialBase = new WeakMap();
 
-  for (const m of view.mats || []) {
-    if (!m) continue;
+function isBmwDetailMaterial(m) {
+  const name = String(m?.name || '').toLowerCase();
+  return /glass|window|windscreen|windshield|tyre|tire|wheel|rim|chrome|light|lamp|indicator|bumper|trim|plate|number|badge|grill|grille|mirror|interior|seat/.test(name)
+    || m?.transparent || (m?.opacity ?? 1) < 0.98;
+}
 
-    // The Motorhome keeps its existing broad tint. For German Beema, protect obvious
-    // glass, chrome, wheels, tyres, lights and trim so only body-like materials get colour.
-    if (view.vehicleId === 'bmw') {
-      const name = String(m.name || '').toLowerCase();
-      const detail = /glass|window|windscreen|windshield|tyre|tire|wheel|rim|chrome|light|lamp|indicator|bumper|trim|plate|number|badge|grill|grille|mirror/.test(name);
-      const transparent = m.transparent || m.opacity < 0.98;
-      const metallicDetail = (m.metalness || 0) > 0.65 && (m.roughness ?? 1) < 0.45;
-      if (detail || transparent || metallicDetail) continue;
+function recolourBmwPaintTexture(source, look) {
+  if (!source?.image || !look?.tint) return null;
+  let perTexture = bmwTextureCache.get(source);
+  if (!perTexture) bmwTextureCache.set(source, perTexture = new Map());
+  const key = look.tint >>> 0;
+  if (perTexture.has(key)) return perTexture.get(key);
+
+  let out = null;
+  try {
+    const img = source.image;
+    const w = img.width || img.naturalWidth || img.videoWidth;
+    const h = img.height || img.naturalHeight || img.videoHeight;
+    if (!w || !h) throw new Error('texture image has no size');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const image = ctx.getImageData(0, 0, w, h);
+    const px = image.data;
+
+    const tr = (key >> 16) & 255;
+    const tg = (key >> 8) & 255;
+    const tb = key & 255;
+    const targetMax = Math.max(1, tr, tg, tb);
+
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      const hi = Math.max(r, g, b), lo = Math.min(r, g, b);
+      const sat = hi - lo;
+      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      // The source BMW paint is very dark and mostly neutral. Work on dark/medium-low-saturation
+      // pixels, but leave absolute black alone so tyre gaps, deep trim and shadows stay black.
+      if (luma < 18 || luma > 150 || sat > 58) continue;
+
+      // Fade in through the darkest tones and fade out before bright chrome/reflections.
+      const darkIn = Math.max(0, Math.min(1, (luma - 18) / 28));
+      const brightOut = Math.max(0, Math.min(1, (150 - luma) / 45));
+      const neutral = Math.max(0, Math.min(1, (58 - sat) / 42));
+      const strength = darkIn * brightOut * neutral;
+      if (strength <= 0) continue;
+
+      // Lift black paint enough for the rival colour to read, while preserving the source shading.
+      const value = 0.30 + (luma / 150) * 0.78;
+      const nr = Math.min(255, tr / targetMax * 255 * value);
+      const ng = Math.min(255, tg / targetMax * 255 * value);
+      const nb = Math.min(255, tb / targetMax * 255 * value);
+      px[i] = r + (nr - r) * strength;
+      px[i + 1] = g + (ng - g) * strength;
+      px[i + 2] = b + (nb - b) * strength;
     }
 
+    ctx.putImageData(image, 0, 0);
+    out = source.clone();
+    out.image = canvas;
+    out.needsUpdate = true;
+  } catch (e) {
+    console.warn('Could not selectively recolour German Beema paint texture.', e);
+  }
+
+  perTexture.set(key, out);
+  return out;
+}
+
+function applyBmwLook(view, look, sourceView = null) {
+  if (view.vehicleId !== 'bmw') return false;
+  const sourceMats = sourceView?.mats || null;
+
+  for (let i = 0; i < (view.mats || []).length; i++) {
+    const m = view.mats[i];
+    if (!m) continue;
+
+    let base = bmwMaterialBase.get(m);
+    if (!base) {
+      const sourceMat = sourceMats?.[i];
+      base = {
+        map: sourceMat?.map || m.map,
+        color: (sourceMat?.color || m.color).clone(),
+      };
+      bmwMaterialBase.set(m, base);
+    }
+
+    m.map = base.map;
+    m.color.copy(base.color);
+
+    if (look && !isBmwDetailMaterial(m)) {
+      if (base.map) {
+        const tex = recolourBmwPaintTexture(base.map, look);
+        if (tex) m.map = tex;
+      } else {
+        m.color.set(look.tint);
+      }
+    }
+
+    m.userData.base = m.color.clone();
+    m.needsUpdate = true;
+  }
+
+  // Keep the simple far-distance proxy colour-coded too.
+  if (look) view.setPaint?.(look.tint);
+  view._lookKey = -1;
+  return true;
+}
+
+function tintMotorHome(view, look) {
+  if (!look || view.vehicleId !== 'motor-home') return;
+  for (const m of view.mats || []) {
+    if (!m) continue;
     m.color.set(look.tint);
     m.userData.base = m.color.clone();
     m.needsUpdate = true;
@@ -313,8 +415,9 @@ function tintStrongVehicle(view, look) {
 
 const originalApplyOwnLook = CarVisual.prototype._applyOwnLook;
 CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
+  if (applyBmwLook(this, this._ownLook)) return;
   originalApplyOwnLook.call(this);
-  tintStrongVehicle(this, this._ownLook);
+  tintMotorHome(this, this._ownLook);
 };
 
 // Keep the existing, carefully measured car alignment. For differently modelled vehicles,
@@ -428,7 +531,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
   const ok = originalAdopt.call(this, src, look);
   if (!ok) return ok;
   this.vehicleId = src.vehicleId;
-  tintStrongVehicle(this, look);
+  if (!applyBmwLook(this, look, src)) tintMotorHome(this, look);
   return ok;
 };
 
