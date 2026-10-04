@@ -10,6 +10,8 @@ const camper = readFileSync(new URL('../src/campervanVehicle.js', import.meta.ur
 const vehicleChoice = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
 const vehicleProfiles = readFileSync(new URL('../src/vehiclePhysicsProfiles.js', import.meta.url), 'utf8');
 const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
+const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const howMade = readFileSync(new URL('../how-we-made-it.html', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -64,4 +66,13 @@ test('German Beema rivals receive a strong colour tint while obvious trim stays 
   assert.match(vehicleChoice, /glass\|window\|windscreen/);
   assert.match(vehicleChoice, /m\.color\.set\(look\.tint\)/);
   assert.match(vehicleChoice, /tintStrongVehicle\(this, look\)/);
+});
+
+
+test('main menu links to the development story', () => {
+  assert.match(indexHtml, /href="how-we-made-it\.html">How we made this game<\/a>/);
+  assert.match(howMade, /How we made Bangers and Smash!/);
+  assert.match(howMade, /SHRINK3D/);
+  assert.match(howMade, /Happy Camper/);
+  assert.match(howMade, /track editor/i);
 });
