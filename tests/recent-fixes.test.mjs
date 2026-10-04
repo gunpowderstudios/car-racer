@@ -92,10 +92,10 @@ test('development page has an interactive Mr Muscle viewer and visible yellow fo
 
 test('zero key resets the track editor 3D view', () => {
   assert.match(editorPreview, /resetView\(\) \{/);
-  assert.match(editorPreview, /this\.yaw = 0\.6/);
+  assert.match(editorPreview, /this\.yaw = 0;/);
   assert.match(editorPreview, /this\.pitch = 0\.5/);
   assert.match(editorPreview, /this\.zoom = 1/);
-  assert.match(editorPreview, /dblclick', \(\) => this\.resetView\(\)/);
+  assert.match(editorPreview, /dblclick'.*resetView/s);
   assert.match(editor, /e\.key === '0'.*resetView/);
   assert.match(indexHtml, /<b>0<\/b> resets the 3D view/);
 });
@@ -105,4 +105,12 @@ test('development page loads compressed GLB with Meshopt', () => {
   assert.match(howMade, /MeshoptDecoder/);
   assert.match(howMade, /setMeshoptDecoder\(MeshoptDecoder\)/);
   assert.match(howMade, /cars\/car-shrink\.glb/);
+});
+
+
+test('3D reset pauses auto-rotation so the straight view is visible', () => {
+  assert.match(editorPreview, /this\.yaw = 0;/);
+  assert.match(editorPreview, /this\.spin = false;\s+\/\/ hold the reset view briefly/);
+  assert.match(editorPreview, /e\.preventDefault\(\)/);
+  assert.match(editorPreview, /e\.stopPropagation\(\)/);
 });
