@@ -40,8 +40,16 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
 .note h2{font-size:40px}
 .signoff{font-size:19px;margin:20px 0 0}
 .small{color:var(--dim);font-size:15px}
+.car-viewer{margin:0 0 34px;background:linear-gradient(145deg,rgba(42,29,74,.92),rgba(18,11,32,.92));border-top:4px solid var(--amber);overflow:hidden;position:relative}
+.car-viewer canvas{display:block;width:100%;height:auto;aspect-ratio:16/8;touch-action:none;cursor:grab}
+.car-viewer canvas.dragging{cursor:grabbing}
+.car-caption{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 14px 12px;font-family:"Barlow Condensed",sans-serif;font-size:15px;color:var(--dim);border-top:1px solid rgba(246,217,176,.15)}
+.car-caption strong{color:var(--amber);text-transform:uppercase;letter-spacing:.08em}
+.car-loading{position:absolute;inset:0 0 43px;display:grid;place-items:center;font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);pointer-events:none}
+.car-viewer.ready .car-loading{display:none}
 @media(max-width:600px){.wrap{padding-top:20px}.step{padding:18px}.hero{padding-left:16px}}
 </style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
 <body>
 <main class="wrap">
@@ -52,6 +60,12 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
     <h1>How we made Bangers and Smash!</h1>
     <p class="intro">Partly a guide for anyone who wants to try making a browser game, and partly a notebook so I remember how we did it.</p>
   </header>
+
+  <section class="car-viewer" id="muscle-car-viewer" aria-label="Interactive 3D model of the first muscle car">
+    <div class="car-loading">Loading Mr Muscle&hellip;</div>
+    <canvas id="muscle-car-canvas" aria-label="Rotating 3D model of Mr Muscle. Drag to turn the car."></canvas>
+    <div class="car-caption"><strong>Mr Muscle</strong><span>Our first game car &middot; drag to turn</span></div>
+  </section>
 
   <section class="steps" aria-label="How the game was made">
     <article class="step">
@@ -107,5 +121,116 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
     <p class="small">Bangers and Smash! is an independent experimental browser game. References to other games and vehicles here describe our inspirations and development process; they are not affiliations or endorsements.</p>
   </section>
 </main>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const wrap = document.getElementById('muscle-car-viewer');
+const canvas = document.getElementById('muscle-car-canvas');
+
+try {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 2, 0.1, 100);
+  scene.add(new THREE.HemisphereLight(0xffe2b4, 0x25163e, 2.2));
+  const key = new THREE.DirectionalLight(0xffffff, 3.2);
+  key.position.set(4, 6, 5);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xff7a47, 1.5);
+  rim.position.set(-5, 2, -4);
+  scene.add(rim);
+
+  const holder = new THREE.Group();
+  scene.add(holder);
+
+  const gltf = await new GLTFLoader().loadAsync('cars/car-shrink.glb');
+  const model = gltf.scene;
+  holder.add(model);
+
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const centre = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  model.position.sub(centre);
+  model.position.y += size.y * 0.03;
+
+  const radius = Math.max(size.x, size.y, size.z) * 0.68;
+  camera.position.set(radius * 1.45, radius * 0.68, radius * 1.9);
+  camera.lookAt(0, size.y * 0.02, 0);
+  camera.near = Math.max(0.01, radius / 50);
+  camera.far = radius * 20;
+  camera.updateProjectionMatrix();
+
+  holder.rotation.y = -0.6;
+  wrap.classList.add('ready');
+
+  let dragging = false;
+  let lastX = 0;
+  let pitch = -0.06;
+  let yaw = holder.rotation.y;
+  let resumeAt = 0;
+
+  const down = (e) => {
+    dragging = true;
+    lastX = e.clientX;
+    canvas.classList.add('dragging');
+    canvas.setPointerCapture?.(e.pointerId);
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    yaw += dx * 0.008;
+    holder.rotation.y = yaw;
+  };
+  const up = (e) => {
+    dragging = false;
+    canvas.classList.remove('dragging');
+    resumeAt = performance.now() + 1800;
+    canvas.releasePointerCapture?.(e.pointerId);
+  };
+
+  canvas.addEventListener('pointerdown', down);
+  canvas.addEventListener('pointermove', move);
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+
+  const resize = () => {
+    const w = Math.max(1, canvas.clientWidth);
+    const h = Math.max(1, canvas.clientHeight);
+    const dpr = renderer.getPixelRatio();
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+  };
+
+  let last = performance.now();
+  const frame = (now) => {
+    resize();
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!dragging && now >= resumeAt) {
+      yaw += dt * 0.28;
+      holder.rotation.y = yaw;
+    }
+    holder.rotation.x = pitch;
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+} catch (err) {
+  console.warn('Could not load the development-page car viewer.', err);
+  const loading = wrap.querySelector('.car-loading');
+  if (loading) loading.textContent = '3D model unavailable';
+}
+</script>
 </body>
 </html>
