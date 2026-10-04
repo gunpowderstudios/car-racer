@@ -287,10 +287,22 @@ function restoreMultiplayerScreenAfterReload() {
 // White/grey motor-home textures do not respond much to the car's hue-rotation recolouring.
 // Keep the original texture detail, but multiply it by the rival/player colour so AI and
 // multiplayer motor homes are easy to tell apart.
-function tintMotorHome(view, look) {
-  if (view.vehicleId !== 'motor-home' || !look) return;
+function tintStrongVehicle(view, look) {
+  if (!look || (view.vehicleId !== 'motor-home' && view.vehicleId !== 'bmw')) return;
+
   for (const m of view.mats || []) {
     if (!m) continue;
+
+    // The Motorhome keeps its existing broad tint. For German Beema, protect obvious
+    // glass, chrome, wheels, tyres, lights and trim so only body-like materials get colour.
+    if (view.vehicleId === 'bmw') {
+      const name = String(m.name || '').toLowerCase();
+      const detail = /glass|window|windscreen|windshield|tyre|tire|wheel|rim|chrome|light|lamp|indicator|bumper|trim|plate|number|badge|grill|grille|mirror/.test(name);
+      const transparent = m.transparent || m.opacity < 0.98;
+      const metallicDetail = (m.metalness || 0) > 0.65 && (m.roughness ?? 1) < 0.45;
+      if (detail || transparent || metallicDetail) continue;
+    }
+
     m.color.set(look.tint);
     m.userData.base = m.color.clone();
     m.needsUpdate = true;
@@ -301,7 +313,7 @@ function tintMotorHome(view, look) {
 const originalApplyOwnLook = CarVisual.prototype._applyOwnLook;
 CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
   originalApplyOwnLook.call(this);
-  tintMotorHome(this, this._ownLook);
+  tintStrongVehicle(this, this._ownLook);
 };
 
 // Keep the existing, carefully measured car alignment. For differently modelled vehicles,
@@ -415,7 +427,7 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
   const ok = originalAdopt.call(this, src, look);
   if (!ok) return ok;
   this.vehicleId = src.vehicleId;
-  tintMotorHome(this, look);
+  tintStrongVehicle(this, look);
   return ok;
 };
 
