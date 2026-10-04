@@ -14,6 +14,7 @@ const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8'
 const howMade = readFileSync(new URL('../how-we-made-it.html', import.meta.url), 'utf8');
 const editor = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
 const editorPreview = readFileSync(new URL('../src/editorPreview.js', import.meta.url), 'utf8');
+const cameraOrbit = readFileSync(new URL('../src/cameraOrbit.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -113,4 +114,13 @@ test('3D reset pauses auto-rotation so the straight view is visible', () => {
   assert.match(editorPreview, /this\.spin = false;\s+\/\/ hold the reset view briefly/);
   assert.match(editorPreview, /e\.preventDefault\(\)/);
   assert.match(editorPreview, /e\.stopPropagation\(\)/);
+});
+
+
+test('gameplay camera resets with double-click or zero', () => {
+  assert.match(cameraOrbit, /addEventListener\('dblclick'/);
+  assert.match(cameraOrbit, /e\.key !== '0'/);
+  assert.match(cameraOrbit, /cam\.snap\(\)/);
+  assert.match(indexHtml, /<kbd>0<\/kbd> Reset view/);
+  assert.match(indexHtml, /double-click the game view to centre the camera/);
 });
