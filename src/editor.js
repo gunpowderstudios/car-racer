@@ -605,6 +605,7 @@ export class Editor {
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'chicken' ? 'road' : 'chicken'); this.draw(); }
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
       else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }
+      else if (e.key === '0') { this.preview?.resetView(); this.draw(); }
       else if (e.key === 'Escape') { if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; } this.updateInspector(); this.draw(); }
       else if (e.key === '[' || e.key === ']') { const n = this.def.handles.length; this.sel = (((this.sel < 0 ? 0 : this.sel) + (e.key === ']' ? 1 : -1)) + n) % n; this.updateInspector(); this.draw(); }
     });
