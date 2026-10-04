@@ -5,7 +5,7 @@
 // part of the game's behaviour.
 import './vehicleChoice.js?v=16.88';
 import './vehiclePhysicsProfiles.js?v=16.86';
-import './campervanVehicle.js?v=16.83';
+import './campervanVehicle.js?v=16.97';
 import './cameraChoice.js';
 import './cameraOrbit.js?v=16.95';
 import './menuVehicle.js';
