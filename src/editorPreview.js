@@ -49,6 +49,16 @@ export class EditorPreview {
   /** Re-frame the camera on the whole track (used by Fit). */
   fit() { this.zoom = 1; this._frame(); }
 
+  /** Put the 3D preview back at its default straight-on viewing angle. */
+  resetView() {
+    this.yaw = 0.6;
+    this.pitch = 0.5;
+    this.zoom = 1;
+    this.spin = true;
+    this._idle = 0;
+    this._frame();
+  }
+
   play() {
     if (this.active) return;
     this.active = true; this._last = performance.now();
@@ -74,7 +84,7 @@ export class EditorPreview {
       this.zoom = Math.min(2.5, Math.max(0.3, this.zoom * Math.exp(Math.max(-0.1, Math.min(0.1, dy * 0.0012)))));
       this.spin = false; this._idle = 0;
     }, { passive: false });
-    c.addEventListener('dblclick', () => { this.spin = true; this.fit(); });
+    c.addEventListener('dblclick', () => this.resetView());
   }
 
   _tick(now) {
