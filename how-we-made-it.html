@@ -43,8 +43,16 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
 .car-viewer{margin:0 0 34px;background:linear-gradient(145deg,rgba(42,29,74,.92),rgba(18,11,32,.92));border-top:4px solid var(--amber);overflow:hidden;position:relative}
 .car-viewer canvas{display:block;width:100%;height:auto;aspect-ratio:16/8;touch-action:none;cursor:grab}
 .car-viewer canvas.dragging{cursor:grabbing}
-.car-caption{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 14px 12px;font-family:"Barlow Condensed",sans-serif;font-size:15px;color:var(--dim);border-top:1px solid rgba(246,217,176,.15)}
+.car-caption{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px 12px;font-family:"Barlow Condensed",sans-serif;font-size:15px;color:var(--dim);border-top:1px solid rgba(246,217,176,.15);touch-action:pan-y;user-select:none}
 .car-caption strong{color:var(--amber);text-transform:uppercase;letter-spacing:.08em}
+.car-copy{min-width:0;text-align:center}
+.car-copy strong{display:block;font-size:18px}
+.car-copy span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car-nav{width:38px;height:38px;border:1px solid rgba(246,217,176,.3);border-radius:50%;background:rgba(27,18,51,.72);color:var(--amber);font:700 25px/1 "Big Shoulders Display",Impact,sans-serif;cursor:pointer}
+.car-nav:hover{border-color:var(--amber);background:rgba(255,179,31,.08)}
+.car-dots{display:flex;justify-content:center;gap:7px;padding:0 0 11px}
+.car-dot{width:8px;height:8px;border:0;border-radius:50%;padding:0;background:rgba(246,217,176,.27);cursor:pointer}
+.car-dot.active{background:var(--amber);transform:scale(1.25)}
 .car-loading{position:absolute;inset:0 0 43px;display:grid;place-items:center;font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);pointer-events:none}
 .car-viewer.ready .car-loading{display:none}
 @media(max-width:600px){.wrap{padding-top:20px}.step{padding:18px}.hero{padding-left:16px}}
@@ -61,10 +69,15 @@ h2{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:34px;line-hei
     <p class="intro">Partly a guide for anyone who wants to try making a browser game, and partly a notebook so I remember how we did it.</p>
   </header>
 
-  <section class="car-viewer" id="muscle-car-viewer" aria-label="Interactive 3D model of the first muscle car">
+  <section class="car-viewer" id="muscle-car-viewer" aria-label="Interactive 3D carousel of the game cars">
     <div class="car-loading">Loading Mr Muscle&hellip;</div>
-    <canvas id="muscle-car-canvas" aria-label="Rotating 3D model of Mr Muscle. Drag to turn the car."></canvas>
-    <div class="car-caption"><strong>Mr Muscle</strong><span>Our first game car &middot; drag to turn</span></div>
+    <canvas id="muscle-car-canvas" aria-label="Rotating 3D model. Drag to turn the car."></canvas>
+    <div class="car-caption" id="car-swipe-area">
+      <button class="car-nav" id="car-prev" type="button" aria-label="Previous car">&lsaquo;</button>
+      <div class="car-copy"><strong id="car-name">Mr Muscle</strong><span id="car-note">Our first game car &middot; drag the model to turn</span></div>
+      <button class="car-nav" id="car-next" type="button" aria-label="Next car">&rsaquo;</button>
+    </div>
+    <div class="car-dots" id="car-dots" aria-label="Choose a car"></div>
   </section>
 
   <section class="steps" aria-label="How the game was made">
@@ -129,6 +142,18 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const wrap = document.getElementById('muscle-car-viewer');
 const canvas = document.getElementById('muscle-car-canvas');
+const nameEl = document.getElementById('car-name');
+const noteEl = document.getElementById('car-note');
+const dotsEl = document.getElementById('car-dots');
+const swipeArea = document.getElementById('car-swipe-area');
+
+const cars = [
+  { name: 'Mr Muscle', url: 'cars/car-shrink.glb', note: 'Our first game car' },
+  { name: '70s Saloon', url: 'cars/escort-shrink.glb', note: "Based on Paul's old saloon" },
+  { name: 'German Beema', url: 'cars/bmw-shrink.glb', note: "Based on Dom's BMW" },
+  { name: 'Motorhome', url: 'cars/motor-home-shrink.glb', note: 'The big holiday bruiser' },
+  { name: 'Happy Camper', url: 'cars/campervan.glb', note: "Based on Tim's own campervan" },
+];
 
 try {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -149,33 +174,108 @@ try {
 
   const holder = new THREE.Group();
   scene.add(holder);
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const cache = new Map();
 
-  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('cars/car-shrink.glb');
-  const model = gltf.scene;
-  holder.add(model);
-
-  model.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(model);
-  const centre = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  model.position.sub(centre);
-  model.position.y += size.y * 0.03;
-
-  const radius = Math.max(size.x, size.y, size.z) * 0.68;
-  camera.position.set(radius * 1.45, radius * 0.68, radius * 1.9);
-  camera.lookAt(0, size.y * 0.02, 0);
-  camera.near = Math.max(0.01, radius / 50);
-  camera.far = radius * 20;
-  camera.updateProjectionMatrix();
-
-  holder.rotation.y = -0.6;
-  wrap.classList.add('ready');
-
+  let index = 0;
+  let model = null;
   let dragging = false;
   let lastX = 0;
   let pitch = -0.06;
-  let yaw = holder.rotation.y;
+  let yaw = -0.6;
   let resumeAt = 0;
+  let loadToken = 0;
+
+  const makeDots = () => {
+    dotsEl.replaceChildren();
+    cars.forEach((car, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'car-dot';
+      b.setAttribute('aria-label', `Show ${car.name}`);
+      b.addEventListener('click', () => showCar(i));
+      dotsEl.appendChild(b);
+    });
+  };
+
+  const updateDots = () => {
+    [...dotsEl.children].forEach((dot, i) => dot.classList.toggle('active', i === index));
+  };
+
+  const getModel = async (car) => {
+    if (!cache.has(car.url)) cache.set(car.url, loader.loadAsync(car.url));
+    const gltf = await cache.get(car.url);
+    return gltf.scene.clone(true);
+  };
+
+  const frameModel = (next) => {
+    next.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(next);
+    const centre = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    next.position.sub(centre);
+    next.position.y += size.y * 0.03;
+    next.updateMatrixWorld(true);
+
+    const framed = new THREE.Box3().setFromObject(next);
+    const framedSize = framed.getSize(new THREE.Vector3());
+    const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.68;
+    camera.position.set(radius * 1.45, radius * 0.68, radius * 1.9);
+    camera.lookAt(0, framedSize.y * 0.02, 0);
+    camera.near = Math.max(0.01, radius / 50);
+    camera.far = Math.max(100, radius * 20);
+    camera.updateProjectionMatrix();
+  };
+
+  const showCar = async (nextIndex) => {
+    index = (nextIndex + cars.length) % cars.length;
+    const car = cars[index];
+    const token = ++loadToken;
+    wrap.classList.remove('ready');
+    wrap.querySelector('.car-loading').textContent = `Loading ${car.name}…`;
+    nameEl.textContent = car.name;
+    noteEl.textContent = `${car.note} · drag to turn · swipe below for next car`;
+    updateDots();
+
+    try {
+      const next = await getModel(car);
+      if (token !== loadToken) return;
+      if (model) holder.remove(model);
+      model = next;
+      holder.add(model);
+      frameModel(model);
+      yaw = -0.6;
+      pitch = -0.06;
+      holder.rotation.set(pitch, yaw, 0);
+      resumeAt = performance.now() + 600;
+      wrap.classList.add('ready');
+    } catch (err) {
+      console.warn('Could not load carousel car.', car.url, err);
+      if (token === loadToken) wrap.querySelector('.car-loading').textContent = '3D model unavailable';
+    }
+
+    // Quietly warm the next model in the browser cache.
+    const nextCar = cars[(index + 1) % cars.length];
+    getModel(nextCar).catch(() => {});
+  };
+
+  document.getElementById('car-prev').addEventListener('click', () => showCar(index - 1));
+  document.getElementById('car-next').addEventListener('click', () => showCar(index + 1));
+
+  let swipe = null;
+  swipeArea.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    swipe = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    swipeArea.setPointerCapture?.(e.pointerId);
+  });
+  swipeArea.addEventListener('pointerup', (e) => {
+    if (!swipe || e.pointerId !== swipe.id) return;
+    const dx = e.clientX - swipe.x;
+    const dy = e.clientY - swipe.y;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.25) showCar(index + (dx < 0 ? 1 : -1));
+    swipe = null;
+  });
+  swipeArea.addEventListener('pointercancel', () => { swipe = null; });
 
   const down = (e) => {
     dragging = true;
@@ -212,6 +312,9 @@ try {
       camera.updateProjectionMatrix();
     }
   };
+
+  makeDots();
+  await showCar(0);
 
   let last = performance.now();
   const frame = (now) => {
