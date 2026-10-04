@@ -7,7 +7,7 @@ import './vehicleChoice.js?v=16.88';
 import './vehiclePhysicsProfiles.js?v=16.86';
 import './campervanVehicle.js?v=16.83';
 import './cameraChoice.js';
-import './cameraOrbit.js?v=16.69';
+import './cameraOrbit.js?v=16.95';
 import './menuVehicle.js';
 import './derbyOffTrackRecovery.js?v=16.66';
 import './multiplayerTrackLock.js?v=16.28';
