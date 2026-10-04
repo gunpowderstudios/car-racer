@@ -3,6 +3,7 @@ import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
 import { CAR } from './vehicle.js';
 import { SPECS } from './damage.js';
 import { Multiplayer } from './multiplayer.js';
+import { assetUrl } from './assetVersion.js';
 
 // Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
 // `physics` is deliberately optional: the normal car continues to use the original,
@@ -121,7 +122,7 @@ function vehicleById(id) {
 
 // Kick off the selected GLB request as soon as this module loads. GLTFLoader will then normally
 // hit the browser cache when the scene asks for the model a moment later, reducing the blank wait.
-try { fetch(selectedVehicle().url, { cache: 'force-cache' }).catch(() => {}); } catch { /* preload is optional */ }
+try { fetch(assetUrl(selectedVehicle().url), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
 
 function physicsForVehicle(config) {
   const p = config?.physics;
@@ -329,7 +330,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
     this.placeholder.scale.set(config.physics.body.width / 1.85, 1, (config.targetLength || config.physics.body.length) / 4.85);
   }
 
-  await originalLoad.call(this, url || config.url);
+  await originalLoad.call(this, assetUrl(url || config.url));
 
   if (!config || !this.model) return;
 
