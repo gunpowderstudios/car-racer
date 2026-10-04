@@ -9,6 +9,7 @@ const celebration = readFileSync(new URL('../src/raceCelebration.js', import.met
 const camper = readFileSync(new URL('../src/campervanVehicle.js', import.meta.url), 'utf8');
 const vehicleChoice = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
 const vehicleProfiles = readFileSync(new URL('../src/vehiclePhysicsProfiles.js', import.meta.url), 'utf8');
+const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -48,4 +49,10 @@ test('German Beema is available with its own size and handling profile', () => {
   assert.match(vehicleProfiles, /bmw: \{/);
   assert.match(vehicleProfiles, /mass: 1080/);
   assert.match(vehicleProfiles, /peakTorque: 190/);
+});
+
+
+test('random circuits scatter more barrels and chickens', () => {
+  assert.match(templates, /scatter\('barrel', 6 \+ Math\.floor\(rnd\(\) \* 7\)\)/);
+  assert.match(templates, /scatter\('chicken', 4 \+ Math\.floor\(rnd\(\) \* 6\)\)/);
 });
