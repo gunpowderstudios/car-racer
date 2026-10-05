@@ -295,6 +295,10 @@ body:not(.mode-drive) .mp-label { display: none; }
   #ds-sub { font-size: 10px; }
   #minimap { right: 10px; width: 84px; height: 84px; }
 
+  /* Phones already have the native Share sheet; hide the duplicate copy-link action. */
+  #mp-copy { display: none !important; }
+  #mp-share { margin-right: 0; }
+
   #controls { left: 10px; right: 58px; top: calc(max(14px, env(safe-area-inset-top)) + 96px); bottom: auto; max-width: none;
     flex-wrap: nowrap; gap: 4px; font-size: 12px; opacity: .9; }
   #controls .ctl { flex: 1 1 0; min-width: 0; justify-content: center; padding: 6px 2px; white-space: normal; text-align: center; line-height: 1.05; }
