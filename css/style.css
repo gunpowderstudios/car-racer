@@ -304,9 +304,9 @@ body:not(.mode-drive) .mp-label { display: none; }
   #mirror { top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 62vw; }
   #feed { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
   .feed-item { font-size: 20px; }
-  #dmg-card { left: auto; right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 146px); width: 66px; padding: 3px 5px 4px;
+  #dmg-card { left: auto; right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 146px); width: 88px; padding: 4px 6px 5px;
     border-left: 0; border-right: 4px solid var(--red); }
-  .dmg-title { font-size: 9px; letter-spacing: .1em; }
+  .dmg-title { font-size: 10px; letter-spacing: .11em; }
 
   #speed-plate { left: 10px; right: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 94px); min-width: 0; width: 136px;
     padding: 6px 10px 6px 22px; clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%); }
@@ -323,7 +323,8 @@ body:not(.mode-drive) .mp-label { display: none; }
   #touch button { width: 66px; height: 66px; font-size: 17px; background: rgba(42,29,74,.45); }
   #t-left, #t-right { width: 76px !important; height: 76px !important; font-size: 30px !important; }
   #t-gas { border-color: rgba(120,220,140,.7); }
-  #t-brake { border-color: rgba(255,110,90,.7); }
+  #t-brake { border-color: rgba(255,110,90,.7); line-height: .9; }
+  #t-brake small { display: block; margin-top: 3px; font: 700 12px/1 var(--cond); }
   .go-card { padding: 18px 22px 16px; max-width: calc(100vw - 28px); }
   #toast { bottom: auto; top: 38%; max-width: calc(100vw - 32px); text-align: center; }
 }
