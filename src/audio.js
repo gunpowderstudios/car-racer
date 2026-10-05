@@ -81,7 +81,15 @@ export class Sound {
         e.gain.gain.setTargetAtTime(gain, t, 0.05);
       }
     }
-    if (this.screech) this.screech.gain.gain.setTargetAtTime(on * Math.min(1, car.skidLevel) * 0.55 * (car.onGround ? 1 : 0), t, 0.05);
+    if (this.screech) {
+      // Hard braking should make the tyres talk even before the physics reports a full slide.
+      // This uses the same smoothed brake input for keyboard, touch and gamepad, across every car.
+      const brakeSkid = car.gear > 0 && car.onGround && car.speed > 4
+        ? car.brk * clamp01((car.speed - 4) / 12)
+        : 0;
+      const tyreNoise = Math.max(Math.min(1, car.skidLevel), brakeSkid * 0.72);
+      this.screech.gain.gain.setTargetAtTime(on * tyreNoise * 0.55, t, 0.05);
+    }
     if (this.rush) {
       const b = on && car.boosting ? 1 : 0;
       this.rush.gain.gain.setTargetAtTime(b * 0.5, t, b ? 0.04 : 0.15);
