@@ -959,6 +959,11 @@ function bindMultiplayer() {
     const url = inviteUrl();
     try { await navigator.share({ title: 'Bangers and Smash!', text: `Join my game of Bangers and Smash! Room ${net.roomCode}`, url }); }
     catch (e) { if (!(e && e.name === 'AbortError')) copyInvite(url); }
+    finally {
+      // iOS may briefly suspend the host while the native share sheet/WhatsApp is open.
+      // Re-register the room with the PeerJS broker immediately when the host returns.
+      net?.resume();
+    }
   };
 }
 
