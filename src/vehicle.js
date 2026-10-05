@@ -389,7 +389,8 @@ export class Vehicle {
       drive = this.thr; brakeCmd = this.brk;
       if (this.brk > 0.05 && this.thr < 0.05 && fwd < 0.8) { this.gear = -1; drive = this.brk; brakeCmd = 0; }
     }
-    if (this.handbrake) drive = 0;
+    // Assisted Drift keeps the engine pulling; only the old low-speed/straight handbrake cuts drive.
+    if (this.handbrake && !this.driftActive) drive = 0;
 
     // automatic gearbox
     this.shiftTimer = Math.max(0, this.shiftTimer - dt);
