@@ -207,3 +207,11 @@ test('mobile brake label damage chart and braking tyre sound are clearer', () =>
   assert.match(audio, /car\.brk \* clamp01/);
   assert.match(audio, /Math\.max\(Math\.min\(1, car\.skidLevel\), brakeSkid \* 0\.72\)/);
 });
+
+
+test('mobile multiplayer hides duplicate copy invite but keeps share invite', () => {
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(indexHtml, /id="mp-share"[^>]*>Share invite<\/button>/);
+  assert.match(indexHtml, /id="mp-copy"[^>]*>Copy invite link<\/button>/);
+  assert.match(css, /@media \(pointer: coarse\) and \(max-width: 760px\)[\s\S]*#mp-copy \{ display: none !important; \}/);
+});
