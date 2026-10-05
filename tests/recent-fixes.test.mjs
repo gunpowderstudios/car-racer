@@ -228,3 +228,11 @@ test('handbrake drift assist holds a controllable slide instead of forcing a spi
   assert.match(vehicle, /const driftRearGrip = !w\.front \? 1 - 0\.34 \* this\.driftBlend : 1/);
   assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && !w\.front/);
 });
+
+
+test('drift control labels match the new assisted drift behaviour', () => {
+  assert.match(indexHtml, /id="t-hand">Drift<\/button>/);
+  assert.match(indexHtml, /id="ctl-hand"><kbd class="wide">Shift<\/kbd> Drift<\/span>/);
+  assert.match(indexHtml, /id="hand-flag">Drift<\/div>/);
+  assert.match(indexHtml, /Shift drift/);
+});
