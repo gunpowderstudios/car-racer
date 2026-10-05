@@ -276,20 +276,58 @@ export class Multiplayer {
     this._broadcastLobby();
   }
 
-  async joinRoom(code, name) {
+  async joinRoom(code, name, { retryMs = 15000, delayMs = 1200 } = {}) {
     await loadPeerJs();
     const myName = sanitizeName(name), roomCode = sanitizeName(code).toUpperCase().slice(0, 8);
     this._guest = { name: myName, code: roomCode };
+    const deadline = Date.now() + retryMs;
+
+    // A phone host can briefly disappear from the PeerJS broker while its native Share sheet
+    // or another app is in front. Treat "peer unavailable" as temporary for a few seconds.
+    for (;;) {
+      try {
+        return await this._joinRoomAttempt(roomCode);
+      } catch (e) {
+        if (this._leaving || e?.peerType !== 'peer-unavailable' || Date.now() >= deadline) throw e;
+        if (this.h.onStatus) this.h.onStatus(`Room ${roomCode} is waking up…`);
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  _joinRoomAttempt(roomCode) {
     return new Promise((resolve, reject) => {
       const peer = new window.Peer();
       let settled = false;
-      const fail = (msg) => { if (!settled) { settled = true; try { peer.destroy(); } catch { /* already gone */ } reject(new Error(msg)); } };
-      peer.on('error', (e) => { if (!settled) { settled = true; reject(this._friendlyPeerError(e)); } else this._guestPeerError(e); });
+      const fail = (err) => {
+        if (settled) return;
+        settled = true;
+        try { peer.destroy(); } catch { /* already gone */ }
+        reject(err instanceof Error ? err : new Error(String(err)));
+      };
+      peer.on('error', (e) => {
+        if (!settled) fail(this._friendlyPeerError(e));
+        else this._guestPeerError(e);
+      });
       peer.on('open', (id) => {
         if (settled) return;
         this.peer = peer; this.selfId = id; this.roomCode = roomCode;
-        this._dial(() => { if (!settled) { settled = true; resolve(roomCode); } }, fail);
-        setTimeout(() => fail('Room not found. Check the code and try again.'), 8000);
+        this._dial(() => {
+          if (!settled) {
+            settled = true;
+            if (this.h.onStatus) this.h.onStatus(null);
+            resolve(roomCode);
+          }
+        }, (msg, fatal) => {
+          if (!settled && fatal) fail(new Error(msg));
+        });
+        setTimeout(() => {
+          if (!settled) {
+            const e = new Error('Room not found. Check the code and try again.');
+            e.peerType = 'peer-unavailable';
+            fail(e);
+          }
+        }, 4500);
       });
     });
   }
@@ -302,7 +340,11 @@ export class Multiplayer {
     conn.on('open', () => { this.hostConn = conn; conn.send({ t: 'join', name: this._guest.name, v: this._myVersion() }); if (this._rejoining) this._onRejoinOpen(conn); });
     conn.on('data', (msg) => this._onGuestMessage(msg, onFirstLobby, onFail));
     conn.on('close', () => this._hostConnClosed(conn));
-    conn.on('error', () => { if (onFail) onFail('Could not connect to that room.', false); });
+    conn.on('error', (e) => {
+      if (!onFail) return;
+      if (e?.type === 'peer-unavailable') onFail('Room not found. Check the code and try again.', true);
+      else onFail('Could not connect to that room.', false);
+    });
     return conn;
   }
 
