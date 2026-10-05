@@ -18,6 +18,7 @@ const cameraOrbit = readFileSync(new URL('../src/cameraOrbit.js', import.meta.ur
 const assetVersion = readFileSync(new URL('../src/assetVersion.js', import.meta.url), 'utf8');
 const versionFile = readFileSync(new URL('../src/version.js', import.meta.url), 'utf8');
 const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const vehicle = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
   assert.match(main, /const mpRaceLaps = \(\) =>/);
@@ -214,4 +215,16 @@ test('mobile multiplayer hides duplicate copy invite but keeps share invite', ()
   assert.match(indexHtml, /id="mp-share"[^>]*>Share invite<\/button>/);
   assert.match(indexHtml, /id="mp-copy"[^>]*>Copy invite link<\/button>/);
   assert.match(css, /@media \(pointer: coarse\) and \(max-width: 760px\)[\s\S]*#mp-copy \{ display: none !important; \}/);
+});
+
+
+test('handbrake drift assist holds a controllable slide instead of forcing a spin', () => {
+  assert.match(vehicle, /_updateDriftAssist\(dt, input, handNow\)/);
+  assert.match(vehicle, /this\.driftTarget = sign \* this\.driftBase/);
+  assert.match(vehicle, /this\.driftBase \+ intoCorner \* 0\.12/);
+  assert.match(vehicle, /this\.driftBlend \*= Math\.exp\(-dt \/ 0\.32\)/);
+  assert.match(vehicle, /_applyDriftYawAssist\(\)/);
+  assert.match(vehicle, /const yawAccel = clamp\(-error \* 8\.0 - yawRate \* 2\.2/);
+  assert.match(vehicle, /const driftRearGrip = !w\.front \? 1 - 0\.34 \* this\.driftBlend : 1/);
+  assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && !w\.front/);
 });
