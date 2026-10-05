@@ -117,6 +117,7 @@ export class Vehicle {
     this.gear = 1; this.rpm = this.spec.engine.idle; this.shiftTimer = 0; this.spinFactor = 0;
     this.fwdSpeed = speed; this.speed = speed; this.latSpeed = 0; this.sideSlip = 0;
     this.onGround = false; this.airTime = 0; this.scraping = false; this.handbrake = false;
+    this.driftActive = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
     this.boosting = false;
     this.events.length = 0;
     for (const w of this.wheels) { w.contact = false; w.load = 0; w.skid = 0; w.compress = 0; }
@@ -163,7 +164,8 @@ export class Vehicle {
     // --- driver inputs -> smoothed pedals, steering
     this.thr += clamp(input.throttle - this.thr, -8 * dt, 5 * dt);
     this.brk += clamp(input.brake - this.brk, -10 * dt, 7 * dt);
-    this.handbrake = !!input.handbrake;
+    const handNow = !!input.handbrake;
+    this.handbrake = handNow;
     this._boost(dt, !!input.boost);
     const flatF = tmpA.set(this.az.x, 0, this.az.z);
     const fl = flatF.length() || 1; flatF.scale(1 / fl);
@@ -172,6 +174,7 @@ export class Vehicle {
     this.latSpeed = this.vel.dot(flatL);
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.sideSlip = this.speed > 2 ? Math.atan2(this.latSpeed, Math.abs(this.fwdSpeed)) * (this.fwdSpeed >= 0 ? 1 : -1) : 0;
+    this._updateDriftAssist(dt, input, handNow);
     this._steer(dt, input);
 
     // --- suspension and ground probes
@@ -193,6 +196,7 @@ export class Vehicle {
       if (!w.contact) { w.skid = 0; w.slipAngle = 0; continue; }
       this._tyre(w, drv, dt);
     }
+    this._applyDriftYawAssist();
 
     // --- aerodynamics
     const v2 = this.vel.lengthSq();
@@ -226,6 +230,52 @@ export class Vehicle {
     if (!Number.isFinite(this.pos.x + this.pos.y + this.pos.z + this.rot.w)) {
       throw new Error('Vehicle simulation diverged');
     }
+  }
+
+  // ----------------------------------------------------------- drift assist
+  _updateDriftAssist(dt, input, handNow) {
+    const steer = clamp(input.steer, -1, 1);
+    const eligible = this.onGround && this.fwdSpeed > 5 && this.speed > 7
+      && (Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06);
+
+    if (handNow && !this._handPrev && eligible) {
+      // Side-slip is opposite the steering sign: a right-hand drift has the nose to the
+      // right of the velocity vector, producing positive sideSlip in this coordinate frame.
+      const sign = Math.abs(this.sideSlip) > 0.09 ? Math.sign(this.sideSlip) : -Math.sign(steer || 1);
+      const captured = Math.max(Math.abs(this.sideSlip), 0.18 + Math.abs(steer) * 0.18);
+      this.driftBase = clamp(captured, 0.18, 0.52);
+      this.driftTarget = sign * this.driftBase;
+      this.driftActive = true;
+    }
+
+    if (!handNow || !eligible) {
+      this.driftActive = false;
+    }
+
+    if (this.driftActive) {
+      // Steering can trim the captured angle without turning the assist into an arcade rail.
+      const sign = Math.sign(this.driftTarget) || 1;
+      const intoCorner = clamp(-sign * steer, -1, 1);
+      const mag = clamp(this.driftBase + intoCorner * 0.12, 0.12, 0.58);
+      this.driftTarget = sign * mag;
+      this.driftBlend += (1 - this.driftBlend) * (1 - Math.exp(-dt / 0.10));
+    } else {
+      // Restore normal rear grip smoothly on release instead of snapping straight.
+      this.driftBlend *= Math.exp(-dt / 0.32);
+      if (this.driftBlend < 0.01) this.driftBlend = 0;
+    }
+
+    this._handPrev = handNow;
+  }
+
+  _applyDriftYawAssist() {
+    if (this.driftBlend <= 0 || !this.onGround || this.fwdSpeed <= 4) return;
+    const yawRate = this.angVel.dot(this.ay);
+    const error = this.driftTarget - this.sideSlip;
+    // Positive local yaw makes sideSlip more negative, hence the minus sign.
+    // Think of this as a soft spring/damper around the chosen drift angle, not an angle lock.
+    const yawAccel = clamp(-error * 8.0 - yawRate * 2.2, -5.5, 5.5) * this.driftBlend;
+    this.T.addScaled(this.ay, yawAccel * this.spec.inertia.y);
   }
 
   // -------------------------------------------------------------- steering
@@ -391,10 +441,12 @@ export class Vehicle {
 
     const surfMu = w.surface === SURF.ROAD ? 1 : 0.6;
     const muBase = w.front ? ty.muFront : ty.muRear;
-    const mu = muBase * surfMu * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
+    const mu = muBase * surfMu * driftRearGrip * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
-    const lockedHB = this.handbrake && !w.front;
+    // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.
+    const lockedHB = this.handbrake && !this.driftActive && !w.front;
     w.locked = lockedHB;
 
     let Fx = 0, Fy = 0, spinning = false;
