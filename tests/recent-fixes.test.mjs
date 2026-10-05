@@ -196,3 +196,14 @@ test('off-track player reset uses a stronger vertical hop without forced cartwhe
   assert.doesNotMatch(recovery, /function addPlayerTumble/);
   assert.doesNotMatch(recovery, /PLAYER_TUMBLE_/);
 });
+
+
+test('mobile brake label damage chart and braking tyre sound are clearer', () => {
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  const audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(indexHtml, /id="t-brake">Brake<br><small>\/ R<\/small>/);
+  assert.match(css, /#dmg-card \{[^}]*width: 88px/s);
+  assert.match(audio, /const brakeSkid = car\.gear > 0 && car\.onGround && car\.speed > 4/);
+  assert.match(audio, /car\.brk \* clamp01/);
+  assert.match(audio, /Math\.max\(Math\.min\(1, car\.skidLevel\), brakeSkid \* 0\.72\)/);
+});
