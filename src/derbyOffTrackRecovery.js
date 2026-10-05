@@ -13,9 +13,7 @@ const playerQ = Track.newQuery();
 
 const PLAYER_EXPLODE_DELAY = 2.5;
 const PLAYER_LEGACY_GUARD_DELAY = 1.3;
-const PLAYER_EXPLOSION_LIFT = 4.0;
-const PLAYER_TUMBLE_MIN = 6.5;
-const PLAYER_TUMBLE_EXTRA = 3.5;
+const PLAYER_EXPLOSION_LIFT = 4.8;
 const RESET_DELAY = 3;
 
 function showPlayerCountdown(n) {
@@ -146,16 +144,6 @@ function clearPlayerGuard(derby, f) {
   f._playerOffTrackGuard = null;
 }
 
-function addPlayerTumble(c) {
-  // Give the off-track explosion a deliberately silly cartwheel. Vehicle.step clamps total
-  // angular speed, and the normal reset clears angVel, so this cannot leak into the respawn.
-  const sx = Math.random() < 0.5 ? -1 : 1;
-  const sz = Math.random() < 0.5 ? -1 : 1;
-  c.angVel.x += sx * (PLAYER_TUMBLE_MIN + Math.random() * PLAYER_TUMBLE_EXTRA);
-  c.angVel.z += sz * (PLAYER_TUMBLE_MIN + Math.random() * PLAYER_TUMBLE_EXTRA);
-  c.angVel.y += (Math.random() - 0.5) * 5;
-}
-
 function beginPlayerReset(derby, f) {
   const c = f.car;
   const L = derby.track.length;
@@ -175,8 +163,8 @@ function beginPlayerReset(derby, f) {
   // The legacy main.js recovery refuses to run while derby.over is true. Keep that guard
   // only for the cinematic reset; the core cleanup can remove this dependency later.
   derby.over = true;
+  // Keep the original natural rotation, but give the explosion a more visible upward pop.
   c.vel.y += PLAYER_EXPLOSION_LIFT;
-  addPlayerTumble(c);
 
   derby.events.push({
     type: 'wreck', id: f.id, isPlayer: true, zone: 'front',
