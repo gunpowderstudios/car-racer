@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.07';
-export const NOTE = 'Removed the exaggerated off-track cartwheel and kept a stronger vertical explosion hop with natural rotation only';
+export const VERSION = '17.08';
+export const NOTE = 'Mobile Brake now shows reverse, the mobile damage diagram is larger, and hard braking adds tyre screech on every vehicle';
