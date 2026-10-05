@@ -236,3 +236,13 @@ test('drift control labels match the new assisted drift behaviour', () => {
   assert.match(indexHtml, /id="hand-flag">Drift<\/div>/);
   assert.match(indexHtml, /Shift drift/);
 });
+
+
+test('multiplayer join retries a temporarily unavailable mobile host', () => {
+  const mpCore = readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8');
+  assert.match(mpCore, /retryMs = 15000/);
+  assert.match(mpCore, /e\?\.peerType !== 'peer-unavailable'/);
+  assert.match(mpCore, /Room \${roomCode} is waking up/);
+  assert.match(mpCore, /_joinRoomAttempt\(roomCode\)/);
+  assert.match(main, /finally \{[\s\S]*net\?\.resume\(\)/);
+});
