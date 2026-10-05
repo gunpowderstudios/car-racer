@@ -187,3 +187,13 @@ test('grass plane stays below low road sections to avoid z-fighting', () => {
   assert.match(stage, /this\.ground\.position\.set\(camPos\.x, this\.groundLevel, camPos\.z\)/);
   assert.doesNotMatch(stage, /this\.ground\.position\.set\(camPos\.x, 0, camPos\.z\)/);
 });
+
+
+test('off-track player reset gets a fun tumble impulse', () => {
+  const recovery = readFileSync(new URL('../src/derbyOffTrackRecovery.js', import.meta.url), 'utf8');
+  assert.match(recovery, /const PLAYER_EXPLOSION_LIFT = 4\.0/);
+  assert.match(recovery, /function addPlayerTumble\(c\)/);
+  assert.match(recovery, /c\.angVel\.x \+=/);
+  assert.match(recovery, /c\.angVel\.z \+=/);
+  assert.match(recovery, /addPlayerTumble\(c\)/);
+});
