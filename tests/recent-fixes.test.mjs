@@ -246,3 +246,9 @@ test('multiplayer join retries a temporarily unavailable mobile host', () => {
   assert.match(mpCore, /_joinRoomAttempt\(roomCode\)/);
   assert.match(main, /finally \{[\s\S]*net\?\.resume\(\)/);
 });
+
+
+test('assisted drift keeps throttle and acceleration', () => {
+  assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive\) drive = 0/);
+  assert.doesNotMatch(vehicle, /if \(this\.handbrake\) drive = 0/);
+});
