@@ -267,3 +267,9 @@ test('Drift deliberately initiates left or right powered slides', () => {
   assert.match(vehicle, /const yawKick = 0\.65 \+ Math\.abs\(steer\) \* 0\.45/);
   assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, -sign \* yawKick\)/);
 });
+
+
+test('barrel blast car push is 6.5', () => {
+  const propsFile = readFileSync(new URL('../src/props.js', import.meta.url), 'utf8');
+  assert.match(propsFile, /carPush: 6\.5/);
+});
