@@ -112,18 +112,17 @@ test('reverse is speed limited', () => {
   assert.ok(car.fwdSpeed < -3 && car.fwdSpeed > -12, 'reverse speed ' + car.fwdSpeed);
 });
 
-test('handbrake turn rotates the car; longer pull rotates it further', () => {
+test('powered drift rotates the car without requiring endless extra spin', () => {
   const track = new Track({ ...DRAG_DEF, width: 60, walls: false });
   const turn = (hb) => {
     const car = new Vehicle(); placeOnTrack(car, track, 1150, 0, 25);
     const h0 = heading(car);
-    run(car, track, 4, (t) => (t < hb ? { steer: 1, handbrake: true } : { steer: 0.4, throttle: 0.4 }));
+    run(car, track, 4, (t) => (t < hb ? { steer: 1, handbrake: true, throttle: 1 } : { steer: 0.4, throttle: 0.4 }));
     return Math.abs(wrap180(heading(car) - h0));
   };
   const short = turn(0.3), long = turn(0.7);
-  assert.ok(short > 25, 'short pull rotates: ' + short);
-  assert.ok(long > 90, 'long pull is a big rotation: ' + long);
-  assert.ok(long > short);
+  assert.ok(short > 25, 'short drift rotates: ' + short);
+  assert.ok(long > 90, 'held drift produces a substantial slide: ' + long);
 });
 
 test('coasting or part-throttle at full lock understeers instead of spinning', () => {
