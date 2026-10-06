@@ -235,10 +235,12 @@ export class Vehicle {
   // ----------------------------------------------------------- drift assist
   _updateDriftAssist(dt, input, handNow) {
     const steer = clamp(input.steer, -1, 1);
-    const eligible = this.onGround && this.fwdSpeed > 5 && this.speed > 7
-      && (Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06);
+    const atDriftSpeed = this.onGround && this.fwdSpeed > 5 && this.speed > 7;
+    const wantsCorner = Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06;
 
-    if (handNow && !this._handPrev && eligible) {
+    // Holding Drift at speed is a "ready" state, not a handbrake. If the driver presses
+    // Shift before turning, wait for steering input and then initiate the slide.
+    if (handNow && !this.driftActive && atDriftSpeed && wantsCorner) {
       // Drift is a deliberate powered slide, not merely an assist for a slide that already exists.
       // Positive steer is left; sideSlip has the opposite sign in this body coordinate system.
       const sign = Math.abs(steer) > 0.08
@@ -254,7 +256,8 @@ export class Vehicle {
       this.angVel.addScaled(this.ay, -sign * yawKick);
     }
 
-    if (!handNow || !eligible) {
+    // Once a drift has started, keep it latched until Shift/Drift is released or speed falls away.
+    if (!handNow || !atDriftSpeed) {
       this.driftActive = false;
     }
 
@@ -396,7 +399,7 @@ export class Vehicle {
       if (this.brk > 0.05 && this.thr < 0.05 && fwd < 0.8) { this.gear = -1; drive = this.brk; brakeCmd = 0; }
     }
     // Assisted Drift keeps the engine pulling; only the old low-speed/straight handbrake cuts drive.
-    if (this.handbrake && !this.driftActive) drive = 0;
+    if (this.handbrake && !this.driftActive && this.speed <= 7) drive = 0;
 
     // automatic gearbox
     this.shiftTimer = Math.max(0, this.shiftTimer - dt);
@@ -453,7 +456,7 @@ export class Vehicle {
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.
-    const lockedHB = this.handbrake && !this.driftActive && !w.front;
+    const lockedHB = this.handbrake && !this.driftActive && this.speed <= 7 && !w.front;
     w.locked = lockedHB;
 
     let Fx = 0, Fy = 0, spinning = false;
