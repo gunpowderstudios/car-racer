@@ -37,7 +37,7 @@ export const BLAST = {
   radius: 10,                    // barrels and the car feel it this far away
   chainRadius: 4.5,              // barrels this close go off too, a moment later
   throwSpeed: 12, lift: 5,       // what the centre of the blast does to a neighbouring barrel (m/s)
-  carPush: 6.5,                  // and to the car (m/s at point blank, falling off linearly)
+  carPush: 7.5,                  // and to the car (m/s at point blank, falling off linearly)
   bits: 6,                       // scrap pieces per barrel
 };
 const MAX_BITS = 128;
