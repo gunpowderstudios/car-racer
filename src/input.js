@@ -50,8 +50,8 @@ export class Input {
     const key = (...c) => c.some((x) => k.has(x));
     const steerKeys = (key('KeyA', 'ArrowLeft') || t.left ? 1 : 0) - (key('KeyD', 'ArrowRight') || t.right ? 1 : 0);
     return {
-      // On touch, Drift is deliberately a one-thumb Drift + Gas control. Desktop Shift and gamepad drift stay separate.
-      throttle: clamp(Math.max(key('KeyW', 'ArrowUp') || t.gas || t.hand ? 1 : 0, this.pad.throttle), 0, 1),
+      // Drift is a powered-slide control everywhere: Shift, touch Drift, or gamepad drift all include full throttle.
+      throttle: clamp(Math.max(key('KeyW', 'ArrowUp') || key('ShiftLeft', 'ShiftRight') || t.gas || t.hand || this.pad.hand ? 1 : 0, this.pad.throttle), 0, 1),
       brake: clamp(Math.max(key('KeyS', 'ArrowDown') || t.brake ? 1 : 0, this.pad.brake), 0, 1),
       steer: clamp(steerKeys + this.pad.steer, -1, 1),
       handbrake: key('ShiftLeft', 'ShiftRight') || t.hand || this.pad.hand,
