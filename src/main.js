@@ -248,7 +248,7 @@ function restartRace() {
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
-  hud.banner(derby.enabled ? 'Wreck them all' : 'Get to the start line', 1400);
+  hud.banner(derby.damageEnabled ? 'Wreck them all' : 'Get to the start line', 1400);
 }
 
 function respawn() {
@@ -356,7 +356,7 @@ function propEvents() {
       if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
       sound.explode(e.dist);
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
-      if (derby.enabled) derby.blast(e.x, e.y, e.z);
+      if (derby.damageEnabled) derby.blast(e.x, e.y, e.z);
       if (net) mpBarrelBlast(e);
     } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
     else if (e.type === 'splat') {
@@ -366,7 +366,7 @@ function propEvents() {
       }
       splats.add(e.x, e.y, e.z, e.nx, e.ny, e.nz, 0.9 + Math.random() * 0.3);
       sound.splat(e.dist);
-      if (derby.enabled && e.dist < DERBY.creditNear) derby.award('chicken', 1, 'Splat!');
+      if (derby.damageEnabled && e.dist < DERBY.creditNear) derby.award('chicken', 1, 'Splat!');
     }
   }
   props.events.length = 0;
@@ -375,12 +375,15 @@ function propEvents() {
 // ------------------------------------------------------- destruction derby
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
-  derby.enabled = !net && !!opts.derby;
+  // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
+  // off the same AI cars simply race and recover instead of taking damage.
+  derby.enabled = !net && opts.rivals > 0;
+  derby.damageEnabled = derby.enabled && !!opts.derby;
   if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
   visual.setLook(1, 0);
-  hud.derbyMode(derby.enabled);
-  if (derby.enabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
+  hud.derbyMode(derby.damageEnabled);
+  if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
 }
 
 /** Turn what the derby did this step into noise, fire, shaking and messages. */
@@ -420,7 +423,7 @@ const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 function makeView(f) {
   let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
-  v.root.visible = true; v.root.scale.setScalar(0.001);
+  v.root.visible = true; v.root.scale.setScalar(1);
   views.set(f.id, v);
   return v;
 }
@@ -443,9 +446,8 @@ function syncViews(a) {
     v.root.position.set(lerp(p.x, c.x, a), lerp(p.y, c.y, a), lerp(p.z, c.z, a));
     qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
     v.root.quaternion.slerpQuaternions(qa, qb, a);
-    let k = Math.min(1, f.age / 0.5);                                          // fade a new rival in
-    if (f.expire) k = 1 - f.expireT / DERBY.wreckFade;                         // making room: shrink this one away
-    v.root.scale.setScalar(Math.max(k, 0.001));
+    // Rivals stay full-size. Wrecks remain believable hulks instead of shrinking like toys.
+    v.root.scale.setScalar(1);
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
@@ -528,7 +530,7 @@ function frame(now) {
     effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
-    if (derby.enabled) {
+    if (derby.damageEnabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
       derbyFx(dt);
