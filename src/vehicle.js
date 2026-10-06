@@ -239,13 +239,19 @@ export class Vehicle {
       && (Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06);
 
     if (handNow && !this._handPrev && eligible) {
-      // Side-slip is opposite the steering sign: a right-hand drift has the nose to the
-      // right of the velocity vector, producing positive sideSlip in this coordinate frame.
-      const sign = Math.abs(this.sideSlip) > 0.09 ? Math.sign(this.sideSlip) : -Math.sign(steer || 1);
-      const captured = Math.max(Math.abs(this.sideSlip), 0.18 + Math.abs(steer) * 0.18);
-      this.driftBase = clamp(captured, 0.18, 0.52);
+      // Drift is a deliberate powered slide, not merely an assist for a slide that already exists.
+      // Positive steer is left; sideSlip has the opposite sign in this body coordinate system.
+      const sign = Math.abs(steer) > 0.08
+        ? -Math.sign(steer)
+        : (Math.sign(this.sideSlip) || 1);
+      this.driftBase = clamp(0.30 + Math.abs(steer) * 0.16, 0.30, 0.52);
       this.driftTarget = sign * this.driftBase;
       this.driftActive = true;
+
+      // Give the rear a controlled initial rotation into the chosen corner so pressing Drift
+      // is immediately visible. The sustained yaw spring below catches it before it spins out.
+      const yawKick = 0.65 + Math.abs(steer) * 0.45;
+      this.angVel.addScaled(this.ay, -sign * yawKick);
     }
 
     if (!handNow || !eligible) {
@@ -256,7 +262,7 @@ export class Vehicle {
       // Steering can trim the captured angle without turning the assist into an arcade rail.
       const sign = Math.sign(this.driftTarget) || 1;
       const intoCorner = clamp(-sign * steer, -1, 1);
-      const mag = clamp(this.driftBase + intoCorner * 0.12, 0.12, 0.58);
+      const mag = clamp(this.driftBase + intoCorner * 0.14, 0.24, 0.58);
       this.driftTarget = sign * mag;
       this.driftBlend += (1 - this.driftBlend) * (1 - Math.exp(-dt / 0.10));
     } else {
@@ -274,7 +280,7 @@ export class Vehicle {
     const error = this.driftTarget - this.sideSlip;
     // Positive local yaw makes sideSlip more negative, hence the minus sign.
     // Think of this as a soft spring/damper around the chosen drift angle, not an angle lock.
-    const yawAccel = clamp(-error * 8.0 - yawRate * 2.2, -5.5, 5.5) * this.driftBlend;
+    const yawAccel = clamp(-error * 9.5 - yawRate * 2.5, -6.2, 6.2) * this.driftBlend;
     this.T.addScaled(this.ay, yawAccel * this.spec.inertia.y);
   }
 
