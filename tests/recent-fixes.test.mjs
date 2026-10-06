@@ -269,7 +269,7 @@ test('Drift deliberately initiates left or right powered slides', () => {
 });
 
 
-test('barrel blast car push is 6.5', () => {
+test('barrel blast car push is 7.5', () => {
   const propsFile = readFileSync(new URL('../src/props.js', import.meta.url), 'utf8');
-  assert.match(propsFile, /carPush: 6\.5/);
+  assert.match(propsFile, /carPush: 7\.5/);
 });
