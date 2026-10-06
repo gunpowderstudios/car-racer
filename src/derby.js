@@ -113,7 +113,7 @@ const HUES = 7;
 
 export class Derby {
   constructor() {
-    this.enabled = false;
+    this.enabled = false; this.damageEnabled = true;
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
     this.count = DERBY.rivals; this.rng = mulberry(7);
@@ -258,9 +258,11 @@ export class Derby {
       const ev = f.car.events;
       for (const e of ev) {
         if (e.type !== 'wall' && e.type !== 'ground') continue;
-        let hp = wallDamage(f.car.mass, e.speed) * f.spec.wallMul;
-        if (e.type === 'ground') hp *= DAMAGE.ground / DAMAGE.wall;
-        if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null);
+        if (this.damageEnabled) {
+          let hp = wallDamage(f.car.mass, e.speed) * f.spec.wallMul;
+          if (e.type === 'ground') hp *= DAMAGE.ground / DAMAGE.wall;
+          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null);
+        }
         if (!f.isPlayer && e.speed > 3 && e.type === 'wall') this._hitEvent('wall', e.speed, e.x, e.y, e.z);
       }
       if (!f.isPlayer) ev.length = 0;            // the player's own are left for main.js (sound, sparks)
@@ -275,10 +277,12 @@ export class Derby {
         const b = F[j]; if (b.gone) continue;
         if (!collideCars(a.car, b.car, H)) continue;
         if (H.closing > 1.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
-        const hp = crashDamage(H.mu, H.closing);
-        if (hp > 0) {
-          this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b);
-          this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a);
+        if (this.damageEnabled) {
+          const hp = crashDamage(H.mu, H.closing);
+          if (hp > 0) {
+            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b);
+            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a);
+          }
         }
       }
     }
@@ -320,12 +324,12 @@ export class Derby {
   _watch(f, dt) {
     const c = f.car, T = this.track;
     f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
-    if (f.flipT > 3) this._damage(f, 'front', DAMAGE.burnPerSecond * dt, null);      // an engine fire, eventually
+    if (f.flipT > 3 && this.damageEnabled) this._damage(f, 'front', DAMAGE.burnPerSecond * dt, null);      // destruction: an engine fire, eventually
     f.idleT = c.speed < 2 && c.ay.y > 0.15 ? f.idleT + dt : 0;
     T.query(c.pos.x, c.pos.y + 0.5, c.pos.z, this._q, 1.2);
     f.offT = this._q.idx < 0 || this._q.surface === SURF.BASE ? f.offT + dt : 0;
     const far = this._dist(c.pos.x, c.pos.y, c.pos.z) > 45;
-    if (c.pos.y < -25 || ((f.offT > 3 || f.idleT > 6) && far)) {
+    if (c.pos.y < -25 || (!this.damageEnabled && f.flipT > 3) || ((f.offT > 3 || f.idleT > 6) && far)) {
       const s = T.progressAt(c.pos.x, c.pos.y, c.pos.z);
       placeOnRoad(c, T, s + 10, 0, (f.driver ? f.driver.cruise : 20) * 0.6);
       f.idleT = f.offT = f.flipT = 0;
@@ -344,7 +348,7 @@ export class Derby {
 
   // --------------------------------------------------------------------- damage
   _damage(f, zone, hp, by) {
-    if (f.wrecked || hp <= 0) return;
+    if (!this.damageEnabled || f.wrecked || hp <= 0) return;
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };
@@ -406,7 +410,7 @@ export class Derby {
 
   /** A barrel (or anything explosive) has gone off at (x, y, z): hurt every car in range. */
   blast(x, y, z, kind = DAMAGE.barrel) {
-    if (!this.enabled || !this.player) return;
+    if (!this.enabled || !this.damageEnabled || !this.player) return;
     const P = this.player;
     const credit = this._dist(x, y, z) < DERBY.creditNear ? { id: P.id } : null;   // near you: your doing
     for (const f of this.fighters) {
