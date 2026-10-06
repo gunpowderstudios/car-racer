@@ -18,6 +18,7 @@ const cameraOrbit = readFileSync(new URL('../src/cameraOrbit.js', import.meta.ur
 const assetVersion = readFileSync(new URL('../src/assetVersion.js', import.meta.url), 'utf8');
 const versionFile = readFileSync(new URL('../src/version.js', import.meta.url), 'utf8');
 const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const inputFile = readFileSync(new URL('../src/input.js', import.meta.url), 'utf8');
 const vehicle = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
 
 test('multiplayer core finish banner uses selected race length without an off-by-one', () => {
@@ -251,4 +252,11 @@ test('multiplayer join retries a temporarily unavailable mobile host', () => {
 test('assisted drift keeps throttle and acceleration', () => {
   assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive\) drive = 0/);
   assert.doesNotMatch(vehicle, /if \(this\.handbrake\) drive = 0/);
+});
+
+
+test('mobile Drift also applies throttle without changing desktop Shift', () => {
+  assert.match(inputFile, /key\('KeyW', 'ArrowUp'\) \|\| t\.gas \|\| t\.hand \? 1 : 0/);
+  assert.match(inputFile, /handbrake: key\('ShiftLeft', 'ShiftRight'\) \|\| t\.hand \|\| this\.pad\.hand/);
+  assert.doesNotMatch(inputFile, /key\('ShiftLeft', 'ShiftRight'\).*throttle/);
 });
