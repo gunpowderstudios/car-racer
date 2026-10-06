@@ -222,10 +222,11 @@ test('mobile multiplayer hides duplicate copy invite but keeps share invite', ()
 test('handbrake drift assist holds a controllable slide instead of forcing a spin', () => {
   assert.match(vehicle, /_updateDriftAssist\(dt, input, handNow\)/);
   assert.match(vehicle, /this\.driftTarget = sign \* this\.driftBase/);
-  assert.match(vehicle, /this\.driftBase \+ intoCorner \* 0\.12/);
+  assert.match(vehicle, /this\.driftBase \+ intoCorner \* 0\.14/);
+  assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, -sign \* yawKick\)/);
   assert.match(vehicle, /this\.driftBlend \*= Math\.exp\(-dt \/ 0\.32\)/);
   assert.match(vehicle, /_applyDriftYawAssist\(\)/);
-  assert.match(vehicle, /const yawAccel = clamp\(-error \* 8\.0 - yawRate \* 2\.2/);
+  assert.match(vehicle, /const yawAccel = clamp\(-error \* 9\.5 - yawRate \* 2\.5/);
   assert.match(vehicle, /const driftRearGrip = !w\.front \? 1 - 0\.34 \* this\.driftBlend : 1/);
   assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && !w\.front/);
 });
@@ -255,8 +256,14 @@ test('assisted drift keeps throttle and acceleration', () => {
 });
 
 
-test('mobile Drift also applies throttle without changing desktop Shift', () => {
-  assert.match(inputFile, /key\('KeyW', 'ArrowUp'\) \|\| t\.gas \|\| t\.hand \? 1 : 0/);
+test('Drift applies throttle on desktop mobile and gamepad', () => {
+  assert.match(inputFile, /key\('KeyW', 'ArrowUp'\) \|\| key\('ShiftLeft', 'ShiftRight'\) \|\| t\.gas \|\| t\.hand \|\| this\.pad\.hand \? 1 : 0/);
   assert.match(inputFile, /handbrake: key\('ShiftLeft', 'ShiftRight'\) \|\| t\.hand \|\| this\.pad\.hand/);
-  assert.doesNotMatch(inputFile, /key\('ShiftLeft', 'ShiftRight'\).*throttle/);
+});
+
+test('Drift deliberately initiates left or right powered slides', () => {
+  assert.match(vehicle, /Math\.abs\(steer\) > 0\.08\s*\? -Math\.sign\(steer\)/);
+  assert.match(vehicle, /this\.driftBase = clamp\(0\.30 \+ Math\.abs\(steer\) \* 0\.16/);
+  assert.match(vehicle, /const yawKick = 0\.65 \+ Math\.abs\(steer\) \* 0\.45/);
+  assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, -sign \* yawKick\)/);
 });
