@@ -282,3 +282,16 @@ test('desktop Drift no longer brakes when Shift is pressed before steering', () 
   assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive && this\.speed <= 7\) drive = 0/);
   assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && this\.speed <= 7 && !w\.front/);
 });
+
+
+test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
+  const derbyFile = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
+  assert.match(indexHtml, /option value="0">0 — Lap time only<\/option>/);
+  assert.match(main, /derby\.enabled = !net && opts\.rivals > 0/);
+  assert.match(main, /derby\.damageEnabled = derby\.enabled && !!opts\.derby/);
+  assert.match(main, /v\.root\.scale\.setScalar\(1\)/);
+  assert.doesNotMatch(main, /f\.expire\) k = 1 - f\.expireT/);
+  assert.match(derbyFile, /this\.enabled = false; this\.damageEnabled = true/);
+  assert.match(derbyFile, /if \(!this\.damageEnabled \|\| f\.wrecked \|\| hp <= 0\) return/);
+  assert.match(derbyFile, /!this\.damageEnabled && f\.flipT > 3/);
+});
