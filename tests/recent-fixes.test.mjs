@@ -295,3 +295,18 @@ test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
   assert.match(derbyFile, /if \(!this\.damageEnabled \|\| f\.wrecked \|\| hp <= 0\) return/);
   assert.match(derbyFile, /!this\.damageEnabled && f\.flipT > 3/);
 });
+
+
+test('1972 VW Type 2 camper uses period-correct size and 1600 drivetrain character', () => {
+  const camper = readFileSync(new URL('../src/campervanVehicle.js', import.meta.url), 'utf8');
+  assert.match(camper, /targetLength: 4\.50/);
+  assert.match(camper, /mass: 1280/);
+  assert.match(camper, /frontWeight: 0\.44/);
+  assert.match(camper, /wheelbase: 2\.40/);
+  assert.match(camper, /track: 1\.41/);
+  assert.match(camper, /peakTorque: 106/);
+  assert.match(camper, /gears: \[3\.80, 2\.06, 1\.26, 0\.82\]/);
+  assert.match(camper, /finalDrive: 5\.375/);
+  assert.match(camper, /aero: \{ drag: 0\.80, down: 0\.08 \}/);
+  assert.match(camper, /CAR\.profileName = '1972 VW Type 2 1600 campervan'/);
+});
