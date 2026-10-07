@@ -6,7 +6,7 @@ import { assetUrl } from './assetVersion.js';
 
 const COPY = {
   car: 'Big, loud and happiest going sideways.',
-  escort: 'Light, lively and always up for a scrap.',
+  escort: 'Your Dad\'s favourite! Light, lively and always up for a scrap.',
   bmw: 'Great engineering, tuned to nip down the shops.',
   'motor-home': 'Slow, huge and deeply annoying if you\'re stuck behind it.',
   campervan: 'Peace, love and absolutely no hurry whatsoever.',
