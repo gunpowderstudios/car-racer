@@ -47,6 +47,15 @@ function gapAhead(track, s, span = 90) {
   return false;
 }
 
+/** Average road climb over the next few car lengths. Positive means uphill.
+ *  Using height gain / horizontal distance is deliberately simple and works for random tracks too. */
+function gradeAhead(track, s, span = 42) {
+  const a = track.frameAt(s);
+  const b = track.frameAt(s + span);
+  const flat = Math.hypot(b.x - a.x, b.z - a.z);
+  return flat > 1 ? (b.y - a.y) / flat : 0;
+}
+
 export class Driver {
   /** `rng` is a function returning 0..1 (so the tests are repeatable); `aggr` 0..1 is how nasty this one is. */
   constructor(rng, aggr = 0.25 + rng() * 0.55) {
@@ -176,7 +185,9 @@ export class Driver {
     this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
     this.laneNow = clamp(this.laneNow, -0.85, 0.85);
 
-    // ---------------------------------------------------------------- jumps: commit or don't
+    // ---------------------------------------------------------------- hills / jumps
+    const uphillGrade = gradeAhead(track, s);
+    const steepUphill = uphillGrade > 0.075;   // about a 7.5% average climb ahead
     const jump = gapAhead(track, s);
     if (jump) { vT = Math.max(vT, AI.jumpSpeed); ax = f.x; az = f.z; }
 
@@ -201,15 +212,29 @@ export class Driver {
       this.reverse -= dt;
       steer = -this.revSteer; throttle = 0; brk = 1;
       if (this.reverse <= 0) this.stuck = 0;
-    } else if (throttle > 0.3 && car.speed < 1.4 && car.ay.y > 0.5) {
+    } else if (throttle > 0.3 && car.speed < 1.4 && car.ay.y > 0.5 && !steepUphill) {
+      // On a steep climb, crawling is not the same thing as being wedged against a barrier.
+      // Reversing here used to make rivals roll back down random-track hills and repeatedly retry.
       this.stuck += dt;
       if (this.stuck > 1.6) { this.reverse = 1.3; this.revSteer = steer || (this.rng() < 0.5 ? 1 : -1); }
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
 
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    // Stage 3 drivers use nitro more readily on a clean straight when hunting or falling behind.
-    // The normal boost fuel rules still apply, so this is not infinite AI nitro.
-    inp.boost = this.aggr > 0.45 && (hunting || catchup > 0.2) && Math.abs(ang) < 0.15 && car.fwdSpeed > 13 && car.boostFuel > 0.2 && (!P || playerLead > 10);
+    // Nitro still uses the real finite tank. Rivals may also spend it to rescue a genuine steep climb:
+    // this mirrors what a human naturally does instead of leaving the pack stalled on procedural hills.
+    const hillBoost = steepUphill
+      && throttle > 0.85
+      && car.fwdSpeed < 20
+      && car.fwdSpeed > 1
+      && Math.abs(ang) < 0.32
+      && car.boostFuel > 0.2;
+    const raceBoost = this.aggr > 0.45
+      && (hunting || catchup > 0.2)
+      && Math.abs(ang) < 0.15
+      && car.fwdSpeed > 13
+      && car.boostFuel > 0.2
+      && (!P || playerLead > 10);
+    inp.boost = hillBoost || raceBoost;
     return inp;
   }
 }
