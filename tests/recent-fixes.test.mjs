@@ -310,3 +310,21 @@ test('1972 VW Type 2 camper uses period-correct size and 1600 drivetrain charact
   assert.match(camper, /aero: \{ drag: 0\.80, down: 0\.08 \}/);
   assert.match(camper, /CAR\.profileName = '1972 VW Type 2 1600 campervan'/);
 });
+
+
+test('menu vehicle selector has a rotating 3D preview and playful blurbs', () => {
+  const preview = readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8');
+  const bootstrap = readFileSync(new URL('../src/bootstrap.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(indexHtml, /id="menu-vehicle-preview"/);
+  assert.match(indexHtml, /id="menu-vehicle-canvas"/);
+  assert.match(bootstrap, /import '\.\/menuVehiclePreview\.js\?v=17\.21'/);
+  assert.match(preview, /Big, loud and happiest going sideways/);
+  assert.match(preview, /Great engineering, tuned to nip down the shops/);
+  assert.match(preview, /Slow, huge and deeply annoying if you\\'re stuck behind it/);
+  assert.match(preview, /Peace, love and absolutely no hurry whatsoever/);
+  assert.match(preview, /yaw \+= dt \* 0\.26/);
+  assert.match(preview, /GLTFLoader/);
+  assert.match(css, /\.menu-vehicle-preview \{/);
+  assert.match(css, /@media \(max-width: 980px\)/);
+});
