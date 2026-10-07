@@ -9,7 +9,7 @@ import './campervanVehicle.js?v=16.97';
 import './cameraChoice.js';
 import './cameraOrbit.js?v=16.95';
 import './menuVehicle.js';
-import './menuVehiclePreview.js?v=17.24';
+import './menuVehiclePreview.js?v=17.26';
 import './derbyOffTrackRecovery.js?v=17.07';
 import './multiplayerTrackLock.js?v=16.28';
 import './raceSettings.js?v=16.45';
