@@ -318,8 +318,9 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(indexHtml, /id="menu-vehicle-preview"/);
   assert.match(indexHtml, /id="menu-vehicle-canvas"/);
-  assert.match(bootstrap, /import '\.\/menuVehiclePreview\.js\?v=17\.22'/);
+  assert.match(bootstrap, /import '\.\/menuVehiclePreview\.js\?v=17\.23'/);
   assert.match(preview, /Big, loud and happiest going sideways/);
+  assert.match(preview, /Your Dad\\'s favourite! Light, lively and always up for a scrap/);
   assert.match(preview, /Great engineering, tuned to nip down the shops/);
   assert.match(preview, /Slow, huge and deeply annoying if you\\'re stuck behind it/);
   assert.match(preview, /Peace, love and absolutely no hurry whatsoever/);
