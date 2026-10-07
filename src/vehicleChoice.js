@@ -4,93 +4,18 @@ import { CAR } from './vehicle.js';
 import { SPECS } from './damage.js';
 import { Multiplayer } from './multiplayer.js';
 import { assetUrl } from './assetVersion.js';
+import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
 
 // Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
 // `physics` is deliberately optional: the normal car continues to use the original,
 // known-good CAR object unchanged.
 export const VEHICLES = [
-  { id: 'car', name: 'Mr Muscle', url: 'cars/car-shrink.glb', fit: 'measured' },
-  {
-    id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb',
-    fit: 'auto', targetLength: 4.05,
-    physics: {
-      mass: 920,
-      frontWeight: 0.53,
-      wheelbase: 2.40,
-      track: 1.32,
-      wheelRadius: 0.29,
-      // Slightly lower effective centre of gravity than before, so the Escort slides
-      // and oversteers before it tries to trip over its outside tyres.
-      mountY: 0.12,
-      inertia: { x: 1800, y: 1750, z: 820 },
-      susp: {
-        free: 0.42, travel: 0.22,
-        kFront: 26000, kRear: 24000,
-        cCompFront: 2000, cCompRear: 1850, cRebFront: 2900, cRebRear: 2700,
-        arbFront: 14500, arbRear: 10000, bump: 180000, bumpDamp: 8000,
-      },
-      engine: { peakTorque: 170 },
-      brakeBias: 0.60,
-      wallBounce: 0.28,
-      aero: { drag: 0.42, down: 0.28 },
-      steer: { max: 0.57, rate: 4.8, returnRate: 7.0 },
-      body: { width: 1.57, length: 4.05, bottom: -0.40, shoulder: 0.32, roof: 0.96, roofWidth: 1.38, roofLength: 2.40 },
-    },
-  },
-  {
-    id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb',
-    fit: 'auto', targetLength: 4.33,
-    physics: {
-      // Late-1980s compact RWD sports saloon proportions. The visible GLB is auto-fitted
-      // to these dimensions so its source/export scale does not affect how large it looks.
-      mass: 1080,
-      frontWeight: 0.52,
-      wheelbase: 2.57,
-      track: 1.41,
-      wheelRadius: 0.30,
-      mountY: 0.13,
-      inertia: { x: 2050, y: 2100, z: 760 },
-      susp: {
-        free: 0.43, travel: 0.23,
-        kFront: 30000, kRear: 28000,
-        cCompFront: 2150, cCompRear: 2050, cRebFront: 3050, cRebRear: 2900,
-        arbFront: 15500, arbRear: 11500, bump: 195000, bumpDamp: 8500,
-      },
-      engine: { peakTorque: 190 },
-      brakeBias: 0.59,
-      wallBounce: 0.27,
-      aero: { drag: 0.43, down: 0.27 },
-      steer: { max: 0.55, rate: 4.7, returnRate: 6.9 },
-      body: { width: 1.65, length: 4.33, bottom: -0.40, shoulder: 0.30, roof: 0.92, roofWidth: 1.40, roofLength: 2.32 },
-    },
-  },
+  { id: 'car', name: 'Mr Muscle', url: 'cars/car-shrink.glb', fit: 'measured', physicsProfile: 'car' },
+  { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, physicsProfile: 'escort' },
+  { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, physicsProfile: 'bmw' },
   {
     id: 'motor-home', name: 'Motorhome', url: 'cars/motor-home-shrink.glb',
-    fit: 'auto', targetLength: 4.85,
-    damageMul: 0.8,
-    physics: {
-      mass: 2800,
-      wheelbase: 3.15,
-      track: 1.78,
-      wheelRadius: 0.36,
-      mountY: 0.04,
-      // A heavier, softer vehicle: slower to accelerate, more momentum and more body movement.
-      inertia: { x: 6500, y: 7600, z: 3600 },
-      susp: {
-        free: 0.56, travel: 0.30,
-        kFront: 61000, kRear: 57000,
-        cCompFront: 3900, cCompRear: 3700, cRebFront: 5100, cRebRear: 4800,
-        arbFront: 22000, arbRear: 15000, bump: 250000, bumpDamp: 11000,
-      },
-      engine: { peakTorque: 360 },
-      brakeBias: 0.64,
-      wallBounce: 0.22,
-      aero: { drag: 0.88, down: 0.20 },
-      steer: { max: 0.48, rate: 3.6, returnRate: 5.4 },
-      // Physical body dimensions around the centre of mass. These are what stop the
-      // tall motor home falling through the road when it lands on its side or roof.
-      body: { width: 2.08, length: 4.85, bottom: -0.72, shoulder: 0.38, roof: 1.82, roofWidth: 1.92, roofLength: 3.95 },
-    },
+    fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
 ];
 
@@ -125,12 +50,17 @@ function vehicleById(id) {
 try { fetch(assetUrl(selectedVehicle().url), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
 
 function physicsForVehicle(config) {
-  const p = config?.physics;
-  if (!p) return BASE_CAR;
+  const p = vehiclePhysicsProfile(config?.physicsProfile || config?.id || 'car');
   return {
     ...BASE_CAR,
     ...p,
-    susp: { ...BASE_CAR.susp, ...p.susp },
+    inertia: { ...CAR.inertia, ...p.inertia },
+    susp: { ...CAR.susp, ...p.susp },
+    tyre: { ...CAR.tyre, ...p.tyre },
+    engine: { ...CAR.engine, ...p.engine },
+    aero: { ...CAR.aero, ...p.aero },
+    steer: { ...CAR.steer, ...p.steer },
+    boost: { ...CAR.boost, ...p.boost },
   };
 }
 
@@ -159,23 +89,25 @@ function makeHull(b) {
 // now live in the same vehicle definition instead of a separate side-effect module.
 function applySelectedProfile() {
   const cfg = selectedVehicle();
-  const p = cfg.physics;
-  if (p) {
-    CAR.mass = p.mass;
-    CAR.wheelbase = p.wheelbase;
-    CAR.track = p.track;
-    CAR.wheelRadius = p.wheelRadius;
-    CAR.mountY = p.mountY;
-    CAR.inertia = { ...p.inertia };
-    CAR.susp = { ...CAR.susp, ...p.susp };
-    CAR.engine = { ...CAR.engine, ...p.engine };
-    CAR.brakeTotal = 1.35 * p.mass * 9.81;
-    CAR.brakeBias = p.brakeBias;
-    CAR.wallBounce = p.wallBounce;
-    CAR.aero = { ...CAR.aero, ...p.aero };
-    CAR.steer = { ...CAR.steer, ...p.steer };
-    CAR.hull = makeHull(p.body);
-  }
+  const p = physicsForVehicle(cfg);
+  CAR.mass = p.mass;
+  CAR.frontWeight = p.frontWeight;
+  CAR.wheelbase = p.wheelbase;
+  CAR.track = p.track;
+  CAR.wheelRadius = p.wheelRadius;
+  CAR.mountY = p.mountY;
+  CAR.inertia = { ...p.inertia };
+  CAR.susp = { ...p.susp };
+  CAR.tyre = { ...p.tyre };
+  CAR.engine = { ...p.engine };
+  CAR.brakeTotal = (p.brakeG ?? 1.35) * p.mass * 9.81;
+  CAR.brakeBias = p.brakeBias;
+  CAR.wallBounce = p.wallBounce;
+  CAR.aero = { ...p.aero };
+  CAR.steer = { ...p.steer };
+  CAR.boost = { ...p.boost };
+  CAR.profileName = p.reference || cfg.name;
+  if (p.body) CAR.hull = makeHull(p.body);
 
   if (cfg.damageMul && cfg.damageMul !== 1) {
     const base = SPECS.player.mul || {};
@@ -438,7 +370,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
 
   // Size the temporary loading car roughly like the selected vehicle so the player never starts
   // a race with an apparently empty track while a larger GLB is still downloading/decoding.
-  if (config?.physics?.body && this.placeholder) {
+  if (physicsForVehicle(config)?.body && this.placeholder) {
     this.placeholder.scale.set(config.physics.body.width / 1.85, 1, (config.targetLength || config.physics.body.length) / 4.85);
   }
 
@@ -496,7 +428,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
 
   const size = box.getSize(new THREE.Vector3());
   const longAxis = Math.max(size.x, size.z);
-  const targetLength = config.physics?.body?.length || config.targetLength || 4.85;
+  const targetLength = physicsForVehicle(config)?.body?.length || config.targetLength || 4.85;
   if (longAxis > 1e-6) model.scale.setScalar(targetLength / longAxis);
 
   model.updateMatrixWorld(true);
