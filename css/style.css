@@ -61,6 +61,27 @@ body:not(.mode-menu) #menu { display: none; }
 .swatches button[aria-checked=true] { outline: 3px solid var(--amber); outline-offset: 2px; }
 .fine { font-size: 13px; color: var(--ink-dim); max-width: 34em; }
 
+.menu-vehicle-choice {
+  margin: 0 0 12px;
+  color: var(--peach);
+}
+.menu-vehicle-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--cond);
+  font-size: 18px;
+  font-weight: 600;
+}
+.menu-vehicle-select select {
+  background: var(--violet);
+  color: var(--peach);
+  border: 1px solid rgba(246,217,176,.45);
+  padding: 4px 8px;
+  font-family: var(--cond);
+  font-size: 17px;
+}
+
 /* ------------------------------------------------------- menu vehicle preview */
 .menu-vehicle-preview {
   position: absolute;
@@ -76,19 +97,13 @@ body:not(.mode-menu) #menu { display: none; }
   position: relative;
   width: 100%;
   aspect-ratio: 1.55 / 1;
-  background: linear-gradient(145deg, rgba(27,18,51,.38), rgba(42,29,74,.12));
-  border: 1px solid rgba(246,217,176,.24);
-  border-radius: 12px;
-  overflow: hidden;
 }
 #menu-vehicle-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: grab;
-  touch-action: none;
+  pointer-events: none;
 }
-#menu-vehicle-canvas.dragging { cursor: grabbing; }
 .menu-vehicle-loading {
   position: absolute;
   inset: 0;
@@ -118,15 +133,6 @@ body:not(.mode-menu) #menu { display: none; }
   font-size: clamp(15px, 1.25vw, 18px);
   line-height: 1.3;
 }
-.menu-vehicle-hint {
-  margin: 5px 0 0;
-  color: var(--ink-dim);
-  font-family: var(--cond);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-}
-
 @media (max-width: 980px) {
   .menu-vehicle-preview {
     position: static;
@@ -136,8 +142,7 @@ body:not(.mode-menu) #menu { display: none; }
     filter: none;
   }
   .menu-vehicle-preview h2,
-  #menu-vehicle-blurb,
-  .menu-vehicle-hint { text-align: left; margin-left: 0; }
+  #menu-vehicle-blurb { text-align: left; margin-left: 0; }
 }
 
 /* ------------------------------------------------------------------- HUD */
