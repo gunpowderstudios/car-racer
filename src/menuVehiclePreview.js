@@ -48,8 +48,11 @@ function installMenuVehiclePreview() {
     scene.add(holder);
 
     let model = null;
+    let dragging = false;
+    let lastX = 0;
     let yaw = -0.58;
     const pitch = -0.06;
+    let resumeAt = 0;
     let last = performance.now();
 
     const frameModel = (next) => {
@@ -84,6 +87,27 @@ function installMenuVehiclePreview() {
       loading.textContent = '3D preview unavailable';
     });
 
+    canvas.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      lastX = e.clientX;
+      canvas.classList.add('dragging');
+      canvas.setPointerCapture?.(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      yaw += (e.clientX - lastX) * 0.008;
+      lastX = e.clientX;
+      holder.rotation.y = yaw;
+    });
+    const release = (e) => {
+      dragging = false;
+      canvas.classList.remove('dragging');
+      resumeAt = performance.now() + 1800;
+      canvas.releasePointerCapture?.(e.pointerId);
+    };
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
+
     const resize = () => {
       const w = Math.max(1, canvas.clientWidth);
       const h = Math.max(1, canvas.clientHeight);
@@ -104,7 +128,7 @@ function installMenuVehiclePreview() {
       resize();
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (model) {
+      if (model && !dragging && now >= resumeAt) {
         yaw += dt * 0.26;
         holder.rotation.y = yaw;
       }
