@@ -328,7 +328,7 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
   assert.match(preview, /pointerdown/);
   assert.match(preview, /dragging/);
   assert.match(preview, /GLTFLoader/);
-  assert.match(indexHtml, /id="menu-vehicle-choice"[\s\S]*id="track-list"/);
+  assert.match(indexHtml, /id="menu-vehicle-choice"[\s\S]*id="menu-vehicle-preview"[\s\S]*class="options"[\s\S]*id="track-list"/);
   assert.match(vehicleChoice, /const slot = document\.getElementById\('menu-vehicle-choice'\)/);
   assert.match(css, /\.menu-vehicle-preview \{/);
   assert.match(css, /#menu-vehicle-canvas \{[\s\S]*cursor: grab/);
@@ -341,4 +341,13 @@ test('kidney template is displayed as Bed Pan', () => {
   const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
   assert.match(templates, /kidney:\s*\{\s*name: 'Bed Pan'/);
   assert.doesNotMatch(templates, /name: 'Kidney'/);
+});
+
+
+test('vehicle preview and race options appear before the track list', () => {
+  const choice = indexHtml.indexOf('id="menu-vehicle-choice"');
+  const preview = indexHtml.indexOf('id="menu-vehicle-preview"');
+  const options = indexHtml.indexOf('class="options"');
+  const tracks = indexHtml.indexOf('id="track-list"');
+  assert.ok(choice >= 0 && preview > choice && options > preview && tracks > options);
 });
