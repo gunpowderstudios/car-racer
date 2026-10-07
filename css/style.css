@@ -84,12 +84,14 @@ body:not(.mode-menu) #menu { display: none; }
 
 /* ------------------------------------------------------- menu vehicle preview */
 .menu-vehicle-preview {
-  position: static;
-  width: min(100%, 470px);
-  margin: 4px 0 18px;
+  position: absolute;
+  top: clamp(78px, 9vh, 118px);
+  right: clamp(22px, 5vw, 78px);
+  width: clamp(310px, 31vw, 500px);
   pointer-events: auto;
-  text-align: left;
+  text-align: center;
   color: var(--peach);
+  filter: drop-shadow(0 10px 24px rgba(0,0,0,.32));
 }
 .menu-vehicle-stage {
   position: relative;
@@ -128,13 +130,36 @@ body:not(.mode-menu) #menu { display: none; }
 }
 #menu-vehicle-blurb {
   max-width: 30em;
-  margin: 5px 0 0;
+  margin: 5px auto 0;
   color: var(--peach);
   font-size: clamp(15px, 1.25vw, 18px);
   line-height: 1.3;
 }
 @media (max-width: 980px) {
-  .menu-vehicle-preview { width: min(100%, 430px); }
+  #menu .menu-inner {
+    display: flex;
+    flex-direction: column;
+  }
+  #menu .menu-inner > h1 { order: 1; }
+  #btn-play-now { order: 2; }
+  #version { order: 3; }
+  #menu .lede { order: 4; }
+  #menu-vehicle-choice { order: 5; }
+  #menu-vehicle-preview {
+    order: 6;
+    position: static;
+    width: min(100%, 430px);
+    margin: 4px 0 18px;
+    text-align: left;
+    filter: none;
+  }
+  #menu-vehicle-preview h2,
+  #menu-vehicle-blurb { text-align: left; margin-left: 0; }
+  #menu .options { order: 7; }
+  #track-list { order: 8; }
+  #menu .menu-track-actions { order: 9; }
+  #menu .menu-multiplayer-actions { order: 10; }
+  #menu .fine { order: 11; }
 }
 
 /* ------------------------------------------------------------------- HUD */
