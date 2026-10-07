@@ -95,7 +95,7 @@ const RAW = {
     autoBank: true,
   },
   kidney: {
-    name: 'Kidney', width: 22,
+    name: 'Bed Pan', width: 22,
     handles: scale([
       { x: -10, y: .65, z: -64 }, { x: 44, y: .65, z: -54 }, { x: 68, y: .65, z: -10 }, { x: 42, y: .65, z: 30 },
       { x: 10, y: .65, z: 58 }, { x: -42, y: .65, z: 54 }, { x: -66, y: .65, z: 12 }, { x: -38, y: .65, z: -24 },
