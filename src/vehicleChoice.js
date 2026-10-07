@@ -6,9 +6,8 @@ import { Multiplayer } from './multiplayer.js';
 import { assetUrl } from './assetVersion.js';
 import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
 
-// Player vehicle catalogue. Add future vehicles (for example Tuk Tuk) here.
-// `physics` is deliberately optional: the normal car continues to use the original,
-// known-good CAR object unchanged.
+// Player vehicle catalogue. Add the model here and point `physicsProfile` at the matching
+// entry in vehiclePhysicsProfiles.js. Physics stays platform-independent and shared by all modes.
 export const VEHICLES = [
   { id: 'car', name: 'Mr Muscle', url: 'cars/car-shrink.glb', fit: 'measured', physicsProfile: 'car' },
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, physicsProfile: 'escort' },
@@ -32,7 +31,15 @@ const BASE_CAR = {
   track: CAR.track,
   wheelRadius: CAR.wheelRadius,
   mountY: CAR.mountY,
+  inertia: { ...CAR.inertia },
   susp: { ...CAR.susp },
+  tyre: { ...CAR.tyre },
+  engine: { ...CAR.engine },
+  aero: { ...CAR.aero },
+  steer: { ...CAR.steer },
+  boost: { ...CAR.boost },
+  brakeBias: CAR.brakeBias,
+  wallBounce: CAR.wallBounce,
 };
 
 export function selectedVehicle() {
@@ -54,13 +61,13 @@ function physicsForVehicle(config) {
   return {
     ...BASE_CAR,
     ...p,
-    inertia: { ...CAR.inertia, ...p.inertia },
-    susp: { ...CAR.susp, ...p.susp },
-    tyre: { ...CAR.tyre, ...p.tyre },
-    engine: { ...CAR.engine, ...p.engine },
-    aero: { ...CAR.aero, ...p.aero },
-    steer: { ...CAR.steer, ...p.steer },
-    boost: { ...CAR.boost, ...p.boost },
+    inertia: { ...BASE_CAR.inertia, ...p.inertia },
+    susp: { ...BASE_CAR.susp, ...p.susp },
+    tyre: { ...BASE_CAR.tyre, ...p.tyre },
+    engine: { ...BASE_CAR.engine, ...p.engine },
+    aero: { ...BASE_CAR.aero, ...p.aero },
+    steer: { ...BASE_CAR.steer, ...p.steer },
+    boost: { ...BASE_CAR.boost, ...p.boost },
   };
 }
 
@@ -362,6 +369,7 @@ CarVisual.prototype._applyOwnLook = function patchedApplyOwnLook() {
 const originalLoad = CarVisual.prototype.load;
 CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig) {
   const config = explicitConfig || (url ? VEHICLES.find((v) => v.url === url) || null : selectedVehicle());
+  const profile = config ? physicsForVehicle(config) : null;
   if (config) {
     this.vehicleId = config.id;
     // A directly loaded BMW is the local/player car unless an adopt path marks this visual as remote afterwards.
@@ -370,8 +378,8 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
 
   // Size the temporary loading car roughly like the selected vehicle so the player never starts
   // a race with an apparently empty track while a larger GLB is still downloading/decoding.
-  if (physicsForVehicle(config)?.body && this.placeholder) {
-    this.placeholder.scale.set(config.physics.body.width / 1.85, 1, (config.targetLength || config.physics.body.length) / 4.85);
+  if (profile?.body && this.placeholder) {
+    this.placeholder.scale.set(profile.body.width / 1.85, 1, (config.targetLength || profile.body.length) / 4.85);
   }
 
   await originalLoad.call(this, assetUrl(url || config.url));
@@ -428,7 +436,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
 
   const size = box.getSize(new THREE.Vector3());
   const longAxis = Math.max(size.x, size.z);
-  const targetLength = physicsForVehicle(config)?.body?.length || config.targetLength || 4.85;
+  const targetLength = profile?.body?.length || config.targetLength || 4.85;
   if (longAxis > 1e-6) model.scale.setScalar(targetLength / longAxis);
 
   model.updateMatrixWorld(true);
