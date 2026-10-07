@@ -335,3 +335,10 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
   assert.doesNotMatch(css, /background: linear-gradient\(145deg, rgba\(27,18,51,\.38\)/);
   assert.match(css, /@media \(max-width: 980px\)/);
 });
+
+
+test('kidney template is displayed as Bed Pan', () => {
+  const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
+  assert.match(templates, /kidney:\s*\{\s*name: 'Bed Pan'/);
+  assert.doesNotMatch(templates, /name: 'Kidney'/);
+});
