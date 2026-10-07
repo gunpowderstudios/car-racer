@@ -14,55 +14,55 @@ const camper = {
   name: 'Happy Camper',
   url: 'cars/campervan-shrink.glb',
   fit: 'auto',
-  // Slightly game-scaled so the tall T2 body does not look oversized beside the Charger.
-  targetLength: 4.05,
+  // Full-size 1972 Type 2 proportions: roughly 4.50 m long.
+  targetLength: 4.50,
   physics: {
-    // Approximate early-1970s VW Type 2 proportions, game-tuned for enjoyable handling.
+    // 1972 VW Type 2 1600 character: rear-engined, rear-drive, tall, modest power and
+    // relatively soft torsion-bar suspension. Real figures are used where the game model supports them,
+    // then lightly game-tuned so the van remains usable on jumps and banked tracks.
     mass: 1280,
-    frontWeight: 0.46,          // rear-engine / rear-drive character
+    frontWeight: 0.44,          // rear-engine / rear-drive weight bias
     wheelbase: 2.40,
-    track: 1.40,
-    wheelRadius: 0.32,
-    // A taller vehicle needs a lower effective centre of mass than the old 0.05 setting gave it.
-    // Raising the suspension mount relative to the body COM lowers the simulated COM without adding
-    // artificial tyre grip, so the van can still lean and slide but is much less eager to trip over.
+    track: 1.41,
+    wheelRadius: 0.33,
+    // Keep the effective COM low enough to avoid cartoon rollovers, while allowing noticeably more
+    // lean and slower transitions than the saloons.
     mountY: 0.18,
-    inertia: { x: 3400, y: 3200, z: 2450 },
+    inertia: { x: 3900, y: 3500, z: 2850 },
     susp: {
-      free: 0.48, travel: 0.27,
-      kFront: 30000, kRear: 32000,
-      cCompFront: 2300, cCompRear: 2450,
-      cRebFront: 3250, cRebRear: 3450,
-      arbFront: 13500, arbRear: 10500,
+      free: 0.50, travel: 0.28,
+      kFront: 28500, kRear: 31500,
+      cCompFront: 2150, cCompRear: 2350,
+      cRebFront: 3050, cRebRear: 3300,
+      arbFront: 11200, arbRear: 7600,
       bump: 205000, bumpDamp: 9000,
     },
     tyre: {
-      muFront: 1.08, muRear: 1.12,
-      B: 10.4, C: 1.23, E: 0,
-      loadSens: 0.07, nominalLoad: 3200, maxTyreLoad: 7800,
-      slideMu: 0.84, rolling: 0.016,
+      muFront: 1.00, muRear: 1.05,
+      B: 10.0, C: 1.21, E: 0,
+      loadSens: 0.075, nominalLoad: 3200, maxTyreLoad: 7800,
+      slideMu: 0.80, rolling: 0.018,
     },
     engine: {
       idle: 850,
-      // The core automatic gearbox shifts around 6300 rpm at full throttle. A 5200 rpm
-      // limiter meant the Campervan hit the limiter before it could upshift, leaving it
-      // effectively stuck in a low gear. The higher game limiter lets the box shift while
-      // the torque curve still falls away like an old VW engine.
-      limiter: 6900, stall: 1800,
-      peakTorque: 175, efficiency: 0.88,
-      curve: [[850, 0.64], [1600, 0.86], [2600, 1.0], [3400, 0.98], [4300, 0.88], [5200, 0.72], [6200, 0.52], [6900, 0.34]],
-      gears: [3.8, 2.2, 1.4, 0.93], reverse: 3.8, finalDrive: 4.13,
-      engineBrake: 20,
+      // Stock-style 1584 cc flat-four: about 106 Nm peak torque around 2800 rpm and roughly
+      // 50 DIN hp. The game gearbox shifts at higher rpm, so the limiter stays high enough to
+      // permit an upshift while the torque curve itself falls away hard above the real power band.
+      limiter: 6500, stall: 1550,
+      peakTorque: 106, efficiency: 0.86,
+      curve: [[850, 0.55], [1400, 0.72], [2200, 0.94], [2800, 1.0], [3600, 0.93], [4300, 0.78], [5100, 0.48], [6000, 0.22], [6500, 0.10]],
+      gears: [3.80, 2.06, 1.26, 0.82], reverse: 3.80, finalDrive: 5.375,
+      engineBrake: 17,
     },
-    brakeBias: 0.58,
-    wallBounce: 0.24,
-    aero: { drag: 0.62, down: 0.16 },
-    steer: { max: 0.55, rate: 4.0, returnRate: 6.0 },
-    boost: { accel: 3.9, airShare: 0.32, burn: 3.2, refill: 9, restart: 0.2 },
+    brakeBias: 0.60,
+    wallBounce: 0.23,
+    aero: { drag: 0.80, down: 0.08 },
+    steer: { max: 0.57, rate: 3.7, returnRate: 5.5 },
+    boost: { accel: 3.3, airShare: 0.30, burn: 3.2, refill: 9, restart: 0.2 },
     body: {
-      width: 1.68, length: 4.05,
-      bottom: -0.46, shoulder: 0.34,
-      roof: 1.18, roofWidth: 1.56, roofLength: 3.25,
+      width: 1.78, length: 4.50,
+      bottom: -0.48, shoulder: 0.36,
+      roof: 1.24, roofWidth: 1.66, roofLength: 3.62,
     },
   },
 };
@@ -100,14 +100,14 @@ function applyCamperPhysics() {
   CAR.susp = { ...CAR.susp, ...p.susp };
   CAR.tyre = { ...CAR.tyre, ...p.tyre };
   CAR.engine = { ...CAR.engine, ...p.engine };
-  CAR.brakeTotal = 1.30 * p.mass * 9.81;
+  CAR.brakeTotal = 1.18 * p.mass * 9.81;
   CAR.brakeBias = p.brakeBias;
   CAR.wallBounce = p.wallBounce;
   CAR.aero = { ...CAR.aero, ...p.aero };
   CAR.steer = { ...CAR.steer, ...p.steer };
   CAR.boost = { ...CAR.boost, ...p.boost };
   CAR.hull = makeHull(p.body);
-  CAR.profileName = '1972 VW Type 2-style campervan';
+  CAR.profileName = '1972 VW Type 2 1600 campervan';
 }
 
 function addOption(select) {
