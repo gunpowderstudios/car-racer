@@ -8,7 +8,7 @@ const COPY = {
   car: 'Big, loud and happiest going sideways.',
   escort: 'Your Dad\'s favourite! Light, lively and always up for a scrap.',
   bmw: 'Great engineering and boringly reliable, Wunderbar!',
-  'motor-home': 'Slow, huge and deeply annoying if you\'re stuck behind it.',
+  'motor-home': '"Put the kettle on dear!" Slow, huge and deeply annoying if you\'re stuck behind it.',
   campervan: 'Peace, love and absolutely no hurry whatsoever.',
 };
 
