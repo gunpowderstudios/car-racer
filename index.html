@@ -207,14 +207,17 @@ html.invite-loading #invite-loading {
 
     <div id="menu-vehicle-choice" class="menu-vehicle-choice"></div>
 
-    <aside id="menu-vehicle-preview" class="menu-vehicle-preview" aria-live="polite">
-      <div class="menu-vehicle-stage">
-        <canvas id="menu-vehicle-canvas" aria-label="Rotating preview of the selected vehicle"></canvas>
-        <div id="menu-vehicle-loading" class="menu-vehicle-loading">Loading vehicle…</div>
-      </div>
-      <h2 id="menu-vehicle-name">Vehicle</h2>
-      <p id="menu-vehicle-blurb"></p>
-    </aside>
+    <ul id="track-list" class="track-list"></ul>
+
+    <div class="menu-actions menu-track-actions">
+      <button id="btn-new" class="btn">Design a new track</button>
+      <label class="btn ghost" for="import-file">Import track file</label>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+    </div>
+
+    <div class="menu-actions menu-multiplayer-actions">
+      <button id="btn-multiplayer" class="btn ghost">Multiplayer</button>
+    </div>
 
     <details class="options" open>
       <summary>Options</summary>
@@ -232,17 +235,14 @@ html.invite-loading #invite-loading {
       </div>
     </details>
 
-    <ul id="track-list" class="track-list"></ul>
-
-    <div class="menu-actions">
-      <button id="btn-new" class="btn">Design a new track</button>
-      <label class="btn ghost" for="import-file">Import track file</label>
-      <input id="import-file" type="file" accept=".json,application/json" hidden>
-    </div>
-
-    <div class="menu-actions">
-      <button id="btn-multiplayer" class="btn ghost">Multiplayer</button>
-    </div>
+    <aside id="menu-vehicle-preview" class="menu-vehicle-preview" aria-live="polite">
+      <div class="menu-vehicle-stage">
+        <canvas id="menu-vehicle-canvas" aria-label="Rotating preview of the selected vehicle"></canvas>
+        <div id="menu-vehicle-loading" class="menu-vehicle-loading">Loading vehicle…</div>
+      </div>
+      <h2 id="menu-vehicle-name">Vehicle</h2>
+      <p id="menu-vehicle-blurb"></p>
+    </aside>
 
     <p class="fine">Controls: W/S throttle and brake, A/D steer, Space boost, Shift drift, R reset to the road, C camera, 0 reset camera view, V rear-view mirror. You can also double-click the game view to centre the camera. Gamepad and touch controls work too.</p>
     <p class="fine">Derby: ram the rival cars. Every crash damages the part of the car that was hit, and the first part to run out wrecks the car. Your front end is armoured, your rear is not. Explosive barrels hurt everyone; chickens just splat.</p>
