@@ -202,11 +202,11 @@ function fillVehicleSelect(select) {
 }
 
 function addVehicleSelector() {
-  const grid = document.querySelector('#menu .opt-grid');
-  if (!grid || document.getElementById('opt-vehicle')) return;
+  const slot = document.getElementById('menu-vehicle-choice');
+  if (!slot || document.getElementById('opt-vehicle')) return;
 
   const label = document.createElement('label');
-  label.className = 'sel';
+  label.className = 'sel menu-vehicle-select';
   label.append('Vehicle ');
 
   const select = document.createElement('select');
@@ -219,7 +219,7 @@ function addVehicleSelector() {
   });
 
   label.appendChild(select);
-  grid.prepend(label);
+  slot.appendChild(label);
 }
 
 // Multiplayer gets its own obvious vehicle selector on BOTH the Create and Join screens.
