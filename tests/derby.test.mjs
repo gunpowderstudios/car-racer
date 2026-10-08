@@ -244,6 +244,23 @@ test('a wrecked rival lies about, is replaced by a fresh one, and never disappea
   assert.equal(derby.alive, 4);
 });
 
+test('a replacement rival inherits the wrecked car race slot', () => {
+  const track = new Track(makeTemplate('speedway')), car = new Vehicle();
+  placeOnRoad(car, track, track.startS(12), 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.start(track, car, 4, 5);
+  const victim = derby.rivals[2];
+  assert.equal(victim.raceSlot, 3, 'starting grid slots are stable');
+  victim.age = 9;
+  derby._damage(victim, 'back', 999, null);
+  for (let i = 0; i < 4 / DT; i++) {
+    car.step(DT, IN, track); derby.step(DT);
+    car.events.length = 0; derby.events.length = 0;
+  }
+  const activeSlotThree = derby.rivals.filter((f) => !f.wrecked && f.raceSlot === 3);
+  assert.equal(activeSlotThree.length, 1, 'exactly one live racer owns slot 3 after respawn');
+  assert.notEqual(activeSlotThree[0].id, victim.id, 'it is a new physical fighter');
+});
+
 test('once too many hulks pile up, the oldest one fades away to make room', () => {
   const track = new Track(makeTemplate('speedway')), car = new Vehicle();
   placeOnRoad(car, track, track.startS(12), 0, 0);
