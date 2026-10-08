@@ -83,6 +83,35 @@ export const VEHICLE_PHYSICS_PROFILES = {
     body: { width: 1.65, length: 4.33, bottom: -0.40, shoulder: 0.30, roof: 0.92, roofWidth: 1.40, roofLength: 2.32 },
   },
 
+  'v8-pilot': {
+    reference: 'late-1940s Ford V8 Pilot-style RWD saloon',
+    mass: 1510,
+    frontWeight: 0.54,
+    wheelbase: 2.77,
+    track: 1.48,
+    wheelRadius: 0.34,
+    mountY: 0.10,
+    inertia: { x: 3400, y: 3700, z: 1050 },
+    susp: {
+      free: 0.48, travel: 0.27,
+      kFront: 32000, kRear: 28500,
+      cCompFront: 2350, cCompRear: 2150, cRebFront: 3350, cRebRear: 3100,
+      arbFront: 12000, arbRear: 7500, bump: 190000, bumpDamp: 8500,
+    },
+    tyre: {
+      muFront: 1.02, muRear: 1.06, B: 9.8, C: 1.18, E: 0,
+      loadSens: 0.07, nominalLoad: 3900, maxTyreLoad: 9000, slideMu: 0.78, rolling: 0.016,
+    },
+    engine: { peakTorque: 285 },
+    brakeG: 1.18,
+    brakeBias: 0.61,
+    wallBounce: 0.25,
+    aero: { drag: 0.72, down: 0.18 },
+    steer: { max: 0.52, rate: 3.8, returnRate: 5.8 },
+    boost: { accel: 4.0 },
+    body: { width: 1.75, length: 4.44, bottom: -0.46, shoulder: 0.38, roof: 1.12, roofWidth: 1.48, roofLength: 2.62 },
+  },
+
   'motor-home': {
     reference: '1970s V8 motor home',
     mass: 2800,
