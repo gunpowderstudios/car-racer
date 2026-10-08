@@ -118,7 +118,7 @@ export class Derby {
     this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
-    this._replacementS = [];              // track positions of real rival wrecks waiting for a replacement
+    this._replacementS = [];              // {s, raceSlot}: wreck position + persistent race identity awaiting a replacement
     this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
     this._ctx = { player: null, cars: [], barrels: null };
     this._q = Track.newQuery();
@@ -131,6 +131,7 @@ export class Derby {
   /** Begin a fresh game on `track` with the player's car and `count` rivals. */
   start(track, playerCar, count = DERBY.rivals, seed = 7) {
     this.track = track; this.count = count; this.rng = mulberry(seed);
+    this.raceSerial = (this.raceSerial || 0) + 1;
     this.fighters.length = 0; this.events.length = 0;
     this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
@@ -163,7 +164,7 @@ export class Derby {
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
     car.opts.assist = 0.7;
-    return this.add(car, driver);
+    return this.add(car, driver, k + 1);
   }
 
   /** Switch the derby off (plain racing). */
@@ -180,7 +181,9 @@ export class Derby {
     const T = this.track, P = this.player, L = T.length, rnd = this.rng;
     const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
     const margin = Math.min(140, L * 0.18);
-    const replacementS = k < 0 && this._replacementS.length ? this._replacementS[0] : null;
+    const replacement = k < 0 && this._replacementS.length ? this._replacementS[0] : null;
+    const replacementS = replacement && typeof replacement === 'object' ? replacement.s : replacement;
+    const replacementSlot = replacement && typeof replacement === 'object' ? replacement.raceSlot : null;
     let s = 0, off = 0, ok = false;
     for (let t = 0; t < 14 && !ok; t++) {
       if (replacementS != null) {
@@ -207,13 +210,15 @@ export class Derby {
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, driver.cruise * 0.85);
     car.opts.assist = 0.7;
-    return this.add(car, driver);
+    return this.add(car, driver, replacementSlot);
   }
 
-  /** Add a rival that `driver` (see ai.js) pedals, or that just coasts if there is none. Used by _spawn and the tests. */
-  add(car, driver = null) {
+  /** Add a rival that `driver` (see ai.js) pedals, or that just coasts if there is none. Used by _spawn and the tests.
+   *  `raceSlot` is the persistent grid identity; replacement cars inherit the slot of the wreck they replace. */
+  add(car, driver = null, raceSlot = null) {
     const f = {
-      id: this._id++, isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: SPECS.rival,
+      id: this._id++, raceSlot: Number.isInteger(raceSlot) ? raceSlot : null,
+      isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: SPECS.rival,
       wrecked: false, wreckT: 0, gone: false, age: 0, lastHit: null, flash: 0, flashZone: 'front', flipT: 0, idleT: 0, offT: 0,
       expire: false, expireT: 0,
       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,
@@ -367,7 +372,7 @@ export class Derby {
     c.refreshFrame();
     if (!f.isPlayer) {
       const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
-      if (Number.isFinite(wreckS)) this._replacementS.push(wreckS);
+      if (Number.isFinite(wreckS)) this._replacementS.push({ s: wreckS, raceSlot: f.raceSlot });
     }
     this.events.push({ type: 'wreck', id: f.id, isPlayer: f.isPlayer, zone, x: c.pos.x, y: c.pos.y, z: c.pos.z, dist: this._dist(c.pos.x, c.pos.y, c.pos.z) });
     // the blast heaves the hulk into the air and sets it spinning
