@@ -13,6 +13,15 @@ export const VEHICLES = [
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, physicsProfile: 'escort' },
   { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, physicsProfile: 'bmw' },
   {
+    id: 'v8-pilot',
+    name: 'Classic Oil Burner',
+    description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",
+    url: 'cars/v8-pilot.glb',
+    fit: 'auto',
+    targetLength: 4.44,
+    physicsProfile: 'v8-pilot',
+  },
+  {
     id: 'motor-home', name: 'Motorhome', url: 'cars/motor-home-shrink.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
