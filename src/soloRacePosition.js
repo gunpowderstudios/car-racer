@@ -1,5 +1,6 @@
-// Single-player race position HUD: ranks the player against the original AI starting grid by track progress.
-// Replacement derby cars can still race and ram, but they do not inherit a finishing place.
+// Single-player race position HUD: ranks the player against the AI grid by continuous track progress.
+// A wrecked rival's replacement inherits the same persistent race slot, so respawning never removes
+// that competitor from the standings or creates an extra finishing place.
 import { getCurrentMultiplayer } from './multiplayer.js';
 
 function raceLaps() { return window.__raceLaps?.get?.() || 1; }
@@ -56,14 +57,16 @@ function unwrapNear(s, reference, length) {
   return u;
 }
 
-// Each original rival keeps its own continuous progress. Re-guessing a rival's lap relative to the
-// player every frame makes cars behind the start/finish line jump onto the next lap as the player approaches it.
-const rivalProgress = new WeakMap();
+// Each grid slot keeps its own continuous progress, even when the physical car is wrecked and replaced.
+// Re-guessing laps from the player's position every frame makes cars around the start/finish line jump laps.
+let rivalProgressSerial = null;
+const rivalProgress = new Map();
 function continuousRivalProgress(fighter, s, playerProgress, length) {
-  let state = rivalProgress.get(fighter);
+  const slot = Number.isInteger(fighter.raceSlot) ? fighter.raceSlot : fighter.id;
+  let state = rivalProgress.get(slot);
   if (!state) {
     state = { s, unwrapped: unwrapNear(s, playerProgress, length) };
-    rivalProgress.set(fighter, state);
+    rivalProgress.set(slot, state);
     return state.unwrapped;
   }
 
@@ -83,13 +86,20 @@ function getSoloField(game) {
   const derby = game?.derby;
   if (!track || !derby || !Number.isFinite(player) || !Number.isFinite(length) || length <= 0) return null;
 
+  const serial = derby.raceSerial ?? 0;
+  if (rivalProgressSerial !== serial) {
+    rivalProgressSerial = serial;
+    rivalProgress.clear();
+  }
+
   const rivals = [];
   const startingRivalCount = Math.max(0, Number.isFinite(derby.count) ? derby.count : 0);
   for (const fighter of derby.rivals || []) {
     if (!fighter || fighter.gone || fighter.wrecked || !fighter.car) continue;
-    // Derby replacements get IDs after the original starting grid (1..derby.count). They remain
-    // active traffic, but must never appear in race position or steal a finishing place.
-    if (startingRivalCount && fighter.id > startingRivalCount) continue;
+    const slot = Number.isInteger(fighter.raceSlot) ? fighter.raceSlot : fighter.id;
+    // The field is the fixed starting grid. A physical replacement may have a much larger fighter ID,
+    // but it carries the same raceSlot as the original car it replaced.
+    if (startingRivalCount && (slot < 1 || slot > startingRivalCount)) continue;
     const c = fighter.car;
     const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
     if (Number.isFinite(s)) rivals.push(continuousRivalProgress(fighter, s, player, length));
