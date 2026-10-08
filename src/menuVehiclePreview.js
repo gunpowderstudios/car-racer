@@ -8,6 +8,7 @@ const COPY = {
   car: 'Big, loud and happiest going sideways.',
   escort: 'Your Dad\'s favourite! Light, lively and always up for a scrap.',
   bmw: 'Great engineering and boringly reliable, Wunderbar!',
+  'v8-pilot': "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",
   'motor-home': '"Put the kettle on dear!" Slow, huge and deeply annoying if you\'re stuck behind it.',
   campervan: 'Peace, love and absolutely no hurry whatsoever.',
 };
@@ -23,7 +24,7 @@ function installMenuVehiclePreview() {
   const chosen = selectedVehicle();
   const vehicle = VEHICLES.find((v) => v.id === chosen.id) || chosen;
   nameEl.textContent = vehicle.name;
-  blurbEl.textContent = COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
+  blurbEl.textContent = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
 
   try {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
