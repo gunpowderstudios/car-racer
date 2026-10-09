@@ -276,7 +276,7 @@ export class Multiplayer {
     this._broadcastLobby();
   }
 
-  async joinRoom(code, name, { retryMs = 15000, delayMs = 1200 } = {}) {
+  async joinRoom(code, name, { retryMs = 60000, delayMs = 1500 } = {}) {
     await loadPeerJs();
     const myName = sanitizeName(name), roomCode = sanitizeName(code).toUpperCase().slice(0, 8);
     this._guest = { name: myName, code: roomCode };
@@ -289,7 +289,7 @@ export class Multiplayer {
         return await this._joinRoomAttempt(roomCode);
       } catch (e) {
         if (this._leaving || e?.peerType !== 'peer-unavailable' || Date.now() >= deadline) throw e;
-        if (this.h.onStatus) this.h.onStatus(`Room ${roomCode} is waking up…`);
+        if (this.h.onStatus) this.h.onStatus(`Room ${roomCode} is waking up… Keep the host game open.`);
         await sleep(delayMs);
       }
     }
@@ -323,7 +323,7 @@ export class Multiplayer {
         });
         setTimeout(() => {
           if (!settled) {
-            const e = new Error('Room not found. Check the code and try again.');
+            const e = new Error('Room not found yet. Check the code and make sure the host has the game open on screen.');
             e.peerType = 'peer-unavailable';
             fail(e);
           }
@@ -342,7 +342,7 @@ export class Multiplayer {
     conn.on('close', () => this._hostConnClosed(conn));
     conn.on('error', (e) => {
       if (!onFail) return;
-      if (e?.type === 'peer-unavailable') onFail('Room not found. Check the code and try again.', true);
+      if (e?.type === 'peer-unavailable') onFail('Room not found yet. Check the code and make sure the host has the game open on screen.', true);
       else onFail('Could not connect to that room.', false);
     });
     return conn;
@@ -446,7 +446,7 @@ export class Multiplayer {
   _friendlyPeerError(e) {
     const type = e && e.type;
     const tag = (err) => { err.peerType = type; return err; };
-    if (type === 'peer-unavailable') return tag(new Error('Room not found. Check the code and try again.'));
+    if (type === 'peer-unavailable') return tag(new Error('Room not found yet. Check the code and make sure the host has the game open on screen.'));
     if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'disconnected') return tag(new Error('Multiplayer server unavailable right now. Try again shortly.'));
     if (type === 'unavailable-id') return tag(new Error('That room code is already taken - try again.'));
     return tag(new Error('Multiplayer connection problem.'));
