@@ -556,7 +556,7 @@ function frame(now) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
       derbyFx(dt);
-      visual.setLook(derby.over && !derby.won ? 0.12 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
+      visual.setLook(derby.over && !derby.won ? 0.3 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
       mapDots.length = 0;
       for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
       if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
