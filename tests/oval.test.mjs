@@ -7,7 +7,7 @@ import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from '../src/templates.js';
 import { Derby, DERBY, POINTS } from '../src/derby.js';
 import { arenaInfo, arenaOutline, arenaPlayerStart } from '../src/arena.js';
-import { TOUGHNESS } from '../src/damage.js';
+import { TOUGHNESS, roofDentHp } from '../src/damage.js';
 import { DENT } from '../src/dentMath.js';
 import { placeOnTrack } from './harness.mjs';
 
@@ -155,4 +155,26 @@ test('left alone, the field tears itself apart: rivals wreck each other', () => 
   const wrecked = derby.rivals.filter((f) => f.wrecked).length + derby.fighters.filter((f) => f.gone && !f.isPlayer).length;
   assert.ok(wrecked >= 1, `at least one rival was wrecked by the others (got ${wrecked})`);
   assert.equal(derby.rivals.length <= 8, true);
+});
+
+test('a roof scraping the ground in a roll leaves a roof dent; a hard landing on the wheels does not', () => {
+  const { car, derby } = arena(3);
+  derby.time = DERBY.grace + 1;
+  car.refreshFrame();
+  const roofPt = { x: car.pos.x + car.ay.x * 0.9, y: car.pos.y + car.ay.y * 0.9, z: car.pos.z + car.ay.z * 0.9 };
+  derby.events.length = 0;
+  car.events.push({ type: 'ground', speed: 9, ...roofPt });
+  derby.step(1 / 120, null);
+  const roof = derby.events.find((e) => e.type === 'damage' && e.isPlayer);
+  assert.ok(roof, 'roof damage event');
+  assert.equal(roof.zone, 'roof');
+  assert.ok(roof.ly > 0.5, 'dent point is on the roof, local y ' + roof.ly);
+  assert.ok(roof.dentHp >= 10 && roof.dentHp <= 60, 'dent sized from the impact speed: ' + roof.dentHp);
+  assert.equal(roofDentHp(2), 0);
+  assert.ok(roofDentHp(15) > roofDentHp(6));
+  derby.events.length = 0; car.events.length = 0;      // the player's own events stay queued for main.js
+  car.events.push({ type: 'ground', speed: 9, x: car.pos.x, y: car.pos.y - 0.4, z: car.pos.z + 1.5 });
+  derby.step(1 / 120, null);
+  const low = derby.events.find((e) => e.type === 'damage' && e.isPlayer);
+  assert.ok(!low || (low.lx === undefined && low.dentHp === undefined), 'wheels and underside get no dent');
 });

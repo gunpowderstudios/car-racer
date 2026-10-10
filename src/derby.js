@@ -15,7 +15,7 @@ import { Vehicle } from './vehicle.js';
 import { Track, SURF } from './track.js';
 import { Driver, IDLE, AI } from './ai.js';
 import { ArenaDriver, arenaInfo, arenaSpawn } from './arena.js';
-import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage } from './damage.js';
+import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage, roofDentHp } from './damage.js';
 
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
 export const POINTS = {
@@ -286,7 +286,12 @@ export class Derby {
         if (this.damageEnabled) {
           let hp = wallDamage(f.car.mass, e.speed) * f.spec.wallMul;
           if (e.type === 'ground') hp *= DAMAGE.ground / DAMAGE.wall;
-          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null, e.type === 'wall' ? e.x : undefined, e.y, e.z);   // landing hard marks the paint, not the body
+          if (hp > 0) {
+            const zone = zoneAt(f.car, e.x, e.y, e.z);
+            // landing hard marks the paint, not the body - but a roof on the ground (a roll) crumples, so it gets a dent
+            const roof = e.type === 'ground' && zone === 'roof';
+            this._damage(f, zone, hp, null, e.type === 'wall' || roof ? e.x : undefined, e.y, e.z, roof ? roofDentHp(e.speed) : undefined);
+          }
         }
         if (!f.isPlayer && e.speed > 3 && e.type === 'wall') this._hitEvent('wall', e.speed, e.x, e.y, e.z);
       }
@@ -403,7 +408,7 @@ export class Derby {
 
   // --------------------------------------------------------------------- damage
   /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
-  _damage(f, zone, hp, by, x, y, z) {
+  _damage(f, zone, hp, by, x, y, z, dentHp) {
     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
     else if (f.age < DERBY.spawnGrace) return;
@@ -414,6 +419,7 @@ export class Derby {
     f.health.last = zone;
     f.flash = 1; f.flashZone = zone;
     const ev = { type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp };
+    if (dentHp !== undefined) ev.dentHp = dentHp;
     if (x !== undefined) {
       const c = f.car, dx = x - c.pos.x, dy = y - c.pos.y, dz = z - c.pos.z;
       ev.lx = dx * c.ax.x + dy * c.ax.y + dz * c.ax.z; ev.ly = dx * c.ay.x + dy * c.ay.y + dz * c.ay.z; ev.lz = dx * c.az.x + dy * c.az.y + dz * c.az.z;

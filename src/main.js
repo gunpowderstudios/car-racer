@@ -416,7 +416,7 @@ function derbyEvents() {
       for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
     } else if (e.type === 'damage') {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
-      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.hp); }   // a visible dent where it hit
+      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); }   // a visible dent where it hit
     } else if (e.type === 'wreck') {
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);

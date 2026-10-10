@@ -77,6 +77,14 @@ export function crashDamage(mu, closing) {
   return Math.min(DAMAGE.maxHit, DAMAGE.perKJ * kJ);
 }
 
+/**
+ * How big a dent (in hit points' worth, see dentMath.js) a roof hitting the ground at `speed` m/s leaves. The hit points a
+ * ground impact takes off are tiny, so rolls would never mark the roof; this sizes the dent from the speed instead.
+ */
+export function roofDentHp(speed) {
+  return Math.min(60, Math.max(0, (speed - 2.5) * 2.6));
+}
+
 /** Hit points a barrier hit takes off a zone. */
 export function wallDamage(mass, speed) {
   const v = speed - DAMAGE.minSpeed;
