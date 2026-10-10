@@ -40,7 +40,7 @@ test('road mesh edges lie exactly on the physics surface', () => {
 });
 
 test('wall face in the mesh sits where the physics wall is', () => {
-  const track = new Track(makeTemplate('kidney'));
+  const track = new Track(makeTemplate('speedway'));
   const g = buildTrackGeometry(track);
   // 6 columns per section, columns 0 and 1 are the inner face at lateral offset hw + WALL_GAP
   const P = g.wall.position, i = 100, sg = 1;

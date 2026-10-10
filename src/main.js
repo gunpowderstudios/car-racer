@@ -380,8 +380,10 @@ function derbyStart() {
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
+  const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
+  const field = arena ? Math.min(10, opts.rivals * 2) : opts.rivals;
   derby.damageEnabled = derby.enabled && !!opts.derby;
-  if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
+  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
@@ -413,9 +415,11 @@ function derbyEvents() {
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
       if (isBest) { all[key] = e.score; store.set('cr.derby', all); }
-      overInfo = { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: `${ZONE_LABEL[e.zone]} destroyed` };
+      overInfo = e.won
+        ? { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: 'Every rival wrecked', title: 'Last one standing!' }
+        : { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: `${ZONE_LABEL[e.zone]} destroyed` };
       overAt = performance.now() + 1800;
-      hud.banner('Wrecked', 1700);
+      hud.banner(e.won ? 'Last one standing!' : 'Wrecked', 1700);
     }
   }
   derby.events.length = 0;
@@ -537,7 +541,7 @@ function frame(now) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
       derbyFx(dt);
-      visual.setLook(derby.over ? 0.12 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
+      visual.setLook(derby.over && !derby.won ? 0.12 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
       mapDots.length = 0;
       for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
       if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
@@ -596,12 +600,12 @@ function startDriving(newDef) {
   sound.init();
   if (newDef) loadTrack(newDef);
   hasPlayed = true; setMode('drive'); last = performance.now();
-  hud.banner(derby.enabled ? 'Wreck them all' : 'Get to the start line', 1600);
+  hud.banner(derby.lastStanding ? 'Last one standing wins!' : derby.enabled ? 'Wreck them all' : 'Get to the start line', 1600);
 }
 function openEditor(d) {
   // the editor needs a mouse and a big screen - on touch devices just say so
   if (matchMedia('(pointer: coarse)').matches) { toast('The track editor only works on a desktop computer.'); return; }
-  setMode('edit'); editor.open(d || def || makeTemplate('kidney'));
+  setMode('edit'); editor.open(d || def || makeTemplate('speedway'));
 }
 
 const editor = window.__editor = new Editor({
@@ -678,7 +682,7 @@ function bindMenu() {
     b.onclick = () => { opts.paint = i; visual.setPaint(hex); store.set('cr.opts', opts); [...sw.children].forEach((c, j) => c.setAttribute('aria-checked', String(j === i))); };
     sw.appendChild(b);
   });
-  $('btn-new').onclick = () => { const d = makeTemplate('kidney'); d.name = 'My track'; openEditor(d); };
+  $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   $('btn-play-now').onclick = () => startDriving(makeRandomTrack());
   $('import-file').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;

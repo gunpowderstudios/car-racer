@@ -19,6 +19,7 @@ import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDama
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
 export const POINTS = {
   takedown: 100,
+  winner: 500,           // last car running in a free-for-all arena
   chicken: 10,
   // Ideas for later - award them from wherever the event happens:
   //   landing: 50,   (a clean landing after a big jump)
@@ -115,7 +116,8 @@ export class Derby {
   constructor() {
     this.enabled = false; this.damageEnabled = true;
     this.track = null; this.fighters = []; this.player = null; this.events = [];
-    this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
+    this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
+    this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
     this._replacementS = [];              // {s, raceSlot}: wreck position + persistent race identity awaiting a replacement
@@ -133,7 +135,10 @@ export class Derby {
     this.track = track; this.count = count; this.rng = mulberry(seed);
     this.raceSerial = (this.raceSerial || 0) + 1;
     this.fighters.length = 0; this.events.length = 0;
-    this.score = 0; this.takedowns = 0; this.over = false; this.time = 0;
+    this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
+    // A track marked mode 'lastStanding' (The Oval) is a free-for-all: rivals start spread round the ring, fight each
+    // other as well as you, are never replaced, and the last car still running wins.
+    this.lastStanding = !!(track && track.def && track.def.mode === 'lastStanding'); this._arenaField = 0;
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
     this._replacementS.length = 0;
     const p = this.player = {
@@ -142,7 +147,9 @@ export class Derby {
       prev: pose(), cur: pose(), hue: -1,
     };
     this.fighters.push(p);
-    for (let k = 0; k < count; k++) this._spawnGrid(k, count);
+    if (this.lastStanding) {
+      for (let k = 0; k < count; k++) { const f = this._spawn(k, count, 0, true); if (f) { f.raceSlot = k + 1; this._arenaField++; } }
+    } else for (let k = 0; k < count; k++) this._spawnGrid(k, count);
     this._refreshCars();
   }
 
@@ -177,7 +184,7 @@ export class Derby {
   }
 
   // ------------------------------------------------------------------- spawning
-  _spawn(k = -1, of = 0) {
+  _spawn(k = -1, of = 0, speed = null, fierce = false) {
     const T = this.track, P = this.player, L = T.length, rnd = this.rng;
     const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
     const margin = Math.min(140, L * 0.18);
@@ -207,8 +214,8 @@ export class Derby {
     if (!ok) return null;
     if (replacementS != null) this._replacementS.shift();
     const car = new Vehicle();
-    const driver = new Driver(rnd);
-    placeOnRoad(car, T, s, off, driver.cruise * 0.85);
+    const driver = fierce ? new Driver(rnd, 0.7 + rnd() * 0.3) : new Driver(rnd);     // arena rivals are all spoiling for a fight
+    placeOnRoad(car, T, s, off, speed ?? driver.cruise * 0.85);
     car.opts.assist = 0.7;
     return this.add(car, driver, replacementSlot);
   }
@@ -252,7 +259,11 @@ export class Derby {
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;
-      if (f.driver && !f.wrecked && (this._tick + f.id) % 4 === 0) f.inp = f.driver.drive(f.car, T, ctx, dt * 4);
+      if (f.driver && !f.wrecked && (this._tick + f.id) % 4 === 0) {
+        if (this.lastStanding) ctx.player = this._nearestFoe(f);         // everyone is everyone's target
+        f.inp = f.driver.drive(f.car, T, ctx, dt * 4);
+        if (this.lastStanding) ctx.player = P.wrecked ? null : P.car;
+      }
       try { f.car.step(dt, f.wrecked ? IDLE : f.inp, T); }
       catch { this._remove(f); }
     }
@@ -321,8 +332,35 @@ export class Derby {
     this._spawnT -= dt;
     if (this._spawnT <= 0) {
       this._spawnT = 0.5;
-      if (this.alive < this.count && !this.over) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
+      if (this.alive < this.count && !this.over && !this.lastStanding) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
     }
+
+    // -------- last one standing
+    if (this.lastStanding && !this.over && !P.wrecked && this._arenaField > 0 && this.time > DERBY.grace && this._standing() === 0) this._win();
+  }
+
+  /** Rivals still in the fight. One that is only 3-2-1 resetting after being lost off the road still counts. */
+  _standing() {
+    let n = 0;
+    for (const f of this.fighters) if (!f.isPlayer && !f.gone && (!f.wrecked || f._offTrackReset)) n++;
+    return n;
+  }
+
+  /** The closest car (you included) that is still running, as far as rival `f` is concerned. */
+  _nearestFoe(f) {
+    let best = null, bd = Infinity;
+    for (const o of this.fighters) {
+      if (o === f || o.gone || o.wrecked) continue;
+      const d = (o.car.pos.x - f.car.pos.x) ** 2 + (o.car.pos.z - f.car.pos.z) ** 2;
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best ? best.car : null;
+  }
+
+  _win() {
+    this.award('winner', 1, 'Last one standing');
+    this.over = true; this.won = true;
+    this.events.push({ type: 'over', won: true, zone: null, score: this.score, takedowns: this.takedowns });
   }
 
   /** Rivals that flipped, got lost or got stuck: cook the upside-down ones, put the lost ones back. */

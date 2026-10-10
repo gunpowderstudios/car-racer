@@ -86,7 +86,7 @@ export function normalizeTrack(input) {
     lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
     kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
   }));
-  return {
+  const out = {
     version: TRACK_VERSION,
     name: String(src.name || 'Untitled circuit').slice(0, 40),
     closed: true,
@@ -95,6 +95,8 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
+  if (src.mode === 'lastStanding') out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
+  return out;
 }
 
 // ------------------------------------------------------------------- spline

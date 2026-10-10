@@ -337,10 +337,10 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
 });
 
 
-test('kidney template is displayed as Bed Pan', () => {
+test('oval template is displayed as The Oval', () => {
   const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
-  assert.match(templates, /kidney:\s*\{\s*name: 'Bed Pan'/);
-  assert.doesNotMatch(templates, /name: 'Kidney'/);
+  assert.match(templates, /oval:\s*\{\s*name: 'The Oval'/);
+  assert.doesNotMatch(templates, /Bed Pan/);
 });
 
 

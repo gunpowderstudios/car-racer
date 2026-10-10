@@ -434,7 +434,7 @@ test('a full derby with six rivals runs cleanly on the bendy tracks, and is repe
     return { score: derby.score, x: car.pos.x.toFixed(3), hp: JSON.stringify(derby.player.health.hp), rivals: derby.rivals.map((f) => f.car.pos.x.toFixed(2)).join() };
   };
   for (const key of ['technical', 'hills']) runOnce(key, 3);
-  assert.deepEqual(runOnce('kidney', 9), runOnce('kidney', 9));
+  assert.deepEqual(runOnce('speedway', 9), runOnce('speedway', 9));
 });
 
 test('blastFraction: everything inside two metres, then a straight fall to nothing at the radius', () => {

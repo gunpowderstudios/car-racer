@@ -1,0 +1,146 @@
+// The Oval: a free-for-all banger derby arena. Barrels, bumps, no laps, the last car running wins.
+// Run with:  npm test
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { Track, normalizeTrack } from '../src/track.js';
+import { Vehicle } from '../src/vehicle.js';
+import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from '../src/templates.js';
+import { Derby, DERBY, POINTS } from '../src/derby.js';
+import { placeOnTrack } from './harness.mjs';
+
+const IDLE = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
+
+function arena(rivals = 6) {
+  const def = makeTemplate('oval'), track = new Track(def), car = new Vehicle();
+  placeOnTrack(car, track, track.startS(12), 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true;
+  derby.start(track, car, rivals, 11);
+  return { def, track, car, derby };
+}
+
+test('The Oval is a preloaded track, replacing Bed Pan', () => {
+  assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
+  assert.equal(makeTemplate('oval').name, 'The Oval');
+  assert.match(TEMPLATE_INFO.oval, /last one standing/i);
+  assert.equal(TEMPLATE_KEYS.length, 6, 'still five tracks and the random one');
+});
+
+test('it is marked as a last-one-standing arena, and other tracks are not', () => {
+  assert.equal(makeTemplate('oval').mode, 'lastStanding');
+  for (const k of TEMPLATE_KEYS) if (k !== 'oval') assert.equal(makeTemplate(k).mode, undefined, k);
+  assert.equal(normalizeTrack(makeTemplate('oval')).mode, 'lastStanding', 'the mode survives loading');
+  assert.equal(normalizeTrack({ handles: makeTemplate('oval').handles, mode: 'nonsense' }).mode, undefined);
+});
+
+test('full of drums, some in clusters, none on the start line, and the same every time', () => {
+  const def = makeTemplate('oval'), track = new Track(def);
+  const barrels = def.props.filter((p) => p.type === 'barrel');
+  assert.ok(barrels.length >= 60 && barrels.length <= 100, String(barrels.length));
+  assert.equal(def.props.length, barrels.length);
+  assert.deepEqual(makeTemplate('oval').props, def.props, 'always the same drums');
+  const q = Track.newQuery();
+  for (const b of barrels) {
+    track.query(b.x, b.y + 0.5, b.z, q, 2);
+    assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw + 0.1, 'every drum is on the road');
+    const s = q.s, L = track.length;
+    assert.ok(s > 60 && s < L - 60, `no drum within 60 m of the start line (s=${s.toFixed(0)})`);
+  }
+  let close = 0;
+  for (let i = 0; i < barrels.length; i++) for (let j = i + 1; j < barrels.length; j++) if (Math.hypot(barrels[i].x - barrels[j].x, barrels[i].z - barrels[j].z) < 3.2) close++;
+  assert.ok(close >= 12, 'clusters of drums that set each other off: ' + close);
+});
+
+test('it is a wide, walled, bumpy ring: humps all the way round', () => {
+  const def = makeTemplate('oval'), track = new Track(def);
+  assert.equal(def.walls, true);
+  assert.ok(def.width >= 30);
+  assert.ok(track.length > 900 && track.length < 1500, String(track.length));
+  let lo = 1e9, hi = -1e9;
+  for (let i = 0; i < track.n; i++) { lo = Math.min(lo, track.py[i]); hi = Math.max(hi, track.py[i]); }
+  assert.ok(hi - lo > 1.5, `bumps are at least 1.5 m tall: ${(hi - lo).toFixed(2)}`);
+});
+
+test('the field starts spread right round the ring, standing still, and every rival is spoiling for a fight', () => {
+  const { track, derby } = arena(8);
+  const rivals = derby.rivals;
+  assert.equal(rivals.length, 8);
+  for (const f of rivals) { assert.ok(f.car.speed < 0.5); assert.ok(f.driver.aggr >= 0.7); }
+  const ss = rivals.map((f) => track.progressAt(f.car.pos.x, f.car.pos.y, f.car.pos.z)).sort((a, b) => a - b);
+  let widest = 0;
+  for (let i = 1; i < ss.length; i++) widest = Math.max(widest, ss[i] - ss[i - 1]);
+  assert.ok(widest < track.length / 4, 'no huge gaps: spread round the ring');
+  assert.ok(ss[1] - ss[0] > 30, 'not stacked on top of each other');
+  const normal = new Derby(); const t2 = new Track(makeTemplate('speedway')), c2 = new Vehicle();
+  placeOnTrack(c2, t2, t2.startS(12), 0, 0); normal.enabled = true; normal.start(t2, c2, 6, 11);
+  assert.equal(normal.lastStanding, false);
+});
+
+test('rivals pick the nearest running car as their target, not just you', () => {
+  const { derby } = arena(6);
+  const [a, b] = derby.rivals;
+  a.car.pos.set(0, 0, 0); b.car.pos.set(5, 0, 0);
+  for (const f of derby.rivals.slice(2)) f.car.pos.set(500, 0, 500);
+  derby.player.car.pos.set(300, 0, 300);
+  assert.equal(derby._nearestFoe(a), b.car);
+  b.wrecked = true;
+  assert.notEqual(derby._nearestFoe(a), b.car, 'wrecks are not targets');
+});
+
+test('wrecked rivals are not replaced', () => {
+  const { derby } = arena(5);
+  derby.time = DERBY.grace + 1;
+  const first = derby.rivals[0]; first.age = 99;
+  derby._damage(first, 'back', 999, null);
+  for (let i = 0; i < 600; i++) derby.step(1 / 120, null);        // five seconds
+  assert.equal(derby.rivals.filter((f) => !f.wrecked).length, 4, 'still four running');
+  assert.equal(derby.fighters.filter((f) => !f.isPlayer).length, 5, 'and no new ones came on');
+});
+
+test('wreck every rival and you win: 500 points, the game ends, and you are not wrecked', () => {
+  const { derby } = arena(4);
+  derby.time = DERBY.grace + 1;
+  derby.events.length = 0;
+  const all = derby.rivals;
+  for (const f of all.slice(0, 3)) { f.age = 99; derby._damage(f, 'back', 999, derby.player); }
+  derby.step(1 / 120, null);
+  assert.equal(derby.over, false, 'one left: still going');
+  assert.equal(derby.alive, 1);
+  all[3].age = 99; derby._damage(all[3], 'back', 999, derby.player);
+  const before = derby.score;
+  derby.step(1 / 120, null);
+  const over = derby.events.find((e) => e.type === 'over');
+  assert.ok(over && over.won === true, JSON.stringify(derby.events.map((e) => e.type)));
+  assert.equal(derby.over, true); assert.equal(derby.won, true);
+  assert.equal(derby.score - before, POINTS.winner);
+  assert.equal(derby.player.wrecked, false);
+  derby.events.length = 0; derby.step(1 / 120, null);
+  assert.equal(derby.events.filter((e) => e.type === 'over').length, 0, 'you only win once');
+});
+
+test('no win before the grace period is up, and no win once you are wrecked yourself', () => {
+  const { derby } = arena(2);
+  for (const f of derby.rivals) { f.age = 99; derby._damage(f, 'back', 999, null); }
+  derby.time = 0.5;
+  derby.step(1 / 120, null);
+  assert.equal(derby.won, false);
+  const { derby: d2 } = arena(3);
+  d2.time = DERBY.grace + 1;
+  d2._damage(d2.player, 'front', 9999, null);                     // you are the one wrecked
+  for (const f of d2.rivals) { f.age = 99; d2._damage(f, 'back', 999, null); }
+  d2.step(1 / 120, null);
+  assert.equal(d2.won, false);
+  assert.equal(d2.over, true);
+});
+
+test('left alone, the field tears itself apart: rivals wreck each other', () => {
+  const { track, car, derby } = arena(8);
+  derby.time = DERBY.grace + 1;
+  for (let i = 0; i < 60 * 150; i++) {                              // two and a half minutes at 60 Hz
+    car.step(1 / 60, IDLE, track);
+    derby.step(1 / 60, null);
+    car.events.length = 0; derby.events.length = 0;
+  }
+  const wrecked = derby.rivals.filter((f) => f.wrecked).length + derby.fighters.filter((f) => f.gone && !f.isPlayer).length;
+  assert.ok(wrecked >= 1, `at least one rival was wrecked by the others (got ${wrecked})`);
+  assert.equal(derby.rivals.length <= 8, true);
+});

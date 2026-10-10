@@ -88,19 +88,44 @@ function figureEight() {
   return out;
 }
 
+/** The Oval: a fat ring of road with rolling humps all the way round (every other handle sits high). */
+function ovalArena() {
+  const a = 230, b = 135, n = 20, out = [];
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * Math.PI * 2;
+    out.push({ x: a * Math.cos(t), y: k % 2 ? 2.85 : 0.65, z: b * Math.sin(t) });
+  }
+  return out;
+}
+
+/** Drums for The Oval: a scatter all round plus a few tight clusters, nothing near the start line. Always the same ones. */
+function arenaProps(def) {
+  const track = new Track(def), rnd = mulberry(20261010), props = [], L = track.length, clear = 90;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const drum = (s, off) => {
+    const f = track.frameAt(s), lim = Math.max(2, f.hw - 3);
+    const p = placeProp(track, f.x + f.lx * Math.max(-lim, Math.min(lim, off)), f.z + f.lz * Math.max(-lim, Math.min(lim, off)));
+    props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) });
+  };
+  for (let i = 0; i < 40; i++) { const s = clear + rnd() * (L - 2 * clear); drum(s, (rnd() - 0.5) * 2 * (track.frameAt(s).hw - 3)); }
+  for (let c = 0; c < 8; c++) {                                  // eight clusters of four: one spark sets the lot off
+    const s = clear + (c + 0.5) * (L - 2 * clear) / 8 + (rnd() - 0.5) * 30, off = (rnd() - 0.5) * 20;
+    drum(s, off); drum(s + 2.4, off); drum(s - 2.4, off); drum(s, off + (rnd() < 0.5 ? 2.2 : -2.2));
+  }
+  return props;
+}
+
 const RAW = {
   speedway: {
     name: 'Speedway', width: 26,
     handles: ellipse(300, 190, 14),
     autoBank: true,
   },
-  kidney: {
-    name: 'Bed Pan', width: 22,
-    handles: scale([
-      { x: -10, y: .65, z: -64 }, { x: 44, y: .65, z: -54 }, { x: 68, y: .65, z: -10 }, { x: 42, y: .65, z: 30 },
-      { x: 10, y: .65, z: 58 }, { x: -42, y: .65, z: 54 }, { x: -66, y: .65, z: 12 }, { x: -38, y: .65, z: -24 },
-    ], 3.1),
+  oval: {
+    name: 'The Oval', width: 36,
+    handles: ovalArena(),
     autoBank: true,
+    arena: true,       // a free-for-all banger derby: barrels everywhere, last one standing wins
   },
   technical: {
     name: 'Technical', width: 20,
@@ -212,13 +237,14 @@ export function makeTemplate(key) {
     const banks = suggestBanks(new Track(def), 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
+  if (raw.arena) def = normalizeTrack({ ...def, mode: 'lastStanding', props: arenaProps(def) });
   return def;
 }
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
   speedway: 'Fast banked oval to learn the car',
-  kidney: 'Flowing bends and one long straight',
+  oval: 'Free-for-all banger derby: barrels, bumps, last one standing wins',
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',

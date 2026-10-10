@@ -104,8 +104,9 @@ export class Hud {
     setTimeout(() => li.remove(), 2600);
   }
 
-  showGameOver({ score, takedowns, best, isBest, zone }) {
+  showGameOver({ score, takedowns, best, isBest, zone, title }) {
     const o = this.d.over;
+    const t = o.querySelector('.go-title'); if (t) t.textContent = title || 'Wrecked';
     $('go-why').textContent = zone;
     $('go-score').textContent = score.toLocaleString('en-GB');
     $('go-kills').textContent = String(takedowns);

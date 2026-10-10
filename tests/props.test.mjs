@@ -38,12 +38,12 @@ function drive(track, props, speed, seconds, z0 = -385) {
 
 test('props are part of the track format: kept, cleaned and defaulted', () => {
   assert.equal(TRACK_VERSION, 6);
-  const def = normalizeTrack({ handles: makeTemplate('kidney').handles, props: [
+  const def = normalizeTrack({ handles: makeTemplate('speedway').handles, props: [
     { type: 'barrel', x: 10.123, z: -4, y: 0.65 }, { type: 'sofa', x: 0, z: 0 }, { type: 'barrel', x: 'nope', z: 1 }, null,
   ] });
   assert.equal(def.props.length, 1, 'only the valid barrel survives');
   assert.deepEqual(def.props[0], { type: 'barrel', x: 10.12, z: -4, y: 0.65 });
-  assert.deepEqual(normalizeTrack({ handles: makeTemplate('kidney').handles }).props, [], 'old files load with no props');
+  assert.deepEqual(normalizeTrack({ handles: makeTemplate('speedway').handles }).props, [], 'old files load with no props');
   const again = normalizeTrack(JSON.parse(JSON.stringify(def)));
   assert.deepEqual(again.props, def.props, 'survives an export / import round trip');
   assert.ok(normalizeTrack({ props: Array.from({ length: 900 }, () => ({ type: 'barrel', x: 1, z: 1 })) }).props.length <= 400);
@@ -310,7 +310,7 @@ test('splatting a chicken starts its pop timer, and it stops reacting to further
 });
 
 test('chickens survive a track save/load round trip (PROP_TYPES)', () => {
-  const def = normalizeTrack({ handles: makeTemplate('kidney').handles, props: [
+  const def = normalizeTrack({ handles: makeTemplate('speedway').handles, props: [
     { type: 'barrel', x: 1, z: 1, y: 0.65 }, { type: 'chicken', x: 2, z: 2, y: 0.65 },
   ] });
   assert.equal(def.props.length, 2, 'both survive normalization');

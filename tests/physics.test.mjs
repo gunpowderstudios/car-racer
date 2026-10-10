@@ -24,7 +24,7 @@ test('every template builds, closes its loop and has no tight corners', () => {
 });
 
 test('centreline queries return road surface at the right height, edges and walls behave', () => {
-  const track = new Track(makeTemplate('kidney'));
+  const track = new Track(makeTemplate('speedway'));
   const q = Track.newQuery();
   for (let i = 0; i < track.n; i += 37) {
     track.query(track.px[i], track.py[i] + 4, track.pz[i], q);
@@ -192,7 +192,7 @@ test('jump: a fast approach clears the gap, a slow one falls into it', () => {
 });
 
 test('simulation is fast enough for real time', () => {
-  const { track, car } = makeSim('kidney');
+  const { track, car } = makeSim('speedway');
   const b = bot({ speed: 36 });
   const t0 = process.hrtime.bigint();
   run(car, track, 30, b);            // 3600 physics steps
