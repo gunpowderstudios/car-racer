@@ -930,7 +930,19 @@ const mpHandlers = {
     if (p.cur && Math.hypot(s.x - p.cur.x, s.z - p.cur.z) > 15) p.prev = s;   // a respawn (or back-on-road), not driving: snap, don't slide
     p.cur = s; p.recvAt = performance.now();
   },
-  onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
+  onPlayerLeft: (id) => {
+    const p = remotePlayers.get(id);
+    if (p) {
+      // A departing player's car goes out with a bang at its last known position instead of just vanishing.
+      // Use the rendered position when available so the explosion lines up with what this client is actually seeing.
+      const pos = p.view?.root?.position || p.cur;
+      if (pos && Number.isFinite(pos.x + pos.y + pos.z)) {
+        mpExplodeAt(pos.x, pos.y + 0.35, pos.z, camera.position.distanceTo(new THREE.Vector3(pos.x, pos.y, pos.z)));
+      }
+      mpReleasePlayer(p);
+      remotePlayers.delete(id);
+    }
+  },
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
     const speed = Math.min(30, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
