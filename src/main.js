@@ -10,7 +10,7 @@ import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
-import { CarVisual, ChaseCamera, RIVAL_LOOKS } from './carVisual.js';
+import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual.js';
 import { SkidMarks, Particles, Scorch } from './effects.js';
 import { Props } from './props.js';
 import { PropsView } from './propsView.js';
@@ -60,7 +60,20 @@ stage.setShadows(opts.shadow);
 const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
 visual.setPaint(PAINTS[opts.paint][1]);
-visual.onLoad = (v) => { $('swatches').hidden = v.textured; };   // a textured car brings its own paint
+visual.onLoad = (v) => {
+  $('swatches').hidden = v.textured;            // a textured car brings its own paint
+  loadBar(1);
+  warmRivalLooks(v, tier.arenaField, (t) => renderer.initTexture(t));       // paint the rivals' colours now, in idle time, not mid-race
+};
+// A slim "Loading car" bar while the model downloads. It only appears if the download takes a moment (a cached car never shows it).
+let loadBarT = 0;
+function loadBar(frac) {
+  const el = $('car-load'); if (!el) return;
+  if (frac >= 1 || frac < 0) { clearTimeout(loadBarT); loadBarT = 0; el.hidden = true; return; }
+  $('car-load-fill').style.width = Math.round(frac * 100) + '%';
+  if (!loadBarT) loadBarT = setTimeout(() => { el.hidden = false; }, 350);
+}
+visual.onProgress = (done, total) => { if (done < 0) loadBar(-1); else loadBar(total > 0 ? Math.min(0.98, done / total) : 0.5); };
 visual.load();
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
@@ -457,13 +470,13 @@ function clearViews() { for (const id of [...views.keys()]) releaseView(id); }
 
 /** Place each rival's visual at its (interpolated) physics pose. At most two new ones are built per frame. */
 function syncViews(a) {
-  let made = 0;
+  let made = 0, adopted = 0;
   for (const f of derby.fighters) {
     if (f.isPlayer) continue;
     let v = views.get(f.id);
     if (f.gone) { if (v) releaseView(f.id); continue; }
     if (!v) { if (made >= 2) continue; v = makeView(f); made++; }
-    if (!v.loaded && visual.loaded) v.adopt(visual, RIVAL_LOOKS[f.hue]);
+    if (!v.loaded && visual.loaded && adopted < 2 && v.adopt(visual, RIVAL_LOOKS[f.hue])) adopted++;      // a couple a frame, so the game never freezes
     const p = f.prev, c = f.cur;
     v.root.position.set(lerp(p.x, c.x, a), lerp(p.y, c.y, a), lerp(p.z, c.z, a));
     qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);

@@ -202,3 +202,14 @@ test('the arena is kept light: each quality tier caps the field and uses a close
     assert.ok(lod >= 30 && lod <= 80, tier + ' arenaLod ' + lod);
   }
 });
+
+test('car loading: a progress bar exists, rival paint is prepared ahead, and rivals are fitted a couple per frame', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(html, /id="car-load"[^>]*hidden/);
+  assert.match(cv, /export async function warmRivalLooks/);
+  assert.match(cv, /RIVAL_TEX_MAX = 1024/);
+  assert.match(main, /warmRivalLooks\(v, tier\.arenaField/);
+  assert.match(main, /adopted < 2/);
+});

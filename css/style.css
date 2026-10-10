@@ -530,3 +530,9 @@ html.chat-quick-only .chat-row { display: none; }
 }
 
 .mp-old-tag { margin-left: 8px; color: var(--red); font-size: 13px; font-weight: 600; }
+
+/* "Loading car" bar while the model downloads */
+#car-load { position: fixed; top: 34%; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 7px 16px; background: rgba(27,18,51,.9); border-bottom: 3px solid var(--amber); font-family: var(--cond); font-weight: 600; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--peach); pointer-events: none; }
+#car-load[hidden] { display: none; }
+#car-load i { display: block; width: 140px; height: 6px; background: rgba(255,255,255,.18); border-radius: 3px; overflow: hidden; }
+#car-load b { display: block; height: 100%; width: 0; background: var(--amber); transition: width .25s ease-out; }

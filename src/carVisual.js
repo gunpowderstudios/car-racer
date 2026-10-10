@@ -31,6 +31,7 @@ export const RIVAL_LOOKS = [
   { name: 'Pink', rot: 320, sat: 0.95, val: 1.05, tint: 0xd8558f },
   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
 ];
+const RIVAL_TEX_MAX = 1024;
 const recoloured = new WeakMap();
 const pristine = new WeakMap();
 
@@ -40,11 +41,12 @@ function recolour(tex, look) {
   if (per.has(look)) return per.get(look);
   let out = null;
   try {
-    const img = tex.image, w = img.width, h = img.height;
-    if (!w || !h) throw new Error('no picture');
+    const img = tex.image, sw = img.width, sh = img.height;
+    if (!sw || !sh) throw new Error('no picture');
+    const k = Math.min(1, RIVAL_TEX_MAX / Math.max(sw, sh)), w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));   // rivals are seen from a distance: 1024 px is plenty and 4x cheaper than 2048
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const g = cv.getContext('2d', { willReadFrequently: true });
-    g.drawImage(img, 0, 0);
+    g.drawImage(img, 0, 0, w, h);
     const data = g.getImageData(0, 0, w, h), px = data.data;
     const a = look.rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
     const m0 = 0.213 + c * 0.787 - sn * 0.213, m1 = 0.715 - c * 0.715 - sn * 0.715, m2 = 0.072 - c * 0.072 + sn * 0.928;
@@ -65,6 +67,24 @@ function recolour(tex, look) {
   } catch (e) { console.warn('Could not recolour the rival texture, tinting instead.', e); out = null; }
   per.set(look, out);
   return out;
+}
+
+/**
+ * Make the rivals' paint jobs ahead of time, a little at a time while the player is looking at the menu, so that when a race
+ * starts the cars can put their paint on instantly instead of freezing the game for each new colour. `upload(texture)`, when given,
+ * also sends each finished texture to the graphics card now rather than on the first frame it is drawn.
+ */
+export async function warmRivalLooks(src, count, upload) {
+  const maps = [];
+  for (const m of src.mats || []) { const t = (pristine.get(m) || m).map; if (t && !maps.includes(t)) maps.push(t); }
+  const idle = () => new Promise((r) => (window.requestIdleCallback ? window.requestIdleCallback(() => r(), { timeout: 400 }) : setTimeout(r, 30)));
+  for (let k = 0; k < Math.min(count, RIVAL_LOOKS.length); k++) {
+    for (const t of maps) {
+      await idle();
+      const out = recolour(t, RIVAL_LOOKS[k]);
+      if (out && upload) { try { upload(out); } catch { /* not ready yet: it will upload when first drawn */ } }
+    }
+  }
 }
 
 export class CarVisual {
@@ -196,7 +216,7 @@ export class CarVisual {
 
   async load(url = MODEL.url) {
     try {
-      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url, (e) => this.onProgress?.(e.loaded, e.total));
       const model = gltf.scene;
       this.hasTexture = false;
       this.mats = [];
@@ -246,6 +266,7 @@ export class CarVisual {
       this.onLoad?.(this);
     } catch (e) {
       this.placeholder.visible = true;
+      this.onProgress?.(-1, 0);                          // tell the loading bar to go away
       console.warn('Could not load car model, using a box.', e);
     }
   }
