@@ -13,22 +13,25 @@ const COPY = {
   campervan: 'Peace, love and absolutely no hurry whatsoever.',
 };
 
-function installMenuVehiclePreview() {
-  const wrap = document.getElementById('menu-vehicle-preview');
-  const canvas = document.getElementById('menu-vehicle-canvas');
-  const loading = document.getElementById('menu-vehicle-loading');
-  const nameEl = document.getElementById('menu-vehicle-name');
-  const blurbEl = document.getElementById('menu-vehicle-blurb');
-  if (!wrap || !canvas || !loading || !nameEl || !blurbEl) return;
+function installPreview({
+  wrapId, canvasId, loadingId, nameId = null, blurbId = null,
+  active = () => true,
+}) {
+  const wrap = document.getElementById(wrapId);
+  const canvas = document.getElementById(canvasId);
+  const loading = document.getElementById(loadingId);
+  const nameEl = nameId ? document.getElementById(nameId) : null;
+  const blurbEl = blurbId ? document.getElementById(blurbId) : null;
+  if (!wrap || !canvas || !loading) return;
 
   const chosen = selectedVehicle();
   const vehicle = VEHICLES.find((v) => v.id === chosen.id) || chosen;
-  nameEl.textContent = vehicle.name;
-  blurbEl.textContent = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
+  if (nameEl) nameEl.textContent = vehicle.name;
+  if (blurbEl) blurbEl.textContent = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
 
   try {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
@@ -84,7 +87,7 @@ function installMenuVehiclePreview() {
       wrap.classList.add('ready');
       loading.textContent = '';
     }).catch((err) => {
-      console.warn('Could not load menu vehicle preview.', vehicle.url, err);
+      console.warn('Could not load vehicle preview.', vehicle.url, err);
       loading.textContent = '3D preview unavailable';
     });
 
@@ -122,7 +125,7 @@ function installMenuVehiclePreview() {
 
     const frame = (now) => {
       requestAnimationFrame(frame);
-      if (!document.body.classList.contains('mode-menu') || document.hidden) {
+      if (!active() || document.hidden || wrap.offsetParent === null) {
         last = now;
         return;
       }
@@ -138,13 +141,40 @@ function installMenuVehiclePreview() {
     };
     requestAnimationFrame(frame);
   } catch (err) {
-    console.warn('Could not create menu vehicle preview.', err);
+    console.warn('Could not create vehicle preview.', err);
     loading.textContent = '3D preview unavailable';
   }
 }
 
+function installVehiclePreviews() {
+  installPreview({
+    wrapId: 'menu-vehicle-preview',
+    canvasId: 'menu-vehicle-canvas',
+    loadingId: 'menu-vehicle-loading',
+    nameId: 'menu-vehicle-name',
+    blurbId: 'menu-vehicle-blurb',
+    active: () => document.body.classList.contains('mode-menu'),
+  });
+
+  installPreview({
+    wrapId: 'mp-home-vehicle-preview',
+    canvasId: 'mp-home-vehicle-canvas',
+    loadingId: 'mp-home-vehicle-loading',
+    nameId: 'mp-home-vehicle-name',
+    active: () => document.body.classList.contains('mode-mp'),
+  });
+
+  installPreview({
+    wrapId: 'mp-join-vehicle-preview',
+    canvasId: 'mp-join-vehicle-canvas',
+    loadingId: 'mp-join-vehicle-loading',
+    nameId: 'mp-join-vehicle-name',
+    active: () => document.body.classList.contains('mode-mp'),
+  });
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', installMenuVehiclePreview, { once: true });
+  document.addEventListener('DOMContentLoaded', installVehiclePreviews, { once: true });
 } else {
-  installMenuVehiclePreview();
+  installVehiclePreviews();
 }
