@@ -33,6 +33,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     aero: { drag: 0.55, down: 0.33 },
     steer: { max: 0.55, rate: 4.2, returnRate: 6.5 },
     boost: { accel: 4.8 },
+    mpDamageMul: 0.95,
   },
 
   escort: {
@@ -57,6 +58,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     aero: { drag: 0.42, down: 0.28 },
     steer: { max: 0.57, rate: 4.8, returnRate: 7.0 },
     body: { width: 1.57, length: 4.05, bottom: -0.40, shoulder: 0.32, roof: 0.96, roofWidth: 1.38, roofLength: 2.40 },
+    mpDamageMul: 1.08,
   },
 
   bmw: {
@@ -81,6 +83,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     aero: { drag: 0.43, down: 0.27 },
     steer: { max: 0.55, rate: 4.7, returnRate: 6.9 },
     body: { width: 1.65, length: 4.33, bottom: -0.40, shoulder: 0.30, roof: 0.92, roofWidth: 1.40, roofLength: 2.32 },
+    mpDamageMul: 1.00,
   },
 
   'v8-pilot': {
@@ -110,6 +113,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     steer: { max: 0.52, rate: 3.8, returnRate: 5.8 },
     boost: { accel: 4.0 },
     body: { width: 1.75, length: 4.44, bottom: -0.46, shoulder: 0.38, roof: 1.12, roofWidth: 1.48, roofLength: 2.62 },
+    mpDamageMul: 0.90,
   },
 
   'motor-home': {
@@ -134,6 +138,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     aero: { drag: 0.88, down: 0.20 },
     steer: { max: 0.48, rate: 3.6, returnRate: 5.4 },
     body: { width: 2.08, length: 4.85, bottom: -0.72, shoulder: 0.38, roof: 1.82, roofWidth: 1.92, roofLength: 3.95 },
+    mpDamageMul: 0.72,
   },
 
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
