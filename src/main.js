@@ -4,7 +4,7 @@ import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
 import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
-import { ZONE_LABEL, DAMAGE, blastFraction } from './damage.js';
+import { ZONE_LABEL, DAMAGE, blastFraction, crashDamage } from './damage.js';
 import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
@@ -22,6 +22,7 @@ import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
+import { selectedVehicle, multiplayerVehicleSpec } from './vehicleChoice.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -688,9 +689,9 @@ function bindMenu() {
 
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
-const MP_COLLIDE_R = 2.6;   // rough combined half-width of two cars nose-to-nose
+const MP_BASE_RADIUS = 1.30;   // original per-car contact radius, scaled by each vehicle's body width
+const MP_DAMAGE_HP_SCALE = 140; // derby crash HP converted onto multiplayer's single 0..1 health bar
 const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
-const MP_DAMAGE_PER_SPEED = 1 / 45;   // health lost per m/s of hit speed you're rammed at
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
 const MP_BARREL_DAMAGE = 0.35;        // health a barrel takes off at point blank (inside 2 m), falling to nothing at 10 m
@@ -729,20 +730,49 @@ function mpExplodeAt(x, y, z, dist = 0) {
  *  only ever see their last reported position), but both sides now actually react. */
 function mpCollideLocal() {
   const now = performance.now();
+  const mine = multiplayerVehicleSpec(selectedVehicle().id);
   for (const [id, p] of remotePlayers) {
     if (!p.cur) continue;
+    const info = net?.players.get(id);
+    const theirs = multiplayerVehicleSpec(info?.vehicleId);
+    const contactR = MP_BASE_RADIUS * (mine.width / 1.85) + MP_BASE_RADIUS * (theirs.width / 1.85);
+
     const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
     if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
     const distSq = dx * dx + dz * dz;
-    if (distSq > MP_COLLIDE_R * MP_COLLIDE_R || distSq < 1e-6) continue;
-    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = MP_COLLIDE_R - dist;
-    car.pos.x += nx * overlap * 0.5; car.pos.z += nz * overlap * 0.5;    // each side takes half the separation
-    const vn = car.vel.x * nx + car.vel.z * nz;
-    if (vn < 0) { car.vel.x -= vn * nx; car.vel.z -= vn * nz; }
-    if (net && -vn > 1 && now - (p.lastHitSent || 0) > 200) {
-      net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * 0.5, speed: Math.min(20, -vn) });
+    if (distSq > contactR * contactR || distSq < 1e-6) continue;
+
+    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = contactR - dist;
+    const totalMass = mine.mass + theirs.mass;
+    const myShare = theirs.mass / totalMass;
+    const theirShare = mine.mass / totalMass;
+    car.pos.x += nx * overlap * myShare;
+    car.pos.z += nz * overlap * myShare;
+
+    // Relative closing speed uses both cars' network velocities. This means a stationary target
+    // still recognises a fast incoming ram instead of relying on the attacker's client to report it.
+    const rvx = car.vel.x - (+p.cur.vx || 0);
+    const rvz = car.vel.z - (+p.cur.vz || 0);
+    const vn = rvx * nx + rvz * nz;
+    const closing = Math.max(0, -vn);
+    if (closing > 0) {
+      const mu = mine.mass * theirs.mass / totalMass;
+      const restitution = closing > 2 ? 0.18 : 0;
+      const impulse = (1 + restitution) * closing * mu;
+      const myDv = Math.min(18, impulse / mine.mass);
+      car.vel.x += nx * myDv;
+      car.vel.z += nz * myDv;
+    }
+
+    if (net && closing > 1 && now - (p.lastHitSent || 0) > 250) {
+      net.sendHit(id, {
+        nx: -nx, nz: -nz,
+        overlap: overlap * theirShare,
+        speed: Math.min(30, closing),
+        attackerVehicleId: mine.id,
+      });
       p.lastHitSent = now;
-      mpImpactFx((car.pos.x + p.cur.x) / 2, car.pos.y + 0.6, (car.pos.z + p.cur.z) / 2, -vn);
+      mpImpactFx((car.pos.x + p.cur.x) / 2, car.pos.y + 0.6, (car.pos.z + p.cur.z) / 2, closing);
     }
   }
 }
@@ -903,10 +933,27 @@ const mpHandlers = {
   onPlayerLeft: (id) => { const p = remotePlayers.get(id); if (p) { mpReleasePlayer(p); remotePlayers.delete(id); } },
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
-    const speed = Math.min(20, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
-    car.pos.x += d.nx * overlap; car.pos.z += d.nz * overlap;
-    car.vel.x += d.nx * speed * 0.7; car.vel.z += d.nz * speed * 0.7;
-    if (!mpTakeDamage(Math.min(MP_MAX_HIT_DAMAGE, speed * MP_DAMAGE_PER_SPEED))) mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
+    const speed = Math.min(30, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
+    const victim = multiplayerVehicleSpec(selectedVehicle().id);
+    const attackerInfo = net?.players.get(fromId);
+    const attacker = multiplayerVehicleSpec(attackerInfo?.vehicleId || d.attackerVehicleId);
+    const totalMass = victim.mass + attacker.mass;
+    const mu = victim.mass * attacker.mass / totalMass;
+
+    car.pos.x += d.nx * overlap;
+    car.pos.z += d.nz * overlap;
+
+    const restitution = speed > 2 ? 0.18 : 0;
+    const impulse = (1 + restitution) * speed * mu;
+    const dv = Math.min(18, impulse / victim.mass);
+    car.vel.x += d.nx * dv;
+    car.vel.z += d.nz * dv;
+
+    // Same energy-based crash curve as the derby, converted to the multiplayer health bar.
+    // The selected vehicle's multiplayer toughness then scales what actually gets through.
+    const rawHp = crashDamage(mu, speed);
+    const amount = Math.min(MP_MAX_HIT_DAMAGE, (rawHp / MP_DAMAGE_HP_SCALE) * victim.damageMul);
+    if (!mpTakeDamage(amount)) mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
   },
   onError: (msg) => { toast(msg); showMenu(); },
 };
