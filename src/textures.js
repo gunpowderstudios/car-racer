@@ -150,3 +150,12 @@ export function barrierTexture(aniso) {
   });
   return tex(c, { repeat: true, aniso });
 }
+
+/** The standard road-edge kerb: alternating red and white blocks. Repeats along u; v runs across the strip. */
+export function kerbTexture(aniso) {
+  const c = canvas(128, 32, (g, w, h) => {
+    g.fillStyle = '#ece7da'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c8342a'; g.fillRect(0, 0, w / 2, h);
+  });
+  return tex(c, { repeat: true, aniso });
+}

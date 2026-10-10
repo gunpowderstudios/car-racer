@@ -4,6 +4,7 @@ import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from '
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
 import { clamp, lerp } from './math.js';
+import { arenaInfo, arenaOutline } from './arena.js';
 
 const $ = (id) => document.getElementById(id);
 const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#eaf6ff', AMBER = '#ffc857', RED = '#ff6b5e';
@@ -140,8 +141,13 @@ export class Editor {
     const step = Math.max(1, Math.round(3 / (S * t.ds)));
     const edge = (i, sg) => this.toScreen(t.px[i] + t.lx[i] * t.hw[i] * sg, t.pz[i] + t.lz[i] * t.hw[i] * sg);
     const hasGap = t.gap.some((v) => v);
+    const arena = t.def.mode === 'lastStanding';                    // an arena is one floor, not a road: draw its outline once
     g.fillStyle = 'rgba(234,246,255,.16)'; g.strokeStyle = 'rgba(234,246,255,.85)'; g.lineWidth = 1.4; g.lineJoin = 'round';
-    if (!hasGap) {
+    if (arena) {
+      g.beginPath();
+      arenaOutline(arenaInfo(t), arenaInfo(t).hw, 96).forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); k ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.closePath(); g.fill(); g.stroke();
+    } else if (!hasGap) {
       g.beginPath();
       for (const sg of [1, -1]) {
         for (let i = 0; i < t.n; i += step) { const [x, y] = edge(i, sg); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
@@ -193,8 +199,8 @@ export class Editor {
     });
     g.setLineDash([]);
 
-    // start / finish
-    {
+    // start / finish (an arena has none)
+    if (!arena) {
       const [x1, y1] = edge(0, 1), [x2, y2] = edge(0, -1);
       g.strokeStyle = '#fff'; g.lineWidth = 5; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       g.strokeStyle = PAPER; g.lineWidth = 5; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.setLineDash([]);
@@ -204,7 +210,7 @@ export class Editor {
     // problems
     g.strokeStyle = RED; g.lineWidth = 3;
     let lastT = -99;
-    for (const i of this.analysis.tight) {
+    for (const i of (arena ? [] : this.analysis.tight)) {
       if (i - lastT < 6) continue; lastT = i;
       const [x, y] = this.toScreen(t.px[i], t.pz[i]); g.beginPath(); g.arc(x, y, 12, 0, 7); g.stroke();
     }
@@ -385,6 +391,7 @@ export class Editor {
   updateIssues() {
     const el = $('ed-issues'); el.innerHTML = '';
     const a = this.analysis, add = (txt, ok) => { const d = document.createElement('div'); d.textContent = txt; if (ok) d.className = 'ok'; el.appendChild(d); };
+    if (this.def.mode === 'lastStanding') { add('Open arena: the floor is everything inside the outline, and the wall stands at its edge. Drag the points to reshape it.', true); return; }
     if (a.tight.length) add(`Corner too tight for a ${this.def.width} m road (red circles). Move points apart or narrow the road.`);
     if (a.crossings.length) add(`The road crosses itself at the same height (red crosses). Raise one point by 5 m or more to make a bridge.`);
     if (!a.tight.length && !a.crossings.length && this.track) add(`No problems found. ${(this.track.length / 1000).toFixed(2)} km lap.`, true);

@@ -3,6 +3,7 @@
 // drag without stalling. The game itself still uses trackGeometry.js.
 import * as THREE from 'three';
 import { BARREL } from './props.js';
+import { arenaInfo, arenaOutline } from './arena.js';
 
 const INK = 0xeaf6ff, AMBER = 0xffc857, PAPER = 0x10335f, LINE = 0x7fb8e6, RED = 0xff6b5e;
 
@@ -113,6 +114,7 @@ export class EditorPreview {
     const t = this.track; if (!t) return;
     let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9, maxY = 0;
     for (let i = 0; i < t.n; i++) { minX = Math.min(minX, t.px[i]); maxX = Math.max(maxX, t.px[i]); minZ = Math.min(minZ, t.pz[i]); maxZ = Math.max(maxZ, t.pz[i]); maxY = Math.max(maxY, t.py[i]); }
+    if (t.def.mode === 'lastStanding') { const hw = t.def.width / 2; minX -= hw; maxX += hw; minZ -= hw; maxZ += hw; }      // the floor reaches past the centreline
     this.center.set((minX + maxX) / 2, maxY * 0.3 * (this.ex || 1), (minZ + maxZ) / 2);
     this.radius = Math.max(60, Math.hypot(maxX - minX, maxZ - minZ) / 2);
     this.scene.fog.near = this.radius * 1.5; this.scene.fog.far = this.radius * 6;
@@ -126,6 +128,21 @@ export class EditorPreview {
     const ex = this.ex = Math.round(Math.min(4, Math.max(1, (this.radius * 0.12) / topY)) * 2) / 2;
     this.onScale?.(ex);
     for (const o of [...this.group.children]) { o.geometry.dispose(); o.dispose?.(); this.group.remove(o); }
+
+    const arena = t.def.mode === 'lastStanding';
+    if (arena) {
+      // An arena is one flat floor: a single fan of triangles from the middle (so nothing overlaps and flickers) and its edge line.
+      const A = arenaInfo(t), ring = arenaOutline(A, A.hw, 96), y = (A.y + 0.05) * ex;
+      const fp = [A.cx, y, A.cz], fi = [];
+      ring.forEach((p, k) => { fp.push(p.x, y, p.z); if (k) fi.push(0, k, k + 1); });
+      const fg = new THREE.BufferGeometry();
+      fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); fg.setIndex(fi); fg.computeVertexNormals();
+      this.group.add(new THREE.Mesh(fg, new THREE.MeshLambertMaterial({ color: 0xd9a066, side: THREE.DoubleSide })));
+      const ep = []; ring.forEach((p) => ep.push(p.x, y + 0.2, p.z));
+      const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
+      this.group.add(new THREE.Line(eg, this.edgeMat));
+      this.start.visible = false;
+    } else this.start.visible = true;
 
     const V = 3;                                    // 3 m spacing is plenty for a preview
     const maxY = Math.max(6, ...t.py);
@@ -164,12 +181,14 @@ export class EditorPreview {
       if (index) g.setIndex(index);
       return g;
     };
-    const roadGeo = geo(pos, idx, col); roadGeo.computeVertexNormals();
-    this.group.add(new THREE.Mesh(roadGeo, this.roadMat));
-    this.group.add(new THREE.Mesh(geo(curtain, cIdx), this.curtainMat));
-    this.group.add(new THREE.LineSegments(geo(edges), this.edgeMat));
-    if (posts.length) this.group.add(new THREE.LineSegments(geo(posts), this.postMat));
-    if (gaps.length) this.group.add(new THREE.LineSegments(geo(gaps), this.gapMat));
+    if (!arena) {
+      const roadGeo = geo(pos, idx, col); roadGeo.computeVertexNormals();
+      this.group.add(new THREE.Mesh(roadGeo, this.roadMat));
+      this.group.add(new THREE.Mesh(geo(curtain, cIdx), this.curtainMat));
+      this.group.add(new THREE.LineSegments(geo(edges), this.edgeMat));
+      if (posts.length) this.group.add(new THREE.LineSegments(geo(posts), this.postMat));
+      if (gaps.length) this.group.add(new THREE.LineSegments(geo(gaps), this.gapMat));
+    }
 
     // props: a little drum standing on the road for each barrel, sized up when the track is big
     if (this.props.length) {

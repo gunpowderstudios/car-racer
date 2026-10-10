@@ -14,13 +14,15 @@
  * rivals       default number of derby rivals when the player has not chosen
  * lodDist      rivals/remote cars further than this (m) are drawn as a plain box instead of the
  *              full model. 0 = never. Each full model is 190k-620k triangles.
+ * arenaField   most rivals in The Oval (every one is a full 3D model); arenaLod is the LOD distance (m) used there, since the
+ *              whole floor is in view and the normal distance would draw every car in full
  * dentMax      crash dents a car can show at once (see dents.js); 0 = none, the car only darkens as it is damaged
  * minScale     lowest the adaptive resolution is allowed to go (fraction of pixelRatio)
  */
 export const TIERS = {
-  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, dentMax: 0, minScale: 0.55 },
-  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, dentMax: 6, minScale: 0.6 },
-  high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  dentMax: 8, minScale: 0.75 },
+  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, arenaField: 5, arenaLod: 40, dentMax: 0, minScale: 0.55 },
+  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, arenaField: 7, arenaLod: 50, dentMax: 6, minScale: 0.6 },
+  high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  arenaField: 10, arenaLod: 70, dentMax: 8, minScale: 0.75 },
 };
 export const TIER_NAMES = Object.keys(TIERS);
 

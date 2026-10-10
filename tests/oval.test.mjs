@@ -192,3 +192,13 @@ test('vehicle types differ in toughness: the V8 bruiser and the motorhome outlas
   assert.ok(mul['motor-home'] < 1 && mul.campervan > 1, JSON.stringify(mul));
   for (const v of Object.values(mul)) assert.ok(v >= 0.5 && v <= 1.5);
 });
+
+test('the arena is kept light: each quality tier caps the field and uses a close LOD distance', async () => {
+  const src = readFileSync(new URL('../src/quality.js', import.meta.url), 'utf8');
+  for (const tier of ['low', 'medium', 'high']) {
+    const line = src.split('\n').find((l) => l.trim().startsWith(tier + ':'));
+    const field = Number(/arenaField:\s*(\d+)/.exec(line)?.[1]), lod = Number(/arenaLod:\s*(\d+)/.exec(line)?.[1]);
+    assert.ok(field >= 4 && field <= 10, tier + ' arenaField ' + field);
+    assert.ok(lod >= 30 && lod <= 80, tier + ' arenaLod ' + lod);
+  }
+});

@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 import { arenaInfo, arenaOutline } from './arena.js';
 import { WALL_GAP, WALL_T, WALL_HEIGHT } from './track.js';
-import { dirtTexture, crowdTexture, barrierTexture } from './textures.js';
+import { dirtTexture, crowdTexture, barrierTexture, kerbTexture } from './textures.js';
 
-const N = 128;              // points round the outline
+const N = 96;              // points round the outline
 const TIERS = 7, RISE = 1.5, TREAD = 2.6, APRON_W = 2.4;
 
 export function buildArena(track, aniso = 8) {
@@ -30,6 +30,7 @@ export function buildArena(track, aniso = 8) {
     g.add(m); return m;
   };
   const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, side: THREE.DoubleSide, ...opts });
+  const cheap = (opts) => new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, ...opts });      // the stands are far away: no need for full PBR shading
 
   // ---- the floor
   const rFloor = A.hw + WALL_GAP + WALL_T;
@@ -39,15 +40,19 @@ export function buildArena(track, aniso = 8) {
   floor.position.y = y0; floor.receiveShadow = true; floor.frustumCulled = false;
   g.add(floor);
 
+  // ---- the standard red and white kerb stripe along the foot of the wall, as on the other roads
+  const kerb = kerbTexture(aniso);
+  ribbon(A.hw - 1.6, y0 + 0.03, A.hw, y0 + 0.03, std({ map: kerb, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 4, { receive: true });
+
   // ---- the crash wall: inner face, top, outer face
-  const barrier = barrierTexture(aniso), concrete = std({ color: 0xb9b4aa });
+  const barrier = barrierTexture(aniso), concrete = cheap({ color: 0xb9b4aa });
   const rIn = A.hw + WALL_GAP, rOut = rIn + WALL_T, top = y0 + Math.min(WALL_HEIGHT - 0.2, 1.05);
   ribbon(rIn, y0, rIn, top, std({ map: barrier, roughness: 0.8 }), 8, { cast: true, receive: true });
   ribbon(rIn, top, rOut, top, concrete, 8, { receive: true });
   ribbon(rOut, top, rOut, y0, concrete, 8);
 
   // ---- apron, then the stands
-  const grey = std({ color: 0x77727c }), crowd = std({ map: crowdTexture(aniso), roughness: 1, emissive: 0x2a2a3a, emissiveMap: null });
+  const grey = cheap({ color: 0x77727c }), crowd = cheap({ map: crowdTexture(aniso), emissive: 0x2a2a3a });
   crowd.map.repeat.set(1, 1);
   ribbon(rOut, y0, rOut + APRON_W, y0, grey, 8);
   let r = rOut + APRON_W;

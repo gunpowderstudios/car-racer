@@ -394,7 +394,7 @@ function derbyStart() {
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const field = arena ? Math.min(10, opts.rivals * 2) : opts.rivals;
+  const field = arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals;
   document.body.classList.toggle('arena', arena);                                       // no laps in an arena: the lap card goes
   if (arena) placeCarInArena();
   derby.damageEnabled = derby.enabled && !!opts.derby;
@@ -473,7 +473,8 @@ function syncViews(a) {
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
-    if (tier.lodDist) v.setFar(d2 > (v._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);   // wide hysteresis stops LOD flicker near the boundary
+    const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
+    if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
   }
 }
