@@ -259,6 +259,13 @@ html.invite-loading #invite-loading {
     <div id="mp-home">
       <h2>Multiplayer</h2>
       <label class="mp-field">Your name<input id="mp-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
+      <aside id="mp-home-vehicle-preview" class="mp-vehicle-preview" aria-live="polite">
+        <div class="mp-vehicle-stage">
+          <canvas id="mp-home-vehicle-canvas" aria-label="Rotating preview of your selected vehicle"></canvas>
+          <div id="mp-home-vehicle-loading" class="menu-vehicle-loading">Loading vehicle…</div>
+        </div>
+        <strong id="mp-home-vehicle-name" class="mp-vehicle-name">Vehicle</strong>
+      </aside>
       <button id="mp-resume" class="btn" type="button" hidden>Resume your room</button>
       <div class="mp-actions">
         <button id="mp-create" class="btn" type="button">Create game</button>
@@ -270,6 +277,13 @@ html.invite-loading #invite-loading {
     <div id="mp-join" hidden>
       <h2>Join game</h2>
       <label class="mp-field">Your name<input id="mp-join-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off"></label>
+      <aside id="mp-join-vehicle-preview" class="mp-vehicle-preview" aria-live="polite">
+        <div class="mp-vehicle-stage">
+          <canvas id="mp-join-vehicle-canvas" aria-label="Rotating preview of your selected vehicle"></canvas>
+          <div id="mp-join-vehicle-loading" class="menu-vehicle-loading">Loading vehicle…</div>
+        </div>
+        <strong id="mp-join-vehicle-name" class="mp-vehicle-name">Vehicle</strong>
+      </aside>
       <label class="mp-field">Room code<input id="mp-code" type="text" maxlength="8" placeholder="GUN42" autocapitalize="characters" autocomplete="off"></label>
       <button id="mp-join-go" class="btn" type="button">Join</button>
       <p id="mp-join-error" class="mp-error" role="alert" hidden></p>
