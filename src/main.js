@@ -4,7 +4,8 @@ import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
 import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
-import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage } from './damage.js';
+import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
+import { DENT } from './dentMath.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
@@ -232,7 +233,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { get chatUI() { return chatUI; }, get mpHandlers() { return mpHandlers; }, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -367,6 +368,10 @@ function stepPhysics(dt) {
     if (car.events.length) {
       for (const e of car.events) {
         sound.hit(e.speed, e.type); chase.impact(e.speed);
+        if (net) {                                          // multiplayer has no derby, so it dents the car itself: walls, and the roof when rolling
+          if (e.type === 'wall') mpDentAt(e.x, e.y, e.z, wallDamage(car.mass, e.speed));
+          else if (e.type === 'ground') { car.refreshFrame(); if (zoneAt(car, e.x, e.y, e.z) === 'roof') mpDentAt(e.x, e.y, e.z, roofDentHp(e.speed)); }
+        }
         if (e.type === 'wall') { wallSpot = { x: e.x, y: e.y, z: e.z, t: simTime }; for (let i = 0; i < Math.min(10, 2 + e.speed); i++) particles.spark(e.x, e.y, e.z, car.vel.x * 0.3, 2, car.vel.z * 0.3); }
       }
       car.events.length = 0;
@@ -579,7 +584,7 @@ function frame(now) {
     sound.update(car, throttleNow, !derby.over);
     if (!$('debug').hidden) debugText();
     if (net) {
-      if (life.respawnDue(simTime)) { respawn(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
+      if (life.respawnDue(simTime)) { respawn(); mpClearDents(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
       visual.setLook(life.dead ? 0.15 : 1, 0);                                                       // your own wreck goes dark, as it does on everyone else's screen
       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
         vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health,
@@ -730,6 +735,24 @@ const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.g
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
 const MP_BARREL_DAMAGE = 0.35;        // health a barrel takes off at point blank (inside 2 m), falling to nothing at 10 m
+/** A crash has marked our own car at world point (x, y, z), `hp` hit points' worth: dent it here, and tell everyone else so their
+ *  copy of our car shows the same dent. Only the owner decides - each player dents their own car - so nobody gets a double dent. */
+let mpDentSentAt = 0;
+function mpDentAt(x, y, z, hp) {
+  if (!(hp >= DENT.minHp)) return;
+  car.refreshFrame();
+  const dx = x - car.pos.x, dy = y - car.pos.y, dz = z - car.pos.z;
+  const lx = dx * car.ax.x + dy * car.ax.y + dz * car.ax.z, ly = dx * car.ay.x + dy * car.ay.y + dz * car.ay.z, lz = dx * car.az.x + dy * car.az.y + dz * car.az.z;
+  if (visual.loaded) visual.addDent(lx, ly, lz, hp);
+  const now = performance.now();
+  if (net && now - mpDentSentAt > 90) {
+    mpDentSentAt = now;
+    net.sendDent({ x: +lx.toFixed(2), y: +ly.toFixed(2), z: +lz.toFixed(2), hp: +Math.min(hp, 100).toFixed(1) });
+  }
+}
+/** The car has been put back together (we respawned): clear our dents here and on everyone else's screen. */
+function mpClearDents() { visual.clearDents(); net?.sendDent({ clear: true }); }
+
 /** Sound, sparks and a bit of smoke for a multiplayer ram - shared by both the rammer's and the
  *  target's side, so it feels and sounds the same crash from either end. */
 function mpImpactFx(x, y, z, speed) {
@@ -814,7 +837,7 @@ function mpCollideLocal() {
 function mpMakeView(hue) {
   let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
-  v.root.visible = true; v.root.scale.setScalar(1);
+  v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   return v;
 }
 function mpReleasePlayer(p) {
@@ -1000,7 +1023,13 @@ const mpHandlers = {
     // The selected vehicle's multiplayer toughness then scales what actually gets through.
     const rawHp = crashDamage(mu, speed);
     const amount = Math.min(MP_MAX_HIT_DAMAGE, (rawHp / MP_DAMAGE_HP_SCALE) * victim.damageMul);
+    mpDentAt(car.pos.x - d.nx, car.pos.y + 0.15, car.pos.z - d.nz, rawHp);        // marked on the side that faces whoever hit us
     if (!mpTakeDamage(amount)) mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);
+  },
+  onDent: (fromId, d) => {
+    const p = remotePlayers.get(fromId); if (!p || !p.view) return;
+    if (d.clear) p.view.clearDents();
+    else if (p.view.loaded) p.view.addDent(d.x, d.y, d.z, d.hp);
   },
   onError: (msg) => { toast(msg); showMenu(); },
 };

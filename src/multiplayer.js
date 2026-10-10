@@ -62,6 +62,19 @@ function loadPeerJs() {
   });
 }
 
+/**
+ * A crash dent sent over the wire: where on the sender's own car (metres, in the car's own space) and how hard (hit points' worth), or
+ * `{ clear: true }` to say the car has been put back together. Anything else is thrown away - never trust what a guest sent.
+ */
+export function cleanDent(d) {
+  if (!d || typeof d !== 'object') return null;
+  if (d.clear === true) return { clear: true };
+  const { x, y, z, hp } = d;
+  if (![x, y, z, hp].every((v) => typeof v === 'number' && Number.isFinite(v))) return null;
+  if (Math.abs(x) > 4 || Math.abs(y) > 4 || Math.abs(z) > 6 || hp < 0 || hp > 200) return null;
+  return { x, y, z, hp };
+}
+
 export class Multiplayer {
   /**
    * handlers: {
@@ -70,6 +83,7 @@ export class Multiplayer {
    *   onState(id, state) - a remote player's latest pose
    *   onBoom(fromId, i) - their copy of barrel number i just went off
    *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
+   *   onDent(fromId, dent) - a dent appeared on fromId's car (see cleanDent), or the car was repaired
    *   onPlayerLeft(id)
    *   onError(message) - show this to the user, then multiplayer is done for this session
    * }
@@ -87,6 +101,7 @@ export class Multiplayer {
     this.usedHues = new Set();
     this._sendTimer = null;
     this._lastSeen = new Map();
+    this._dentLast = new Map();                      // when each guest last sent a dent, to stop a flood
     this._gotState = new Set();    // host: players who have sent at least one state since the race started
     this._staleTimer = null;
     this.started = false;      // once true the game is underway (host: new joins are turned away; guest: a lost host is final)
@@ -246,6 +261,12 @@ export class Multiplayer {
       if (!Number.isInteger(msg.i)) return;
       this.h.onBoom(id, msg.i);
       this._sendAll({ t: 'boom', from: id, i: msg.i }, id);
+    } else if (msg.t === 'dent') {
+      const d = cleanDent(msg.d), now = performance.now();
+      if (!d || now - (this._dentLast.get(id) || 0) < 60) return;     // nonsense, or a flood: dropped, not relayed
+      this._dentLast.set(id, now);
+      this.h.onDent?.(id, d);
+      this._sendAll({ t: 'dent', from: id, d }, id);
     } else if (msg.t === 'hit') {
       if (msg.to === this.selfId) this.h.onHit(id, msg.d);
       else { const c = this.conns.get(msg.to); if (c && c.open) c.send({ t: 'hit', from: id, d: msg.d }); }
@@ -370,6 +391,9 @@ export class Multiplayer {
       if (p && msg.id !== this.selfId) showLeaveNotice(p.name);
     } else if (msg.t === 'boom') {
       if (Number.isInteger(msg.i)) this.h.onBoom(msg.from, msg.i);
+    } else if (msg.t === 'dent') {
+      const d = cleanDent(msg.d);
+      if (d && msg.from !== this.selfId) this.h.onDent?.(String(msg.from), d);
     } else if (msg.t === 'hit') {
       this.h.onHit(msg.from, msg.d);
     } else if (msg.t === 'chat') {
@@ -465,6 +489,13 @@ export class Multiplayer {
     } else if (this.hostConn && this.hostConn.open) {
       this.hostConn.send({ t: 'hit', to: targetId, d: data });
     }
+  }
+
+  /** A dent has just appeared on our own car (or it was repaired): tell everyone else so their copy of our car shows it too. */
+  sendDent(d) {
+    const c = cleanDent(d); if (!c) return;
+    if (this.isHost) this._sendAll({ t: 'dent', from: this.selfId, d: c });
+    else if (this.hostConn && this.hostConn.open) this.hostConn.send({ t: 'dent', d: c });
   }
 
   /** A barrel on this player's copy of the track has just gone off: tell everyone else (`i` is the barrel's

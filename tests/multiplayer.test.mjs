@@ -2,7 +2,7 @@
 // goes via the host either way. These test the routing contract directly, without real WebRTC.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Multiplayer } from '../src/multiplayer.js';
+import { Multiplayer, cleanDent } from '../src/multiplayer.js';
 
 function mockConn(peerId) {
   const sent = [];
@@ -167,4 +167,46 @@ test('when a guest leaves, the host removes them and tells the remaining guests 
   assert.ok(!mp.players.has('guestA'));
   assert.ok(b._sent.some((m) => m.t === 'left' && m.id === 'guestA'), 'the other guest is told, so their copy of the car goes too');
   assert.equal(a._sent.length, 0, 'the leaver is not messaged');
+});
+
+test('cleanDent keeps good dents and the repair signal, and throws away anything odd', () => {
+  assert.deepEqual(cleanDent({ x: 0.9, y: 0.2, z: -1.5, hp: 12.5, extra: 'x' }), { x: 0.9, y: 0.2, z: -1.5, hp: 12.5 });
+  assert.deepEqual(cleanDent({ clear: true, x: 99 }), { clear: true });
+  for (const bad of [null, undefined, 'dent', 5, {}, { x: 1, y: 1, z: 1 }, { x: '1', y: 1, z: 1, hp: 5 }, { x: NaN, y: 0, z: 0, hp: 5 },
+    { x: 50, y: 0, z: 0, hp: 5 }, { x: 0, y: 0, z: 0, hp: -3 }, { x: 0, y: 0, z: 0, hp: 9999 }, { clear: 'yes' }]) assert.equal(cleanDent(bad), null, JSON.stringify(bad));
+});
+
+test('host applies a guest\'s dent and relays it to everyone else, with the true sender, and drops nonsense and floods', () => {
+  const got = [];
+  const mp = new Multiplayer(noopHandlers({ onDent: (from, d) => got.push([from, d]) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'dent', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } });
+  assert.deepEqual(got, [['guestA', { x: 0.9, y: 0.2, z: 1.5, hp: 20 }]]);
+  assert.equal(connA._sent.length, 0, 'the sender is not told about their own dent');
+  assert.deepEqual(connB._sent, [{ t: 'dent', from: 'guestA', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } }]);
+  mp._onHostMessage('guestA', { t: 'dent', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } });          // straight away again: a flood
+  mp._onHostMessage('guestB', { t: 'dent', d: { x: 'bad', y: 0, z: 0, hp: 5 } });             // nonsense
+  assert.equal(got.length, 1); assert.equal(connB._sent.length, 1); assert.equal(connA._sent.length, 0);
+});
+
+test('sendDent: the host tells every guest directly; a guest tells the host; a guest hears about other cars\' dents but not its own', () => {
+  const host = new Multiplayer(noopHandlers());
+  host.isHost = true; host.selfId = 'host';
+  const a = mockConn('guestA'); host.conns.set('guestA', a);
+  host.sendDent({ x: 0.5, y: 0.1, z: 2, hp: 9 });
+  assert.deepEqual(a._sent, [{ t: 'dent', from: 'host', d: { x: 0.5, y: 0.1, z: 2, hp: 9 } }]);
+  host.sendDent({ x: 'bad' }); assert.equal(a._sent.length, 1, 'a bad dent is never sent');
+
+  const seen = [];
+  const guest = new Multiplayer(noopHandlers({ onDent: (from, d) => seen.push([from, d]) }));
+  guest.isHost = false; guest.selfId = 'guestA';
+  const hostConn = mockConn('host'); guest.hostConn = hostConn;
+  guest.sendDent({ clear: true });
+  assert.deepEqual(hostConn._sent, [{ t: 'dent', d: { clear: true } }]);
+  guest._onGuestMessage({ t: 'dent', from: 'guestB', d: { x: 1, y: 0, z: 0, hp: 15 } });
+  guest._onGuestMessage({ t: 'dent', from: 'guestA', d: { x: 1, y: 0, z: 0, hp: 15 } });
+  guest._onGuestMessage({ t: 'dent', from: 'guestB', d: { x: 99, y: 0, z: 0, hp: 15 } });
+  assert.deepEqual(seen, [['guestB', { x: 1, y: 0, z: 0, hp: 15 }]]);
 });
