@@ -22,6 +22,14 @@ export const VEHICLES = [
     physicsProfile: 'v8-pilot',
   },
   {
+    id: 'campervan',
+    name: 'Happy Camper',
+    url: 'cars/campervan-shrink.glb',
+    fit: 'auto',
+    targetLength: 4.50,
+    physicsProfile: 'campervan',
+  },
+  {
     id: 'motor-home', name: 'Motorhome', url: 'cars/motor-home-shrink.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
