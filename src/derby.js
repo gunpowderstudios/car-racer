@@ -266,7 +266,7 @@ export class Derby {
         if (this.damageEnabled) {
           let hp = wallDamage(f.car.mass, e.speed) * f.spec.wallMul;
           if (e.type === 'ground') hp *= DAMAGE.ground / DAMAGE.wall;
-          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null);
+          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null, e.type === 'wall' ? e.x : undefined, e.y, e.z);   // landing hard marks the paint, not the body
         }
         if (!f.isPlayer && e.speed > 3 && e.type === 'wall') this._hitEvent('wall', e.speed, e.x, e.y, e.z);
       }
@@ -285,8 +285,8 @@ export class Derby {
         if (this.damageEnabled) {
           const hp = crashDamage(H.mu, H.closing);
           if (hp > 0) {
-            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b);
-            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a);
+            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b, H.x, H.y, H.z);
+            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a, H.x, H.y, H.z);
           }
         }
       }
@@ -352,7 +352,8 @@ export class Derby {
   }
 
   // --------------------------------------------------------------------- damage
-  _damage(f, zone, hp, by) {
+  /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
+  _damage(f, zone, hp, by, x, y, z) {
     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
     else if (f.age < DERBY.spawnGrace) return;
@@ -362,7 +363,12 @@ export class Derby {
     for (const n of NEIGHBOURS[zone]) f.health.hit(n, hp * DAMAGE.bleed * (f.spec.mul?.[n] ?? 1));
     f.health.last = zone;
     f.flash = 1; f.flashZone = zone;
-    this.events.push({ type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp });
+    const ev = { type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp };
+    if (x !== undefined) {
+      const c = f.car, dx = x - c.pos.x, dy = y - c.pos.y, dz = z - c.pos.z;
+      ev.lx = dx * c.ax.x + dy * c.ax.y + dz * c.ax.z; ev.ly = dx * c.ay.x + dy * c.ay.y + dz * c.ay.z; ev.lz = dx * c.az.x + dy * c.az.y + dz * c.az.z;
+    }
+    this.events.push(ev);
     if (f.health.wrecked) this._wreck(f, f.health.wrecked);
   }
 
@@ -390,7 +396,7 @@ export class Derby {
       sN.normalize();
       o.car.impulseAt(sN, o.car.mass * DAMAGE.wreck.push * k, sP.set(o.car.pos.x, o.car.pos.y - 0.25, o.car.pos.z));
       const hp = blastDamage(DAMAGE.wreck, d) * o.spec.blastMul;
-      this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null);
+      this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null, c.pos.x, c.pos.y, c.pos.z);
     }
     if (f.isPlayer) {
       this.over = true;
@@ -425,7 +431,7 @@ export class Derby {
       const hp = blastDamage(kind, d) * f.spec.blastMul;
       if (hp <= 0) continue;
       c.refreshFrame();
-      this._damage(f, zoneAt(c, x, y, z), hp, f.isPlayer ? { id: -1 } : credit);
+      this._damage(f, zoneAt(c, x, y, z), hp, f.isPlayer ? { id: -1 } : credit, x, y, z);
     }
   }
 }

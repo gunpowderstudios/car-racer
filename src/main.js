@@ -42,6 +42,7 @@ const tier = TIERS[tierName];
 const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
+CarVisual.dentMax = tier.dentMax;
 const userTracks = () => store.get('cr.tracks', {});
 const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
 
@@ -382,7 +383,7 @@ function derbyStart() {
   derby.damageEnabled = derby.enabled && !!opts.derby;
   if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
-  visual.setLook(1, 0);
+  visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
 }
@@ -398,6 +399,7 @@ function derbyEvents() {
       for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
     } else if (e.type === 'damage') {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
+      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.hp); }   // a visible dent where it hit
     } else if (e.type === 'wreck') {
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
@@ -424,7 +426,7 @@ const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 function makeView(f) {
   let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
-  v.root.visible = true; v.root.scale.setScalar(1);
+  v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   views.set(f.id, v);
   return v;
 }

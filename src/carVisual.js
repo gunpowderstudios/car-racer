@@ -5,6 +5,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
 import { Track } from './track.js';
+import { makeDentable } from './dents.js';
 
 // Measurements of the current car model (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
@@ -68,6 +69,7 @@ function recolour(tex, look) {
 
 export class CarVisual {
   static aniso = 8;   // texture anisotropy; main.js sets this from the quality tier before any model loads
+  static dentMax = 0; // how many crash dents a car can show at once (0 = none); main.js sets this from the quality tier too
   constructor(scene, restHeight) {
     this.restHeight = restHeight;
     this.root = new THREE.Group();
@@ -137,6 +139,7 @@ export class CarVisual {
     this.holder.remove(this.placeholder);
     this.holder.add(model);
     this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
+    this._initDents();
     this._lookKey = -1;
     return true;
   }
@@ -157,6 +160,12 @@ export class CarVisual {
       m.emissive.setRGB(flash * 0.9, flash * 0.2, 0);
     }
   }
+
+  // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.
+  _initDents() { this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null; }
+  /** Dent the body where a crash of `hp` hit points landed at (x, y, z) in the car's own space (x right, y up, z forward, metres). */
+  addDent(x, y, z, hp) { return this.dents ? this.dents.add(x, y, z, hp) : false; }
+  clearDents() { if (this.dents) this.dents.clear(); }
 
   /**
    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
@@ -231,6 +240,7 @@ export class CarVisual {
       this.holder.remove(this.placeholder);
       this.holder.add(model);
       this.model = model; this._lookKey = -1;
+      this._initDents();
       this.loaded = true;
       if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);

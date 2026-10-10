@@ -1,0 +1,540 @@
+diff --git a/src/carVisual.js b/src/carVisual.js
+index 10351ce..ef3a86a 100644
+--- a/src/carVisual.js
++++ b/src/carVisual.js
+@@ -5,6 +5,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+ import { CAR } from './vehicle.js';
+ import { clamp, wrapPi } from './math.js';
+ import { Track } from './track.js';
++import { makeDentable } from './dents.js';
+ 
+ // Measurements of the current car model (model units). The model is a single mesh, 189 units long
+ // with its nose towards -X. Wheel centres were measured from the silhouette.
+@@ -68,6 +69,7 @@ function recolour(tex, look) {
+ 
+ export class CarVisual {
+   static aniso = 8;   // texture anisotropy; main.js sets this from the quality tier before any model loads
++  static dentMax = 0; // how many crash dents a car can show at once (0 = none); main.js sets this from the quality tier too
+   constructor(scene, restHeight) {
+     this.restHeight = restHeight;
+     this.root = new THREE.Group();
+@@ -137,6 +139,7 @@ export class CarVisual {
+     this.holder.remove(this.placeholder);
+     this.holder.add(model);
+     this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
++    this._initDents();
+     this._lookKey = -1;
+     return true;
+   }
+@@ -158,6 +161,12 @@ export class CarVisual {
+     }
+   }
+ 
++  // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.
++  _initDents() { this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null; }
++  /** Dent the body where a crash of `hp` hit points landed at (x, y, z) in the car's own space (x right, y up, z forward, metres). */
++  addDent(x, y, z, hp) { return this.dents ? this.dents.add(x, y, z, hp) : false; }
++  clearDents() { if (this.dents) this.dents.clear(); }
++
+   /**
+    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
+    * a simple two-box silhouette in the car's paint colour. Callers add their own hysteresis. Does nothing
+@@ -231,6 +240,7 @@ export class CarVisual {
+       this.holder.remove(this.placeholder);
+       this.holder.add(model);
+       this.model = model; this._lookKey = -1;
++      this._initDents();
+       this.loaded = true;
+       if (this._ownLook) this._applyOwnLook();
+       this.onLoad?.(this);
+diff --git a/src/dentMath.js b/src/dentMath.js
+new file mode 100644
+index 0000000..3631257
+--- /dev/null
++++ b/src/dentMath.js
+@@ -0,0 +1,67 @@
++// The arithmetic behind visible crash dents. No three.js in here, so `npm test` can check it in Node.
++// A dent is a smooth bowl pushed into the car's body by the vertex shader (see dents.js). Sizes are in
++// metres; the shader gets them converted to the model's own units.
++
++export const DENT = {
++  minHp: 4,            // a hit that takes off fewer hit points than this leaves no mark
++  fullHp: 70,          // a hit this hard makes the biggest single dent
++  depthMin: 0.05, depthMax: 0.26,      // metres a dent can be pushed in (one hit, and all hits piled together)
++  radiusMin: 0.42, radiusMax: 0.85,    // metres across the bowl, centre to edge
++  mergeFrac: 0.55,     // a new hit this close (share of the dent's radius) deepens the old dent instead of starting another
++  burstSeconds: 0.15,  // hits closer together than this are one crash felt over several physics steps, not several crashes
++};
++
++/** How big a dent a hit of `hp` hit points makes, or null when it is too gentle to mark the car. */
++export function dentSize(hp) {
++  if (!(hp >= DENT.minHp)) return null;
++  const k = Math.min(1, (hp - DENT.minHp) / (DENT.fullHp - DENT.minHp));
++  return { depth: DENT.depthMin + (DENT.depthMax - DENT.depthMin) * 0.75 * k, radius: DENT.radiusMin + (DENT.radiusMax - DENT.radiusMin) * Math.sqrt(k) };
++}
++
++/**
++ * Which face of the car's bounding box a point is nearest, given the point relative to the box centre and the
++ * box half-sizes. Returns {axis: 0|1|2, sign: +1|-1}, or null for the underside (nobody sees a dent there).
++ */
++export function faceOf(rx, ry, rz, hx, hy, hz) {
++  const a = [rx / hx, ry / hy, rz / hz];
++  let k = 0;
++  if (Math.abs(a[1]) > Math.abs(a[k])) k = 1;
++  if (Math.abs(a[2]) > Math.abs(a[k])) k = 2;
++  const sign = a[k] >= 0 ? 1 : -1;
++  if (k === 1 && sign < 0) return null;
++  return { axis: k, sign };
++}
++
++/**
++ * The dents on one car. Centres and directions are in the model's own space (what the shader sees); radius
++ * and depth stay in metres. `mpu` is metres per model unit, so distances can be compared in metres.
++ */
++export class DentStore {
++  constructor(max) { this.max = max; this.list = []; }
++  get length() { return this.list.length; }
++  clear() { this.list.length = 0; }
++
++  /**
++   * Add a dent, or deepen one already there. Returns the dent that changed.
++   * @param {{x,y,z,dx,dy,dz,radius,depth}} d  centre, push direction (unit, pointing into the car), size in metres
++   */
++  add(d, mpu, now = 0) {
++    for (const e of this.list) {
++      const dist = Math.hypot(e.x - d.x, e.y - d.y, e.z - d.z) * mpu;
++      if (dist > DENT.mergeFrac * Math.max(e.radius, d.radius)) continue;
++      if (now - e.t < DENT.burstSeconds) e.depth = Math.min(DENT.depthMax, Math.max(e.depth, d.depth));
++      else e.depth = Math.min(DENT.depthMax, e.depth + 0.6 * d.depth);
++      e.radius = Math.min(DENT.radiusMax * 1.15, Math.max(e.radius, d.radius));
++      e.t = now;
++      return e;
++    }
++    const e = { x: d.x, y: d.y, z: d.z, dx: d.dx, dy: d.dy, dz: d.dz, radius: d.radius, depth: d.depth, t: now };
++    if (this.list.length < this.max) this.list.push(e);
++    else {                                  // full: the shallowest dent makes way for the new one
++      let w = 0;
++      for (let i = 1; i < this.list.length; i++) if (this.list[i].depth < this.list[w].depth) w = i;
++      this.list[w] = e;
++    }
++    return e;
++  }
++}
+diff --git a/src/dents.js b/src/dents.js
+new file mode 100644
+index 0000000..fd094ff
+--- /dev/null
++++ b/src/dents.js
+@@ -0,0 +1,151 @@
++// Visible crash damage: dents pushed into a car's scanned body by the vertex shader.
++//
++// The cars are single 200k-400k vertex meshes, so nothing here edits the mesh. Each dent is just a few numbers
++// (a centre, a push direction, a radius and a depth) handed to the shader, which presses the body in around that
++// point, tilts the lighting to match and scuffs the paint. A pristine car pays almost nothing; a battered one
++// pays a few shader instructions per vertex. Pure arithmetic lives in dentMath.js (tested in Node).
++import * as THREE from 'three';
++import { DENT, DentStore, dentSize, faceOf } from './dentMath.js';
++
++const GLSL_COMMON = (n) => `
++uniform vec4 uDent[${n}]; uniform vec4 uDentDir[${n}]; uniform int uDentN; varying float vDentW;
++float dh3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
++float dnoise(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
++  return mix(mix(mix(dh3(i), dh3(i + vec3(1,0,0)), f.x), mix(dh3(i + vec3(0,1,0)), dh3(i + vec3(1,1,0)), f.x), f.y),
++             mix(mix(dh3(i + vec3(0,0,1)), dh3(i + vec3(1,0,1)), f.x), mix(dh3(i + vec3(0,1,1)), dh3(i + vec3(1,1,1)), f.x), f.y), f.z); }
++// total push at p, the slope it gives the surface, and how scuffed the paint is there
++void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff) {
++  push = vec3(0.0); tilt = vec3(0.0); scuff = 0.0;
++  for (int i = 0; i < ${n}; i++) {
++    if (i >= uDentN) break;
++    float r = uDent[i].w; vec3 dir = uDentDir[i].xyz; float depth = uDentDir[i].w;
++    vec3 rel = p - uDent[i].xyz; float d = length(rel);
++    scuff = max(scuff, (1.0 - smoothstep(0.0, r * 1.3, d)) * clamp(depth / r * 3.5, 0.3, 1.0));
++    if (d >= r) continue;
++    float t = 1.0 - d / r, w = t * t * (3.0 - 2.0 * t);                       // smooth bowl, deepest in the middle
++    float crinkle = 0.55 + 0.9 * dnoise(p / (r * 0.28));                      // uneven crumple, not a perfect dish
++    push += dir * depth * w * crinkle;
++    vec3 radial = rel / max(d, 1e-5); radial -= dir * dot(radial, dir);
++    tilt += radial * depth * (6.0 * t * (1.0 - t) / r) * crinkle;
++  }
++}`;
++
++function patchMaterial(mat, n, dents, dirs, count) {
++  mat.onBeforeCompile = (sh) => {
++    sh.uniforms.uDent = { value: dents }; sh.uniforms.uDentDir = { value: dirs }; sh.uniforms.uDentN = count;
++    sh.vertexShader = sh.vertexShader
++      .replace('#include <common>', `#include <common>\n${GLSL_COMMON(n)}`)
++      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
++        vec3 dPush, dTilt; float dScuff; dentField(position, dPush, dTilt, dScuff);
++        objectNormal = normalize(objectNormal - dTilt);`)
++      .replace('#include <begin_vertex>', `#include <begin_vertex>
++        transformed += dPush; vDentW = dScuff;`);
++    sh.fragmentShader = sh.fragmentShader
++      .replace('#include <common>', '#include <common>\nvarying float vDentW;')
++      .replace('#include <color_fragment>', `#include <color_fragment>
++        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.34, 0.30, 0.28), clamp(vDentW * 1.2, 0.0, 0.8));`);
++  };
++  mat.customProgramCacheKey = () => 'dent' + n;
++  mat.needsUpdate = true;
++}
++
++/** How to read raw numbers out of a vertex position attribute (quantised models store them as normalised ints). */
++function positionReader(attr) {
++  const inter = !!attr.isInterleavedBufferAttribute;
++  const arr = inter ? attr.data.array : attr.array;
++  const stride = inter ? attr.data.stride : attr.itemSize, off = inter ? attr.offset : 0;
++  let k = 1;
++  if (attr.normalized) k = arr instanceof Int16Array ? 1 / 32767 : arr instanceof Uint16Array ? 1 / 65535 : arr instanceof Int8Array ? 1 / 127 : arr instanceof Uint8Array ? 1 / 255 : 1;
++  return { arr, stride, off, k, count: attr.count };
++}
++
++/**
++ * Make the body mesh inside `model` dentable and return a controller, or null if there is no body to dent.
++ * `root` is the node whose space is the car's own space (x right, y up, z forward, metres), so a crash
++ * point from the physics can be handed over as it is. `avoid` is a material that must stay as it is (the plain
++ * stand-in boxes share one).
++ */
++export function makeDentable(root, model, max, avoid = null) {
++  let mesh = null, most = 0;
++  model.traverse((o) => {
++    const p = o.isMesh && o.geometry && o.geometry.attributes && o.geometry.attributes.position;
++    if (p && p.count > most && o.material && o.material !== avoid && !Array.isArray(o.material)) { mesh = o; most = p.count; }
++  });
++  if (!mesh) return null;
++  const mat = mesh.material;
++  const dents = Array.from({ length: max }, () => new THREE.Vector4());
++  const dirs = Array.from({ length: max }, () => new THREE.Vector4());
++  const count = { value: 0 };
++  const store = new DentStore(max);
++  patchMaterial(mat, max, dents, dirs, count);
++
++  let rel = null, relInv = null, mpu = 1, box = null;       // root <- mesh transform, worked out on first use (the car is fitted after loading)
++  const prep = () => {
++    rel = new THREE.Matrix4();
++    for (let o = mesh; o && o !== root; o = o.parent) { o.updateMatrix(); rel.premultiply(o.matrix); }
++    relInv = rel.clone().invert();
++    mpu = new THREE.Vector3().setFromMatrixScale(rel).x;
++    mesh.geometry.computeBoundingBox();
++    box = mesh.geometry.boundingBox.clone().applyMatrix4(rel);
++  };
++
++  let last = null;                                           // the spot searched for most recently
++  const upload = () => {                                     // hand the whole list to the shader
++    for (let i = 0; i < max; i++) {
++      const s = store.list[i];
++      if (s) { dents[i].set(s.x, s.y, s.z, s.radius / mpu); dirs[i].set(s.dx, s.dy, s.dz, s.depth / mpu); }
++      else { dents[i].set(0, 0, 0, 0); dirs[i].set(0, 0, 0, 0); }
++    }
++    count.value = store.length;
++  };
++
++  const ctl = {
++    mesh, material: mat, store,
++    get count() { return store.length; },
++    clear() { last = null; store.clear(); for (const v of dents) v.set(0, 0, 0, 0); for (const v of dirs) v.set(0, 0, 0, 0); count.value = 0; },
++    /** Dent the car where a crash of `hp` hit points happened at (x, y, z), in the car's own space. Returns true if it left a mark. */
++    add(x, y, z, hp, now = performance.now() / 1000) {
++      const size = dentSize(hp); if (!size) return false;
++      if (!rel) prep();
++      const c = box.getCenter(new THREE.Vector3()), h = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
++      const face = faceOf(x - c.x, y - c.y, z - c.z, h.x || 1, h.y || 1, h.z || 1);
++      if (!face) return false;
++      const k = face.axis, t1 = (k + 1) % 3, t2 = (k + 2) % 3, sg = face.sign;
++      const P = [x, y, z], LAT = 0.4;
++      // A crash is felt on many physics steps in a row: don't search the mesh again for the same spot.
++      const lc = last;
++      if (lc && lc.k === k && lc.sg === sg && now - lc.t < DENT.burstSeconds && Math.hypot(x - lc.x, y - lc.y, z - lc.z) < 0.3) {
++        lc.t = now;
++        store.add({ x: lc.cx, y: lc.cy, z: lc.cz, dx: lc.ox, dy: lc.oy, dz: lc.oz, radius: size.radius, depth: size.depth }, mpu, now);
++        upload();
++        return true;
++      }
++      // The outermost bit of body near the crash point: look through (a sample of) the real vertices.
++      const rd = positionReader(mesh.geometry.attributes.position), e = rel.elements;
++      const step = Math.max(1, Math.floor(rd.count / 25000));
++      let best = -Infinity, bi = -1, bx = 0, by = 0, bz = 0;
++      for (let i = 0; i < rd.count; i += step) {
++        const j = rd.off + i * rd.stride;
++        const vx = rd.arr[j] * rd.k, vy = rd.arr[j + 1] * rd.k, vz = rd.arr[j + 2] * rd.k;
++        const rx = e[0] * vx + e[4] * vy + e[8] * vz + e[12], ry = e[1] * vx + e[5] * vy + e[9] * vz + e[13], rz = e[2] * vx + e[6] * vy + e[10] * vz + e[14];
++        const R = k === 0 ? rx : k === 1 ? ry : rz, A = t1 === 0 ? rx : t1 === 1 ? ry : rz, B = t2 === 0 ? rx : t2 === 1 ? ry : rz;
++        if (Math.abs(A - P[t1]) > LAT || Math.abs(B - P[t2]) > LAT) continue;
++        if (R * sg > best) { best = R * sg; bi = i; bx = vx; by = vy; bz = vz; }
++      }
++      const centre = new THREE.Vector3(bx, by, bz);
++      if (bi < 0) {                                              // nothing near: put it on the box face instead
++        const q = new THREE.Vector3(x, y, z); q.setComponent(k, sg > 0 ? box.max.getComponent(k) : box.min.getComponent(k));
++        centre.copy(q).applyMatrix4(relInv);
++      }
++      const out = new THREE.Vector3(); out.setComponent(k, -sg);   // push into the car
++      out.transformDirection(relInv);
++      store.add({ x: centre.x, y: centre.y, z: centre.z, dx: out.x, dy: out.y, dz: out.z, radius: size.radius, depth: size.depth }, mpu, now);
++      last = { k, sg, x, y, z, t: now, cx: centre.x, cy: centre.y, cz: centre.z, ox: out.x, oy: out.y, oz: out.z };
++      upload();
++      return true;
++    },
++  };
++  return ctl;
++}
++
++export { DENT };
+diff --git a/src/derby.js b/src/derby.js
+index b990027..a80184c 100644
+--- a/src/derby.js
++++ b/src/derby.js
+@@ -266,7 +266,7 @@ export class Derby {
+         if (this.damageEnabled) {
+           let hp = wallDamage(f.car.mass, e.speed) * f.spec.wallMul;
+           if (e.type === 'ground') hp *= DAMAGE.ground / DAMAGE.wall;
+-          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null);
++          if (hp > 0) this._damage(f, zoneAt(f.car, e.x, e.y, e.z), hp, null, e.type === 'wall' ? e.x : undefined, e.y, e.z);   // landing hard marks the paint, not the body
+         }
+         if (!f.isPlayer && e.speed > 3 && e.type === 'wall') this._hitEvent('wall', e.speed, e.x, e.y, e.z);
+       }
+@@ -285,8 +285,8 @@ export class Derby {
+         if (this.damageEnabled) {
+           const hp = crashDamage(H.mu, H.closing);
+           if (hp > 0) {
+-            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b);
+-            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a);
++            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b, H.x, H.y, H.z);
++            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a, H.x, H.y, H.z);
+           }
+         }
+       }
+@@ -352,7 +352,8 @@ export class Derby {
+   }
+ 
+   // --------------------------------------------------------------------- damage
+-  _damage(f, zone, hp, by) {
++  /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
++  _damage(f, zone, hp, by, x, y, z) {
+     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
+     if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
+     else if (f.age < DERBY.spawnGrace) return;
+@@ -362,7 +363,12 @@ export class Derby {
+     for (const n of NEIGHBOURS[zone]) f.health.hit(n, hp * DAMAGE.bleed * (f.spec.mul?.[n] ?? 1));
+     f.health.last = zone;
+     f.flash = 1; f.flashZone = zone;
+-    this.events.push({ type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp });
++    const ev = { type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp };
++    if (x !== undefined) {
++      const c = f.car, dx = x - c.pos.x, dy = y - c.pos.y, dz = z - c.pos.z;
++      ev.lx = dx * c.ax.x + dy * c.ax.y + dz * c.ax.z; ev.ly = dx * c.ay.x + dy * c.ay.y + dz * c.ay.z; ev.lz = dx * c.az.x + dy * c.az.y + dz * c.az.z;
++    }
++    this.events.push(ev);
+     if (f.health.wrecked) this._wreck(f, f.health.wrecked);
+   }
+ 
+@@ -390,7 +396,7 @@ export class Derby {
+       sN.normalize();
+       o.car.impulseAt(sN, o.car.mass * DAMAGE.wreck.push * k, sP.set(o.car.pos.x, o.car.pos.y - 0.25, o.car.pos.z));
+       const hp = blastDamage(DAMAGE.wreck, d) * o.spec.blastMul;
+-      this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null);
++      this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null, c.pos.x, c.pos.y, c.pos.z);
+     }
+     if (f.isPlayer) {
+       this.over = true;
+@@ -425,7 +431,7 @@ export class Derby {
+       const hp = blastDamage(kind, d) * f.spec.blastMul;
+       if (hp <= 0) continue;
+       c.refreshFrame();
+-      this._damage(f, zoneAt(c, x, y, z), hp, f.isPlayer ? { id: -1 } : credit);
++      this._damage(f, zoneAt(c, x, y, z), hp, f.isPlayer ? { id: -1 } : credit, x, y, z);
+     }
+   }
+ }
+diff --git a/src/main.js b/src/main.js
+index cdcbd94..a1a1312 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -42,6 +42,7 @@ const tier = TIERS[tierName];
+ const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+ DT = 1 / tier.physicsHz;
+ CarVisual.aniso = tier.aniso;
++CarVisual.dentMax = tier.dentMax;
+ const userTracks = () => store.get('cr.tracks', {});
+ const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
+ 
+@@ -382,7 +383,7 @@ function derbyStart() {
+   derby.damageEnabled = derby.enabled && !!opts.derby;
+   if (derby.enabled) derby.start(track, car, opts.rivals, (Math.random() * 1e9) | 0); else derby.stop();
+   clearViews(); overAt = 0; overInfo = null;
+-  visual.setLook(1, 0);
++  visual.setLook(1, 0); visual.clearDents();
+   hud.derbyMode(derby.damageEnabled);
+   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
+ }
+@@ -398,6 +399,7 @@ function derbyEvents() {
+       for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
+     } else if (e.type === 'damage') {
+       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
++      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.hp); }   // a visible dent where it hit
+     } else if (e.type === 'wreck') {
+       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
+       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
+@@ -424,7 +426,7 @@ const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+ function makeView(f) {
+   let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
+   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
+-  v.root.visible = true; v.root.scale.setScalar(1);
++  v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
+   views.set(f.id, v);
+   return v;
+ }
+diff --git a/src/quality.js b/src/quality.js
+index fc1613c..67dfb85 100644
+--- a/src/quality.js
++++ b/src/quality.js
+@@ -14,12 +14,13 @@
+  * rivals       default number of derby rivals when the player has not chosen
+  * lodDist      rivals/remote cars further than this (m) are drawn as a plain box instead of the
+  *              full model. 0 = never. Each full model is 190k-620k triangles.
++ * dentMax      crash dents a car can show at once (see dents.js); 0 = none, the car only darkens as it is damaged
+  * minScale     lowest the adaptive resolution is allowed to go (fraction of pixelRatio)
+  */
+ export const TIERS = {
+-  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, minScale: 0.55 },
+-  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, minScale: 0.6 },
+-  high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  minScale: 0.75 },
++  low:    { pixelRatio: 1,   aa: false, shadow: false, shadowSize: 1024, shadowRange: 45, shadowType: 'pcf',     aniso: 2, mirrorEvery: 3, mirrorScale: 0.4, physicsHz: 60,  rivals: 3, lodDist: 80, dentMax: 0, minScale: 0.55 },
++  medium: { pixelRatio: 1.5, aa: false, shadow: true,  shadowSize: 1024, shadowRange: 55, shadowType: 'pcf',     aniso: 4, mirrorEvery: 2, mirrorScale: 0.6, physicsHz: 120, rivals: 5, lodDist: 120, dentMax: 6, minScale: 0.6 },
++  high:   { pixelRatio: 2,   aa: true,  shadow: true,  shadowSize: 2048, shadowRange: 70, shadowType: 'pcfsoft', aniso: 8, mirrorEvery: 1, mirrorScale: 1,   physicsHz: 120, rivals: 6, lodDist: 0,  dentMax: 8, minScale: 0.75 },
+ };
+ export const TIER_NAMES = Object.keys(TIERS);
+ 
+diff --git a/src/version.js b/src/version.js
+index cc7eee3..30a9a40 100644
+--- a/src/version.js
++++ b/src/version.js
+@@ -3,5 +3,5 @@ import './bootstrap.js';
+ // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
+ // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
+ // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
+-export const VERSION = '17.38';
+-export const NOTE = 'Multiplayer cars now explode at their last position when a player leaves instead of simply vanishing';
++export const VERSION = '17.39';
++export const NOTE = 'Cars now show crash dents where they were hit (medium and high graphics only)';
+diff --git a/tests/dents.test.mjs b/tests/dents.test.mjs
+new file mode 100644
+index 0000000..3145164
+--- /dev/null
++++ b/tests/dents.test.mjs
+@@ -0,0 +1,118 @@
++// Crash dents: sizes, merging, which face gets hit, and that the derby reports where a hit landed.
++// Run with:  npm test
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { DENT, dentSize, faceOf, DentStore } from '../src/dentMath.js';
++import { TIERS } from '../src/quality.js';
++import { Track } from '../src/track.js';
++import { Vehicle } from '../src/vehicle.js';
++import { Derby, DERBY } from '../src/derby.js';
++import { DRAG_DEF, placeOnTrack } from './harness.mjs';
++
++const at = (x, z, r = 0.5, d = 0.1) => ({ x, y: 0, z, dx: 0, dy: 0, dz: -1, radius: r, depth: d });
++
++test('a gentle bump leaves no dent; harder hits make bigger, deeper ones, up to a limit', () => {
++  assert.equal(dentSize(DENT.minHp - 0.1), null);
++  assert.equal(dentSize(0), null);
++  const small = dentSize(10), mid = dentSize(35), big = dentSize(70), huge = dentSize(500);
++  assert.ok(small.depth < mid.depth && mid.depth < big.depth);
++  assert.ok(small.radius < mid.radius && mid.radius < big.radius);
++  assert.deepEqual(big, huge, 'past the top of the scale a hit is no bigger');
++  assert.ok(big.depth <= DENT.depthMax && big.radius <= DENT.radiusMax);
++});
++
++test('the nearest face of the car decides where a dent goes; the underside gets none', () => {
++  const H = [0.93, 0.7, 2.4];
++  assert.deepEqual(faceOf(0, 0.2, 2.4, ...H), { axis: 2, sign: 1 }, 'nose');
++  assert.deepEqual(faceOf(0, 0.2, -2.3, ...H), { axis: 2, sign: -1 }, 'tail');
++  assert.deepEqual(faceOf(0.9, 0, 0.5, ...H), { axis: 0, sign: 1 }, 'a side');
++  assert.deepEqual(faceOf(-0.9, 0, 0.5, ...H), { axis: 0, sign: -1 }, 'the other side');
++  assert.deepEqual(faceOf(0, 0.7, 0, ...H), { axis: 1, sign: 1 }, 'roof');
++  assert.equal(faceOf(0, -0.7, 0, ...H), null);
++});
++
++test('hits on the same spot deepen one dent instead of piling up new ones, and never pass the depth limit', () => {
++  const s = new DentStore(6);
++  s.add(at(0, 2, 0.5, 0.1), 1, 0);
++  s.add(at(0.1, 2.05, 0.5, 0.1), 1, 1);                    // 1 s later, right beside it
++  assert.equal(s.length, 1);
++  assert.ok(s.list[0].depth > 0.1 && s.list[0].depth < 0.2);
++  for (let t = 2; t < 40; t += 1) s.add(at(0, 2, 0.5, 0.2), 1, t);
++  assert.equal(s.length, 1);
++  assert.equal(s.list[0].depth, DENT.depthMax);
++  s.add(at(1, -2), 1, 50);                                  // somewhere else is a new dent
++  assert.equal(s.length, 2);
++});
++
++test('one crash felt over many physics steps counts once, not once per step', () => {
++  const s = new DentStore(6);
++  for (let i = 0; i < 20; i++) s.add(at(0, 2, 0.5, 0.1), 1, i * 0.008);   // 20 steps at 120 Hz
++  assert.equal(s.length, 1);
++  assert.ok(Math.abs(s.list[0].depth - 0.1) < 1e-9);
++});
++
++test('a full store drops its shallowest dent for a new one', () => {
++  const s = new DentStore(3);
++  s.add(at(0, 0, 0.3, 0.12), 1, 0); s.add(at(5, 0, 0.3, 0.05), 1, 0); s.add(at(10, 0, 0.3, 0.2), 1, 0);
++  s.add(at(20, 0, 0.3, 0.1), 1, 0);
++  assert.equal(s.length, 3);
++  assert.ok(!s.list.some((e) => e.x === 5), 'the 0.05 dent went');
++  assert.ok(s.list.some((e) => e.x === 20));
++});
++
++test('metres per model unit: dents are merged by real distance, not model units', () => {
++  const s = new DentStore(6);
++  s.add(at(0, 0, 0.5, 0.1), 0.01, 0);                      // model units are 1 cm
++  s.add(at(20, 0, 0.5, 0.1), 0.01, 1);                      // 0.2 m away: same dent
++  assert.equal(s.length, 1);
++  s.add(at(200, 0, 0.5, 0.1), 0.01, 2);                     // 2 m away: a new one
++  assert.equal(s.length, 2);
++});
++
++test('only the low tier goes without dents, and they get no more numerous on the lower tiers', () => {
++  const { low, medium, high } = TIERS;
++  assert.equal(low.dentMax, 0);
++  assert.ok(medium.dentMax > 0 && medium.dentMax <= high.dentMax);
++});
++
++function arena() {
++  const track = new Track(DRAG_DEF), car = new Vehicle();
++  placeOnTrack(car, track, track.progressAt(0, 0.65, -300), 0, 0);
++  const derby = new Derby(); derby.enabled = true; derby.start(track, car, 0);
++  derby.time = DERBY.grace + 1;
++  return { track, car, derby };
++}
++
++test('a damage event says where on the car it landed, in the car\'s own space', () => {
++  const { derby } = arena();
++  const P = derby.player, c = P.car;
++  c.refreshFrame();
++  const w = c.toWorld({ x: 0.9, y: 0.3, z: 1.2 }, { set(x, y, z) { return { x, y, z }; } });
++  derby.events.length = 0;
++  derby._damage(P, 'left', 30, null, w.x, w.y, w.z);
++  const e = derby.events.find((v) => v.type === 'damage');
++  assert.ok(Math.abs(e.lx - 0.9) < 1e-6 && Math.abs(e.ly - 0.3) < 1e-6 && Math.abs(e.lz - 1.2) < 1e-6, JSON.stringify(e));
++  assert.equal(e.hp, 30);
++  derby.events.length = 0;
++  derby._damage(P, 'front', 30, null);                      // callers with no contact point still work
++  assert.equal(derby.events.find((v) => v.type === 'damage').lx, undefined);
++});
++
++test('ramming a rival from behind reports a hit on my nose and on their tail', () => {
++  const { track, car, derby } = arena();
++  const r = derby.add(new Vehicle());
++  placeOnTrack(r.car, track, track.progressAt(0, 0.65, -290), 0, 0);
++  placeOnTrack(car, track, track.progressAt(0, 0.65, -297), 0, 22);
++  car.vel.set(0, 0, 22);
++  const seen = [];
++  for (let i = 0; i < 360 && seen.length < 2; i++) {
++    car.step(1 / 120, { throttle: 1, brake: 0, steer: 0, handbrake: false, boost: false }, track);
++    derby.step(1 / 120, null);
++    for (const e of derby.events) if (e.type === 'damage' && e.lx !== undefined) seen.push(e);
++    derby.events.length = 0; car.events.length = 0;
++  }
++  assert.ok(seen.length >= 2, 'both cars were dented');
++  const mine = seen.find((e) => e.isPlayer), theirs = seen.find((e) => !e.isPlayer);
++  assert.ok(mine.lz > 1, 'my nose took it: ' + JSON.stringify(mine));
++  assert.ok(theirs.lz < -1, 'their tail took it: ' + JSON.stringify(theirs));
++});
