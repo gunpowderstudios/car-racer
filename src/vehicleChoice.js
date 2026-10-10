@@ -57,7 +57,7 @@ export function selectedVehicle() {
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
 
-function vehicleById(id) {
+export function vehicleById(id) {
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
 
@@ -65,7 +65,7 @@ function vehicleById(id) {
 // hit the browser cache when the scene asks for the model a moment later, reducing the blank wait.
 try { fetch(assetUrl(selectedVehicle().url), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
 
-function physicsForVehicle(config) {
+export function physicsForVehicle(config) {
   const p = vehiclePhysicsProfile(config?.physicsProfile || config?.id || 'car');
   return {
     ...BASE_CAR,
@@ -77,6 +77,19 @@ function physicsForVehicle(config) {
     aero: { ...BASE_CAR.aero, ...p.aero },
     steer: { ...BASE_CAR.steer, ...p.steer },
     boost: { ...BASE_CAR.boost, ...p.boost },
+  };
+}
+
+export function multiplayerVehicleSpec(id) {
+  const config = vehicleById(id);
+  const p = physicsForVehicle(config);
+  const body = p.body || {};
+  return {
+    id: config.id,
+    mass: Math.max(400, Number(p.mass) || BASE_CAR.mass),
+    width: Math.max(1.2, Number(body.width) || 1.85),
+    length: Math.max(3.2, Number(body.length) || Number(config.targetLength) || 4.60),
+    damageMul: Math.max(0.5, Math.min(1.5, Number(p.mpDamageMul ?? config.damageMul ?? 1) || 1)),
   };
 }
 
