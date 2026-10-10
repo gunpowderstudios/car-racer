@@ -11,8 +11,8 @@
 export const ZONES = ['front', 'back', 'left', 'right', 'roof'];
 export const ZONE_LABEL = { front: 'Front', back: 'Rear', left: 'Left side', right: 'Right side', roof: 'Roof' };
 
-/** How tough every car is, as a share of its original armour. 1 = as first built; 0.7 = 30% weaker, so cars crumple and wreck sooner. */
-export const TOUGHNESS = 0.7;
+/** How tough every car is, as a share of its original armour. 1 = as first built; 0.8 = 20% weaker, so cars crumple and wreck sooner. Each vehicle then has its own damageMul on top (vehicleChoice.js). */
+export const TOUGHNESS = 0.8;
 const tough = (hp) => Object.fromEntries(Object.entries(hp).map(([zone, v]) => [zone, Math.round(v * TOUGHNESS)]));
 
 /** Hit points per zone. */

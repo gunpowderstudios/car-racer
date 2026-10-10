@@ -1,6 +1,7 @@
 // The Oval: a free-for-all banger derby arena. Barrels, an open dirt floor, no laps, the last car running wins.
 // Run with:  npm test
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { Track, normalizeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
@@ -82,9 +83,9 @@ test('the field starts spread round the floor, standing still, every rival spoil
   assert.equal(normal.lastStanding, false);
 });
 
-test('vehicles are 30% weaker than before', () => {
-  assert.equal(TOUGHNESS, 0.7);
-  assert.equal(DENT.fullHp, 50);
+test('vehicles are 20% weaker than the original, and each type has its own toughness', () => {
+  assert.equal(TOUGHNESS, 0.8);
+  assert.equal(DENT.fullHp, 56);
 });
 
 test('rivals pick the nearest running car as their target, not just you', () => {
@@ -177,4 +178,17 @@ test('a roof scraping the ground in a roll leaves a roof dent; a hard landing on
   derby.step(1 / 120, null);
   const low = derby.events.find((e) => e.type === 'damage' && e.isPlayer);
   assert.ok(!low || (low.lx === undefined && low.dentHp === undefined), 'wheels and underside get no dent');
+});
+
+test('vehicle types differ in toughness: the V8 bruiser and the motorhome outlast the saloon and the camper', () => {
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  const mul = {};
+  for (const id of ['car', 'escort', 'bmw', 'v8-pilot', 'campervan', 'motor-home']) {
+    const at = src.indexOf(`id: '${id}'`), end = src.indexOf('physicsProfile', at);
+    const m = /damageMul:\s*([0-9.]+)/.exec(src.slice(at, end));
+    mul[id] = m ? Number(m[1]) : 1;
+  }
+  assert.ok(mul['v8-pilot'] < mul.car && mul.car < mul.bmw && mul.bmw < mul.escort, JSON.stringify(mul));
+  assert.ok(mul['motor-home'] < 1 && mul.campervan > 1, JSON.stringify(mul));
+  for (const v of Object.values(mul)) assert.ok(v >= 0.5 && v <= 1.5);
 });

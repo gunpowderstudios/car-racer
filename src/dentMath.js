@@ -4,7 +4,7 @@
 
 export const DENT = {
   minHp: 4,            // a hit that takes off fewer hit points than this leaves no mark
-  fullHp: 50,          // a hit this hard makes the biggest single dent (cars are 30% weaker, so they crumple sooner)
+  fullHp: 56,          // a hit this hard makes the biggest single dent (cars are 20% weaker, so they crumple sooner)
   depthMin: 0.05, depthMax: 0.26,      // metres a dent can be pushed in (one hit, and all hits piled together)
   radiusMin: 0.42, radiusMax: 0.85,    // metres across the bowl, centre to edge
   mergeFrac: 0.55,     // a new hit this close (share of the dent's radius) deepens the old dent instead of starting another
