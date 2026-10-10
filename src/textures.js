@@ -102,3 +102,51 @@ export function puffTexture() {
   });
   return tex(c, { srgb: false });
 }
+
+/** Packed dirt for an arena floor: brown, mottled, with darker tyre-scuffed patches. Repeats; one tile is about 24 m. */
+export function dirtTexture(aniso) {
+  const r = rng(52);
+  const c = canvas(512, 512, (g, w, h) => {
+    g.fillStyle = '#8a6a48'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 90; i++) {                       // big soft patches
+      g.fillStyle = `hsla(${24 + r() * 8},${30 + r() * 15}%,${28 + r() * 26}%,0.10)`;
+      g.beginPath(); g.ellipse(r() * w, r() * h, 20 + r() * 70, 14 + r() * 40, r() * 3, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 14000; i++) {                    // grit
+      const l = 25 + r() * 45;
+      g.fillStyle = `hsla(${22 + r() * 10},30%,${l}%,0.22)`;
+      g.fillRect(r() * w, r() * h, 1 + r() * 3, 1 + r() * 2);
+    }
+    g.strokeStyle = 'rgba(40,24,12,0.14)'; g.lineWidth = 5;      // churned-up tyre arcs
+    for (let i = 0; i < 18; i++) { g.beginPath(); g.arc(r() * w, r() * h, 40 + r() * 140, r() * 6, r() * 6 + 1.2); g.stroke(); }
+  });
+  return tex(c, { repeat: true, aniso });
+}
+
+/** A packed crowd, seen from the front: rows of heads and shirts. Repeats along u. */
+export function crowdTexture(aniso) {
+  const r = rng(77);
+  const shirts = ['#d94b3a', '#f1c94a', '#3d7fd1', '#44a96a', '#e9e4d6', '#8c52c9', '#e07bb0', '#e8913a', '#2b2d42'];
+  const c = canvas(256, 64, (g, w, h) => {
+    g.fillStyle = '#1b1830'; g.fillRect(0, 0, w, h);
+    for (let row = 0; row < 5; row++) for (let x = (row % 2) * 4; x < w + 8; x += 8) {
+      const y = 6 + row * 12 + r() * 2, tone = 120 + r() * 100;
+      g.fillStyle = shirts[Math.floor(r() * shirts.length)]; g.fillRect(x, y + 4, 6, 8);
+      g.fillStyle = `rgb(${tone},${tone * 0.78},${tone * 0.6})`; g.beginPath(); g.arc(x + 3, y + 2, 2.6, 0, 7); g.fill();
+    }
+  });
+  const t = tex(c, { repeat: true, aniso: Math.min(aniso, 4) });
+  t.magFilter = THREE.NearestFilter;
+  return t;
+}
+
+/** Red and white crash barrier. Repeats along u (one tile is about 8 m). */
+export function barrierTexture(aniso) {
+  const c = canvas(256, 64, (g, w, h) => {
+    g.fillStyle = '#e9e4d6'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c8342a'; g.fillRect(0, 0, w / 2, h);
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, h * 0.82, w, h * 0.18);
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(w / 2 - 1, 0, 2, h); g.fillRect(0, 0, 2, h);
+  });
+  return tex(c, { repeat: true, aniso });
+}

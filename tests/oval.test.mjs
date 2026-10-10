@@ -1,4 +1,4 @@
-// The Oval: a free-for-all banger derby arena. Barrels, bumps, no laps, the last car running wins.
+// The Oval: a free-for-all banger derby arena. Barrels, an open dirt floor, no laps, the last car running wins.
 // Run with:  npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,6 +6,9 @@ import { Track, normalizeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from '../src/templates.js';
 import { Derby, DERBY, POINTS } from '../src/derby.js';
+import { arenaInfo, arenaOutline, arenaPlayerStart } from '../src/arena.js';
+import { TOUGHNESS } from '../src/damage.js';
+import { DENT } from '../src/dentMath.js';
 import { placeOnTrack } from './harness.mjs';
 
 const IDLE = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
@@ -32,47 +35,56 @@ test('it is marked as a last-one-standing arena, and other tracks are not', () =
   assert.equal(normalizeTrack({ handles: makeTemplate('oval').handles, mode: 'nonsense' }).mode, undefined);
 });
 
-test('full of drums, some in clusters, none on the start line, and the same every time', () => {
-  const def = makeTemplate('oval'), track = new Track(def);
+test('full of drums, some in clusters, all on the floor, none where the player starts, and the same every time', () => {
+  const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track);
   const barrels = def.props.filter((p) => p.type === 'barrel');
   assert.ok(barrels.length >= 60 && barrels.length <= 100, String(barrels.length));
-  assert.equal(def.props.length, barrels.length);
   assert.deepEqual(makeTemplate('oval').props, def.props, 'always the same drums');
-  const q = Track.newQuery();
+  const q = Track.newQuery(), ps = arenaPlayerStart(A);
   for (const b of barrels) {
     track.query(b.x, b.y + 0.5, b.z, q, 2);
-    assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw + 0.1, 'every drum is on the road');
-    const s = q.s, L = track.length;
-    assert.ok(s > 60 && s < L - 60, `no drum within 60 m of the start line (s=${s.toFixed(0)})`);
+    assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw - 1, 'every drum is on the floor');
+    assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > 12, 'clear of the player start');
   }
   let close = 0;
   for (let i = 0; i < barrels.length; i++) for (let j = i + 1; j < barrels.length; j++) if (Math.hypot(barrels[i].x - barrels[j].x, barrels[i].z - barrels[j].z) < 3.2) close++;
   assert.ok(close >= 12, 'clusters of drums that set each other off: ' + close);
 });
 
-test('it is a wide, walled, bumpy ring: humps all the way round', () => {
-  const def = makeTemplate('oval'), track = new Track(def);
+test('it is a big open, walled, flat dirt floor, and its outline matches the physics wall', () => {
+  const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track), q = Track.newQuery();
   assert.equal(def.walls, true);
-  assert.ok(def.width >= 30);
-  assert.ok(track.length > 900 && track.length < 1500, String(track.length));
-  let lo = 1e9, hi = -1e9;
-  for (let i = 0; i < track.n; i++) { lo = Math.min(lo, track.py[i]); hi = Math.max(hi, track.py[i]); }
-  assert.ok(hi - lo > 1.5, `bumps are at least 1.5 m tall: ${(hi - lo).toFixed(2)}`);
+  assert.ok(A.ax > 90 && A.az > 55, 'a proper stadium floor');
+  for (const p of arenaOutline(A, A.hw - 1.5, 72)) {
+    track.query(p.x, A.y + 0.5, p.z, q, 2);
+    assert.ok(q.idx >= 0 && q.hw - Math.abs(q.d) > 0.5, 'just inside the edge is floor');
+  }
+  for (const p of arenaOutline(A, A.hw + 1.4, 72)) {
+    track.query(p.x, A.y + 1, p.z, q, 2);
+    assert.ok(q.idx >= 0 && track.wallPenetration(q, q.y + 0.5) > 0, 'just past the edge is wall');
+  }
 });
 
-test('the field starts spread right round the ring, standing still, and every rival is spoiling for a fight', () => {
+test('the field starts spread round the floor, standing still, every rival spoiling for a fight', () => {
   const { track, derby } = arena(8);
-  const rivals = derby.rivals;
+  const rivals = derby.rivals, q = Track.newQuery();
   assert.equal(rivals.length, 8);
-  for (const f of rivals) { assert.ok(f.car.speed < 0.5); assert.ok(f.driver.aggr >= 0.7); }
-  const ss = rivals.map((f) => track.progressAt(f.car.pos.x, f.car.pos.y, f.car.pos.z)).sort((a, b) => a - b);
-  let widest = 0;
-  for (let i = 1; i < ss.length; i++) widest = Math.max(widest, ss[i] - ss[i - 1]);
-  assert.ok(widest < track.length / 4, 'no huge gaps: spread round the ring');
-  assert.ok(ss[1] - ss[0] > 30, 'not stacked on top of each other');
+  for (const f of rivals) {
+    assert.ok(f.car.speed < 0.5); assert.ok(f.driver.aggr >= 0.7);
+    track.query(f.car.pos.x, f.car.pos.y, f.car.pos.z, q, 2);
+    assert.ok(q.idx >= 0 && q.hw - Math.abs(q.d) > 5, 'on the floor');
+  }
+  let nearest = 1e9;
+  for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) nearest = Math.min(nearest, Math.hypot(rivals[i].car.pos.x - rivals[j].car.pos.x, rivals[i].car.pos.z - rivals[j].car.pos.z));
+  assert.ok(nearest > 20, 'not stacked on top of each other: ' + nearest.toFixed(1));
   const normal = new Derby(); const t2 = new Track(makeTemplate('speedway')), c2 = new Vehicle();
   placeOnTrack(c2, t2, t2.startS(12), 0, 0); normal.enabled = true; normal.start(t2, c2, 6, 11);
   assert.equal(normal.lastStanding, false);
+});
+
+test('vehicles are 30% weaker than before', () => {
+  assert.equal(TOUGHNESS, 0.7);
+  assert.equal(DENT.fullHp, 50);
 });
 
 test('rivals pick the nearest running car as their target, not just you', () => {
@@ -92,7 +104,7 @@ test('wrecked rivals are not replaced', () => {
   const first = derby.rivals[0]; first.age = 99;
   derby._damage(first, 'back', 999, null);
   for (let i = 0; i < 600; i++) derby.step(1 / 120, null);        // five seconds
-  assert.equal(derby.rivals.filter((f) => !f.wrecked).length, 4, 'still four running');
+  assert.ok(derby.rivals.filter((f) => !f.wrecked).length <= 4, 'at most four running (weak cars may wreck each other too)');
   assert.equal(derby.fighters.filter((f) => !f.isPlayer).length, 5, 'and no new ones came on');
 });
 

@@ -14,6 +14,7 @@ import { V3 } from './math.js';
 import { Vehicle } from './vehicle.js';
 import { Track, SURF } from './track.js';
 import { Driver, IDLE, AI } from './ai.js';
+import { ArenaDriver, arenaInfo, arenaSpawn } from './arena.js';
 import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage } from './damage.js';
 
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
@@ -148,9 +149,17 @@ export class Derby {
     };
     this.fighters.push(p);
     if (this.lastStanding) {
-      for (let k = 0; k < count; k++) { const f = this._spawn(k, count, 0, true); if (f) { f.raceSlot = k + 1; this._arenaField++; } }
+      for (let k = 0; k < count; k++) { this._spawnArena(k, count); this._arenaField++; }
     } else for (let k = 0; k < count; k++) this._spawnGrid(k, count);
     this._refreshCars();
+  }
+
+  /** Rival `k` of `of` in The Oval: standing still on a ring inside the floor, facing the middle, spoiling for a fight. */
+  _spawnArena(k, of) {
+    const A = arenaInfo(this.track), p = arenaSpawn(A, k, of), car = new Vehicle();
+    car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
+    car.opts.assist = 0.7;
+    return this.add(car, new ArenaDriver(this.rng), k + 1);
   }
 
   /** Place rival `k` of `of` in a starting grid ahead of the player: a couple of cars per
@@ -184,7 +193,7 @@ export class Derby {
   }
 
   // ------------------------------------------------------------------- spawning
-  _spawn(k = -1, of = 0, speed = null, fierce = false) {
+  _spawn(k = -1, of = 0) {
     const T = this.track, P = this.player, L = T.length, rnd = this.rng;
     const ps = T.progressAt(P.car.pos.x, P.car.pos.y, P.car.pos.z);
     const margin = Math.min(140, L * 0.18);
@@ -214,8 +223,8 @@ export class Derby {
     if (!ok) return null;
     if (replacementS != null) this._replacementS.shift();
     const car = new Vehicle();
-    const driver = fierce ? new Driver(rnd, 0.7 + rnd() * 0.3) : new Driver(rnd);     // arena rivals are all spoiling for a fight
-    placeOnRoad(car, T, s, off, speed ?? driver.cruise * 0.85);
+    const driver = new Driver(rnd);
+    placeOnRoad(car, T, s, off, driver.cruise * 0.85);
     car.opts.assist = 0.7;
     return this.add(car, driver, replacementSlot);
   }
@@ -348,12 +357,15 @@ export class Derby {
 
   /** The closest car (you included) that is still running, as far as rival `f` is concerned. */
   _nearestFoe(f) {
-    let best = null, bd = Infinity;
+    let best = null, bd = Infinity, keep = null, kd = Infinity;
     for (const o of this.fighters) {
       if (o === f || o.gone || o.wrecked) continue;
       const d = (o.car.pos.x - f.car.pos.x) ** 2 + (o.car.pos.z - f.car.pos.z) ** 2;
       if (d < bd) { bd = d; best = o; }
+      if (o === f._foe) { keep = o; kd = d; }
     }
+    if (keep && kd < bd * 2.25) best = keep;               // stick with the current target unless another is much closer: no dithering between two
+    f._foe = best;
     return best ? best.car : null;
   }
 

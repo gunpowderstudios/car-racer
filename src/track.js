@@ -21,9 +21,11 @@ export const WALL_T = 0.5;          // wall thickness
 // sloped down into the wall face, cars dropped into a gutter and leaned on the wall.)
 export const APRON = WALL_GAP + WALL_T;
 export const SAMPLE_SPACING = 1.0;  // metres between road samples
+export const ARENA_SPACING = 4.0;   // an arena's floor is far wider than a road, so it is sampled coarsely to keep ground lookups cheap
 export const EMBANKMENT = 0.8;             // verge falls away this many metres per metre
 const CELL = 8;
 const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its ends
+const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
 const QUERY_MARGIN = 4.5;
 const TAKEOFF_LEN = 12, TAKEOFF_RISE = 0.5;   // ramp up to a gap (the default, flat-lipped ramp)
 export const LIP = { minH: 0.3, maxH: 3, maxDeg: 30, minLen: 5, maxLen: 30 };
@@ -75,7 +77,8 @@ export function normalizeProps(list) {
 /** Fill defaults, migrate legacy (v4, v5) editor data, and clamp values. */
 export function normalizeTrack(input) {
   const src = input || {};
-  const width = clamp(Number(src.width) || 22, 12, 40);
+  const arena = src.mode === 'lastStanding';
+  const width = clamp(Number(src.width) || 22, 12, arena ? 120 : 40);          // an arena's 'road' is a whole dirt floor
   const handles = (Array.isArray(src.handles) ? src.handles : []).map((h) => ({
     x: Number(h.x) || 0,
     y: Math.max(0, Number.isFinite(+h.y) ? +h.y : 0.65),
@@ -149,6 +152,7 @@ export class Track {
   constructor(input) {
     this.def = normalizeTrack(input);
     this.apron = this.def.walls ? APRON : 0;
+    this.overshoot = this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
   }
@@ -163,7 +167,7 @@ export class Track {
       cum[i] = cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y, pts[i].z - pts[i - 1].z);
     }
     const total = cum[pts.length - 1];
-    const n = Math.max(16, Math.round(total / SAMPLE_SPACING));
+    const n = Math.max(16, Math.round(total / (def.mode === 'lastStanding' ? ARENA_SPACING : SAMPLE_SPACING)));
     const ds = total / n;
     this.n = n; this.ds = ds; this.length = total;
     this.handleS = handleDense.map((k) => cum[k]);
@@ -281,7 +285,7 @@ export class Track {
       // A segment only claims points just beyond its ends (covers the wedge outside a bend).
       // Anything further is not on this road - this is what makes gaps and lips hard edges.
       const over = tRaw < 0 ? -tRaw : tRaw > 1 ? tRaw - 1 : 0;
-      if (over > 0 && over * len2 > MAX_OVERSHOOT * Math.sqrt(len2)) continue;
+      if (over > 0 && over * len2 > this.overshoot * Math.sqrt(len2)) continue;
       const t = clamp(tRaw, 0, 1);
       const cx = ax + dx * t, cz = az + dz * t;
       const dd = (x - cx) * (x - cx) + (z - cz) * (z - cz);

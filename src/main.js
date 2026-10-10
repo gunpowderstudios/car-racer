@@ -4,7 +4,8 @@ import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
 import { Derby, DERBY } from './derby.js';
 import { IDLE } from './ai.js';
-import { ZONE_LABEL, DAMAGE, blastFraction, crashDamage } from './damage.js';
+import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage } from './damage.js';
+import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
@@ -243,6 +244,17 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
   chase.snap(); trouble.flipped = trouble.lost = 0; acc = 0;
 }
 
+/** The Oval has no start line: you begin near one end of the floor, facing the middle. */
+function placeCarInArena() {
+  const A = arenaInfo(track), p = arenaPlayerStart(A);
+  car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
+  car.opts.assist = opts.assist ? 0.7 : 0;
+  syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
+  race.lastS = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
+  safe.s = race.lastS; safe.off = 0; safe.t = 0;
+  chase.snap(); trouble.flipped = trouble.lost = 0; acc = 0;
+}
+
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
@@ -281,7 +293,8 @@ function syncPose() {
 // ---------------------------------------------------------------- lap logic
 function updateRace(dt) {
   const L = track.length, s = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
-  if (race.lastS != null) {
+  const lapped = !derby.lastStanding;                         // an arena has no laps and no wrong way
+  if (lapped && race.lastS != null) {
     let d = s - race.lastS; if (d < -L / 2) d += L; if (d > L / 2) d -= L;
     if (Math.abs(d) < 60) {
       race.unwrapped += d;
@@ -290,7 +303,7 @@ function updateRace(dt) {
   }
   race.lastS = s;
   if (race.unwrapped > race.max) race.max = race.unwrapped;
-  const idx = Math.floor(race.max / L);
+  const idx = lapped ? race.index : Math.floor(race.max / L);
   if (idx > race.index) {
     race.index = idx;
     if (idx === 0) { race.lapStart = simTime; race.laps = 1; if (net) mpRaceStart = simTime; hud.banner('Go!', 900); }
@@ -307,7 +320,7 @@ function updateRace(dt) {
       }
     }
   }
-  if (race.reverseT > 1.6) { hud.banner('Wrong way', 700); }
+  if (lapped && race.reverseT > 1.6) { hud.banner('Wrong way', 700); }
 
   // remember a safe spot to come back to
   safe.t += dt;
@@ -382,6 +395,8 @@ function derbyStart() {
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const field = arena ? Math.min(10, opts.rivals * 2) : opts.rivals;
+  document.body.classList.toggle('arena', arena);                                       // no laps in an arena: the lap card goes
+  if (arena) placeCarInArena();
   derby.damageEnabled = derby.enabled && !!opts.derby;
   if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
@@ -590,7 +605,7 @@ function debugText() {
 // --------------------------------------------------------------------- modes
 function setMode(m) {
   if (m !== 'drive') setSoundPop(false);
-  mode = m; document.body.className = 'mode-' + m;
+  mode = m; document.body.className = 'mode-' + m + (derby.lastStanding ? ' arena' : '');
   $('hud').hidden = m !== 'drive';
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
@@ -696,7 +711,7 @@ function bindMenu() {
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
 const MP_BASE_RADIUS = 1.30;   // original per-car contact radius, scaled by each vehicle's body width
-const MP_DAMAGE_HP_SCALE = 140; // derby crash HP converted onto multiplayer's single 0..1 health bar
+const MP_DAMAGE_HP_SCALE = 140 * TOUGHNESS; // derby crash HP converted onto multiplayer's single 0..1 health bar
 const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright

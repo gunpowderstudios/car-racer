@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { roadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
+import { buildArena } from './arenaView.js';
 
 const SKY_TOP = 0x2a2560, SKY_MID = 0xb04a72, SKY_LOW = 0xf6a05a, FOG = 0xdf8f69;
 
@@ -89,6 +90,7 @@ export class Stage {
 
   setTrack(track) {
     this.clearTrack();
+    if (track.def.mode === 'lastStanding') return this._setArena(track);
     const geo = buildTrackGeometry(track);
     const g = new THREE.Group();
 
@@ -147,6 +149,16 @@ export class Stage {
     return geo;
   }
 
+  /** An open arena (see arena.js) has no road to draw: a dirt floor, a wall and stands instead. */
+  _setArena(track) {
+    const g = new THREE.Group(), arena = buildArena(track, this.aniso);
+    g.add(arena);
+    const geo = { bounds: arena.userData.bounds, arena: true };
+    g.add(this._scenery(track, geo, arena.userData.clear));
+    this.scene.add(g); this.trackGroup = g;
+    return geo;
+  }
+
   _startLine(s) {
     const grp = new THREE.Group();
     const yaw = Math.atan2(s.fx, s.fz);
@@ -174,7 +186,7 @@ export class Stage {
     return grp;
   }
 
-  _scenery(track, geo) {
+  _scenery(track, geo, clear = track.hw[0] + 16) {
     const g = new THREE.Group();
     const rnd = mulberry(Math.floor(track.length * 7) ^ track.n);
     const b = geo.bounds;
@@ -190,7 +202,7 @@ export class Stage {
     const trees = [];
     for (let tries = 0; tries < 2600 && trees.length < 240; tries++) {
       const x = cx + (rnd() * 2 - 1) * (half + 260), z = cz + (rnd() * 2 - 1) * (half + 260);
-      if (nearRoad(x, z, track.hw[0] + 16)) continue;
+      if (nearRoad(x, z, clear)) continue;
       trees.push([x, z, 0.8 + rnd() * 1.1]);
     }
     if (trees.length) {

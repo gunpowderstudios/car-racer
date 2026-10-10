@@ -11,10 +11,14 @@
 export const ZONES = ['front', 'back', 'left', 'right', 'roof'];
 export const ZONE_LABEL = { front: 'Front', back: 'Rear', left: 'Left side', right: 'Right side', roof: 'Roof' };
 
+/** How tough every car is, as a share of its original armour. 1 = as first built; 0.7 = 30% weaker, so cars crumple and wreck sooner. */
+export const TOUGHNESS = 0.7;
+const tough = (hp) => Object.fromEntries(Object.entries(hp).map(([zone, v]) => [zone, Math.round(v * TOUGHNESS)]));
+
 /** Hit points per zone. */
 export const ARMOUR = {
-  player: { front: 320, back: 160, left: 180, right: 180, roof: 150 },
-  rival: { front: 95, back: 85, left: 85, right: 85, roof: 75 },
+  player: tough({ front: 320, back: 160, left: 180, right: 180, roof: 150 }),
+  rival: tough({ front: 95, back: 85, left: 85, right: 85, roof: 75 }),
 };
 
 export const DAMAGE = {

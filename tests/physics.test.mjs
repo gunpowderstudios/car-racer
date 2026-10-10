@@ -13,6 +13,7 @@ const wrap180 = (d) => { while (d > 180) d -= 360; while (d < -180) d += 360; re
 
 test('every template builds, closes its loop and has no tight corners', () => {
   for (const key of TEMPLATE_KEYS) {
+    if (makeTemplate(key).mode === 'lastStanding') continue;      // an open arena is one wide floor, not a road to lap
     const track = new Track(makeTemplate(key));
     assert.ok(track.length > 800, `${key} too short`);
     const dx = track.px[0] - track.px[track.n - 1], dz = track.pz[0] - track.pz[track.n - 1];

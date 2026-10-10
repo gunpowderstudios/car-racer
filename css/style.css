@@ -166,6 +166,7 @@ body:not(.mode-menu) #menu { display: none; }
 #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-family: var(--display); text-shadow: 0 2px 6px rgba(0,0,0,.5); }
 #lap-card { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 16px; padding: 10px 26px 10px 14px; background: rgba(42,29,74,.82);
   clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); border-left: 5px solid var(--amber); }
+body.arena #lap-card { display: none; }       /* The Oval has no laps */
 #lap-num { font-weight: 700; font-size: 20px; color: var(--amber); letter-spacing: .02em; }
 #lap-time { font-weight: 900; font-size: 44px; line-height: 1; color: var(--peach); font-variant-numeric: tabular-nums; }
 #lap-best { font-family: var(--cond); font-size: 15px; color: var(--ink-dim); text-shadow: none; }

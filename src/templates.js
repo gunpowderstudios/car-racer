@@ -3,6 +3,7 @@
 
 import { Track, suggestBanks, normalizeTrack, analyzeTrack } from './track.js';
 import { placeProp } from './props.js';
+import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { placeOnRoad } from './derby.js';
 import { Vehicle } from './vehicle.js';
 import { Driver } from './ai.js';
@@ -88,29 +89,28 @@ function figureEight() {
   return out;
 }
 
-/** The Oval: a fat ring of road with rolling humps all the way round (every other handle sits high). */
-function ovalArena() {
-  const a = 230, b = 135, n = 20, out = [];
-  for (let k = 0; k < n; k++) {
-    const t = (k / n) * Math.PI * 2;
-    out.push({ x: a * Math.cos(t), y: k % 2 ? 2.85 : 0.65, z: b * Math.sin(t) });
-  }
-  return out;
-}
+/** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
+const OVAL_A = 78, OVAL_B = 36, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width, and full floor width
 
-/** Drums for The Oval: a scatter all round plus a few tight clusters, nothing near the start line. Always the same ones. */
+/** Drums for The Oval: a scatter across the whole floor plus a few tight clusters, none where you start. Always the same ones. */
 function arenaProps(def) {
-  const track = new Track(def), rnd = mulberry(20261010), props = [], L = track.length, clear = 90;
-  const r2 = (v) => Math.round(v * 100) / 100;
-  const drum = (s, off) => {
-    const f = track.frameAt(s), lim = Math.max(2, f.hw - 3);
-    const p = placeProp(track, f.x + f.lx * Math.max(-lim, Math.min(lim, off)), f.z + f.lz * Math.max(-lim, Math.min(lim, off)));
-    props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) });
+  const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261010), props = [], q = Track.newQuery();
+  const start = arenaPlayerStart(A), r2 = (v) => Math.round(v * 100) / 100;
+  const spot = () => {                                                   // a random place on the floor, clear of the walls and of your start
+    for (let tries = 0; tries < 200; tries++) {
+      const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az;
+      track.query(x, A.y + 0.5, z, q, 1.5);
+      if (q.idx < 0 || Math.abs(q.d) > q.hw - 6) continue;
+      if (Math.hypot(x - start.x, z - start.z) < 22) continue;
+      return { x, z };
+    }
+    return { x: A.cx, z: A.cz };
   };
-  for (let i = 0; i < 40; i++) { const s = clear + rnd() * (L - 2 * clear); drum(s, (rnd() - 0.5) * 2 * (track.frameAt(s).hw - 3)); }
-  for (let c = 0; c < 8; c++) {                                  // eight clusters of four: one spark sets the lot off
-    const s = clear + (c + 0.5) * (L - 2 * clear) / 8 + (rnd() - 0.5) * 30, off = (rnd() - 0.5) * 20;
-    drum(s, off); drum(s + 2.4, off); drum(s - 2.4, off); drum(s, off + (rnd() < 0.5 ? 2.2 : -2.2));
+  const drum = (x, z) => { const p = placeProp(track, x, z); props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) }); };
+  for (let i = 0; i < 42; i++) { const p = spot(); drum(p.x, p.z); }
+  for (let c = 0; c < 9; c++) {                                          // nine clusters of four: one spark sets the lot off
+    const p = spot();
+    drum(p.x, p.z); drum(p.x + 2.3, p.z); drum(p.x - 2.3, p.z); drum(p.x, p.z + 2.3);
   }
   return props;
 }
@@ -122,10 +122,10 @@ const RAW = {
     autoBank: true,
   },
   oval: {
-    name: 'The Oval', width: 36,
-    handles: ovalArena(),
-    autoBank: true,
-    arena: true,       // a free-for-all banger derby: barrels everywhere, last one standing wins
+    name: 'The Oval', width: OVAL_FLOOR,
+    handles: ellipse(OVAL_A, OVAL_B, 20),
+    autoBank: false,
+    arena: true,       // an open dirt bowl for a free-for-all banger derby: barrels everywhere, last one standing wins
   },
   technical: {
     name: 'Technical', width: 20,
@@ -232,7 +232,7 @@ export function makeTemplate(key) {
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];
   if (!raw) throw new Error('Unknown template ' + key);
-  let def = normalizeTrack({ ...raw, handles: raw.handles.map((h) => ({ ...h })) });
+  let def = normalizeTrack({ ...raw, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
   if (raw.autoBank) {
     const banks = suggestBanks(new Track(def), 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
@@ -244,7 +244,7 @@ export function makeTemplate(key) {
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
   speedway: 'Fast banked oval to learn the car',
-  oval: 'Free-for-all banger derby: barrels, bumps, last one standing wins',
+  oval: 'Open dirt arena: a free-for-all banger derby with barrels everywhere. Last one standing wins',
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',

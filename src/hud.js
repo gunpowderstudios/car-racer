@@ -1,6 +1,7 @@
 // DOM heads-up display: speed, gear, RPM strip, lap timing, minimap, banner messages,
 // and the destruction-derby score, damage chart and game-over card.
 import { ZONES } from './damage.js';
+import { arenaInfo, arenaOutline } from './arena.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -119,11 +120,21 @@ export class Hud {
   buildMap(track) {
     const W = this.el.map.width, H = this.el.map.height, pad = 22;
     let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
-    for (let i = 0; i < track.n; i++) { minX = Math.min(minX, track.px[i]); maxX = Math.max(maxX, track.px[i]); minZ = Math.min(minZ, track.pz[i]); maxZ = Math.max(maxZ, track.pz[i]); }
+    const arena = track.def.mode === 'lastStanding' ? arenaOutline(arenaInfo(track), arenaInfo(track).hw, 72) : null;     // an arena is a whole floor, not a road line
+    if (arena) for (const p of arena) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z); }
+    else for (let i = 0; i < track.n; i++) { minX = Math.min(minX, track.px[i]); maxX = Math.max(maxX, track.px[i]); minZ = Math.min(minZ, track.pz[i]); maxZ = Math.max(maxZ, track.pz[i]); }
     const sc = Math.min((W - pad * 2) / (maxX - minX || 1), (H - pad * 2) / (maxZ - minZ || 1));
     const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
     const off = document.createElement('canvas'); off.width = W; off.height = H;
     const g = off.getContext('2d');
+    if (arena) {
+      g.lineJoin = 'round'; g.fillStyle = 'rgba(176,132,88,.75)'; g.strokeStyle = 'rgba(246,217,176,.95)'; g.lineWidth = 4;
+      g.beginPath();
+      arena.forEach((p, i) => { const x = (p.x - cx) * sc + W / 2, y = (p.z - cz) * sc + H / 2; if (i) g.lineTo(x, y); else g.moveTo(x, y); });
+      g.closePath(); g.fill(); g.stroke();
+      this.mapCache = { off, sc, cx, cz, W, H };
+      return;
+    }
     g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = 'rgba(246,217,176,.95)'; g.lineWidth = 6;
     g.beginPath();
     let pen = false;
