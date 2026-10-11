@@ -340,7 +340,7 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
 
 test('oval template is displayed as The Oval', () => {
   const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
-  assert.match(templates, /oval:\s*\{\s*name: 'The Oval'/);
+  assert.match(templates, /oval:\s*\{\s*name: 'The Oval \(Demolition Derby\)'/);
   assert.doesNotMatch(templates, /Bed Pan/);
 });
 

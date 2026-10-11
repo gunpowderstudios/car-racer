@@ -122,7 +122,7 @@ const RAW = {
     autoBank: true,
   },
   oval: {
-    name: 'The Oval', width: OVAL_FLOOR,
+    name: 'The Oval (Demolition Derby)', width: OVAL_FLOOR,
     handles: ellipse(OVAL_A, OVAL_B, 20),
     autoBank: false,
     arena: true,       // an open dirt bowl for a free-for-all banger derby: barrels everywhere, last one standing wins
