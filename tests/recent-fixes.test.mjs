@@ -289,7 +289,7 @@ test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
   const derbyFile = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
   assert.match(indexHtml, /option value="0">0 — Lap time only<\/option>/);
   assert.match(main, /derby\.enabled = !net && opts\.rivals > 0/);
-  assert.match(main, /derby\.damageEnabled = derby\.enabled && !!opts\.derby/);
+  assert.match(main, /derby\.damageEnabled = derby\.enabled;/);
   assert.match(main, /v\.root\.scale\.setScalar\(1\)/);
   assert.doesNotMatch(main, /f\.expire\) k = 1 - f\.expireT/);
   assert.match(derbyFile, /this\.enabled = false; this\.damageEnabled = true/);

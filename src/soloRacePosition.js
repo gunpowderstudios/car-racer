@@ -160,7 +160,7 @@ function update() {
 
   // Finish detection is independent of the rival field. That way a completed race
   // always produces a result even if the AI list is briefly empty while cars respawn/wreck.
-  const finished = !!game?.race && game.race.index >= raceLaps();
+  const finished = !!game?.race && !game?.derby?.demolition && game.race.index >= raceLaps();
   if (finished && !finishShown) {
     finishShown = true;
     showFinish(lastPlace, lastTotal);

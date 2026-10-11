@@ -221,7 +221,7 @@ html.invite-loading #invite-loading {
       <summary>Options</summary>
       <div class="opt-grid">
         <label><input id="opt-assist" type="checkbox" checked> Drift assist (helps you catch slides)</label>
-        <label><input id="opt-derby" type="checkbox" checked> Destruction mode (damage, wrecks, score)</label>
+        <label class="sel">Game mode <select id="opt-mode" aria-label="Game mode"><option value="race">Race - wrecked? You respawn</option><option value="demolition">Demolition - last one standing</option></select></label>
         <label class="sel">AI rival cars <select id="opt-rivals" aria-label="Number of AI rival cars"><option value="0">0 — Lap time only</option><option>3</option><option>4</option><option>5</option><option selected>6</option><option>8</option><option>10</option></select></label>
         <label><input id="opt-kmh" type="checkbox"> Show km/h</label>
         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
@@ -243,7 +243,7 @@ html.invite-loading #invite-loading {
     </aside>
 
     <p class="fine">Controls: W/S throttle and brake, A/D steer, Space boost, Shift drift, B back on the road, Backspace/Delete restart, C camera, R (or 0) reset camera view, V rear-view mirror. You can also double-click the game view to centre the camera. Gamepad: left stick or D-pad steers, RT gas, LT brake, A boost, B drift, Y back on road, LB camera, right-stick click reset view, Start menu, Select restart. Touch controls work too.</p>
-    <p class="fine">Derby: ram the rival cars. Every crash damages the part of the car that was hit, and the first part to run out wrecks the car. Your front end is armoured, your rear is not. Explosive barrels hurt everyone; chickens just splat.</p>
+    <p class="fine">Every crash damages the part of the car that was hit, and the first part to run out wrecks the car. In Race mode you explode, then respawn on the road and race on. In Demolition mode being wrecked puts you out, and the last car running wins. Your front end is armoured, your rear is not. Explosive barrels hurt everyone; chickens just splat.</p>
     <p class="fine" style="margin-top:18px">Race, jump, crash, play destruction derby and design your own tracks. Inspired by classic driving games such as <em>Stunt Car Racer</em>, <em>Driver</em> and later games like <em>Wreckfest</em>. The project is open source so others can explore the code, learn from it and build on it. <a href="https://github.com/gunpowderstudios/car-racer" target="_blank" rel="noopener" style="color:#ffb31f">View the source on GitHub</a>.<br><a href="how-we-made-it.html" style="color:#ffb31f">How we made this game</a> &middot; <a href="https://www.gunpowderstudios.co.uk/" target="_blank" rel="noopener" style="color:#ffb31f">See our other games at gunpowderstudios.co.uk</a></p>
   </div>
 </section>

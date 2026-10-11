@@ -41,7 +41,7 @@ const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes
 const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
@@ -287,11 +287,11 @@ function restartRace() {
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
-  hud.banner(derby.damageEnabled ? 'Wreck them all' : 'Get to the start line', 1400);
+  hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
 }
 
 function respawn() {
-  if (derby.over) return;
+  if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
   race.reverseT = 0;
@@ -364,7 +364,7 @@ function updateRace(dt) {
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
   const raw = input.read();
-  const inp = derby.over ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
+  const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   acc += dt; let n = 0;
   while (acc >= DT && n < 6) {
@@ -424,10 +424,11 @@ function derbyStart() {
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const field = arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals;
-  document.body.classList.toggle('arena', arena);                                       // no laps in an arena: the lap card goes
+  // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
+  derby.damageEnabled = derby.enabled;
+  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, opts.mode); else derby.stop();
+  document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
-  derby.damageEnabled = derby.enabled && !!opts.derby;
-  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0); else derby.stop();
   clearViews(); overAt = 0; overInfo = null;
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
@@ -458,6 +459,9 @@ function derbyEvents() {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
     } else if (e.type === 'award') {
       hud.feed(`+${e.points} ${e.label}`);
+    } else if (e.type === 'respawn') {
+      respawn(); visual.clearDents(); visual.setLook(1, 0); hud.setDamage(derby.player.health);
+      hud.banner('Respawned - back in the race!', 1600);
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
       if (isBest) { all[key] = e.score; store.set('cr.derby', all); }
@@ -588,7 +592,7 @@ function frame(now) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
       derbyFx(dt);
-      visual.setLook(derby.over && !derby.won ? 0.3 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
+      visual.setLook(derby.player.wrecked ? 0.3 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
       mapDots.length = 0;
       for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
       if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
@@ -637,7 +641,7 @@ function debugText() {
 // --------------------------------------------------------------------- modes
 function setMode(m) {
   if (m !== 'drive') setSoundPop(false);
-  mode = m; document.body.className = 'mode-' + m + (derby.lastStanding ? ' arena' : '');
+  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '');
   $('hud').hidden = m !== 'drive';
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
@@ -647,7 +651,7 @@ function startDriving(newDef) {
   sound.init();
   if (newDef) loadTrack(newDef);
   hasPlayed = true; setMode('drive'); last = performance.now();
-  hud.banner(derby.lastStanding ? 'Last one standing wins!' : derby.enabled ? 'Wreck them all' : 'Get to the start line', 1600);
+  hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
 }
 function openEditor(d) {
   // the editor needs a mouse and a big screen - on touch devices just say so
@@ -704,7 +708,8 @@ function renderMenu() {
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
-  bindOpt('opt-derby', 'derby', (v) => { opts.derby = v; if (track) derbyStart(); });
+  const md = $('opt-mode'); md.value = opts.mode === 'demolition' ? 'demolition' : 'race';
+  md.onchange = () => { opts.mode = md.value === 'demolition' ? 'demolition' : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };

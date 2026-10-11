@@ -40,6 +40,8 @@ export const DERBY = {
   gridLead: 12,          // m: gap from the player to the first row of the starting grid
   gridRow: 8,            // m: gap between grid rows
   gridPerRow: 2,         // cars per row (a real grid staggers pole/second etc.)
+  respawnDelay: 3,       // Race mode: seconds a wrecked player smoulders before being put back on the road
+  respawnGrace: 3,       // ...and the protection they get after coming back
 };
 
 // Five spheres along the car stand in for its body when cars meet. A vehicle with a `body` in its physics profile (width and
@@ -127,6 +129,7 @@ export class Derby {
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
+    this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
     this._replacementS = [];              // {s, raceSlot}: wreck position + persistent race identity awaiting a replacement
@@ -140,7 +143,7 @@ export class Derby {
   get alive() { let n = 0; for (const f of this.fighters) if (!f.isPlayer && !f.gone && !f.wrecked) n++; return n; }
 
   /** Begin a fresh game on `track` with the player's car and `count` rivals. */
-  start(track, playerCar, count = DERBY.rivals, seed = 7) {
+  start(track, playerCar, count = DERBY.rivals, seed = 7, mode = 'race') {
     this.track = track; this.count = count; this.rng = mulberry(seed);
     this.raceSerial = (this.raceSerial || 0) + 1;
     this.fighters.length = 0; this.events.length = 0;
@@ -148,11 +151,14 @@ export class Derby {
     // A track marked mode 'lastStanding' (The Oval) is a free-for-all: rivals start spread round the ring, fight each
     // other as well as you, are never replaced, and the last car still running wins.
     this.lastStanding = !!(track && track.def && track.def.mode === 'lastStanding'); this._arenaField = 0;
+    // Two ways to play. RACE: you are wrecked, you explode, you come back on the road and the race goes on; rivals are replaced.
+    // DEMOLITION: wrecked means out, nobody is replaced, and the last car running wins. The Oval is always demolition.
+    this.mode = mode === 'demolition' || this.lastStanding ? 'demolition' : 'race'; this.demolition = this.mode === 'demolition';
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
     this._replacementS.length = 0;
     const p = this.player = {
       id: 0, isPlayer: true, car: playerCar, health: new Health(SPECS.player.hp), spec: SPECS.player,
-      wrecked: false, wreckT: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
+      wrecked: false, wreckT: 0, respawnAt: Infinity, graceUntil: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
       prev: pose(), cur: pose(), hue: -1,
     };
     this.fighters.push(p);
@@ -332,6 +338,7 @@ export class Derby {
       f.flash = Math.max(0, f.flash - dt * 3.5);
       if (f.wrecked) {
         f.wreckT += dt;
+        if (f.isPlayer && !this.demolition && !this.over && this.time >= f.respawnAt) this._revivePlayer(f);
         if (!f.isPlayer) {
           // Off-track recovery also uses wrecked=true during its 3-2-1 cinematic; that is not a real hulk.
           if (!f._offTrackReset) wrecks++;
@@ -354,11 +361,11 @@ export class Derby {
     this._spawnT -= dt;
     if (this._spawnT <= 0) {
       this._spawnT = 0.5;
-      if (this.alive < this.count && !this.over && !this.lastStanding) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
+      if (this.alive < this.count && !this.over && !this.demolition) { if (this._spawn()) this._spawnT = DERBY.spawnEvery; }
     }
 
     // -------- last one standing
-    if (this.lastStanding && !this.over && !P.wrecked && this._arenaField > 0 && this.time > DERBY.grace && this._standing() === 0) this._win();
+    if (this.demolition && !this.over && !P.wrecked && (this._arenaField > 0 || this.count > 0) && this.time > DERBY.grace && this._standing() === 0) this._win();
   }
 
   /** Rivals still in the fight. One that is only 3-2-1 resetting after being lost off the road still counts. */
@@ -380,6 +387,13 @@ export class Derby {
     if (keep && kd < bd * 2.25) best = keep;               // stick with the current target unless another is much closer: no dithering between two
     f._foe = best;
     return best ? best.car : null;
+  }
+
+  /** Race mode: the wrecked player comes back with full health and a few seconds' protection. main.js puts the car back on the road. */
+  _revivePlayer(f) {
+    f.health = new Health(SPECS.player.hp);
+    f.wrecked = false; f.wreckT = 0; f.respawnAt = Infinity; f.graceUntil = this.time + DERBY.respawnGrace; f.flipT = 0; f.flash = 0;
+    this.events.push({ type: 'respawn', id: f.id, isPlayer: true });
   }
 
   _win() {
@@ -418,7 +432,7 @@ export class Derby {
   /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
   _damage(f, zone, hp, by, x, y, z, dentHp) {
     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
-    if (f.isPlayer) { if (this.over || this.time < DERBY.grace) return; }
+    if (f.isPlayer) { if (this.over || this.time < DERBY.grace || this.time < f.graceUntil) return; }
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };
     if (by && by.isPlayer && !f.isPlayer && f.driver) f.driver.grudgeT = Math.max(f.driver.grudgeT, AI.grudgeTime);
@@ -463,8 +477,10 @@ export class Derby {
       this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null, c.pos.x, c.pos.y, c.pos.z);
     }
     if (f.isPlayer) {
-      this.over = true;
-      this.events.push({ type: 'over', zone, score: this.score, takedowns: this.takedowns });
+      if (this.demolition) {
+        this.over = true;
+        this.events.push({ type: 'over', zone, score: this.score, takedowns: this.takedowns });
+      } else f.respawnAt = this.time + DERBY.respawnDelay;           // Race: back on the road shortly
     } else {
       const h = f.lastHit;
       if (!this.over && h && h.by === this.player.id && this.time - h.t <= DERBY.credit) {

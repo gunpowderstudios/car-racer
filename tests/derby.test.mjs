@@ -21,10 +21,10 @@ function mulberry(seed) {
 }
 
 /** A drag-strip derby with no rivals yet and the start-of-game grace period already over. */
-function arena(playerZ = -300, speed = 0) {
+function arena(playerZ = -300, speed = 0, mode = 'race') {
   const track = dragTrack(), car = new Vehicle();
   placeOnTrack(car, track, track.progressAt(0, 0.65, playerZ), 0, speed);
-  const derby = new Derby(); derby.enabled = true; derby.start(track, car, 0);
+  const derby = new Derby(); derby.enabled = true; derby.start(track, car, 0, 7, mode);
   derby.time = DERBY.grace + 1;
   return { track, car, derby };
 }
@@ -188,8 +188,8 @@ test('a wreck goes off like a bomb: it throws the car up and hurts a neighbour, 
   assert.equal(r2.lastHit.by, P.id, 'the blast counts as your hit');
 });
 
-test('when your own car is wrecked it is game over: no more damage, no more points', () => {
-  const a = arena(-300, 0), P = a.derby.player;
+test('Demolition: when your own car is wrecked it is game over: no more damage, no more points', () => {
+  const a = arena(-300, 0, 'demolition'), P = a.derby.player;
   const r = rival(a, 100, 0);
   a.derby._damage(r, 'back', 500, P);
   const score = a.derby.score;
@@ -473,4 +473,36 @@ test('cars collide at their real size: a wide motor home no longer sinks into it
   };
   assert.ok(nose(mini, 3.4) === 0, 'Minis 3.4 m nose to tail are clear of each other');
   assert.ok(nose(mini, 2.8) > 0, 'but 2.8 m apart they touch');
+});
+
+test('Race: being wrecked is not game over - you smoulder, then come back with full health and a few seconds of protection', () => {
+  const a = arena(-300, 0, 'race'), P = a.derby.player, d = a.derby;
+  d._damage(P, 'back', 9999, null);
+  assert.equal(P.wrecked, true);
+  assert.equal(d.over, false, 'the race goes on');
+  assert.ok(!d.events.some((e) => e.type === 'over'));
+  d.time += DERBY.respawnDelay - 0.5; d.step(0.01, null);
+  assert.equal(P.wrecked, true, 'still waiting');
+  d.time += 1; d.step(0.01, null);
+  assert.equal(P.wrecked, false, 'back in the race');
+  assert.ok(d.events.some((e) => e.type === 'respawn'));
+  assert.equal(P.health.worst, 1, 'full health');
+  d._damage(P, 'front', 50, null);
+  assert.equal(P.health.worst, 1, 'protected just after respawning');
+  d.time += DERBY.respawnGrace + 0.1;
+  d._damage(P, 'front', 50, null);
+  assert.ok(P.health.worst < 1, 'damage counts again after the grace');
+});
+
+test('Demolition: nobody is replaced, and clearing the field wins; in Race rivals are replaced', () => {
+  const track = dragTrack(), car = new Vehicle();
+  placeOnTrack(car, track, track.progressAt(0, 0.65, -300), 0, 0);
+  const d = new Derby(); d.enabled = true; d.start(track, car, 2, 7, 'demolition');
+  assert.equal(d.demolition, true); assert.equal(d.lastStanding, false);
+  d.time = DERBY.grace + 1;
+  for (const f of d.rivals) { f.age = 99; d._damage(f, 'front', 9999, d.player); }
+  d.step(0.01, null);
+  assert.equal(d.over, true); assert.equal(d.won, true);
+  const r = new Derby(); r.enabled = true; r.start(track, car, 2, 7, 'race');
+  assert.equal(r.demolition, false);
 });
