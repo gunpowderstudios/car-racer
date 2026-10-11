@@ -39,7 +39,7 @@ test('hits on the same spot deepen one dent instead of piling up new ones, and n
   assert.ok(s.list[0].depth > 0.1 && s.list[0].depth < 0.2);
   for (let t = 2; t < 40; t += 1) s.add(at(0, 2, 0.5, 0.2), 1, t);
   assert.equal(s.length, 1);
-  assert.equal(s.list[0].depth, DENT.depthMax);
+  assert.ok(s.list[0].depth <= DENT.depthMax && s.list[0].depth > DENT.depthMax * 0.97, 'creeps up to the limit, never past it');
   s.add(at(1, -2), 1, 50);                                  // somewhere else is a new dent
   assert.equal(s.length, 2);
 });
@@ -115,4 +115,14 @@ test('ramming a rival from behind reports a hit on my nose and on their tail', (
   const mine = seen.find((e) => e.isPlayer), theirs = seen.find((e) => !e.isPlayer);
   assert.ok(mine.lz > 1, 'my nose took it: ' + JSON.stringify(mine));
   assert.ok(theirs.lz < -1, 'their tail took it: ' + JSON.stringify(theirs));
+});
+
+test('the first hit does most of the work: a modest hit leaves a clear dent, and a repeat on the same spot adds less', () => {
+  assert.ok(dentSize(10).depth >= 0.15, 'a modest first hit is clearly visible');
+  const s = new DentStore(6);
+  s.add(at(0, 2, 0.5, dentSize(25).depth), 1, 0);
+  const first = s.list[0].depth;
+  s.add(at(0, 2, 0.5, dentSize(25).depth), 1, 5);
+  const second = s.list[0].depth - first;
+  assert.ok(second > 0 && second < first * 0.4, 'the second hit adds much less than the first');
 });

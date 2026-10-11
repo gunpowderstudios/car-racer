@@ -3,19 +3,22 @@
 // metres; the shader gets them converted to the model's own units.
 
 export const DENT = {
-  minHp: 4,            // a hit that takes off fewer hit points than this leaves no mark
+  minHp: 2,            // a hit that takes off fewer hit points than this leaves no mark
   fullHp: 56,          // a hit this hard makes the biggest single dent (cars are 20% weaker, so they crumple sooner)
-  depthMin: 0.05, depthMax: 0.26,      // metres a dent can be pushed in (one hit, and all hits piled together)
+  depthMin: 0.10, depthMax: 0.30,      // metres a dent can be pushed in (one hit, and all hits piled together)
   radiusMin: 0.42, radiusMax: 0.85,    // metres across the bowl, centre to edge
   mergeFrac: 0.55,     // a new hit this close (share of the dent's radius) deepens the old dent instead of starting another
   burstSeconds: 0.15,  // hits closer together than this are one crash felt over several physics steps, not several crashes
 };
 
 /** How big a dent a hit of `hp` hit points makes, or null when it is too gentle to mark the car. */
+// Dents show how hard a hit was, not how much health it took, and the first knocks do the most: a fresh panel folds
+// easily, an already-crumpled one barely moves. So even a modest first hit leaves a clear dent (depth rises steeply with hit
+// strength, then levels off), and repeat hits on the same spot add less and less. Health and wrecking are separate (damage.js).
 export function dentSize(hp) {
   if (!(hp >= DENT.minHp)) return null;
   const k = Math.min(1, (hp - DENT.minHp) / (DENT.fullHp - DENT.minHp));
-  return { depth: DENT.depthMin + (DENT.depthMax - DENT.depthMin) * 0.75 * k, radius: DENT.radiusMin + (DENT.radiusMax - DENT.radiusMin) * Math.sqrt(k) };
+  return { depth: DENT.depthMin + (DENT.depthMax - DENT.depthMin) * 0.8 * Math.sqrt(k), radius: DENT.radiusMin + (DENT.radiusMax - DENT.radiusMin) * Math.sqrt(k) };
 }
 
 /**
@@ -50,7 +53,7 @@ export class DentStore {
       const dist = Math.hypot(e.x - d.x, e.y - d.y, e.z - d.z) * mpu;
       if (dist > DENT.mergeFrac * Math.max(e.radius, d.radius)) continue;
       if (now - e.t < DENT.burstSeconds) e.depth = Math.min(DENT.depthMax, Math.max(e.depth, d.depth));
-      else e.depth = Math.min(DENT.depthMax, e.depth + 0.6 * d.depth);
+      else e.depth = Math.min(DENT.depthMax, e.depth + 0.6 * d.depth * (1 - e.depth / DENT.depthMax));   // metal that is already crumpled gives less each time
       e.radius = Math.min(DENT.radiusMax * 1.15, Math.max(e.radius, d.radius));
       e.t = now;
       return e;
