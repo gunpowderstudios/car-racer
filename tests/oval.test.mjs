@@ -1,7 +1,7 @@
 // The Oval: a free-for-all banger derby arena. Barrels, an open dirt floor, no laps, the last car running wins.
 // Run with:  npm test
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { Track, normalizeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
@@ -224,4 +224,16 @@ test('crash debris: tiered pool, hooked into hits, walls, wrecks and multiplayer
   assert.match(main, /debris\.update\(dt, debrisGround\)/);
   assert.match(main, /debris\.clear\(\)/);
   assert.ok((main.match(/crashDebris\(/g) || []).length >= 5, 'derby hit, wreck, player wall, mp ram and mp wreck');
+});
+
+test('the Miniskirt is a listed vehicle with its own light, grippy profile', async () => {
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'mini',\s*name: 'Miniskirt'/);
+  assert.match(src, /url: 'cars\/min\.glb'/);
+  assert.match(src, /pot-noodle your way around corners/);
+  assert.ok(existsSync(new URL('../cars/min.glb', import.meta.url)), 'model file is in the repo');
+  const mini = vehiclePhysicsProfile('mini'), esc = vehiclePhysicsProfile('escort');
+  assert.ok(mini.mass < esc.mass && mini.wheelbase < esc.wheelbase && mini.steer.rate > esc.steer.rate);
+  assert.ok(mini.body.length < 3.3 && mini.reference.includes('Mini'));
 });

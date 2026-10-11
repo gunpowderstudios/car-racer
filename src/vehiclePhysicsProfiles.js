@@ -181,6 +181,32 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 0.72,
   },
 
+  mini: {
+    reference: '1960s Mini-style pocket-sized classic (go-kart handling)',
+    mass: 700,
+    frontWeight: 0.57,
+    wheelbase: 2.03,
+    track: 1.20,
+    wheelRadius: 0.23,
+    mountY: 0.10,
+    inertia: { x: 1050, y: 1000, z: 480 },
+    susp: {
+      free: 0.36, travel: 0.20,
+      kFront: 17500, kRear: 16500,
+      cCompFront: 1400, cCompRear: 1300, cRebFront: 2000, cRebRear: 1900,
+      arbFront: 9000, arbRear: 6500, bump: 120000, bumpDamp: 5500,
+    },
+    tyre: { muFront: 1.24, muRear: 1.22, B: 11.5, C: 1.25, slideMu: 0.92, loadSens: 0.05, rolling: 0.015 },
+    engine: { peakTorque: 115 },
+    brakeG: 1.30,
+    brakeBias: 0.60,
+    wallBounce: 0.30,
+    aero: { drag: 0.40, down: 0.16 },
+    steer: { max: 0.62, rate: 5.6, returnRate: 7.8 },
+    body: { width: 1.40, length: 3.05, bottom: -0.30, shoulder: 0.26, roof: 1.02, roofWidth: 1.22, roofLength: 1.70 },
+    mpDamageMul: 1.10,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',

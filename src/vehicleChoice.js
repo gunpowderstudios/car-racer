@@ -13,6 +13,16 @@ export const VEHICLES = [
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, damageMul: 1.15, physicsProfile: 'escort' },
   { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
   {
+    id: 'mini',
+    name: 'Miniskirt',
+    description: 'A pocket-sized classic! Change the plugs and pot-noodle your way around corners.',
+    url: 'cars/min.glb',
+    fit: 'auto',
+    targetLength: 3.05,
+    damageMul: 1.2,                  // pocket-sized: not much metal to crumple
+    physicsProfile: 'mini',
+  },
+  {
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",

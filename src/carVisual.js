@@ -230,6 +230,9 @@ export class CarVisual {
           for (const m of mats) {
             for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = CarVisual.aniso;
             m.envMapIntensity = 0.8;
+            // A model exported without metal/roughness factors gets the glTF defaults (fully metal, fully rough-texture-driven) and
+            // renders as chrome; give it the same painted-metal look as the other cars.
+            if (m.metalness >= 1 && m.roughness >= 1) { m.metalness = 0; m.roughness = 0.54; }
             this.mats.push(m);
           }
         } else {
