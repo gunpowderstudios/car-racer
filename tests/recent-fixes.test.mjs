@@ -138,7 +138,7 @@ test('development page car viewer is a five-car swipe carousel', () => {
   assert.match(howMade, /Mr Muscle.*dodge-shrink\.glb/s);
   assert.match(howMade, /70s Saloon.*escort-shrink\.glb/s);
   assert.match(howMade, /German Beema.*bmw-shrink\.glb/s);
-  assert.match(howMade, /Motorhome.*motor-home-shrink\.glb/s);
+  assert.match(howMade, /Motorhome.*motorhome-SHRINK\.glb/s);
   assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
   assert.match(howMade, /id="car-prev"/);
   assert.match(howMade, /id="car-next"/);

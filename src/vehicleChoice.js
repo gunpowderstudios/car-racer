@@ -43,7 +43,7 @@ export const VEHICLES = [
     physicsProfile: 'campervan',
   },
   {
-    id: 'motor-home', name: 'Motorhome', url: 'cars/motor-home-shrink.glb',
+    id: 'motor-home', name: 'Motorhome', url: 'cars/motorhome-SHRINK.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
 ];
