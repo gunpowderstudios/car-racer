@@ -40,6 +40,8 @@ export const DERBY = {
   gridLead: 12,          // m: gap from the player to the first row of the starting grid
   gridRow: 8,            // m: gap between grid rows
   gridPerRow: 2,         // cars per row (a real grid staggers pole/second etc.)
+  huntBiasRace: 0.35,    // how keen rivals are to come after you (0..1, see ai.js): Race, where they still have a race to run
+  huntBiasDemolition: 1, // ...and Demolition, where chasing you is the whole point
   respawnDelay: 3,       // Race mode: seconds a wrecked player smoulders before being put back on the road
   respawnGrace: 3,       // ...and the protection they get after coming back
 };
@@ -279,6 +281,7 @@ export class Derby {
     // -------- rivals think and drive
     const ctx = this._ctx;
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
+    ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;

@@ -506,3 +506,24 @@ test('Demolition: nobody is replaced, and clearing the field wins; in Race rival
   const r = new Derby(); r.enabled = true; r.start(track, car, 2, 7, 'race');
   assert.equal(r.demolition, false);
 });
+
+test('a hungry field hunts you more, from further away and for longer', () => {
+  const track = dragTrack();
+  const share = (bias, ahead) => {
+    let hunting = 0, total = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const car = new Vehicle(), player = new Vehicle();
+      placeOnTrack(car, track, track.progressAt(0, 0.65, -400), 0, 20);
+      placeOnTrack(player, track, track.progressAt(0, 0.65, -400 + ahead), 0, 20);
+      const drv = new Driver(mulberry(seed), 0.3), ctx = { player, cars: [car, player], barrels: null, huntBias: bias };
+      for (let i = 0; i < 20 / DT; i += 4) {
+        drv.drive(car, track, ctx, DT * 4);
+        if (i % 60 === 0) { total++; if (drv.target) hunting++; }
+      }
+    }
+    return hunting / total;
+  };
+  const calm = share(0, 120), hungry = share(1, 120);
+  assert.ok(hungry > calm + 0.2, `hungry ${hungry.toFixed(2)} vs calm ${calm.toFixed(2)}`);
+  assert.ok(share(1, 280) > share(0, 280), 'and it hunts from further off');
+});

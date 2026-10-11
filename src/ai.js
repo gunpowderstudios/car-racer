@@ -106,14 +106,17 @@ export class Driver {
         }
       }
     }
+    // How hungry the field is for the player (0..1, set per game mode in derby.js): higher means rivals start hunting more often and from
+    // further away, hunt for longer, and rest for less - a friend who keeps coming back for another go.
+    const hunger = clamp(ctx.huntBias || 0, 0, 1), reach = 1 + 1.5 * hunger;
     const catchup = pRoad ? clamp((playerLead - AI.catchupStart) / Math.max(1, AI.catchupFull - AI.catchupStart), 0, 1) : 0;
     if (this.grudgeT > 0 && P && pRoad) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
     else if (this.moodT <= 0) {
-      if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = 4 + this.rng() * 6 / (0.4 + this.aggr); }
-      else if (P && pRoad && pd < AI.huntRange && this.rng() < this.aggr) { this.mood = 'hunt'; this.moodT = 5 + this.rng() * 6; }
+      if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = (4 + this.rng() * 6 / (0.4 + this.aggr)) * (1 - 0.8 * hunger); }
+      else if (P && pRoad && pd < AI.huntRange * reach && this.rng() < clamp(this.aggr + hunger, 0, 1)) { this.mood = 'hunt'; this.moodT = (5 + this.rng() * 6) * (1 + hunger); }
       else this.moodT = 1.5 + this.rng() * 2;
     }
-    const range = AI.huntRange * (this.grudgeT > 0 ? AI.grudgeRangeMul : 1.6);
+    const range = AI.huntRange * (this.grudgeT > 0 ? AI.grudgeRangeMul : 1.6) * reach;
     const hunting = this.mood === 'hunt' && !!P && pRoad && pd < range;
     this.target = hunting;
 
