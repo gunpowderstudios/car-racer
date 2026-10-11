@@ -237,3 +237,11 @@ test('the Miniskirt is a listed vehicle with its own light, grippy profile', asy
   assert.ok(mini.mass < esc.mass && mini.wheelbase < esc.wheelbase && mini.steer.rate > esc.steer.rate);
   assert.ok(mini.body.length < 3.3 && mini.reference.includes('Mini'));
 });
+
+test('off-white models (the Mini) opt in to body-panel recolouring for rivals', () => {
+  const choice = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  const visual = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(choice, /physicsProfile: 'mini',\s*neutralBody: true/);
+  assert.match(choice, /m\.map\.userData\.neutralBody = true/);
+  assert.match(visual, /tex\.userData\?\.neutralBody/);
+});

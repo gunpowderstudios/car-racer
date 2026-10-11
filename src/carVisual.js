@@ -53,7 +53,22 @@ function recolour(tex, look) {
     const m3 = 0.213 - c * 0.213 + sn * 0.143, m4 = 0.715 + c * 0.285 + sn * 0.140, m5 = 0.072 - c * 0.072 - sn * 0.283;
     const m6 = 0.213 - c * 0.213 - sn * 0.787, m7 = 0.715 - c * 0.715 + sn * 0.715, m8 = 0.072 + c * 0.928 + sn * 0.072;
     const sat = look.sat, val = look.val;
-    for (let i = 0; i < px.length; i += 4) {
+    if (tex.userData?.neutralBody) {
+      // A model whose paint is off-white/grey (the Mini): turning the hue does nothing to it and only recolours the glass. Instead
+      // paint the light, low-saturation pixels (the body panels) in the rival's colour, keeping their shading. Dark trim, tyres and
+      // the roof, blue glass, lights and plates are left alone; near-white highlights stay light so chrome and plates don't go pastel.
+      const tr = (look.tint >> 16) & 255, tg = (look.tint >> 8) & 255, tb = look.tint & 255;
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], gg = px[i + 1], b = px[i + 2];
+        const hi = Math.max(r, gg, b), lo = Math.min(r, gg, b), v = hi / 255, sat = hi ? (hi - lo) / hi : 0;
+        const sk = sat < 0.12 ? 1 : Math.max(0, (0.2 - sat) / 0.08);
+        const vk = Math.min(1, Math.max(0, (v - 0.42) / 0.15)) * (1 - 0.7 * Math.min(1, Math.max(0, (v - 0.9) / 0.08)));
+        const kk = sk * vk;
+        if (kk <= 0) continue;
+        const shade = Math.min(1.15, hi / 205);
+        px[i] = r + (Math.min(255, tr * shade) - r) * kk; px[i + 1] = gg + (Math.min(255, tg * shade) - gg) * kk; px[i + 2] = b + (Math.min(255, tb * shade) - b) * kk;
+      }
+    } else for (let i = 0; i < px.length; i += 4) {
       const r = px[i], gg = px[i + 1], b = px[i + 2];
       let R = m0 * r + m1 * gg + m2 * b, G = m3 * r + m4 * gg + m5 * b, B = m6 * r + m7 * gg + m8 * b;
       const l = 0.299 * R + 0.587 * G + 0.114 * B;

@@ -21,6 +21,7 @@ export const VEHICLES = [
     targetLength: 3.05,
     damageMul: 1.2,                  // pocket-sized: not much metal to crumple
     physicsProfile: 'mini',
+    neutralBody: true,               // off-white paint: rivals recolour the body panels rather than turning the hue (see carVisual recolour)
   },
   {
     id: 'v8-pilot',
@@ -428,6 +429,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
   await originalLoad.call(this, assetUrl(url || config.url));
 
   if (!config || !this.model) return;
+  if (config.neutralBody) for (const m of this.mats || []) if (m.map) m.map.userData.neutralBody = true;
 
   const model = this.model;
   const holder = this.holder;
