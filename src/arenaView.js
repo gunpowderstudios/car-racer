@@ -1,12 +1,12 @@
-// Draws The Oval's open arena: a dirt floor, a crash wall, banked stands full of spectators and floodlights.
+// Draws The Oval's open arena: a dirt floor, a crash wall and floodlights.
 // The shape comes from arena.js, the same numbers the physics uses, so the wall you see is the wall you hit.
 import * as THREE from 'three';
 import { arenaInfo, arenaOutline } from './arena.js';
 import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt } from './track.js';
-import { dirtTexture, crowdTexture, barrierTexture, kerbTexture } from './textures.js';
+import { dirtTexture, barrierTexture, kerbTexture } from './textures.js';
 
 const N = 96;              // points round the outline
-const TIERS = 7, RISE = 1.5, TREAD = 2.6, APRON_W = 2.4;
+const APRON_W = 2.4;
 
 export function buildArena(track, aniso = 8) {
   const A = arenaInfo(track), g = new THREE.Group(), y0 = A.y;
@@ -30,7 +30,7 @@ export function buildArena(track, aniso = 8) {
     g.add(m); return m;
   };
   const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, side: THREE.DoubleSide, ...opts });
-  const cheap = (opts) => new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, ...opts });      // the stands are far away: no need for full PBR shading
+  const cheap = (opts) => new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, ...opts });      // plain shading is plenty for the apron
 
   // ---- the floor
   const rFloor = A.hw + WALL_GAP + WALL_T;
@@ -78,21 +78,14 @@ export function buildArena(track, aniso = 8) {
   ribbon(rIn, top, rOut, top, concrete, 8, { receive: true });
   ribbon(rOut, top, rOut, y0, concrete, 8);
 
-  // ---- apron, then the stands
-  const grey = cheap({ color: 0x77727c }), crowd = cheap({ map: crowdTexture(aniso), emissive: 0x2a2a3a });
-  crowd.map.repeat.set(1, 1);
+  // ---- apron, then straight down to the grass (no stands)
+  const grey = cheap({ color: 0x77727c });
   ribbon(rOut, y0, rOut + APRON_W, y0, grey, 8);
-  let r = rOut + APRON_W;
-  for (let t = 0; t < TIERS; t++) {
-    const h0 = y0 + t * RISE, h1 = h0 + RISE;
-    ribbon(r, h0, r, h1, crowd, 6);                    // the riser faces the arena and carries the spectators
-    ribbon(r, h1, r + TREAD, h1, grey, 8);             // the tread behind it
-    r += TREAD;
-  }
-  ribbon(r, y0 + TIERS * RISE, r, -0.4, grey, 8);      // the back of the stand, down to the grass
+  const r = rOut + APRON_W;
+  ribbon(r, y0, r, -0.4, grey, 8);
   const rBack = r;
 
-  // ---- floodlights on tall pylons round the back of the stands
+  // ---- floodlights on tall pylons round the outside of the wall
   const POLES = 12, poleH = 34;
   const pole = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, poleH, 0.9), new THREE.MeshStandardMaterial({ color: 0x2e2c38, roughness: 0.6 }), POLES);
   const head = new THREE.InstancedMesh(new THREE.BoxGeometry(7, 1.4, 1.6), new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffd9a0, emissiveIntensity: 2.4 }), POLES);
