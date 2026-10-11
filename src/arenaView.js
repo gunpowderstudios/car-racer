@@ -2,7 +2,7 @@
 // The shape comes from arena.js, the same numbers the physics uses, so the wall you see is the wall you hit.
 import * as THREE from 'three';
 import { arenaInfo, arenaOutline } from './arena.js';
-import { WALL_GAP, WALL_T, WALL_HEIGHT } from './track.js';
+import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt } from './track.js';
 import { dirtTexture, crowdTexture, barrierTexture, kerbTexture } from './textures.js';
 
 const N = 96;              // points round the outline
@@ -39,6 +39,33 @@ export function buildArena(track, aniso = 8) {
   const floor = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), std({ map: dirt, roughness: 1 }));
   floor.position.y = y0; floor.receiveShadow = true; floor.frustumCulled = false;
   g.add(floor);
+
+  // ---- humps: a round mound of the same dirt laid over the floor (rings of points, heights from the same function the physics uses)
+  const bumps = track.bumps || [];
+  if (bumps.length) {
+    const bd = dirtTexture(aniso); bd.repeat.set(1 / 24, 1 / 24);
+    const bumpMat = std({ map: bd, color: 0xffe9d2, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const RINGS = 14, SEG = 36, tmp = { h: 0, gx: 0, gz: 0 };
+    for (const b of bumps) {
+      const pos = [0, y0 + b.h, 0], idx = [];
+      for (let ri = 1; ri <= RINGS; ri++) for (let k = 0; k < SEG; k++) {
+        const r = b.r * ri / RINGS, a = k / SEG * Math.PI * 2, x = b.x + Math.cos(a) * r, z = b.z + Math.sin(a) * r;
+        bumpAt([b], x, z, tmp); pos.push(x - b.x, y0 + tmp.h + 0.01, z - b.z);
+      }
+      for (let k = 0; k < SEG; k++) idx.push(0, 1 + k, 1 + (k + 1) % SEG);
+      for (let ri = 1; ri < RINGS; ri++) for (let k = 0; k < SEG; k++) {
+        const a0 = 1 + (ri - 1) * SEG + k, a1 = 1 + (ri - 1) * SEG + (k + 1) % SEG, b0 = 1 + ri * SEG + k, b1 = 1 + ri * SEG + (k + 1) % SEG;
+        idx.push(a0, b0, a1, a1, b0, b1);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      // texture coordinates in world space, so the mound's dirt lines up with the floor around it
+      const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push((pos[i] + b.x) / 24, -(pos[i + 2] + b.z) / 24);
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+      const mound = new THREE.Mesh(geo, bumpMat); mound.position.set(b.x, 0, b.z); mound.receiveShadow = true; mound.castShadow = true; mound.frustumCulled = false;
+      g.add(mound);
+    }
+  }
 
   // ---- the standard red and white kerb stripe along the foot of the wall, as on the other roads
   const kerb = kerbTexture(aniso);

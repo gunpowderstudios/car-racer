@@ -257,3 +257,24 @@ test('every vehicle has a gallery picture and a model file, and the pickers are 
   assert.match(VEHICLES_SOURCE, /function buildVehicleGallery/);
   assert.doesNotMatch(VEHICLES_SOURCE, /fillVehicleSelect/);
 });
+
+test('The Oval has four humps, one in each corner, that the physics ground follows', () => {
+  const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track), q = Track.newQuery();
+  assert.equal(def.bumps.length, 4);
+  assert.deepEqual(new Set(def.bumps.map((b) => Math.sign(b.x) + ',' + Math.sign(b.z))).size, 4, 'one in each corner');
+  assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same humps');
+  for (const b of def.bumps) {
+    track.query(b.x, A.y + 5, b.z, q, 6);
+    assert.ok(Math.abs(q.y - (A.y + b.h)) < 0.01, 'the top of the hump is h above the floor: ' + q.y);
+    assert.ok(q.ny > 0.99, 'level at the very top');
+    track.query(b.x + b.r * 0.5, A.y + 5, b.z, q, 6);
+    assert.ok(q.y > A.y + 0.2 && q.y < A.y + b.h && q.nx > 0.05, 'on the slope the ground is lower and tilts away from the top (nx ' + q.nx.toFixed(2) + ')');
+    track.query(b.x + b.r + 0.5, A.y + 5, b.z, q, 6);
+    assert.ok(Math.abs(q.y - A.y) < 0.01, 'flat floor again outside it');
+  }
+  const ps = arenaPlayerStart(A);
+  for (const b of def.bumps) assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > b.r + 20, 'not at the player start');
+  for (const b of def.props.filter((p) => p.type === 'barrel')) for (const k of def.bumps) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r + 3 - 0.01, 'no drum on a hump');
+  assert.equal(new Track(normalizeTrack({ handles: def.handles, mode: 'lastStanding', width: def.width, bumps: [{ x: 0, z: 0, r: 999, h: -5 }, 'junk'] })).bumps[0].r, 20, 'clamped');
+  assert.equal(new Track(makeTemplate('speedway')).bumps, null, 'ordinary tracks have none');
+});

@@ -72,6 +72,36 @@ export function normalizeProps(list) {
   return out;
 }
 
+// ---------------------------------------------------------------- bumps
+
+/** Humps in an arena floor: round mounds, { x, z, r (radius, m), h (height, m) }, smooth all over and flat at the edge. */
+export const MAX_BUMPS = 12;
+export function normalizeBumps(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_BUMPS || !b) continue;
+    const x = Number(b.x), z = Number(b.z), r = Number(b.r), h = Number(b.h);
+    if (![x, z, r, h].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
+    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 4, 20), h: clamp(h, 0.2, 3) });
+  }
+  return out;
+}
+/** Height of the humps at (x, z), and its slope (gx, gz) - written into `out`. */
+export function bumpAt(bumps, x, z, out) {
+  let h = 0, gx = 0, gz = 0;
+  for (const b of bumps) {
+    const dx = x - b.x, dz = z - b.z, d = Math.hypot(dx, dz);
+    if (d >= b.r) continue;
+    const u = Math.PI * d / b.r;
+    h += b.h * 0.5 * (1 + Math.cos(u));
+    if (d > 1e-6) { const k = -b.h * 0.5 * Math.PI / b.r * Math.sin(u) / d; gx += k * dx; gz += k * dz; }
+  }
+  out.h = h; out.gx = gx; out.gz = gz;
+  return out;
+}
+const _bump = { h: 0, gx: 0, gz: 0 };
+
 // ---------------------------------------------------------------- definition
 
 /** Fill defaults, migrate legacy (v4, v5) editor data, and clamp values. */
@@ -98,7 +128,10 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
-  if (src.mode === 'lastStanding') out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
+  if (src.mode === 'lastStanding') {
+    out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
+    const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
+  }
   return out;
 }
 
@@ -153,6 +186,7 @@ export class Track {
     this.def = normalizeTrack(input);
     this.apron = this.def.walls ? APRON : 0;
     this.overshoot = this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;
+    this.bumps = this.def.bumps || null;
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
   }
@@ -321,6 +355,7 @@ export class Track {
     let yc, yEdge;
     if (ad <= hw) {
       yc = Cy - (Nx * (x - cx) + Nz * (z - cz)) / Ny; yEdge = yc;
+      if (this.bumps) { bumpAt(this.bumps, x, z, _bump); yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; }
     } else {
       const sg = d < 0 ? -1 : 1;
       yEdge = Cy - (Nx * Lx * hw * sg + Nz * Lz * hw * sg) / Ny;

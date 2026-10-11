@@ -92,6 +92,9 @@ function figureEight() {
 /** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
 const OVAL_A = 78, OVAL_B = 36, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width, and full floor width
 
+/** Four humps in The Oval's floor, one in each corner: round mounds you can catch air off. Well clear of the walls, the start and the rivals' ring. */
+const OVAL_BUMPS = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => ({ x: sx * 52, z: sz * 21, r: 9, h: 1.3 }));
+
 /** Drums for The Oval: about forty - a scatter across the floor plus a few tight clusters - well spread out, none where you start and none on the ring where the rivals line up (so nobody blows up at the start). Always the same ones. */
 function arenaProps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261010), props = [], q = Track.newQuery();
@@ -106,6 +109,7 @@ function arenaProps(def) {
       if (Math.hypot(x - start.x, z - start.z) < 24) continue;
       const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62));      // the rivals line up on this ring (arena.js arenaSpawn): keep well off it
       if (Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < 11) continue;
+      if ((def.bumps || []).some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 3)) continue;           // not on a hump
       if (spots.some((o) => Math.hypot(x - o.x, z - o.z) < gap)) continue;
       spots.push({ x, z });
       return { x, z };
@@ -243,7 +247,7 @@ export function makeTemplate(key) {
     const banks = suggestBanks(new Track(def), 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
-  if (raw.arena) def = normalizeTrack({ ...def, mode: 'lastStanding', props: arenaProps(def) });
+  if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', bumps: OVAL_BUMPS }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }
 
