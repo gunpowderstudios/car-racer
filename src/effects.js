@@ -171,3 +171,83 @@ export class Scorch {
     this.mesh.count = this.count; this.mesh.instanceMatrix.needsUpdate = true;
   }
 }
+
+/**
+ * Crash debris: torn-off bodywork shards, plastic and glass that fly out of a hit, bounce along the ground and
+ * shrink away after a few seconds. One InstancedMesh (a single draw call), a fixed pool of `cap` pieces that is
+ * recycled oldest-first, so the cost is bounded. `cap` 0 makes it do nothing (the Low quality tier).
+ */
+const DEBRIS_GREY = [0x2a2a2d, 0x3b3b40, 0x8d9096, 0xb9bcc2];       // black plastic, trim, bare metal, chrome
+export class Debris {
+  constructor(scene, cap = 0) {
+    this.cap = cap; this.i = 0; this.live = 0;
+    if (!cap) return;
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    this.mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), cap);
+    this.mesh.frustumCulled = false; this.mesh.count = cap;
+    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+    scene.add(this.mesh);
+    const n = cap;
+    this.p = new Float32Array(n * 3); this.v = new Float32Array(n * 3);      // position, velocity
+    this.r = new Float32Array(n * 3); this.w = new Float32Array(n * 3);      // rotation (euler), spin
+    this.sz = new Float32Array(n * 3);                                       // box size
+    this.life = new Float32Array(n); this.rest = new Uint8Array(n);
+    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler(); this._s = new THREE.Vector3(); this._pos = new THREE.Vector3(); this._c = new THREE.Color();
+    for (let k = 0; k < n; k++) this._hide(k);
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+  _hide(k) { this._m.makeScale(0, 0, 0); this.mesh.setMatrixAt(k, this._m); }
+  clear() { if (!this.cap) return; this.live = 0; this.life.fill(0); for (let k = 0; k < this.cap; k++) this._hide(k); this.mesh.instanceMatrix.needsUpdate = true; }
+  /**
+   * Throw `n` pieces from (x,y,z). (bx,bz) is a sideways bias (e.g. the car's velocity), `power` 0..1 sets how hard they
+   * fly, `paint` is the car's colour (about half the pieces wear it, the rest are plastic and metal).
+   */
+  burst(x, y, z, bx, bz, power, paint, n) {
+    if (!this.cap) return;
+    const R = Math.random, c = this._c;
+    for (let j = 0; j < n; j++) {
+      const k = this.i++ % this.cap, a = R() * Math.PI * 2, h = (1.5 + R() * 5) * (0.5 + power);
+      this.p[k * 3] = x + (R() - 0.5) * 0.4; this.p[k * 3 + 1] = y + R() * 0.3; this.p[k * 3 + 2] = z + (R() - 0.5) * 0.4;
+      this.v[k * 3] = Math.cos(a) * h + bx * 0.5; this.v[k * 3 + 1] = (1.5 + R() * 5) * (0.5 + power); this.v[k * 3 + 2] = Math.sin(a) * h + bz * 0.5;
+      this.r[k * 3] = R() * 6.28; this.r[k * 3 + 1] = R() * 6.28; this.r[k * 3 + 2] = R() * 6.28;
+      this.w[k * 3] = (R() - 0.5) * 22; this.w[k * 3 + 1] = (R() - 0.5) * 22; this.w[k * 3 + 2] = (R() - 0.5) * 22;
+      const big = R() < 0.18;                                                 // the odd large panel among the shards
+      this.sz[k * 3] = (big ? 0.4 : 0.16) + R() * (big ? 0.25 : 0.2); this.sz[k * 3 + 1] = 0.03 + R() * 0.03; this.sz[k * 3 + 2] = (big ? 0.3 : 0.1) + R() * (big ? 0.2 : 0.16);
+      this.life[k] = 4 + R() * 3; this.rest[k] = 0;
+      c.setHex(R() < 0.55 ? paint : DEBRIS_GREY[(R() * DEBRIS_GREY.length) | 0]);
+      this.mesh.setColorAt(k, c);
+    }
+    this.mesh.instanceColor.needsUpdate = true;
+  }
+  /** `groundY(x, z, y)` gives the ground height under a point. */
+  update(dt, groundY) {
+    if (!this.cap) return;
+    let any = false;
+    const p = this.p, v = this.v, r = this.r, w = this.w, sz = this.sz, m = this._m, q = this._q, e = this._e, s = this._s, pos = this._pos;
+    for (let k = 0; k < this.cap; k++) {
+      if (this.life[k] <= 0) continue;
+      any = true;
+      this.life[k] -= dt;
+      const i3 = k * 3;
+      if (!this.rest[k]) {
+        v[i3 + 1] -= 17 * dt;
+        p[i3] += v[i3] * dt; p[i3 + 1] += v[i3 + 1] * dt; p[i3 + 2] += v[i3 + 2] * dt;
+        r[i3] += w[i3] * dt; r[i3 + 1] += w[i3 + 1] * dt; r[i3 + 2] += w[i3 + 2] * dt;
+        const g = groundY(p[i3], p[i3 + 2], p[i3 + 1]) + 0.03;
+        if (p[i3 + 1] < g) {
+          p[i3 + 1] = g;
+          if (v[i3 + 1] < -1.2) { v[i3 + 1] *= -0.3; v[i3] *= 0.65; v[i3 + 2] *= 0.65; w[i3] *= 0.5; w[i3 + 1] *= 0.5; w[i3 + 2] *= 0.5; }
+          else { this.rest[k] = 1; r[i3] = 0; r[i3 + 2] = 0; }               // lies flat
+        }
+      }
+      const fade = Math.min(1, this.life[k] / 0.8);
+      if (this.life[k] <= 0) this._hide(k);
+      else {
+        e.set(r[i3], r[i3 + 1], r[i3 + 2]); q.setFromEuler(e);
+        pos.set(p[i3], p[i3 + 1], p[i3 + 2]); s.set(sz[i3] * fade, sz[i3 + 1] * fade, sz[i3 + 2] * fade);
+        m.compose(pos, q, s); this.mesh.setMatrixAt(k, m);
+      }
+    }
+    if (any) this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}

@@ -12,7 +12,7 @@ import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
 import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual.js';
-import { SkidMarks, Particles, Scorch } from './effects.js';
+import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { PropsView } from './propsView.js';
 import { Input } from './input.js';
@@ -79,6 +79,16 @@ visual.load();
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
 const particles = new Particles(stage.scene);
+const debris = new Debris(stage.scene, tier.debris);
+const debrisQ = Track.newQuery();
+const debrisGround = (x, z, y) => (track ? track.groundAt(x, z, y + 1, debrisQ).y : 0);
+/** Spray crash debris. `speed` is the impact speed; small bumps throw nothing. */
+function crashDebris(x, y, z, speed, paint, bx = 0, bz = 0, scale = 1) {
+  if (scale === 1 && speed < 5) return;           // small bumps throw nothing (a wreck, scale > 1, always does)
+  const power = Math.min(1, (speed - 4) / 16);
+  debris.burst(x, y, z, bx, bz, power, paint, Math.round((2 + power * 9) * scale));
+}
+const rivalPaint = () => RIVAL_LOOKS[(Math.random() * RIVAL_LOOKS.length) | 0].tint;
 const scorch = new Scorch(stage.scene);
 const splats = new Scorch(stage.scene, 40, 0xb5502e);   // a warmer tint than the black burn marks
 const props = new Props();
@@ -227,13 +237,13 @@ function loadTrack(newDef) {
   track = new Track(def);
   stage.setTrack(track);
   hud.buildMap(track);
-  skid.clear(); particles.clear(); scorch.clear();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear();
   props.load(track, def.props); propsView.build(props);
   race.best = store.get('cr.best', {})[bestKey(track)] ?? null;
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -272,7 +282,7 @@ function placeCarInArena() {
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
-  skid.clear(); particles.clear(); scorch.clear(); props.reset();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
@@ -372,7 +382,7 @@ function stepPhysics(dt) {
           if (e.type === 'wall') mpDentAt(e.x, e.y, e.z, wallDamage(car.mass, e.speed));
           else if (e.type === 'ground') { car.refreshFrame(); if (zoneAt(car, e.x, e.y, e.z) === 'roof') mpDentAt(e.x, e.y, e.z, roofDentHp(e.speed)); }
         }
-        if (e.type === 'wall') { wallSpot = { x: e.x, y: e.y, z: e.z, t: simTime }; for (let i = 0; i < Math.min(10, 2 + e.speed); i++) particles.spark(e.x, e.y, e.z, car.vel.x * 0.3, 2, car.vel.z * 0.3); }
+        if (e.type === 'wall') { wallSpot = { x: e.x, y: e.y, z: e.z, t: simTime }; for (let i = 0; i < Math.min(10, 2 + e.speed); i++) particles.spark(e.x, e.y, e.z, car.vel.x * 0.3, 2, car.vel.z * 0.3); crashDebris(e.x, e.y, e.z, e.speed, PAINTS[opts.paint][1], -car.vel.x * 0.3, -car.vel.z * 0.3); }
       }
       car.events.length = 0;
     }
@@ -432,11 +442,13 @@ function derbyEvents() {
       if (e.player) chase.impact(e.speed);
       const n = Math.min(10, 2 + e.speed * 0.5);
       for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
+      if (e.dist < 70 && !(e.player && e.kind === 'wall')) crashDebris(e.x, e.y, e.z, e.speed, e.player ? PAINTS[opts.paint][1] : rivalPaint());   // (the player's own wall hits are done above)
     } else if (e.type === 'damage') {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
       if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); }   // a visible dent where it hit
     } else if (e.type === 'wreck') {
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
+      crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
       if (e.y - g.y < 2.5) scorch.add(e.x, g.y, e.z, g.nx, g.ny, g.nz, 3.4);
       sound.explode(e.dist);
@@ -543,7 +555,7 @@ function effects(dt) {
     }
   }
   if (car.scraping && wallSpot && simTime - wallSpot.t < 0.4 && Math.random() < 40 * dt) particles.spark(wallSpot.x, wallSpot.y, wallSpot.z, car.vel.x * 0.2, 1.5, car.vel.z * 0.2);
-  particles.update(dt);
+  particles.update(dt); debris.update(dt, debrisGround);
 }
 
 // -------------------------------------------------------------------- frame
@@ -758,6 +770,7 @@ function mpClearDents() { visual.clearDents(); net?.sendDent({ clear: true }); }
 function mpImpactFx(x, y, z, speed) {
   sound.hit(speed, 'car');
   chase.impact(speed);
+  crashDebris(x, y, z, speed, rivalPaint());
   for (let i = 0, n = Math.min(8, 3 + speed * 0.3); i < n; i++) particles.spark(x, y, z, (Math.random() - 0.5) * 4, 1 + Math.random() * 2, (Math.random() - 0.5) * 4);
   for (let i = 0; i < 3; i++) particles.puff(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.6, 1 + Math.random() * 0.5, 0x9a9498);
 }
@@ -779,6 +792,7 @@ function mpBarrelBlast(e) {
  *  wherever the car actually is (yours, or a remote player's last known position). */
 function mpExplodeAt(x, y, z, dist = 0) {
   particles.blast(x, y, z);
+  crashDebris(x, y + 0.4, z, 20, rivalPaint(), 0, 0, 2.6);
   scorch.add(x, y, z, 0, 1, 0, 2.6);
   sound.explode(dist);
 }

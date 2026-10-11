@@ -213,3 +213,15 @@ test('car loading: a progress bar exists, rival paint is prepared ahead, and riv
   assert.match(main, /warmRivalLooks\(v, tier\.arenaField/);
   assert.match(main, /adopted < 2/);
 });
+
+test('crash debris: tiered pool, hooked into hits, walls, wrecks and multiplayer rams', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { TIERS } = await import('../src/quality.js');
+  assert.equal(TIERS.low.debris, 0, 'phones on Low get none');
+  assert.ok(TIERS.medium.debris > 0 && TIERS.high.debris > TIERS.medium.debris);
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /new Debris\(stage\.scene, tier\.debris\)/);
+  assert.match(main, /debris\.update\(dt, debrisGround\)/);
+  assert.match(main, /debris\.clear\(\)/);
+  assert.ok((main.match(/crashDebris\(/g) || []).length >= 5, 'derby hit, wreck, player wall, mp ram and mp wreck');
+});
