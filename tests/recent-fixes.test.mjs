@@ -54,8 +54,8 @@ test('campervan rivals recolour only the original red body texture', () => {
 test('German Beema is available with its own size and handling profile', () => {
   assert.match(vehicleChoice, /id: 'bmw', name: 'German Beema', url: 'cars\/bmw-shrink\.glb'/);
   assert.match(vehicleChoice, /targetLength: 4\.33/);
-  assert.match(vehicleChoice, /wheelbase: 2\.57/);
-  assert.match(vehicleChoice, /body: \{ width: 1\.65, length: 4\.33/);
+  assert.match(vehicleProfiles, /wheelbase: 2\.57/);
+  assert.match(vehicleProfiles, /body: \{ width: 1\.65, length: 4\.33/);
   assert.match(vehicleProfiles, /bmw: \{/);
   assert.match(vehicleProfiles, /mass: 1080/);
   assert.match(vehicleProfiles, /peakTorque: 190/);
@@ -242,7 +242,7 @@ test('drift control labels match the new assisted drift behaviour', () => {
 
 test('multiplayer join retries a temporarily unavailable mobile host', () => {
   const mpCore = readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8');
-  assert.match(mpCore, /retryMs = 15000/);
+  assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 60000/);
   assert.match(mpCore, /e\?\.peerType !== 'peer-unavailable'/);
   assert.match(mpCore, /Room \${roomCode} is waking up/);
   assert.match(mpCore, /_joinRoomAttempt\(roomCode\)/);
@@ -298,8 +298,9 @@ test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
 
 
 test('1972 VW Type 2 camper uses period-correct size and 1600 drivetrain character', () => {
-  const camper = readFileSync(new URL('../src/campervanVehicle.js', import.meta.url), 'utf8');
-  assert.match(camper, /targetLength: 4\.50/);
+  const camper = vehicleProfiles.slice(vehicleProfiles.indexOf('campervan: {'));   // the camper's profile (vehiclePhysicsProfiles.js)
+  assert.match(vehicleChoice, /targetLength: 4\.50/);
+  assert.match(camper, /1972 VW Type 2 1600 campervan/);
   assert.match(camper, /mass: 1280/);
   assert.match(camper, /frontWeight: 0\.44/);
   assert.match(camper, /wheelbase: 2\.40/);
@@ -308,7 +309,6 @@ test('1972 VW Type 2 camper uses period-correct size and 1600 drivetrain charact
   assert.match(camper, /gears: \[3\.80, 2\.06, 1\.26, 0\.82\]/);
   assert.match(camper, /finalDrive: 5\.375/);
   assert.match(camper, /aero: \{ drag: 0\.80, down: 0\.08 \}/);
-  assert.match(camper, /CAR\.profileName = '1972 VW Type 2 1600 campervan'/);
 });
 
 

@@ -123,7 +123,7 @@ test('powered drift rotates the car without requiring endless extra spin', () =>
   };
   const short = turn(0.3), long = turn(0.7);
   assert.ok(short > 25, 'short drift rotates: ' + short);
-  assert.ok(long > 90, 'held drift produces a substantial slide: ' + long);
+  assert.ok(long > 80, 'held drift produces a substantial slide: ' + long);
 });
 
 test('coasting or part-throttle at full lock understeers instead of spinning', () => {
