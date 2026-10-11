@@ -7,7 +7,7 @@ import { Track, normalizeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO } from '../src/templates.js';
 import { Derby, DERBY, POINTS } from '../src/derby.js';
-import { arenaInfo, arenaOutline, arenaPlayerStart } from '../src/arena.js';
+import { arenaInfo, arenaOutline, arenaPlayerStart, arenaSpawn } from '../src/arena.js';
 import { TOUGHNESS, roofDentHp } from '../src/damage.js';
 import { DENT } from '../src/dentMath.js';
 import { placeOnTrack } from './harness.mjs';
@@ -39,17 +39,18 @@ test('it is marked as a last-one-standing arena, and other tracks are not', () =
 test('full of drums, some in clusters, all on the floor, none where the player starts, and the same every time', () => {
   const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track);
   const barrels = def.props.filter((p) => p.type === 'barrel');
-  assert.ok(barrels.length >= 60 && barrels.length <= 100, String(barrels.length));
+  assert.ok(barrels.length >= 30 && barrels.length <= 45, String(barrels.length));
   assert.deepEqual(makeTemplate('oval').props, def.props, 'always the same drums');
   const q = Track.newQuery(), ps = arenaPlayerStart(A);
   for (const b of barrels) {
     track.query(b.x, b.y + 0.5, b.z, q, 2);
     assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw - 1, 'every drum is on the floor');
     assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > 12, 'clear of the player start');
+    for (let k = 0; k < 10; k++) { const sp = arenaSpawn(A, k, 10); assert.ok(Math.hypot(b.x - sp.x, b.z - sp.z) > 8, 'no drum beside a rival\'s starting spot'); }
   }
   let close = 0;
   for (let i = 0; i < barrels.length; i++) for (let j = i + 1; j < barrels.length; j++) if (Math.hypot(barrels[i].x - barrels[j].x, barrels[i].z - barrels[j].z) < 3.2) close++;
-  assert.ok(close >= 12, 'clusters of drums that set each other off: ' + close);
+  assert.ok(close >= 8, 'clusters of drums that set each other off: ' + close);
 });
 
 test('it is a big open, walled, flat dirt floor, and its outline matches the physics wall', () => {

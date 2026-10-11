@@ -92,23 +92,29 @@ function figureEight() {
 /** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
 const OVAL_A = 78, OVAL_B = 36, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width, and full floor width
 
-/** Drums for The Oval: a scatter across the whole floor plus a few tight clusters, none where you start. Always the same ones. */
+/** Drums for The Oval: about forty - a scatter across the floor plus a few tight clusters - well spread out, none where you start and none on the ring where the rivals line up (so nobody blows up at the start). Always the same ones. */
 function arenaProps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261010), props = [], q = Track.newQuery();
   const start = arenaPlayerStart(A), r2 = (v) => Math.round(v * 100) / 100;
-  const spot = () => {                                                   // a random place on the floor, clear of the walls and of your start
-    for (let tries = 0; tries < 200; tries++) {
+  const spots = [];
+  const spot = () => {                                                   // a random place on the floor: clear of the walls, your start, the rivals' starting ring, and other drums
+    for (let tries = 0; tries < 600; tries++) {
+      const gap = Math.max(5, 14 - Math.floor(tries / 40));                // 14 m from the nearest other drum or cluster, relaxed if the floor is getting full
       const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az;
       track.query(x, A.y + 0.5, z, q, 1.5);
       if (q.idx < 0 || Math.abs(q.d) > q.hw - 6) continue;
-      if (Math.hypot(x - start.x, z - start.z) < 22) continue;
+      if (Math.hypot(x - start.x, z - start.z) < 24) continue;
+      const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62));      // the rivals line up on this ring (arena.js arenaSpawn): keep well off it
+      if (Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < 11) continue;
+      if (spots.some((o) => Math.hypot(x - o.x, z - o.z) < gap)) continue;
+      spots.push({ x, z });
       return { x, z };
     }
     return { x: A.cx, z: A.cz };
   };
   const drum = (x, z) => { const p = placeProp(track, x, z); props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) }); };
-  for (let i = 0; i < 42; i++) { const p = spot(); drum(p.x, p.z); }
-  for (let c = 0; c < 9; c++) {                                          // nine clusters of four: one spark sets the lot off
+  for (let i = 0; i < 22; i++) { const p = spot(); drum(p.x, p.z); }
+  for (let c = 0; c < 4; c++) {                                          // four clusters of four: one spark sets the lot off
     const p = spot();
     drum(p.x, p.z); drum(p.x + 2.3, p.z); drum(p.x - 2.3, p.z); drum(p.x, p.z + 2.3);
   }
