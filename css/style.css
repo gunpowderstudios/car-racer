@@ -65,22 +65,43 @@ body:not(.mode-menu) #menu { display: none; }
   margin: 0 0 12px;
   color: var(--peach);
 }
-.menu-vehicle-select {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.vgallery-title {
   font-family: var(--cond);
   font-size: 18px;
   font-weight: 600;
+  margin: 0 0 6px;
 }
-.menu-vehicle-select select {
-  background: var(--violet);
+.vgallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+  gap: 8px;
+  max-width: 440px;
+}
+.vcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 6px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(246,217,176,.3);
+  border-radius: 3px;
   color: var(--peach);
-  border: 1px solid rgba(246,217,176,.45);
-  padding: 4px 8px;
   font-family: var(--cond);
-  font-size: 17px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background .12s, border-color .12s, transform .12s;
 }
+.vcard img { display: block; width: 100%; aspect-ratio: 320 / 206; object-fit: contain; pointer-events: none; }
+.vcard:hover { background: rgba(255,255,255,.12); border-color: rgba(246,217,176,.6); transform: translateY(-1px); }
+.vcard:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.vcard[aria-checked=true] { background: rgba(255,176,32,.16); border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); color: var(--amber); cursor: default; transform: none; }
+.vgallery.small { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; margin-top: 6px; }
+.vgallery.small .vcard { font-size: 12px; }
 
 /* ------------------------------------------------------- menu vehicle preview */
 .menu-vehicle-preview {

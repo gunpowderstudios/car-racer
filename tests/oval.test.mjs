@@ -230,9 +230,9 @@ test('the Miniskirt is a listed vehicle with its own light, grippy profile', asy
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
   assert.match(src, /id: 'mini',\s*name: 'Miniskirt'/);
-  assert.match(src, /url: 'cars\/min\.glb'/);
+  assert.match(src, /url: 'cars\/min-shrink\.glb'/);
   assert.match(src, /pot-noodle your way around corners/);
-  assert.ok(existsSync(new URL('../cars/min.glb', import.meta.url)), 'model file is in the repo');
+  assert.ok(existsSync(new URL('../cars/min-shrink.glb', import.meta.url)), 'model file is in the repo');
   const mini = vehiclePhysicsProfile('mini'), esc = vehiclePhysicsProfile('escort');
   assert.ok(mini.mass < esc.mass && mini.wheelbase < esc.wheelbase && mini.steer.rate > esc.steer.rate);
   assert.ok(mini.body.length < 3.3 && mini.reference.includes('Mini'));
@@ -244,4 +244,15 @@ test('off-white models (the Mini) opt in to body-panel recolouring for rivals', 
   assert.match(choice, /physicsProfile: 'mini',\s*neutralBody: true/);
   assert.match(choice, /m\.map\.userData\.neutralBody = true/);
   assert.match(visual, /tex\.userData\?\.neutralBody/);
+});
+
+test('every vehicle has a gallery picture and a model file, and the pickers are galleries not dropdowns', async () => {
+  const { VEHICLES_SOURCE } = { VEHICLES_SOURCE: readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8') };
+  const ids = [...VEHICLES_SOURCE.matchAll(/^\s*(?:\{\s*)?id: '([^']+)'/gm)].map((m) => m[1]);
+  const urls = [...VEHICLES_SOURCE.matchAll(/url: 'cars\/([^']+\.glb)'/g)].map((m) => m[1]);
+  assert.ok(ids.length >= 7 && urls.length === ids.length, `${ids.length} ids / ${urls.length} urls`);
+  for (const id of ids) assert.ok(existsSync(new URL(`../cars/thumbs/${id}.webp`, import.meta.url)), `cars/thumbs/${id}.webp (run tools/make-vehicle-thumbs.py)`);
+  for (const f of urls) assert.ok(existsSync(new URL(`../cars/${f}`, import.meta.url)), `cars/${f} is in the repo`);
+  assert.match(VEHICLES_SOURCE, /function buildVehicleGallery/);
+  assert.doesNotMatch(VEHICLES_SOURCE, /fillVehicleSelect/);
 });

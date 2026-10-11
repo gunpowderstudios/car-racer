@@ -9,11 +9,11 @@ import { makeDentable } from './dents.js';
 
 // Measurements of the current car model (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
-// cars/car-shrink.glb is the current player car. Vertical placement is measured automatically
+// cars/dodge-shrink.glb is the current player car. Vertical placement is measured automatically
 // from each model's bounding box, so replacement GLBs can have a different origin without sinking/floating.
 // Models that carry their own textures keep their materials; untextured ones get the paint colour from the menu.
 export const MODEL = {
-  url: 'cars/car-shrink.glb',
+  url: 'cars/dodge-shrink.glb',
   frontAxleX: -62, rearAxleX: 45,
   centerZ: 3.5845, groundY: -9.3037, // legacy reference only; Y is now auto-grounded from the model bounds
   flip: false,            // set true if your model's nose points the other way
@@ -31,6 +31,11 @@ export const RIVAL_LOOKS = [
   { name: 'Pink', rot: 320, sat: 0.95, val: 1.05, tint: 0xd8558f },
   { name: 'Grey', rot: 0, sat: 0.08, val: 1.05, tint: 0xa9a9a9 },
 ];
+/** A model exported without metal/roughness factors gets the glTF defaults (fully metal) and renders as chrome, or black where
+ *  there is no environment map (the menu preview). Give it the same painted-metal look as the other cars. */
+export function tidyGltfMaterial(m) {
+  if (m && m.metalness >= 1 && m.roughness >= 1) { m.metalness = 0; m.roughness = 0.54; }
+}
 const RIVAL_TEX_MAX = 1024;
 const recoloured = new WeakMap();
 const pristine = new WeakMap();
@@ -245,9 +250,7 @@ export class CarVisual {
           for (const m of mats) {
             for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = CarVisual.aniso;
             m.envMapIntensity = 0.8;
-            // A model exported without metal/roughness factors gets the glTF defaults (fully metal, fully rough-texture-driven) and
-            // renders as chrome; give it the same painted-metal look as the other cars.
-            if (m.metalness >= 1 && m.roughness >= 1) { m.metalness = 0; m.roughness = 0.54; }
+            tidyGltfMaterial(m);
             this.mats.push(m);
           }
         } else {

@@ -91,7 +91,7 @@ test('main menu links to the development story', () => {
 
 test('development page has an interactive Mr Muscle viewer and visible yellow footer links', () => {
   assert.match(howMade, /id="muscle-car-canvas"/);
-  assert.match(howMade, /cars\/car-shrink\.glb/);
+  assert.match(howMade, /cars\/dodge-shrink\.glb/);
   assert.match(howMade, /GLTFLoader/);
   assert.match(howMade, /pointerdown/);
   assert.match(indexHtml, /How we made this game<\/a> &middot;/);
@@ -113,7 +113,7 @@ test('zero key resets the track editor 3D view', () => {
 test('development page loads compressed GLB with Meshopt', () => {
   assert.match(howMade, /MeshoptDecoder/);
   assert.match(howMade, /setMeshoptDecoder\(MeshoptDecoder\)/);
-  assert.match(howMade, /cars\/car-shrink\.glb/);
+  assert.match(howMade, /cars\/dodge-shrink\.glb/);
 });
 
 
@@ -135,7 +135,7 @@ test('gameplay camera resets with double-click or zero', () => {
 
 
 test('development page car viewer is a five-car swipe carousel', () => {
-  assert.match(howMade, /Mr Muscle.*car-shrink\.glb/s);
+  assert.match(howMade, /Mr Muscle.*dodge-shrink\.glb/s);
   assert.match(howMade, /70s Saloon.*escort-shrink\.glb/s);
   assert.match(howMade, /German Beema.*bmw-shrink\.glb/s);
   assert.match(howMade, /Motorhome.*motor-home-shrink\.glb/s);

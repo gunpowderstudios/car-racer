@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { VEHICLES, selectedVehicle } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
+import { tidyGltfMaterial } from './carVisual.js';
 
 const COPY = {
   car: 'Big, loud and happiest going sideways.',
@@ -81,6 +82,7 @@ function installPreview({
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     loader.loadAsync(assetUrl(vehicle.url)).then((gltf) => {
       model = gltf.scene;
+      model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });
       holder.add(model);
       frameModel(model);
       holder.rotation.set(pitch, yaw, 0);
@@ -132,7 +134,8 @@ function installPreview({
       resize();
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (model && !dragging && now >= resumeAt) {
+      if (typeof window.__previewYaw === 'number') { yaw = window.__previewYaw; holder.rotation.y = yaw; }   // fixed pose, used to make the gallery thumbnails (tools/make-vehicle-thumbs.py)
+      else if (model && !dragging && now >= resumeAt) {
         yaw += dt * 0.26;
         holder.rotation.y = yaw;
       }

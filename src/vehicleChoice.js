@@ -9,14 +9,14 @@ import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
 // Player vehicle catalogue. Add the model here and point `physicsProfile` at the matching
 // entry in vehiclePhysicsProfiles.js. Physics stays platform-independent and shared by all modes.
 export const VEHICLES = [
-  { id: 'car', name: 'Mr Muscle', url: 'cars/car-shrink.glb', fit: 'measured', damageMul: 0.95, physicsProfile: 'car' },
+  { id: 'car', name: 'Mr Muscle', url: 'cars/dodge-shrink.glb', fit: 'measured', damageMul: 0.95, physicsProfile: 'car' },
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, damageMul: 1.15, physicsProfile: 'escort' },
   { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
   {
     id: 'mini',
     name: 'Miniskirt',
     description: 'A pocket-sized classic! Change the plugs and pot-noodle your way around corners.',
-    url: 'cars/min.glb',
+    url: 'cars/min-shrink.glb',
     fit: 'auto',
     targetLength: 3.05,
     damageMul: 1.2,                  // pocket-sized: not much metal to crumple
@@ -173,36 +173,51 @@ function applySelectedProfile() {
 
 applySelectedProfile();
 
-function fillVehicleSelect(select) {
-  select.innerHTML = '';
+/**
+ * A little gallery of every vehicle (a picture and a name each) instead of a dropdown, so all the choices are visible at a
+ * glance. The pictures are cars/thumbs/<id>.webp - made by tools/make-vehicle-thumbs.py; a car without one just shows its name.
+ * Picking a different car calls `onPick(id)` (which reloads the page, as the physics profile is chosen before the game starts).
+ */
+function buildVehicleGallery(onPick, extraClass = '') {
+  const gallery = document.createElement('div');
+  gallery.className = `vgallery ${extraClass}`.trim();
+  gallery.setAttribute('role', 'radiogroup');
+  gallery.setAttribute('aria-label', 'Choose your vehicle');
+  const current = selectedVehicle().id;
   for (const vehicle of VEHICLES) {
-    const option = document.createElement('option');
-    option.value = vehicle.id;
-    option.textContent = vehicle.name;
-    select.appendChild(option);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'vcard';
+    card.dataset.id = vehicle.id;
+    card.setAttribute('role', 'radio');
+    card.setAttribute('aria-checked', String(vehicle.id === current));
+    card.title = vehicle.description ? `${vehicle.name} - ${vehicle.description}` : vehicle.name;
+    const img = new Image();
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.addEventListener('error', () => img.remove());
+    img.src = assetUrl(`cars/thumbs/${vehicle.id}.webp`);
+    const name = document.createElement('span');
+    name.textContent = vehicle.name;
+    card.append(img, name);
+    card.addEventListener('click', () => { if (vehicle.id !== selectedVehicle().id) onPick(vehicle.id); });
+    gallery.appendChild(card);
   }
-  select.value = selectedVehicle().id;
+  return gallery;
 }
 
 function addVehicleSelector() {
   const slot = document.getElementById('menu-vehicle-choice');
-  if (!slot || document.getElementById('opt-vehicle')) return;
-
-  const label = document.createElement('label');
-  label.className = 'sel menu-vehicle-select';
-  label.append('Vehicle ');
-
-  const select = document.createElement('select');
-  select.id = 'opt-vehicle';
-  select.setAttribute('aria-label', 'Player vehicle');
-  fillVehicleSelect(select);
-  select.addEventListener('change', () => {
-    try { localStorage.setItem(KEY, select.value); } catch { /* storage unavailable */ }
+  if (!slot || slot.querySelector('.vgallery')) return;
+  const heading = document.createElement('div');
+  heading.className = 'vgallery-title';
+  heading.textContent = 'Choose your vehicle';
+  slot.append(heading, buildVehicleGallery((id) => {
+    try { localStorage.setItem(KEY, id); } catch { /* storage unavailable */ }
     location.reload();
-  });
-
-  label.appendChild(select);
-  slot.appendChild(label);
+  }));
 }
 
 // Multiplayer gets its own obvious vehicle selector on BOTH the Create and Join screens.
@@ -226,24 +241,17 @@ function changeMultiplayerVehicle(id, screen) {
 
 function addMultiplayerVehicleSelector(containerId, selectId, screen) {
   const container = document.getElementById(containerId);
-  if (!container || document.getElementById(selectId)) return;
+  if (!container || container.querySelector('.vgallery')) return;
 
   const nameInput = document.getElementById(screen === 'join' ? 'mp-join-name' : 'mp-name');
   const nameLabel = nameInput?.closest('label');
   if (!nameLabel) return;
 
-  const label = document.createElement('label');
-  label.className = 'mp-field';
-  label.append('Vehicle');
-
-  const select = document.createElement('select');
-  select.id = selectId;
-  select.setAttribute('aria-label', 'Vehicle');
-  fillVehicleSelect(select);
-  select.addEventListener('change', () => changeMultiplayerVehicle(select.value, screen));
-
-  label.appendChild(select);
-  nameLabel.insertAdjacentElement('afterend', label);
+  const field = document.createElement('div');
+  field.className = 'mp-field';
+  field.id = selectId;
+  field.append('Vehicle', buildVehicleGallery((id) => changeMultiplayerVehicle(id, screen), 'small'));
+  nameLabel.insertAdjacentElement('afterend', field);
 }
 
 function restoreMultiplayerScreenAfterReload() {
