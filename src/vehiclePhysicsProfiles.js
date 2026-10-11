@@ -152,7 +152,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     aero: { drag: 0.80, down: 0.08 },
     steer: { max: 0.57, rate: 3.7, returnRate: 5.5 },
     boost: { accel: 3.3, airShare: 0.30, burn: 3.2, refill: 9, restart: 0.2 },
-    body: { width: 1.78, length: 4.50, bottom: -0.48, shoulder: 0.36, roof: 1.24, roofWidth: 1.66, roofLength: 3.62 },
+    body: { width: 1.85, length: 4.50, bottom: -0.48, shoulder: 0.36, roof: 1.24, roofWidth: 1.72, roofLength: 3.62 },
     mpDamageMul: 0.92,
   },
 
@@ -177,7 +177,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     wallBounce: 0.22,
     aero: { drag: 0.88, down: 0.20 },
     steer: { max: 0.48, rate: 3.6, returnRate: 5.4 },
-    body: { width: 2.08, length: 4.85, bottom: -0.72, shoulder: 0.38, roof: 1.82, roofWidth: 1.92, roofLength: 3.95 },
+    body: { width: 2.20, length: 4.85, bottom: -0.72, shoulder: 0.38, roof: 1.82, roofWidth: 2.00, roofLength: 3.95 },
     mpDamageMul: 0.72,
   },
 
@@ -203,7 +203,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
     wallBounce: 0.30,
     aero: { drag: 0.40, down: 0.16 },
     steer: { max: 0.62, rate: 5.6, returnRate: 7.8 },
-    body: { width: 1.40, length: 3.05, bottom: -0.30, shoulder: 0.26, roof: 1.02, roofWidth: 1.22, roofLength: 1.70 },
+    body: { width: 1.43, length: 3.05, bottom: -0.30, shoulder: 0.26, roof: 1.02, roofWidth: 1.24, roofLength: 1.70 },
     mpDamageMul: 1.10,
   },
 

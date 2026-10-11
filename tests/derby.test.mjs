@@ -444,3 +444,33 @@ test('blastFraction: everything inside two metres, then a straight fall to nothi
   assert.equal(blastFraction(DAMAGE.barrel, DAMAGE.barrel.radius), 0);
   assert.equal(blastFraction(DAMAGE.barrel, 50), 0);
 });
+
+test('cars collide at their real size: a wide motor home no longer sinks into its neighbour, a Mini does not bounce off thin air', () => {
+  const make = (body) => { const v = new Vehicle(); if (body) v.spec = { ...v.spec, body }; return v; };
+  const track = dragTrack();
+  const pair = (bodyA, bodyB, lateral) => {
+    const A = make(bodyA), B = make(bodyB);
+    placeOnTrack(A, track, track.progressAt(0, 0.65, -300), 0, 0);
+    placeOnTrack(B, track, track.progressAt(0, 0.65, -300), lateral, 0);
+    A.refreshFrame(); B.refreshFrame();
+    const x0 = Math.hypot(B.pos.x - A.pos.x, B.pos.z - A.pos.z);
+    collideCars(A, B, {});
+    return Math.hypot(B.pos.x - A.pos.x, B.pos.z - A.pos.z) - x0;           // > 0 when the cars were pushed apart
+  };
+  const home = { width: 2.08, length: 4.85 }, mini = { width: 1.40, length: 3.05 };
+  assert.ok(pair(null, null, 1.9) === 0, 'default cars 1.9 m apart do not touch');
+  assert.ok(pair(home, home, 1.9) > 0, 'two motor homes 1.9 m apart (they are 2.08 wide) are overlapping and get pushed apart');
+  assert.ok(pair(home, home, 2.2) === 0, 'and 2.2 m apart they clear each other');
+  assert.ok(pair(mini, mini, 1.3) > 0 && pair(mini, mini, 1.5) === 0, 'two Minis touch at 1.3 m, not at 1.5 m');
+  // the length counts too: nose to tail, a Mini ends where its 3 m body ends
+  const nose = (body, gap) => {
+    const A = make(body), B = make(body);
+    placeOnTrack(A, track, track.progressAt(0, 0.65, -300), 0, 0);
+    placeOnTrack(B, track, track.progressAt(0, 0.65, -300 + gap), 0, 0);
+    A.refreshFrame(); B.refreshFrame();
+    const x0 = Math.hypot(B.pos.x - A.pos.x, B.pos.z - A.pos.z); collideCars(A, B, {});
+    return Math.hypot(B.pos.x - A.pos.x, B.pos.z - A.pos.z) - x0;
+  };
+  assert.ok(nose(mini, 3.4) === 0, 'Minis 3.4 m nose to tail are clear of each other');
+  assert.ok(nose(mini, 2.8) > 0, 'but 2.8 m apart they touch');
+});

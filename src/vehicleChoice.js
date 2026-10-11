@@ -157,7 +157,7 @@ function applySelectedProfile() {
   CAR.steer = { ...p.steer };
   CAR.boost = { ...p.boost };
   CAR.profileName = p.reference || cfg.name;
-  if (p.body) CAR.hull = makeHull(p.body);
+  if (p.body) { CAR.hull = makeHull(p.body); CAR.body = { width: p.body.width, length: p.body.length }; }   // the size cars-against-cars collision uses (derby.js)
 
   if (cfg.damageMul && cfg.damageMul !== 1) {
     const base = SPECS.player.mul || {};

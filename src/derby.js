@@ -42,14 +42,22 @@ export const DERBY = {
   gridPerRow: 2,         // cars per row (a real grid staggers pole/second etc.)
 };
 
-// Five spheres along the car stand in for its body when cars meet. The normal car keeps the
-// original 0.85 m radius, while wider vehicles can provide physics.body.width and get a matching
-// collision radius. This stops wide Motor Homes visually merging before the physics sees contact.
-const BALL_R = 0.85, BALL_Y = 0.05;
-const BALL_LOCAL = [-1.5, -0.75, 0, 0.75, 1.5].map((z) => new V3(0, BALL_Y, z));
-const wa = BALL_LOCAL.map(() => new V3()), wb = BALL_LOCAL.map(() => new V3());
+// Five spheres along the car stand in for its body when cars meet. A vehicle with a `body` in its physics profile (width and
+// length, set on CAR by vehicleChoice.js) gets spheres sized to it: radius = half the width, spread so the row of spheres covers
+// the length. That keeps a wide motor home from visually sinking into its neighbours and a tiny Mini from bouncing off
+// thin air. A car with no `body` keeps the original 0.85 m radius and a 3 m row.
+const BALL_R = 0.85, BALL_Y = 0.05, BALL_FRAC = [-1, -0.5, 0, 0.5, 1];
+const ballsA = BALL_FRAC.map(() => new V3()), ballsB = BALL_FRAC.map(() => new V3());
+const wa = BALL_FRAC.map(() => new V3()), wb = BALL_FRAC.map(() => new V3());
 const sN = new V3(), sP = new V3(), sVa = new V3(), sVb = new V3(), sT = new V3(), dn = new V3();
-const collisionRadius = (car) => Math.max(0.55, car?.spec?.body?.width ? car.spec.body.width * 0.5 : BALL_R);
+/** Lay the car's spheres out along its length (into `balls`) and return their radius. */
+export function layoutBalls(car, balls) {
+  const b = car?.spec?.body;
+  const r = b?.width ? Math.max(0.55, b.width * 0.5) : BALL_R;
+  const half = b?.length ? Math.max(0, b.length * 0.5 - r) : 1.5;
+  for (let k = 0; k < balls.length; k++) balls[k].set(0, BALL_Y, half * BALL_FRAC[k]);
+  return r;
+}
 
 /**
  * Collide two cars (their frames must be current). Applies the impulses and pushes them apart, and
@@ -60,8 +68,8 @@ export function collideCars(A, B, out) {
   const cx0 = B.pos.x - A.pos.x, cy0 = B.pos.y - A.pos.y, cz0 = B.pos.z - A.pos.z;
   out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0;
   if (cx0 * cx0 + cy0 * cy0 + cz0 * cz0 > 36) return false;
-  for (let k = 0; k < BALL_LOCAL.length; k++) { A.toWorld(BALL_LOCAL[k], wa[k]); B.toWorld(BALL_LOCAL[k], wb[k]); }
-  const rA = collisionRadius(A), rB = collisionRadius(B);
+  const rA = layoutBalls(A, ballsA), rB = layoutBalls(B, ballsB);
+  for (let k = 0; k < wa.length; k++) { A.toWorld(ballsA[k], wa[k]); B.toWorld(ballsB[k], wb[k]); }
   const D = rA + rB, D2 = D * D;
   let deepest = 0;
   for (let pass = 0; pass < 2; pass++) {
