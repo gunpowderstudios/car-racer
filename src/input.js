@@ -2,13 +2,14 @@
 import { clamp } from './math.js';
 
 export class Input {
-  constructor({ onReset, onRestart, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror } = {}) {
+  constructor({ onReset, onRestart, onPadConnect, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror } = {}) {
     this.keys = new Set();
     this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
     this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false };
     this._prevPad = {};
     this.enabled = true;
-    const map = { KeyR: onReset, Backspace: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror };
+    // R (reset camera view) lives in cameraOrbit.js; B puts the car back on the road; Backspace / Delete restart the race.
+    const map = { KeyB: onReset, Backspace: onRestart, Delete: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror };
     addEventListener('keydown', (e) => {
       if (!this.enabled) return;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();
@@ -18,6 +19,7 @@ export class Input {
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
     this.callbacks = { onReset, onRestart, onCamera, onMenu };
+    addEventListener('gamepadconnected', (e) => onPadConnect?.(e.gamepad?.id || 'Controller'));
     this._bindTouch();
   }
 
@@ -34,14 +36,18 @@ export class Input {
   _poll() {
     const gp = (navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g && g.connected) : null);
     if (!gp) { this.pad.throttle = this.pad.brake = this.pad.steer = 0; this.pad.hand = this.pad.boost = false; return; }
-    const dz = (v) => (Math.abs(v) < 0.12 ? 0 : v);
-    this.pad.steer = -dz(gp.axes[0] || 0);
+    // Standard gamepad layout (Xbox / PlayStation / Switch Pro in a browser): left stick or D-pad steers, RT gas, LT brake,
+    // A or X boost, B or RB drift, Y back on road, LB camera, right-stick click reset view, Start menu, Back/Select restart.
+    const dz = (v) => { const a = Math.abs(v); return a < 0.12 ? 0 : Math.sign(v) * Math.pow((a - 0.12) / 0.88, 1.4); };   // dead zone, then gentle curve for fine control
+    const dpad = (gp.buttons[14]?.pressed ? 1 : 0) - (gp.buttons[15]?.pressed ? 1 : 0);
+    this.pad.steer = clamp(-dz(gp.axes[0] || 0) + dpad, -1, 1);
     this.pad.throttle = gp.buttons[7]?.value || 0;
     this.pad.brake = gp.buttons[6]?.value || 0;
     this.pad.hand = !!(gp.buttons[1]?.pressed || gp.buttons[5]?.pressed);
     this.pad.boost = !!(gp.buttons[0]?.pressed || gp.buttons[2]?.pressed);   // A or X
     const edge = (i, fn) => { const p = !!gp.buttons[i]?.pressed; if (p && !this._prevPad[i]) fn?.(); this._prevPad[i] = p; };
     edge(3, this.callbacks.onReset); edge(4, this.callbacks.onCamera); edge(9, this.callbacks.onMenu); edge(8, this.callbacks.onRestart);
+    edge(11, () => window.__resetCameraView?.());
   }
 
   read() {

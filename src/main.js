@@ -155,6 +155,7 @@ const physicsLabel = `${tier.physicsHz}Hz`;
 const input = new Input({
   onReset: () => mode === 'drive' && respawn(),
   onRestart: () => mode === 'drive' && restartRace(),
+  onPadConnect: () => mode === 'drive' && hud.banner('Controller connected', 1600),
   onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
   onMenu: () => (mode === 'drive' ? showMenu() : null),
   onEditor: () => mode === 'drive' && openEditor(def),

@@ -127,9 +127,10 @@ test('3D reset pauses auto-rotation so the straight view is visible', () => {
 
 test('gameplay camera resets with double-click or zero', () => {
   assert.match(cameraOrbit, /addEventListener\('dblclick'/);
-  assert.match(cameraOrbit, /e\.key !== '0'/);
+  assert.match(cameraOrbit, /e\.key !== '0' && e\.key !== 'r'/);
   assert.match(cameraOrbit, /cam\.snap\(\)/);
-  assert.match(indexHtml, /<kbd>0<\/kbd> Reset view/);
+  assert.match(indexHtml, /<kbd>R<\/kbd> Reset view/);
+  assert.match(indexHtml, /<kbd>B<\/kbd> Back on road/);
   assert.match(indexHtml, /double-click the game view to centre the camera/);
 });
 
@@ -351,4 +352,15 @@ test('mobile menu orders vehicle preview then race options then tracks', () => {
   assert.match(css, /#menu \.options \{ order: 7; \}/);
   assert.match(css, /#track-list \{ order: 8; \}/);
   assert.match(css, /@media \(max-width: 980px\)/);
+});
+
+test('keys: R resets the camera view, B is back on road, Backspace/Delete restart; gamepad has d-pad, reset view and connect notice', () => {
+  const input = readFileSync(new URL('../src/input.js', import.meta.url), 'utf8');
+  assert.match(input, /KeyB: onReset/);
+  assert.match(input, /Backspace: onRestart, Delete: onRestart/);
+  assert.doesNotMatch(input, /KeyR: onReset/);
+  assert.match(input, /buttons\[14\]/);
+  assert.match(input, /edge\(11/);
+  assert.match(input, /gamepadconnected/);
+  assert.match(cameraOrbit, /ctl-reset-view/);
 });

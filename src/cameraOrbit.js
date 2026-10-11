@@ -134,9 +134,9 @@ function installListeners() {
     cam.snap();
   }, { capture: true });
 
-  // 0 = reset gameplay camera view. Ignore text-entry controls.
+  // 0 or R = reset gameplay camera view. Ignore text-entry controls.
   document.addEventListener('keydown', (e) => {
-    if (e.key !== '0' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if ((e.key !== '0' && e.key !== 'r' && e.key !== 'R') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (isUiControl(document.activeElement)) return;
     const cam = currentCamera;
     if (!cam || cam.mode >= 2) return;
@@ -144,6 +144,14 @@ function installListeners() {
     cam.snap();
   }, { capture: true });
 }
+
+// The "Reset view" legend button, and the gamepad (right-stick click), reset the same way.
+document.addEventListener('click', (e) => {
+  if (!e.target?.closest?.('#ctl-reset-view')) return;
+  currentCamera?.snap();
+  e.target.closest('#ctl-reset-view').blur();
+});
+window.__resetCameraView = () => { if (currentCamera && currentCamera.mode < 2) currentCamera.snap(); };
 
 const originalUpdate = ChaseCamera.prototype.update;
 ChaseCamera.prototype.update = function updateWithOrbit(dt, p, quat, vel, track) {
