@@ -230,9 +230,9 @@ test('the Miniskirt is a listed vehicle with its own light, grippy profile', asy
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
   assert.match(src, /id: 'mini',\s*name: 'Miniskirt'/);
-  assert.match(src, /url: 'cars\/min-shrink\.glb'/);
+  assert.match(src, /url: 'cars\/mini-SHRINK\.glb'/);
   assert.match(src, /pot-noodle your way around corners/);
-  assert.ok(existsSync(new URL('../cars/min-shrink.glb', import.meta.url)), 'model file is in the repo');
+  assert.ok(existsSync(new URL('../cars/mini-SHRINK.glb', import.meta.url)), 'model file is in the repo');
   const mini = vehiclePhysicsProfile('mini'), esc = vehiclePhysicsProfile('escort');
   assert.ok(mini.mass < esc.mass && mini.wheelbase < esc.wheelbase && mini.steer.rate > esc.steer.rate);
   assert.ok(mini.body.length < 3.3 && mini.reference.includes('Mini'));

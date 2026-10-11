@@ -16,7 +16,7 @@ export const VEHICLES = [
     id: 'mini',
     name: 'Miniskirt',
     description: 'A pocket-sized classic! Change the plugs and pot-noodle your way around corners.',
-    url: 'cars/min-shrink.glb',
+    url: 'cars/mini-SHRINK.glb',
     fit: 'auto',
     targetLength: 3.05,
     damageMul: 1.2,                  // pocket-sized: not much metal to crumple
