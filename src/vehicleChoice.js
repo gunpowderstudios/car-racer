@@ -9,7 +9,7 @@ import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
 // Player vehicle catalogue. Add the model here and point `physicsProfile` at the matching
 // entry in vehiclePhysicsProfiles.js. Physics stays platform-independent and shared by all modes.
 export const VEHICLES = [
-  { id: 'car', name: 'Mr Muscle', url: 'cars/dodge-shrink.glb', fit: 'measured', damageMul: 0.95, physicsProfile: 'car' },
+  { id: 'car', name: 'Mr Muscle', url: 'cars/dodge-shrink.glb', fit: 'auto', targetLength: 4.89, damageMul: 0.95, physicsProfile: 'car' },
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, damageMul: 1.15, physicsProfile: 'escort' },
   { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
   {
@@ -27,7 +27,7 @@ export const VEHICLES = [
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",
-    url: 'cars/v8-pilot.glb',
+    url: 'cars/v8-pilot-SHRINK.glb',
     fit: 'auto',
     targetLength: 4.44,
     damageMul: 0.85,                 // a bruiser: takes 15% less from every hit
