@@ -7,6 +7,7 @@
 
 import { clamp } from './math.js';
 import { Track } from './track.js';
+import { skillOf } from './ai.js';
 
 /** The arena's measurements: centre, the centreline ellipse (a, b), floor half-width hw, overall half-sizes ax / az, floor height y. */
 export function arenaInfo(track) {
@@ -60,13 +61,14 @@ export class ArenaDriver {
   drive(car, track, ctx, dt) {
     const inp = this.input, A = arenaInfo(track), fx = car.az.x, fz = car.az.z;
     const P = ctx.player;
+    const d = skillOf(ctx) - 0.5;
     let ax = A.cx, az = A.cz, vT = 9, dist = Infinity;
     this.target = !!P;
     if (P) {
       dist = Math.hypot(P.pos.x - car.pos.x, P.pos.z - car.pos.z);
       const lead = clamp(dist / Math.max(car.speed + 8, 16), 0, 1);
       ax = P.pos.x + P.vel.x * lead; az = P.pos.z + P.vel.z * lead;
-      vT = this.cruise;
+      vT = this.cruise * (1 + 0.5 * d);
     }
 
     // keep off the wall: how far inside the floor is the point a moment ahead?
@@ -84,7 +86,7 @@ export class ArenaDriver {
 
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);      // + = the aim point is on our left
     const steerTarget = clamp(ang * 2.2, -1, 1);
-    this.steerNow += clamp(steerTarget - this.steerNow, -3.4 * dt, 3.4 * dt);
+    this.steerNow += clamp(steerTarget - this.steerNow, -3.4 * (1 + d) * dt, 3.4 * (1 + d) * dt);
     let steer = this.steerNow;
 
     const err = vT - car.fwdSpeed;

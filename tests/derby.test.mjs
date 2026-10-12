@@ -527,3 +527,26 @@ test('a hungry field hunts you more, from further away and for longer', () => {
   assert.ok(hungry > calm + 0.2, `hungry ${hungry.toFixed(2)} vs calm ${calm.toFixed(2)}`);
   assert.ok(share(1, 280) > share(0, 280), 'and it hunts from further off');
 });
+
+test('rival skill: higher skill laps faster, and the default (no skill) is unchanged Normal', async () => {
+  const { skillOf } = await import('../src/ai.js');
+  assert.equal(skillOf({}), 0.5); assert.equal(skillOf(null), 0.5); assert.equal(skillOf({ skill: 9 }), 1);
+  const track = new Track(makeTemplate('speedway'));
+  const lap = (skill) => {
+    const car = new Vehicle(); car.opts.assist = 0.7;
+    const drv = new Driver(mulberry(1), 0.3); drv.cruise = 34;
+    placeOnRoad(car, track, 0, 0, 0);
+    const ctx = { player: null, cars: [car], skill };
+    let dist = 0, last = track.progressAt(car.pos.x, car.pos.y, car.pos.z), t = 0;
+    for (; t < 120; t += DT) {
+      if (Math.round(t / DT) % 4 === 0) drv.drive(car, track, ctx, DT * 4);
+      car.step(DT, drv.input, track); car.events.length = 0;
+      if (Math.round(t / DT) % 30 === 0) { const s = track.progressAt(car.pos.x, car.pos.y, car.pos.z); let ds = s - last; if (ds < -track.length / 2) ds += track.length; dist += ds; last = s; }
+      if (dist >= track.length) return t;
+    }
+    return Infinity;
+  };
+  const easy = lap(0.2), normal = lap(0.5), hard = lap(0.75), expert = lap(1);
+  assert.ok(easy > normal && normal > hard && hard > expert, `${easy} ${normal} ${hard} ${expert}`);
+  assert.ok(normal / expert > 1.1, 'Expert should be at least 10% quicker than Normal');
+});

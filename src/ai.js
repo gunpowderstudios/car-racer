@@ -28,6 +28,9 @@ export const AI = {
   catchupSpeed: 0.10,               // max +10% target speed, still entirely through normal car physics
 };
 
+/** Rival skill 0..1 (Easy .2, Normal .5 = the original behaviour, Hard .75, Expert 1). One number, a handful of knobs. */
+export function skillOf(ctx) { return clamp(ctx && ctx.skill != null ? ctx.skill : 0.5, 0, 1); }
+
 /** Largest corner curvature in the next `span` metres. */
 function curvAhead(track, s, span = 130) {
   let k = 0;
@@ -63,7 +66,7 @@ export class Driver {
     this.aggr = aggr;
     this.cruise = AI.cruiseMin + rng() * (AI.cruiseMax - AI.cruiseMin);
     this.lane = (rng() - 0.5) * 1.3;          // preferred lane: -0.65 .. 0.65 of the usable half width
-    this.laneNow = this.lane;
+    this.laneNow = this.lane; this.lane0 = this.lane;
     this.mood = 'cruise';
     this.moodT = 3 + rng() * 6;
     this.stuck = 0; this.reverse = 0; this.revSteer = 0;
@@ -82,6 +85,8 @@ export class Driver {
   drive(car, track, ctx, dt) {
     const inp = this.input;
     const fx = car.az.x, fz = car.az.z;
+    const sk = skillOf(ctx), d = sk - 0.5;
+    const pace = 1 + 0.5 * d;                                   // Expert: 25% quicker everywhere, Easy: 15% slower
 
     // ---------------------------------------------------------------- where am I
     this.sT -= dt;
@@ -109,7 +114,7 @@ export class Driver {
     // How hungry the field is for the player (0..1, set per game mode in derby.js): higher means rivals start hunting more often and from
     // further away, hunt for longer, and rest for less - a friend who keeps coming back for another go.
     const hunger = clamp(ctx.huntBias || 0, 0, 1), reach = 1 + 1.5 * hunger;
-    const catchup = pRoad ? clamp((playerLead - AI.catchupStart) / Math.max(1, AI.catchupFull - AI.catchupStart), 0, 1) : 0;
+    const cStart = AI.catchupStart * (1 - 0.6 * Math.max(0, d)), catchup = pRoad ? clamp((playerLead - cStart) / Math.max(1, AI.catchupFull - cStart), 0, 1) : 0;
     if (this.grudgeT > 0 && P && pRoad) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
     else if (this.moodT <= 0) {
       if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = (4 + this.rng() * 6 / (0.4 + this.aggr)) * (1 - 0.8 * hunger); }
@@ -127,7 +132,7 @@ export class Driver {
     let ax, az, vT;
     const k = curvAhead(track, s);
     const aLat = hunting ? AI.aLatHunt : AI.aLatCruise;
-    vT = Math.min(hunting ? AI.huntMax : this.cruise, Math.sqrt(aLat / Math.max(k, 1e-4)));
+    vT = Math.min((hunting ? AI.huntMax * (1 + 0.3 * d) : this.cruise * pace), Math.sqrt(aLat * (1 + 0.5 * d) / Math.max(k, 1e-4)));
 
     if (hunting) {
       // aim where the player will be by the time we get there
@@ -147,15 +152,19 @@ export class Driver {
       }
       if (clear) { ax = tx; az = tz; }
       else { ax = f.x + f.lx * pLane * usable; az = f.z + f.lz * pLane * usable; }
-      vT = Math.max(vT, Math.min(AI.huntMax, P.speed + 4 + pd * 0.14));
-      if (pd < 14 && clear) vT = AI.huntMax;                 // committed: just go for it
+      vT = Math.max(vT, Math.min(AI.huntMax * (1 + 0.3 * d), P.speed + 4 + pd * 0.14));
+      if (pd < 14 && clear) vT = AI.huntMax * (1 + 0.3 * d);                 // committed: just go for it
     } else {
+      // Clever drivers defend: with you close behind them they slide across into your lane to make you work for a pass.
+      const block = sk > 0.6 && P && pRoad && playerLead < -3 && playerLead > -32;
+      if (block) this.lane += clamp(pLane * 0.8 - this.lane, -1, 1) * Math.min(1, dt * 1.2);
+      else if (sk > 0.6) this.lane += (this.lane0 - this.lane) * Math.min(1, dt * 0.3);
       ax = f.x + f.lx * this.laneNow * usable; az = f.z + f.lz * this.laneNow * usable;
     }
 
     // Stage 3 difficulty: faster base pace plus a modest catch-up bonus when the PLAYER is genuinely ahead.
     // It raises the AI's chosen target speed; it never moves the car or bypasses normal physics.
-    if (catchup > 0) vT *= 1 + AI.catchupSpeed * catchup;
+    if (catchup > 0) vT *= 1 + AI.catchupSpeed * (1 + 2 * d) * catchup;
 
     // ---------------------------------------------------------------- other cars in the way
     let laneBias = 0, brake = 0;
@@ -199,7 +208,7 @@ export class Driver {
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);      // + = target is on our left
     let steerTarget = clamp(ang * 2.2, -1, 1);
     if (jump) steerTarget = clamp(steerTarget, -0.25, 0.25);
-    this.steerNow += clamp(steerTarget - this.steerNow, -3.2 * dt, 3.2 * dt);   // can't snap side to side
+    this.steerNow += clamp(steerTarget - this.steerNow, -3.2 * (1 + d) * dt, 3.2 * (1 + d) * dt);   // can't snap side to side
     let steer = this.steerNow;
 
     // ---------------------------------------------------------------- pedals
@@ -237,7 +246,9 @@ export class Driver {
       && car.fwdSpeed > 13
       && car.boostFuel > 0.2
       && (!P || playerLead > 10);
-    inp.boost = hillBoost || raceBoost;
+    // Good drivers use their nitro on the straights, whoever is around, and keep a little back for later.
+    const straightBoost = sk > 0.6 && k < 0.004 && !jump && Math.abs(ang) < 0.1 && car.fwdSpeed > 18 && car.boostFuel > 0.6;
+    inp.boost = hillBoost || raceBoost || straightBoost;
     return inp;
   }
 }
