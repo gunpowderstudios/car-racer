@@ -146,7 +146,7 @@ function update() {
   }
 
   const field = getSoloField(game);
-  if (field && field.total > 1) {
+  if (field && field.total > 1 && !game.derby.demolition) {          // no finishing order in Demolition: the badge shows rivals left instead
     let place = 1;
     for (const p of field.rivals) if (p > field.player) place++;
     const total = field.total;
