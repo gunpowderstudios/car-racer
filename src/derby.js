@@ -224,8 +224,9 @@ export class Derby {
         // forward in small steps rather than teleporting the replacement elsewhere on the lap.
         s = replacementS + 22 + t * 7 + (t ? (rnd() - 0.5) * 4 : 0);
       } else {
+        // No wreck to replace (rare): drop the car just behind the player, never out ahead of the field where it would pop into view.
         s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)
-          : ps + margin + rnd() * (L - 2 * margin);
+          : ps - 70 - rnd() * 60 - t * 9;
       }
       s = ((s % L) + L) % L;
       const fr = T.frameAt(s);

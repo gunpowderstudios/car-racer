@@ -550,3 +550,18 @@ test('rival skill: higher skill laps faster, and the default (no skill) is uncha
   assert.ok(easy > normal && normal > hard && hard > expert, `${easy} ${normal} ${hard} ${expert}`);
   assert.ok(normal / expert > 1.1, 'Expert should be at least 10% quicker than Normal');
 });
+
+test('a replacement with no wreck to take over is dropped just behind the player, never out ahead of the field', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle();
+  placeOnRoad(player, track, 600, 0, 0);
+  const derby = new Derby(); derby.start(track, player, 4, 5);
+  const ps = track.progressAt(player.pos.x, player.pos.y, player.pos.z), L = track.length;
+  for (let i = 0; i < 4; i++) {
+    derby._replacementS.length = 0;                     // nothing queued: the old code picked anywhere on the lap
+    const f = derby._spawn();
+    assert.ok(f, 'spawned');
+    let d = track.progressAt(f.car.pos.x, f.car.pos.y, f.car.pos.z) - ps; if (d > L / 2) d -= L; if (d < -L / 2) d += L;
+    assert.ok(d < -30 && d > -260, `spawned ${d.toFixed(0)} m from the player`);
+  }
+});
