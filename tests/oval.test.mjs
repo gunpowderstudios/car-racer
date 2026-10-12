@@ -292,3 +292,16 @@ test('rivals in The Oval steer round the humps instead of launching off them', (
   }
   assert.ok(air <= near * 0.02, `${air} airborne frames of ${near} on or beside a hump`);
 });
+
+test('Stinky French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile and a menu picture', async () => {
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'french-cheese',\s*name: 'Stinky French Cheese'/);
+  assert.match(src, /24 eggs across a field/);
+  assert.match(src, /url: 'cars\/french-cheese-SHRINK\.glb'/);
+  assert.ok(existsSync(new URL('../cars/french-cheese-SHRINK.glb', import.meta.url)), 'model file is in the repo');
+  assert.ok(existsSync(new URL('../cars/thumbs/french-cheese.webp', import.meta.url)), 'gallery picture');
+  const fc = vehiclePhysicsProfile('french-cheese'), mini = vehiclePhysicsProfile('mini'), esc = vehiclePhysicsProfile('escort');
+  assert.ok(fc.reference.includes('2CV') && fc.susp.kFront / fc.mass < mini.susp.kFront / mini.mass, 'softer sprung than the Mini');
+  assert.ok(fc.susp.travel > mini.susp.travel && fc.mass < esc.mass && fc.body.length > mini.body.length);
+});

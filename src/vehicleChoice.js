@@ -24,6 +24,16 @@ export const VEHICLES = [
     neutralBody: true,               // off-white paint: rivals recolour the body panels rather than turning the hue (see carVisual recolour)
   },
   {
+    id: 'french-cheese',
+    name: 'Stinky French Cheese',
+    description: 'A bouncy French classic! Smooth enough to carry 24 eggs across a field!',
+    url: 'cars/french-cheese-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 3.83,
+    damageMul: 1.25,                 // tin-can bodywork: crumples easily
+    physicsProfile: 'french-cheese',
+  },
+  {
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",

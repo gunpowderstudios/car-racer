@@ -207,6 +207,32 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 1.10,
   },
 
+  'french-cheese': {
+    reference: '1970s Citroen 2CV-style bouncy French classic (soft, tall, rolls and bobs)',
+    mass: 640,
+    frontWeight: 0.60,
+    wheelbase: 2.40,
+    track: 1.26,
+    wheelRadius: 0.29,
+    mountY: 0.08,
+    inertia: { x: 1150, y: 1050, z: 520 },
+    susp: {
+      free: 0.40, travel: 0.26,
+      kFront: 11500, kRear: 10800,
+      cCompFront: 1000, cCompRear: 950, cRebFront: 1300, cRebRear: 1250,
+      arbFront: 5000, arbRear: 3500, bump: 100000, bumpDamp: 4500,
+    },
+    tyre: { muFront: 1.08, muRear: 1.06, B: 9.8, C: 1.22, slideMu: 0.82, loadSens: 0.06, rolling: 0.017 },
+    engine: { peakTorque: 112 },
+    brakeG: 1.15,
+    brakeBias: 0.60,
+    wallBounce: 0.30,
+    aero: { drag: 0.42, down: 0.08 },
+    steer: { max: 0.60, rate: 4.6, returnRate: 6.5 },
+    body: { width: 1.48, length: 3.83, bottom: -0.34, shoulder: 0.30, roof: 1.26, roofWidth: 1.30, roofLength: 2.10 },
+    mpDamageMul: 1.15,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',
