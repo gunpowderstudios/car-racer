@@ -278,3 +278,17 @@ test('The Oval has four humps, one in each corner, that the physics ground follo
   assert.equal(new Track(normalizeTrack({ handles: def.handles, mode: 'lastStanding', width: def.width, bumps: [{ x: 0, z: 0, r: 999, h: -5 }, 'junk'] })).bumps[0].r, 20, 'clamped');
   assert.equal(new Track(makeTemplate('speedway')).bumps, null, 'ordinary tracks have none');
 });
+
+test('rivals in The Oval steer round the humps instead of launching off them', () => {
+  const { track, car, derby } = arena(8);
+  const DT = 1 / 120; let near = 0, air = 0;
+  for (let i = 0; i < 40 / DT; i++) {
+    car.step(DT, { ...IDLE, brake: 1 }, track); derby.step(DT, null);
+    for (const f of derby.fighters) {
+      if (f.isPlayer || f.wrecked) continue;
+      for (const b of track.bumps) if (Math.hypot(f.car.pos.x - b.x, f.car.pos.z - b.z) < b.r + 1) { near++; if (!f.car.onGround) air++; }
+    }
+    car.events.length = 0; derby.events.length = 0;
+  }
+  assert.ok(air <= near * 0.02, `${air} airborne frames of ${near} on or beside a hump`);
+});
