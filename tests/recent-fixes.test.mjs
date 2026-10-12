@@ -364,3 +364,7 @@ test('keys: R resets the camera view, B is back on road, Backspace/Delete restar
   assert.match(input, /gamepadconnected/);
   assert.match(cameraOrbit, /ctl-reset-view/);
 });
+
+test('laps count on a circuit (and only there): the lap index follows race.max on circuits, and stays put in an arena', () => {
+  assert.match(main, /const idx = lapped \? Math\.floor\(race\.max \/ L\) : race\.index;/);
+});

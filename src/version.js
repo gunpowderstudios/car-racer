@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.64';
-export const NOTE = 'Rivals hunt you more: keener in Race, relentless in Demolition (hunt more often, from further away, for longer)';
+export const VERSION = '17.65';
+export const NOTE = 'Fixed laps never counting on circuits, so finishing a race now shows the finish and the win';
