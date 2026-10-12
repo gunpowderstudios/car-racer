@@ -7,6 +7,7 @@
 
 import { clamp } from './math.js';
 import { Track } from './track.js';
+import { skillOf } from './ai.js';
 
 /** The arena's measurements: centre, the centreline ellipse (a, b), floor half-width hw, overall half-sizes ax / az, floor height y. */
 export function arenaInfo(track) {
@@ -60,13 +61,14 @@ export class ArenaDriver {
   drive(car, track, ctx, dt) {
     const inp = this.input, A = arenaInfo(track), fx = car.az.x, fz = car.az.z;
     const P = ctx.player;
+    const d = skillOf(ctx) - 0.5;
     let ax = A.cx, az = A.cz, vT = 9, dist = Infinity;
     this.target = !!P;
     if (P) {
       dist = Math.hypot(P.pos.x - car.pos.x, P.pos.z - car.pos.z);
       const lead = clamp(dist / Math.max(car.speed + 8, 16), 0, 1);
       ax = P.pos.x + P.vel.x * lead; az = P.pos.z + P.vel.z * lead;
-      vT = this.cruise;
+      vT = this.cruise * (1 + 0.5 * d);
     }
 
     // keep off the wall: how far inside the floor is the point a moment ahead?
@@ -82,9 +84,26 @@ export class ArenaDriver {
       }
     }
 
+    // Humps in the floor: a car that hits one at speed is launched into the wall or onto its roof. Steer round any hump in the way
+    // (aim for a point just beside it) and ease off while one is close, so the nose can swing clear first.
+    if (track.bumps) {
+      for (const b of track.bumps) {
+        const rx = b.x - car.pos.x, rz = b.z - car.pos.z;
+        const ahead = rx * fx + rz * fz, side = rx * car.ax.x + rz * car.ax.z;       // + = hump is on our left
+        const clear = b.r + 3.2;
+        if (ahead < -b.r * 0.4 || ahead > 16 + car.speed * 1.3 + b.r || Math.abs(side) > clear) continue;
+        const sgn = Math.abs(side) < 0.6 ? (dx * car.ax.x + dz * car.ax.z >= 0 ? -1 : 1) : (side > 0 ? -1 : 1);
+        const reach = Math.max(ahead, 8);
+        ax = car.pos.x + fx * reach + car.ax.x * sgn * clear * 1.15; az = car.pos.z + fz * reach + car.ax.z * sgn * clear * 1.15;
+        dx = ax - car.pos.x; dz = az - car.pos.z;
+        if (ahead < b.r + 14) vT = Math.min(vT, 15);
+        break;
+      }
+    }
+
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);      // + = the aim point is on our left
     const steerTarget = clamp(ang * 2.2, -1, 1);
-    this.steerNow += clamp(steerTarget - this.steerNow, -3.4 * dt, 3.4 * dt);
+    this.steerNow += clamp(steerTarget - this.steerNow, -3.4 * (1 + d) * dt, 3.4 * (1 + d) * dt);
     let steer = this.steerNow;
 
     const err = vT - car.fwdSpeed;

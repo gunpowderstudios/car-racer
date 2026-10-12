@@ -131,6 +131,7 @@ export class Derby {
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
+    this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
@@ -223,8 +224,9 @@ export class Derby {
         // forward in small steps rather than teleporting the replacement elsewhere on the lap.
         s = replacementS + 22 + t * 7 + (t ? (rnd() - 0.5) * 4 : 0);
       } else {
+        // No wreck to replace (rare): drop the car just behind the player, never out ahead of the field where it would pop into view.
         s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)
-          : ps + margin + rnd() * (L - 2 * margin);
+          : ps - 70 - rnd() * 60 - t * 9;
       }
       s = ((s % L) + L) % L;
       const fr = T.frameAt(s);
@@ -281,6 +283,7 @@ export class Derby {
     // -------- rivals think and drive
     const ctx = this._ctx;
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
+    ctx.skill = this.skill;
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
