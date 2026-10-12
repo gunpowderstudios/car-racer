@@ -94,7 +94,7 @@ export class Vehicle {
     this.F = new V3(); this.T = new V3();
     this.q = Track.newQuery();
     this.events = [];
-    this.opts = { assist: 0.7 };
+    this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
     this.hullWorld = spec.hull.map(() => new V3());
     // Static ride height: wheel centre at R above ground, suspension length = free - static compression
     const sprungFront = spec.mass * spec.frontWeight / 2;
@@ -197,6 +197,7 @@ export class Vehicle {
       this._tyre(w, drv, dt);
     }
     this._applyDriftYawAssist();
+    this._stability(dt);
 
     // --- aerodynamics
     const v2 = this.vel.lengthSq();
@@ -287,6 +288,31 @@ export class Vehicle {
     this.T.addScaled(this.ay, yawAccel * this.spec.inertia.y);
   }
 
+  /**
+   * Arcade handling layer (opts.stability 0..1; 0 is the raw tyre physics). Like the stability control on a modern car, or the
+   * arcade layer on top of the physics in most racing games: if the car is turning faster than the steering (and the grip) can
+   * explain - the rear has let go - a yaw torque pulls it back into line, so a lift-off, a brake or a stab of throttle
+   * mid-corner swings the tail but does not spin the car. It stands aside whenever you are deliberately drifting.
+   */
+  _stability(dt) {
+    const k = this.opts.stability;
+    if (!(k > 0)) { this.stabTorque = 0; return; }
+    const sp = this.spec, drifting = Math.max(this.driftBlend, this.handbrake ? 1 : 0);
+    if (!this.onGround || this.fwdSpeed < 5 || drifting > 0.05) { this.stabTorque = 0; return; }
+    const yaw = this.angVel.dot(this.ay);
+    // What the front wheels are asking for (a bicycle model with a little built-in understeer), never more than the tyres can give
+    const v = this.fwdSpeed;
+    const ref = v * Math.tan(this.steerAngle) / sp.wheelbase / (1 + (v / 32) ** 2);
+    const lim = 1.05 * sp.tyre.muRear * 9.81 / Math.max(v, 4);
+    const want = clamp(ref, -lim, lim);
+    // how much faster than wanted it is turning, in the direction it is already turning (turning the wrong way counts in full)
+    const over = Math.sign(yaw) === Math.sign(want) || Math.abs(want) < 0.05 ? Math.abs(yaw) - Math.abs(want) : Math.abs(yaw) + Math.abs(want);
+    const tol = 0.18;                                              // rad/s of slack before it steps in
+    const alpha = over > tol ? clamp((over - tol) * 7 * k, 0, 5.5 * k) : 0;    // rad/s^2 of correcting yaw acceleration
+    this.stabTorque = alpha;
+    if (alpha > 0) this.T.addScaled(this.ay, -Math.sign(yaw) * alpha * sp.inertia.y * (1 - drifting));
+  }
+
   // -------------------------------------------------------------- steering
   _steer(dt, input) {
     const st = this.spec.steer;
@@ -305,11 +331,12 @@ export class Vehicle {
       const b = this.spec.frontWeight * this.spec.wheelbase;            // COM to rear axle
       const yawRate = this.angVel.dot(this.ay);
       const rearSlip = Math.atan2(this.latSpeed - yawRate * b, Math.max(this.fwdSpeed, 2));
-      const over = Math.max(0, Math.abs(rearSlip) - 0.12);
+      const stab = this.opts.stability || 0;                              // Arcade handling: the helper steps in earlier, harder and quicker
+      const over = Math.max(0, Math.abs(rearSlip) - (0.12 - 0.04 * stab));
       const gain = this.opts.assist * clamp((this.speed - 4) / 6, 0, 1);
-      assist = Math.sign(rearSlip) * clamp(over * 1.0 * gain, 0, 0.28);
+      assist = Math.sign(rearSlip) * clamp(over * (1 + 0.5 * stab) * gain, 0, 0.28 + 0.06 * stab);
     }
-    this.assistAngle += (assist - this.assistAngle) * (1 - Math.exp(-dt / 0.12));   // no snapping
+    this.assistAngle += (assist - this.assistAngle) * (1 - Math.exp(-dt / (0.12 - 0.04 * (this.opts.stability || 0))));   // no snapping
     angle += this.assistAngle;
     this.steerAngle = clamp(angle, -st.max, st.max);
   }
@@ -473,7 +500,9 @@ export class Vehicle {
       // longitudinal: drive, brake, rolling resistance
       if (w.driven) {
         const want = drv.force / 2;
-        const lim = 0.97 * Fmax;
+        // traction control (Arcade): in a corner, keep the driven tyres off the very edge of grip so the rear still has side grip
+        const tc = this.opts.stability > 0 && !this.handbrake && this.driftBlend < 0.05 ? this.opts.stability * clamp(Math.abs(this.angVel.dot(this.ay)) / 0.25, 0, 1) : 0;
+        const lim = (0.97 - 0.2 * tc) * Fmax;
         if (Math.abs(want) > lim) { Fx += Math.sign(want) * lim; spinning = true; } else Fx += want;
       }
       let brakeF = drv.brake * sp.brakeTotal * (w.front ? sp.brakeBias : 1 - sp.brakeBias) / 2;

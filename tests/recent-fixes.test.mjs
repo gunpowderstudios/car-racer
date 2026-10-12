@@ -368,3 +368,9 @@ test('keys: R resets the camera view, B is back on road, Backspace/Delete restar
 test('laps count on a circuit (and only there): the lap index follows race.max on circuits, and stays put in an arena', () => {
   assert.match(main, /const idx = lapped \? Math\.floor\(race\.max \/ L\) : race\.index;/);
 });
+
+test('Handling option: Arcade (default) turns the stability layer on, Standard is the raw physics', () => {
+  assert.match(indexHtml, /id="opt-handling"/);
+  assert.match(main, /handling: 'arcade'/);
+  assert.match(main, /car\.opts\.stability = opts\.handling === 'standard' \? 0 : 1/);
+});

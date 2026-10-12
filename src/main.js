@@ -41,7 +41,7 @@ const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes
 const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', handling: 'arcade', rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
@@ -252,7 +252,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
   const h = car.restHeight + 0.08;
   car.reset(new V3(f.x + f.lx * offset + f.nx * h, f.y + f.ly * offset + f.ny * h, f.z + f.lz * offset + f.nz * h),
     new V3(f.fx, f.fy, f.fz), new V3(f.nx, f.ny, f.nz), speed);
-  car.opts.assist = opts.assist ? 0.7 : 0;
+  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = opts.handling === 'standard' ? 0 : 1;
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
   race.lastS = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
   if (keepRace) {
@@ -273,7 +273,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
 function placeCarInArena() {
   const A = arenaInfo(track), p = arenaPlayerStart(A);
   car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
-  car.opts.assist = opts.assist ? 0.7 : 0;
+  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = opts.handling === 'standard' ? 0 : 1;
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
   race.lastS = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
   safe.s = race.lastS; safe.off = 0; safe.t = 0;
@@ -708,6 +708,8 @@ function renderMenu() {
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
+  const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';
+  hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = opts.handling === 'standard' ? 0 : 1; store.set('cr.opts', opts); };
   const md = $('opt-mode'); md.value = opts.mode === 'demolition' ? 'demolition' : 'race';
   md.onchange = () => { opts.mode = md.value === 'demolition' ? 'demolition' : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
