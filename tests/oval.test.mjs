@@ -227,10 +227,10 @@ test('crash debris: tiered pool, hooked into hits, walls, wrecks and multiplayer
   assert.ok((main.match(/crashDebris\(/g) || []).length >= 5, 'derby hit, wreck, player wall, mp ram and mp wreck');
 });
 
-test('the Miniskirt is a listed vehicle with its own light, grippy profile', async () => {
+test('the Mini Roundabout is a listed vehicle with its own light, grippy profile', async () => {
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
-  assert.match(src, /id: 'mini',\s*name: 'Miniskirt'/);
+  assert.match(src, /id: 'mini',\s*name: 'Mini Roundabout'/);
   assert.match(src, /url: 'cars\/mini-SHRINK\.glb'/);
   assert.match(src, /pot-noodle your way around corners/);
   assert.ok(existsSync(new URL('../cars/mini-SHRINK.glb', import.meta.url)), 'model file is in the repo');
@@ -293,10 +293,10 @@ test('rivals in The Oval steer round the humps instead of launching off them', (
   assert.ok(air <= near * 0.02, `${air} airborne frames of ${near} on or beside a hump`);
 });
 
-test('Stinky French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile and a menu picture', async () => {
+test('French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile and a menu picture', async () => {
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
-  assert.match(src, /id: 'french-cheese',\s*name: 'Stinky French Cheese'/);
+  assert.match(src, /id: 'french-cheese',\s*name: 'French Cheese'/);
   assert.match(src, /24 eggs across a field/);
   assert.match(src, /url: 'cars\/french-cheese-SHRINK\.glb'/);
   assert.ok(existsSync(new URL('../cars/french-cheese-SHRINK.glb', import.meta.url)), 'model file is in the repo');

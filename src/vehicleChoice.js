@@ -14,7 +14,7 @@ export const VEHICLES = [
   { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
   {
     id: 'mini',
-    name: 'Miniskirt',
+    name: 'Mini Roundabout',
     description: 'A pocket-sized classic! Change the plugs and pot-noodle your way around corners.',
     url: 'cars/mini-SHRINK.glb',
     fit: 'auto',
@@ -25,7 +25,7 @@ export const VEHICLES = [
   },
   {
     id: 'french-cheese',
-    name: 'Stinky French Cheese',
+    name: 'French Cheese',
     description: 'A bouncy French classic! Smooth enough to carry 24 eggs across a field!',
     url: 'cars/french-cheese-SHRINK.glb',
     fit: 'auto',
