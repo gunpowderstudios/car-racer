@@ -94,6 +94,7 @@ export class Vehicle {
     this.F = new V3(); this.T = new V3();
     this.q = Track.newQuery();
     this.events = [];
+    this.hurt = { front: 0, back: 0, left: 0, right: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
     this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
     this.hullWorld = spec.hull.map(() => new V3());
     // Static ride height: wheel centre at R above ground, suspension length = free - static compression
@@ -323,7 +324,9 @@ export class Vehicle {
     const v = Math.max(this.speed, 0.1);
     // Full lock at low speed, tapering to roughly the front tyres' peak slip angle at speed.
     const lock = Math.min(st.max, 0.17 + 36.6 / Math.max(v * v, 60));
-    let angle = this.steerState * lock;
+    const hu = this.hurt;
+    let angle = this.steerState * lock * (1 - 0.18 * hu.front);                     // a crumpled front end: less steering lock...
+    if (this.speed > 3) angle += 0.022 * (hu.left - hu.right);                      // ...and a hurt side drags the car towards it
     // Counter-steer assist: when the REAR axle slides past its grip, point the front
     // wheels along the direction of travel. Normal cornering never triggers it.
     let assist = 0;
@@ -449,6 +452,7 @@ export class Vehicle {
     if (this.rpm > e.limiter) torque = 0;
     if (this.shiftTimer > 0.14) torque *= 0.25;
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
+    force *= 1 - 0.22 * this.hurt.back - 0.10 * this.hurt.front;                   // a damaged rear end (drivetrain) or front (radiator) costs power
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
     // engine braking when off the throttle
     if (drive < 0.05 && this.gear > 0 && this.rpm > e.idle + 400) {
@@ -479,7 +483,8 @@ export class Vehicle {
     const surfMu = w.surface === SURF.ROAD ? 1 : 0.6;
     const muBase = w.front ? ty.muFront : ty.muRear;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
-    const mu = muBase * surfMu * driftRearGrip * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
+    const mu = muBase * surfMu * driftRearGrip * hurtGrip * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.

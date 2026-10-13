@@ -201,7 +201,7 @@ export class Derby {
   }
 
   /** Switch the derby off (plain racing). */
-  stop() { this.fighters.length = 0; this.events.length = 0; this.player = null; this.over = false; this._refreshCars(); }
+  stop() { if (this.player) { const h = this.player.car.hurt; h.front = h.back = h.left = h.right = 0; } this.fighters.length = 0; this.events.length = 0; this.player = null; this.over = false; this._refreshCars(); }
 
   _refreshCars() {
     this.cars.length = 0;
@@ -279,6 +279,10 @@ export class Derby {
     if (!this.enabled || !this.track || !this.player) return;
     const T = this.track, P = this.player, F = this.fighters;
     this.time += dt; this._tick++;
+    for (const f of F) {                                   // damaged cars drive worse: tell each car how much armour it has lost
+      const h = f.car.hurt, hp = f.health;
+      if (h && hp) { h.front = 1 - hp.frac('front'); h.back = 1 - hp.frac('back'); h.left = 1 - hp.frac('left'); h.right = 1 - hp.frac('right'); }
+    }
 
     // -------- rivals think and drive
     const ctx = this._ctx;

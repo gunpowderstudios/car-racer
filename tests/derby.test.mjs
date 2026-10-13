@@ -565,3 +565,32 @@ test('a replacement with no wreck to take over is dropped just behind the player
     assert.ok(d < -30 && d > -260, `spawned ${d.toFixed(0)} m from the player`);
   }
 });
+
+test('damage affects driving: a hurt rear end is slower, a hurt side pulls the car, and a fresh car is unchanged', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const run = (hurt, seconds, input) => {
+    const car = new Vehicle(); placeOnRoad(car, track, 100, 0, 0);
+    Object.assign(car.hurt, hurt);
+    const start = car.pos.clone ? car.pos.clone() : { x: car.pos.x, z: car.pos.z };
+    for (let i = 0; i < seconds / DT; i++) { car.step(DT, input, track); car.events.length = 0; }
+    return car;
+  };
+  const gas = { throttle: 1, brake: 0, steer: 0, handbrake: false, boost: false };
+  const fresh = run({}, 6, gas), rear = run({ back: 0.8 }, 6, gas);
+  assert.ok(rear.speed < fresh.speed * 0.95, `rear damage ${rear.speed.toFixed(1)} vs ${fresh.speed.toFixed(1)}`);
+  assert.ok(rear.speed > fresh.speed * 0.7, 'but it limps, it does not crawl');
+  const straight = (hurt) => { const c = new Vehicle(); placeOnRoad(c, track, 100, 0, 22); Object.assign(c.hurt, hurt); let yaw = 0; for (let i = 0; i < 1.5 / DT; i++) { c.step(DT, { ...gas, throttle: 0.3 }, track); c.events.length = 0; yaw += c.angVel.dot(c.ay) * DT; } return yaw; };
+  const y0 = straight({}), yl = straight({ left: 0.8 }), yr = straight({ right: 0.8 });
+  assert.ok(yl - y0 > 0.05 && y0 - yr > 0.05, `a hurt left side pulls left (+), a hurt right side pulls right (-): ${y0.toFixed(3)} ${yl.toFixed(3)} ${yr.toFixed(3)}`);
+});
+
+test('the derby keeps each car\'s hurt fractions in step with its health', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle(); placeOnRoad(player, track, 100, 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 2, 3);
+  derby.player.health.hit('back', derby.player.health.max.back * 0.5);
+  derby.step(DT, null);
+  assert.ok(Math.abs(player.hurt.back - 0.5) < 0.01 && player.hurt.front === 0, JSON.stringify(player.hurt));
+  derby.stop();
+  assert.equal(player.hurt.back, 0, 'plain racing: no damage');
+});
