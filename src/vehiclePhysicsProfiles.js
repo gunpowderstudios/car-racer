@@ -259,6 +259,33 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 1.12,
   },
 
+  'volvo': {
+    reference: '1980s Volvo 240 estate-style RWD load-lugger (heavy, solid, stable, a bit understeery)',
+    mass: 1420,
+    frontWeight: 0.56,
+    wheelbase: 2.64,
+    track: 1.44,
+    wheelRadius: 0.32,
+    mountY: 0.10,
+    inertia: { x: 3000, y: 3500, z: 1000 },
+    susp: {
+      free: 0.46, travel: 0.26,
+      kFront: 29500, kRear: 27500,
+      cCompFront: 2200, cCompRear: 2100, cRebFront: 3100, cRebRear: 3000,
+      arbFront: 11000, arbRear: 7000, bump: 175000, bumpDamp: 8000,
+    },
+    tyre: { muFront: 1.10, muRear: 1.12, B: 10.2, C: 1.20, slideMu: 0.84, loadSens: 0.06, rolling: 0.016 },
+    engine: { peakTorque: 255 },
+    brakeG: 1.22,
+    brakeBias: 0.62,
+    wallBounce: 0.25,
+    aero: { drag: 0.62, down: 0.14 },
+    steer: { max: 0.54, rate: 4.2, returnRate: 6.2 },
+    boost: { accel: 3.8 },
+    body: { width: 1.71, length: 4.79, bottom: -0.44, shoulder: 0.36, roof: 1.36, roofWidth: 1.46, roofLength: 2.80 },
+    mpDamageMul: 0.90,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',
