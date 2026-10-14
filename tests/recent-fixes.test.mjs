@@ -158,8 +158,8 @@ test('vehicle model cache busting follows the game version', () => {
   const gameVersion = versionFile.match(/VERSION = '([^']+)'/)?.[1];
   const modelVersion = assetVersion.match(/ASSET_VERSION = '([^']+)'/)?.[1];
   assert.equal(modelVersion, gameVersion);
-  assert.match(vehicleChoice, /assetUrl\(url \|\| config\.url\)/);
-  assert.match(vehicleChoice, /fetch\(assetUrl\(selectedVehicle\(\)\.url\)/);
+  assert.match(vehicleChoice, /assetUrl\(modelUrl\(url \|\| config\.url\)\)/);
+  assert.match(vehicleChoice, /fetch\(assetUrl\(modelUrl\(selectedVehicle\(\)\.url\)\)/);
   assert.match(howMade, /loader\.loadAsync\(assetUrl\(car\.url\)\)/);
   assert.match(serviceWorker, /const MODEL = \/\\\.glb\$\/i/);
   assert.match(serviceWorker, /MODEL\.test\(url\.pathname\)/);

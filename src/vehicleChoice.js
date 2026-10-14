@@ -5,6 +5,7 @@ import { SPECS } from './damage.js';
 import { Multiplayer } from './multiplayer.js';
 import { assetUrl } from './assetVersion.js';
 import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
+import { TIER_NAMES, detectTier, probeDevice } from './quality.js';
 
 // Player vehicle catalogue. Add the model here and point `physicsProfile` at the matching
 // entry in vehiclePhysicsProfiles.js. Physics stays platform-independent and shared by all modes.
@@ -88,6 +89,24 @@ export const VEHICLES = [
   },
 ];
 
+// Lighter copies of the heavy models (cars/lite/, about 30-50k triangles instead of 100-320k, made with gltfpack) for phones and
+// other non-'high' devices. `url` stays the car's identity (multiplayer matches on it); only the file that gets fetched changes.
+// ?lite=1 / ?lite=0 forces it on or off for testing.
+export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/bus-SHRINK.glb'];
+function wantLite() {
+  try {
+    const qs = new URLSearchParams(location.search), force = qs.get('lite');
+    if (force === '1') return true;
+    if (force === '0') return false;
+    const q = qs.get('q'); let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('cr.opts'))?.quality; } catch { /* no saved options */ }
+    const forced = TIER_NAMES.includes(q) ? q : TIER_NAMES.includes(saved) ? saved : null;
+    return detectTier({ forced, ...probeDevice() }) !== 'high';
+  } catch { return false; }
+}
+const USE_LITE = wantLite();
+export function modelUrl(url) { return USE_LITE && LITE_MODELS.includes(url) ? url.replace('cars/', 'cars/lite/') : url; }
+
 const KEY = 'cr.vehicle';
 const MP_RESTORE_KEY = 'cr.mpVehicleRestore';
 const fallback = VEHICLES[0];
@@ -124,7 +143,7 @@ export function vehicleById(id) {
 
 // Kick off the selected GLB request as soon as this module loads. GLTFLoader will then normally
 // hit the browser cache when the scene asks for the model a moment later, reducing the blank wait.
-try { fetch(assetUrl(selectedVehicle().url), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
+try { fetch(assetUrl(modelUrl(selectedVehicle().url)), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
 
 export function physicsForVehicle(config) {
   const p = vehiclePhysicsProfile(config?.physicsProfile || config?.id || 'car');
@@ -474,7 +493,7 @@ CarVisual.prototype.load = async function patchedVehicleLoad(url, explicitConfig
     this.placeholder.scale.set(profile.body.width / 1.85, 1, (config.targetLength || profile.body.length) / 4.85);
   }
 
-  await originalLoad.call(this, assetUrl(url || config.url));
+  await originalLoad.call(this, assetUrl(modelUrl(url || config.url)));
 
   if (!config || !this.model) return;
   if (config.neutralBody) for (const m of this.mats || []) if (m.map) m.map.userData.neutralBody = true;

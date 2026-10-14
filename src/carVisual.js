@@ -37,6 +37,19 @@ export function tidyGltfMaterial(m) {
   if (m && m.metalness >= 1 && m.roughness >= 1) { m.metalness = 0; m.roughness = 0.54; }
 }
 const RIVAL_TEX_MAX = 1024;
+/** Phones: shrink a car's 2048px textures to `max` px before they go to the graphics card (a quarter of the memory and bandwidth). */
+function shrinkTexture(t, max) {
+  try {
+    const img = t.image, sw = img && img.width, sh = img && img.height;
+    if (!sw || !sh || Math.max(sw, sh) <= max) return;
+    const k = max / Math.max(sw, sh), w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, w, h);
+    if (img.close) img.close();
+    t.image = cv; t.needsUpdate = true;
+  } catch { /* keep the full-size picture */ }
+}
+
 const recoloured = new WeakMap();
 const pristine = new WeakMap();
 
@@ -84,6 +97,7 @@ function recolour(tex, look) {
     out = new THREE.CanvasTexture(cv);
     out.flipY = tex.flipY; out.colorSpace = tex.colorSpace; out.wrapS = tex.wrapS; out.wrapT = tex.wrapT;
     out.minFilter = tex.minFilter; out.magFilter = tex.magFilter; out.anisotropy = tex.anisotropy; out.channel = tex.channel;
+    out.offset.copy(tex.offset); out.repeat.copy(tex.repeat); out.center.copy(tex.center); out.rotation = tex.rotation;   // the lite models keep their UV scale/offset here (KHR_texture_transform)
   } catch (e) { console.warn('Could not recolour the rival texture, tinting instead.', e); out = null; }
   per.set(look, out);
   return out;
@@ -109,6 +123,7 @@ export async function warmRivalLooks(src, count, upload) {
 
 export class CarVisual {
   static aniso = 8;   // texture anisotropy; main.js sets this from the quality tier before any model loads
+  static texMax = 0;  // 0 = keep full-size car textures; otherwise shrink them to this many pixels (set from the quality tier)
   static dentMax = 0; // how many crash dents a car can show at once (0 = none); main.js sets this from the quality tier too
   constructor(scene, restHeight) {
     this.restHeight = restHeight;
@@ -248,7 +263,7 @@ export class CarVisual {
         if (mats.some((m) => m && m.map)) {
           this.hasTexture = true;
           for (const m of mats) {
-            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.anisotropy = CarVisual.aniso;
+            for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) { t.anisotropy = CarVisual.aniso; if (CarVisual.texMax) shrinkTexture(t, CarVisual.texMax); }
             m.envMapIntensity = 0.8;
             tidyGltfMaterial(m);
             this.mats.push(m);

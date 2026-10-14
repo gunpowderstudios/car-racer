@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { VEHICLES, selectedVehicle } from './vehicleChoice.js';
+import { VEHICLES, selectedVehicle, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
 import { tidyGltfMaterial } from './carVisual.js';
 
@@ -80,7 +80,7 @@ function installPreview({
     };
 
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-    loader.loadAsync(assetUrl(vehicle.url)).then((gltf) => {
+    loader.loadAsync(assetUrl(modelUrl(vehicle.url))).then((gltf) => {
       model = gltf.scene;
       model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });
       holder.add(model);

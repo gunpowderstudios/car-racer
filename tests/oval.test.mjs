@@ -358,3 +358,16 @@ test('Rootmaster (the London bus) is a listed vehicle with its own heavy profile
   const b = vehiclePhysicsProfile('bus'), mh = vehiclePhysicsProfile('motor-home');
   assert.ok(b && b.mass > mh.mass && b.steer.max < mh.steer.max, 'heavier and slower to turn than the motorhome');
 });
+
+test('heavy car models have light copies for phones, and every listed light copy exists', async () => {
+  const { readFileSync, existsSync, statSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  const list = /LITE_MODELS = \[([^\]]+)\]/.exec(src)[1].match(/cars\/[^']+/g);
+  assert.ok(list.length >= 6);
+  for (const u of list) {
+    const lite = new URL('../' + u.replace('cars/', 'cars/lite/'), import.meta.url), full = new URL('../' + u, import.meta.url);
+    assert.ok(existsSync(lite), `${u} has a light copy`);
+    assert.ok(statSync(lite).size < statSync(full).size, 'and it is smaller');
+  }
+  assert.match(readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8'), /out\.offset\.copy\(tex\.offset\)/, 'rival paint keeps the light models\' UV transform');
+});

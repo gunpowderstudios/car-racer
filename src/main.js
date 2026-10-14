@@ -45,6 +45,7 @@ const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, pain
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
+CarVisual.texMax = tierName === 'high' ? 0 : 1024;          // phones: car textures at 1024px instead of 2048
 const userTracks = () => store.get('cr.tracks', {});
 const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
 
