@@ -306,11 +306,10 @@ test('French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile an
   assert.ok(fc.susp.travel > mini.susp.travel && fc.mass < esc.mass && fc.body.length > mini.body.length);
 });
 
-test('story mode: four circuits, eight laps, rising skill, five of nine go through', async () => {
+test('story mode: four circuits, one lap each, rising skill, five of nine go through', async () => {
   const { STORY, pointsFor, newTable, addStage, standings, survivors } = await import('../src/storyData.js');
   assert.equal(STORY.stages.length, 4);
-  assert.equal(STORY.stages.reduce((n, s) => n + s.laps, 0), 8);
-  assert.deepEqual(STORY.stages.map((s) => s.laps), [1, 2, 2, 3]);
+  assert.deepEqual(STORY.stages.map((s) => s.laps), [1, 1, 1, 1], 'one lap each by default; the Laps option raises it');
   for (let i = 1; i < 4; i++) assert.ok(STORY.stages[i].skill >= STORY.stages[i - 1].skill, 'never gets easier');
   assert.ok(STORY.stages.every((s) => TEMPLATE_KEYS.includes(s.key) && s.key !== 'oval'), 'real circuits, not the arena');
   assert.equal(STORY.rivals + 1, 9);

@@ -1,8 +1,9 @@
 // Story mode: a four-race points championship against eight named rivals.
-//   Stage 1  Speedway   1 lap   easy      9 cars, top 5 in the standings go on
-//   Stage 2  Technical  2 laps  medium    5 cars, top 4 go on
-//   Stage 3  Hills      2 laps  hard      4 cars, top 3 go on
-//   Stage 4  Overpass   3 laps  hard      3 cars, points leader is champion
+//   Stage 1  Speedway   easy      9 cars, top 5 in the standings go on
+//   Stage 2  Technical  medium    5 cars, top 4 go on
+//   Stage 3  Hills      hard      4 cars, top 3 go on
+//   Stage 4  Overpass   hard      3 cars, points leader is champion
+// Every stage is one lap unless the Laps option is raised, which applies to all stages.
 // Every race pays 5/3/2/1 points; the cut is made on total points (then wins, then latest finish). Rivals who are cut do not race again.
 // The race itself is the normal Race mode (wrecked = respawn); this file picks each stage's settings, keeps the table and runs the results panel.
 // It talks to the game through window.__app (main.js), window.__raceLaps (raceSettings.js) and the 'carracer-player-finish' event (soloRacePosition.js).
@@ -47,6 +48,8 @@ function ensureUi() {
 }
 
 function stageDef(i) { return STORY.stages[i]; }
+/** Laps for a stage: one by default, or whatever the Laps option was set to when the story began. */
+function lapsFor(i) { return Math.max(1, (state.saved && state.saved.laps) || stageDef(i).laps); }
 
 const nameOf = (id) => id === 'you' ? 'You' : (STORY.roster.find((r) => r.id === id) || {}).name || id;
 const rivalsAlive = () => state.alive.filter((id) => id !== 'you');
@@ -54,12 +57,12 @@ const rivalsAlive = () => state.alive.filter((id) => id !== 'you');
 function applyStage(i) {
   const app = window.__app, s = stageDef(i), rv = rivalsAlive();
   app.opts.mode = 'race'; app.opts.rivals = Math.max(1, rv.length);
-  window.__raceLaps?.set?.(s.laps);
+  window.__raceLaps?.set?.(lapsFor(i));
   app.derby.skill = s.skill;
   app.derby.slotSkill = {};                                             // grid slot n is the nth surviving rival
   rv.forEach((id, k) => { app.derby.slotSkill[k + 1] = (STORY.roster.find((r) => r.id === id) || {}).skill || 0; });
   const def = app.makeTemplate(s.key);
-  Object.assign(state, { active: true, stage: i, laps: s.laps, name: def.name });
+  Object.assign(state, { active: true, stage: i, laps: lapsFor(i), name: def.name });
   return def;
 }
 
@@ -90,7 +93,7 @@ export function startStory(i = 0, resume = null) {
   ensureUi();
   if (intro) {
     intro.querySelector('strong').textContent = `Stage ${i + 1} of ${STORY.stages.length}`;
-    intro.querySelector('span').textContent = `${def.name} - ${s.laps} ${s.laps === 1 ? 'lap' : 'laps'} - ${s.level} - ${STORY.points.join('/')} points${STORY.keep[i] ? ` - top ${STORY.keep[i]} go on` : ' - points leader wins'}`;
+    intro.querySelector('span').textContent = `${def.name} - ${lapsFor(i)} ${lapsFor(i) === 1 ? 'lap' : 'laps'} - ${s.level} - ${STORY.points.join('/')} points${STORY.keep[i] ? ` - top ${STORY.keep[i]} go on` : ' - points leader wins'}`;
     const names = intro.querySelector('em'); if (names) names.textContent = 'Racing: ' + rivalsAlive().map(nameOf).join(', ');
     intro.hidden = false; clearTimeout(introTimer); introTimer = setTimeout(() => { intro.hidden = true; }, 4200);
   }
@@ -124,12 +127,12 @@ function show(kind, place, rows, cutAfter) {
   } else if (last) {
     const champ = mine === 1;
     h.textContent = champ ? 'Champion!' : 'Season over!'; line.textContent = `You finished ${ordinal(mine)} overall on ${mp} points.`;
-    next.textContent = champ ? 'Four circuits, eight laps, and you beat the lot.' : `${nameOf(rows[0].id)} takes the title. Go again?`;
+    next.textContent = champ ? 'Four circuits, and you beat the lot.' : `${nameOf(rows[0].id)} takes the title. Go again?`;
     primary = add('Play again', () => startStory(0), 'btn-play'); add('Menu', () => { endStory(); window.__app.showMenu(); });
   } else {
     const n = stageDef(i + 1), nd = window.__app.makeTemplate(n.key);
     h.textContent = `Stage ${i + 1} complete!`; line.textContent = `${ordinal(place)} in the race (+${pointsFor(place)} pts) - ${ordinal(mine)} overall, you're through.`;
-    next.textContent = `Next: ${nd.name}, ${n.laps} ${n.laps === 1 ? 'lap' : 'laps'}, ${n.level}.`;
+    next.textContent = `Next: ${nd.name}, ${lapsFor(i + 1)} ${lapsFor(i + 1) === 1 ? 'lap' : 'laps'}, ${n.level}.`;
     primary = add('Next stage', () => startStory(i + 1, true), 'btn-play'); add('Menu', () => { endStory(); window.__app.showMenu(); });
   }
   line.parentNode.insertBefore(table(rows, cutAfter), next);

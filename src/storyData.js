@@ -1,4 +1,4 @@
-// The rules of story mode (see storyMode.js for how they are played): four circuits, eight laps, a points championship.
+// The rules of story mode (see storyMode.js for how they are played): four circuits, a points championship. Every stage is one lap unless you raise the Laps option in the menu (that setting applies to every stage).
 // Every stage pays 5 / 3 / 2 / 1 points to the first four home. After stages 1-3 the standings are cut: only the top
 // `keep[stage]` drivers (you and the named rivals alike) go on. After the final, the points leader is champion.
 
@@ -8,9 +8,9 @@ export const STORY = {
   keep: [5, 4, 3],
   stages: [
     { key: 'speedway',  laps: 1, skill: 0.4,  level: 'Easy' },
-    { key: 'technical', laps: 2, skill: 0.55, level: 'Medium' },
-    { key: 'hills',     laps: 2, skill: 0.75, level: 'Hard' },
-    { key: 'overpass',  laps: 3, skill: 0.85, level: 'Hard' },
+    { key: 'technical', laps: 1, skill: 0.55, level: 'Medium' },
+    { key: 'hills',     laps: 1, skill: 0.75, level: 'Hard' },
+    { key: 'overpass',  laps: 1, skill: 0.85, level: 'Hard' },
   ],
   // The regulars. `skill` nudges their driving up or down from the stage's level, so each has a different pace.
   roster: [
