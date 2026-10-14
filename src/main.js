@@ -115,6 +115,7 @@ let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
 let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
+let hornVoice = null;
 let throttleNow = 0, wallSpot = null;
 const race = { unwrapped: 0, max: 0, lastS: null, index: -1, lapStart: null, laps: 0, best: null, reverseT: 0, lastTime: null };
 const safe = { s: 0, off: 0, t: 0 };
@@ -366,6 +367,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
+  if (raw.horn && !hornVoice) hornVoice = sound.hornStart() || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt; let n = 0;
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
@@ -459,6 +461,8 @@ function derbyEvents() {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
     } else if (e.type === 'award') {
       hud.feed(`+${e.points} ${e.label}`);
+    } else if (e.type === 'honk') {
+      sound.honk(e.dist, e.pitch);
     } else if (e.type === 'respawn') {
       respawn(); visual.clearDents(); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner('Respawned - back in the race!', 1600);

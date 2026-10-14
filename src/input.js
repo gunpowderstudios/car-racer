@@ -5,7 +5,7 @@ export class Input {
   constructor({ onReset, onRestart, onPadConnect, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror } = {}) {
     this.keys = new Set();
     this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
-    this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false };
+    this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false, horn: false };
     this._prevPad = {};
     this.enabled = true;
     // R (reset camera view) lives in cameraOrbit.js; B puts the car back on the road; Backspace / Delete restart the race.
@@ -35,7 +35,7 @@ export class Input {
 
   _poll() {
     const gp = (navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g && g.connected) : null);
-    if (!gp) { this.pad.throttle = this.pad.brake = this.pad.steer = 0; this.pad.hand = this.pad.boost = false; return; }
+    if (!gp) { this.pad.throttle = this.pad.brake = this.pad.steer = 0; this.pad.hand = this.pad.boost = this.pad.horn = false; return; }
     // Standard gamepad layout (Xbox / PlayStation / Switch Pro in a browser): left stick or D-pad steers, RT gas, LT brake,
     // A or X boost, B or RB drift, Y back on road, LB camera, right-stick click reset view, Start menu, Back/Select restart.
     const dz = (v) => { const a = Math.abs(v); return a < 0.12 ? 0 : Math.sign(v) * Math.pow((a - 0.12) / 0.88, 1.4); };   // dead zone, then gentle curve for fine control
@@ -45,6 +45,7 @@ export class Input {
     this.pad.brake = gp.buttons[6]?.value || 0;
     this.pad.hand = !!(gp.buttons[1]?.pressed || gp.buttons[5]?.pressed);
     this.pad.boost = !!(gp.buttons[0]?.pressed || gp.buttons[2]?.pressed);   // A or X
+    this.pad.horn = !!gp.buttons[10]?.pressed;                                // left-stick click: horn
     const edge = (i, fn) => { const p = !!gp.buttons[i]?.pressed; if (p && !this._prevPad[i]) fn?.(); this._prevPad[i] = p; };
     edge(3, this.callbacks.onReset); edge(4, this.callbacks.onCamera); edge(9, this.callbacks.onMenu); edge(8, this.callbacks.onRestart);
     edge(11, () => window.__resetCameraView?.());
@@ -62,6 +63,7 @@ export class Input {
       steer: clamp(steerKeys + this.pad.steer, -1, 1),
       handbrake: key('ShiftLeft', 'ShiftRight') || t.hand || this.pad.hand,
       boost: key('Space') || t.boost || this.pad.boost,
+      horn: key('KeyH') || this.pad.horn,
     };
   }
 }

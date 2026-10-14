@@ -29,6 +29,10 @@ export const POINTS = {
 
 export const DERBY = {
   rivals: 6,             // how many live rivals the derby tries to keep in play
+  hornClosing: 7,        // a rival honks when it is closing on you at least this fast (m/s)...
+  hornTtc: 0.9,          // ...and would reach you within this many seconds
+  hornCooldown: 9,       // seconds before the same rival may honk again
+  hornGap: 4,            // seconds between honks from the whole field: no continuous horning
   stallFrac: 0.14,       // one hit this big (as a share of that zone's armour) stalls your engine: a hard wall hit, a proper T-bone
   stallFracRival: 0.28,  // ...rivals have far less armour, so it takes a bigger bang to stall one
   grace: 3,              // seconds after the start before anything can hurt you
@@ -304,6 +308,26 @@ export class Derby {
       }
       try { f.car.step(dt, f.wrecked ? IDLE : f.inp, T); }
       catch { this._remove(f); }
+    }
+
+    // -------- a rival about to hit you leans on the horn - once in a while, never a constant racket
+    this._hornGap = (this._hornGap || 0) - dt;
+    if (this._hornGap <= 0 && !P.wrecked && this.time > DERBY.grace) {
+      const pc = P.car;
+      for (const f of F) {
+        if (f.isPlayer || f.gone || f.wrecked || f.car.engineOff) continue;
+        f.hornT = (f.hornT || 0) - dt;
+        if (f.hornT > 0 || (this._tick + f.id) % 3) continue;
+        const px = pc.pos.x - f.car.pos.x, pz = pc.pos.z - f.car.pos.z, d = Math.hypot(px, pz);
+        if (d > 30 || d < 2 || Math.abs(pc.pos.y - f.car.pos.y) > 3) continue;
+        const closing = ((f.car.vel.x - pc.vel.x) * px + (f.car.vel.z - pc.vel.z) * pz) / d;      // m/s the gap is shrinking
+        const ttc = (d - 3.5) / Math.max(closing, 0.1);
+        if (closing > DERBY.hornClosing && ttc < DERBY.hornTtc) {
+          f.hornT = DERBY.hornCooldown + this.rng() * 4; this._hornGap = DERBY.hornGap;
+          this.events.push({ type: 'honk', id: f.id, dist: d, pitch: 0.85 + ((f.id * 37) % 10) / 25 });
+          break;
+        }
+      }
     }
 
     // -------- walls and the ground, from every car's own events

@@ -121,6 +121,26 @@ export class Sound {
   explode(dist = 0) { this._shot('explosion', 1, 0.92 + Math.random() * 0.16, dist); }
   /** A drum being knocked about: a clang whose loudness follows how hard it was hit. */
   clang(speed, dist = 0) { this._shot('barrel', Math.min(1, 0.4 + speed / 12), 0.85 + Math.random() * 0.4, dist, 0.6); }
+  /** A car horn: two close notes (a major third) in a buzzy, squashed tone. `pitch` makes each car's horn a little different. */
+  _hornVoice(gain, pitch) {
+    const c = this.ctx, t = c.currentTime, g = c.createGain(), lp = c.createBiquadFilter(), oscs = [];
+    lp.type = 'lowpass'; lp.frequency.value = 1700; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.02);
+    for (const [f, type] of [[392 * pitch, 'sawtooth'], [494 * pitch, 'square']]) {
+      const o = c.createOscillator(); o.type = type; o.frequency.value = f; o.connect(lp); o.start(t); oscs.push(o);
+    }
+    lp.connect(g).connect(this.sfx);
+    let done = false;
+    return { stop: (after = 0) => { if (done && after === 0) return; try { const n = c.currentTime + after; g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(0, n, 0.025); for (const o of oscs) o.stop(n + 0.2); done = true; } catch { /* already stopped */ } } };
+  }
+  /** Hold-to-honk for the player: starts a voice and returns it; call .stop() on the voice when the key comes up. */
+  hornStart() { if (!this.ready || !this.sfxOn) return null; const v = this._hornVoice(0.42, 1); v.stop(1.6); return v; }
+  /** A rival's short honk (two toots), quieter with distance. */
+  honk(dist = 0, pitch = 1) {
+    if (!this.ready || !this.sfxOn) return;
+    const gain = 0.4 * clamp01(1 - dist / 70); if (gain < 0.03) return;
+    const a = this._hornVoice(gain, pitch); a.stop(0.16);
+    setTimeout(() => { if (this.ctx) { const b = this._hornVoice(gain, pitch); b.stop(0.2); } }, 230);
+  }
   /** A chicken meeting its end. */
   splat(dist = 0) { this._shot('cluck', 0.85, 0.85 + Math.random() * 0.3, dist, 0.5); }
 }

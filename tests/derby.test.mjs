@@ -634,3 +634,22 @@ test('a big hit stalls the engine, a small one does not, and a rival turns the k
   for (let i = 0; i < 8 / DT; i++) { derby.step(DT, null); player.step(DT, { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, track); r.car.step(DT, r.inp || { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, track); }
   assert.ok(!r.car.engineOff && player.engineOff, 'the rival restarted itself; you have to restart yours');
 });
+
+test('rivals honk before an impact, but only now and then', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle(); placeOnRoad(player, track, 300, 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 3, 8);
+  derby.time = 10;
+  const r = derby.fighters.find((f) => !f.isPlayer);
+  placeOnRoad(r.car, track, 285, 0, 26);                       // a rival charging up behind you
+  r.car.vel.set(0, 0, 0); r.car.vel.copy(r.car.az).scale(26); r.inp = { throttle: 1, brake: 0, steer: 0, handbrake: false, boost: false };
+  const honks = [];
+  for (let i = 0; i < 0.6 / DT; i++) { derby.step(DT, null); for (const e of derby.events) if (e.type === 'honk') honks.push(e); derby.events.length = 0; player.step(DT, { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, track); }
+  assert.ok(honks.length >= 1, 'a rival about to rear-end you honks');
+  assert.ok(honks.length <= 1, 'but only once');
+  // the whole field is rate limited: parked cars close by never honk
+  const a2 = new Vehicle(); placeOnRoad(a2, track, 300, 0, 0);
+  const d2 = new Derby(); d2.enabled = true; d2.damageEnabled = true; d2.start(track, a2, 3, 8); d2.time = 10;
+  let n = 0; for (let i = 0; i < 20 / DT; i++) { d2.step(DT, null); for (const e of d2.events) if (e.type === 'honk') n++; d2.events.length = 0; }
+  assert.ok(n <= 3, `a quiet field is a quiet field (${n} honks)`);
+});
