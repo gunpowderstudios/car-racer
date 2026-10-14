@@ -336,3 +336,14 @@ test('Cuddly Panda is a listed vehicle with its own profile, model and menu pict
   const pa = vehiclePhysicsProfile('panda');
   assert.ok(pa && pa.mass > 700 && pa.mass < 1000 && pa.wheelbase < 2.6);
 });
+
+test('Swedish Massage (the Volvo estate) is a listed vehicle with its own profile, model and menu picture', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'volvo',\s*name: 'Swedish Massage',\s*description: 'Handy for shifting junk up hills!'/);
+  assert.ok(existsSync(new URL('../cars/volvo-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/thumbs/volvo.webp', import.meta.url)));
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const v = vehiclePhysicsProfile('volvo');
+  assert.ok(v && v.mass > 1300 && v.wheelbase > 2.5);
+});

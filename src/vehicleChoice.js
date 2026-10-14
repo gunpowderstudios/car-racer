@@ -44,6 +44,16 @@ export const VEHICLES = [
     physicsProfile: 'panda',
   },
   {
+    id: 'volvo',
+    name: 'Swedish Massage',
+    description: 'Handy for shifting junk up hills!',
+    url: 'cars/volvo-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 4.79,
+    damageMul: 0.9,                  // built like a brick: takes 10% less from every hit
+    physicsProfile: 'volvo',
+  },
+  {
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",
