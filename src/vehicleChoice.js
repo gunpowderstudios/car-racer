@@ -34,6 +34,16 @@ export const VEHICLES = [
     physicsProfile: 'french-cheese',
   },
   {
+    id: 'panda',
+    name: 'Cuddly Panda',
+    description: 'Eats, shoots and leaves!',
+    url: 'cars/panda-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 3.54,
+    damageMul: 1.15,                 // small and light: not much to crumple
+    physicsProfile: 'panda',
+  },
+  {
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",

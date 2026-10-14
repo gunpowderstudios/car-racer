@@ -233,6 +233,32 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 1.15,
   },
 
+  'panda': {
+    reference: 'Fiat Panda-style supermini (small, tall, light, surprisingly tough and grippy)',
+    mass: 860,
+    frontWeight: 0.61,
+    wheelbase: 2.30,
+    track: 1.36,
+    wheelRadius: 0.29,
+    mountY: 0.08,
+    inertia: { x: 1450, y: 1350, z: 650 },
+    susp: {
+      free: 0.38, travel: 0.24,
+      kFront: 15500, kRear: 14500,
+      cCompFront: 1250, cCompRear: 1150, cRebFront: 1750, cRebRear: 1650,
+      arbFront: 7500, arbRear: 5200, bump: 110000, bumpDamp: 5000,
+    },
+    tyre: { muFront: 1.16, muRear: 1.14, B: 10.8, C: 1.24, slideMu: 0.88, loadSens: 0.055, rolling: 0.016 },
+    engine: { peakTorque: 118 },
+    brakeG: 1.25,
+    brakeBias: 0.60,
+    wallBounce: 0.30,
+    aero: { drag: 0.46, down: 0.10 },
+    steer: { max: 0.62, rate: 5.2, returnRate: 7.2 },
+    body: { width: 1.60, length: 3.54, bottom: -0.34, shoulder: 0.30, roof: 1.30, roofWidth: 1.38, roofLength: 1.90 },
+    mpDamageMul: 1.12,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',

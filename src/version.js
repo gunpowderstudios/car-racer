@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.85';
-export const NOTE = 'Story stages are one lap each by default; the Laps option raises it for every stage';
+export const VERSION = '17.86';
+export const NOTE = 'New vehicle: Cuddly Panda (Fiat Panda) with its own physics profile and gallery picture';

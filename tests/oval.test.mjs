@@ -324,3 +324,15 @@ test('story mode: four circuits, one lap each, rising skill, five of nine go thr
   assert.equal(survivors(t, 0).length, 5); assert.equal(survivors(t, 3).length, 9, 'the final cuts nobody');
   assert.ok(survivors(t, 0).includes('you'));
 });
+
+test('Cuddly Panda is a listed vehicle with its own profile, model and menu picture', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'panda',\s*name: 'Cuddly Panda',\s*description: 'Eats, shoots and leaves!'/);
+  assert.match(src, /url: 'cars\/panda-SHRINK\.glb'/);
+  assert.ok(existsSync(new URL('../cars/panda-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/thumbs/panda.webp', import.meta.url)));
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const pa = vehiclePhysicsProfile('panda');
+  assert.ok(pa && pa.mass > 700 && pa.mass < 1000 && pa.wheelbase < 2.6);
+});
