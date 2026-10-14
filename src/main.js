@@ -115,7 +115,7 @@ let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
 let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
-let hornVoice = null;
+let hornVoice = null, frozen = false;
 let throttleNow = 0, wallSpot = null;
 const race = { unwrapped: 0, max: 0, lastS: null, index: -1, lapStart: null, laps: 0, best: null, reverseT: 0, lastTime: null };
 const safe = { s: 0, off: 0, t: 0 };
@@ -364,6 +364,7 @@ function updateRace(dt) {
 
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
+  if (frozen) return;                                            // the story-mode results panel is up: hold the race still
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
@@ -1149,3 +1150,6 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   $('mp-join-name').value = store.get('cr.mpname', '');
   $('mp-code').value = params.get('room').toUpperCase();
 }
+
+// What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
+window.__app = { startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

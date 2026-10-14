@@ -305,3 +305,15 @@ test('French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile an
   assert.ok(fc.reference.includes('2CV') && fc.susp.kFront / fc.mass < mini.susp.kFront / mini.mass, 'softer sprung than the Mini');
   assert.ok(fc.susp.travel > mini.susp.travel && fc.mass < esc.mass && fc.body.length > mini.body.length);
 });
+
+test('story mode: four circuits, eight laps, rising skill, five of nine go through', async () => {
+  const { STORY, qualifies } = await import('../src/storyData.js');
+  assert.equal(STORY.stages.length, 4);
+  assert.equal(STORY.stages.reduce((n, s) => n + s.laps, 0), 8);
+  assert.deepEqual(STORY.stages.map((s) => s.laps), [1, 2, 2, 3]);
+  for (let i = 1; i < 4; i++) assert.ok(STORY.stages[i].skill >= STORY.stages[i - 1].skill, 'never gets easier');
+  assert.ok(STORY.stages.every((s) => TEMPLATE_KEYS.includes(s.key) && s.key !== 'oval'), 'real circuits, not the arena');
+  assert.equal(STORY.rivals + 1, 9);
+  assert.ok(qualifies(5, 9) && !qualifies(6, 9), 'best five of nine');
+  assert.ok(qualifies(1, 2) && !qualifies(2, 2), 'a small field: everyone but last');
+});

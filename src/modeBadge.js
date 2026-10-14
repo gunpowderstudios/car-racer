@@ -32,7 +32,11 @@ function update() {
   const g = window.__game;
   if (!g || !g.derby || !g.derby.enabled || getCurrentMultiplayer()) { el.hidden = true; return; }
   let text, demo = false;
-  if (g.derby.demolition) {
+  const story = window.__story && window.__story.active ? window.__story : null;
+  if (story && !g.derby.demolition) {
+    const laps = raceLaps();
+    text = `Story ${story.stage + 1}/${story.total} - lap ${Math.max(1, Math.min(laps, (g.race?.index ?? -1) + 1))} of ${laps} - top ${story.qualify} go through`;
+  } else if (g.derby.demolition) {
     const n = g.derby._standing();
     text = `Last one standing - ${n} ${n === 1 ? 'rival' : 'rivals'} left`; demo = true;
   } else {
