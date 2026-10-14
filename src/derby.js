@@ -139,6 +139,7 @@ export class Derby {
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
+    this.slotSkill = null;                               // optional { raceSlot: skill offset }
     this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
@@ -298,11 +299,12 @@ export class Derby {
     // -------- rivals think and drive
     const ctx = this._ctx;
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
-    ctx.skill = this.skill;
+    ctx.skill = this.skill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;
+      ctx.skill = slotSkill && slotSkill[f.raceSlot] != null ? Math.max(0, Math.min(1, this.skill + slotSkill[f.raceSlot])) : this.skill;
       if (f.driver && !f.wrecked && (this._tick + f.id) % 4 === 0) {
         if (this.lastStanding) ctx.player = this._nearestFoe(f);         // everyone is everyone's target
         f.inp = f.driver.drive(f.car, T, ctx, dt * 4);

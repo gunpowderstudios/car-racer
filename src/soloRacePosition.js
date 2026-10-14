@@ -92,7 +92,7 @@ function getSoloField(game) {
     rivalProgress.clear();
   }
 
-  const rivals = [];
+  const rivals = [], slots = [];
   const startingRivalCount = Math.max(0, Number.isFinite(derby.count) ? derby.count : 0);
   for (const fighter of derby.rivals || []) {
     if (!fighter || fighter.gone || fighter.wrecked || !fighter.car) continue;
@@ -102,15 +102,24 @@ function getSoloField(game) {
     if (startingRivalCount && (slot < 1 || slot > startingRivalCount)) continue;
     const c = fighter.car;
     const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
-    if (Number.isFinite(s)) rivals.push(continuousRivalProgress(fighter, s, player, length));
+    if (Number.isFinite(s)) { const u = continuousRivalProgress(fighter, s, player, length); rivals.push(u); slots.push({ slot, p: u }); }
   }
-  return { player, rivals, total: startingRivalCount + 1 };
+  return { player, rivals, slots, total: startingRivalCount + 1, count: startingRivalCount };
 }
 
 let finishShown = false;
 let finishTimer = null;
 let lastPlace = 1;
 let lastTotal = 1;
+let lastField = null;
+
+/** Race slots in finishing order (0 = you); wrecked cars that are not on track yet go last. */
+function finishOrder(field) {
+  if (!field) return [];
+  const all = field.slots.concat([{ slot: 0, p: field.player }]).sort((a, b) => b.p - a.p).map((e) => e.slot);
+  for (let i = 1; i <= field.count; i++) if (!all.includes(i)) all.push(i);
+  return all;
+}
 
 function showFinish(place, total) {
   const box = document.getElementById('solo-race-finish');
@@ -121,7 +130,7 @@ function showFinish(place, total) {
   sub.textContent = place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`;
   box.hidden = false;
 
-  const detail = { mode: 'solo', place, total, laps: raceLaps() };
+  const detail = { mode: 'solo', place, total, laps: raceLaps(), order: finishOrder(lastField) };
   window.dispatchEvent(new CustomEvent('carracer-player-finish', { detail }));
   if (place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail }));
 
@@ -152,6 +161,7 @@ function update() {
     const total = field.total;
     lastPlace = place;
     lastTotal = total;
+    lastField = field;
     value.textContent = `${place} of ${total}`;
     row.hidden = false;
   } else {

@@ -307,13 +307,21 @@ test('French Cheese (the 2CV) is a listed vehicle with a soft, bouncy profile an
 });
 
 test('story mode: four circuits, eight laps, rising skill, five of nine go through', async () => {
-  const { STORY, qualifies } = await import('../src/storyData.js');
+  const { STORY, pointsFor, newTable, addStage, standings, survivors } = await import('../src/storyData.js');
   assert.equal(STORY.stages.length, 4);
   assert.equal(STORY.stages.reduce((n, s) => n + s.laps, 0), 8);
   assert.deepEqual(STORY.stages.map((s) => s.laps), [1, 2, 2, 3]);
   for (let i = 1; i < 4; i++) assert.ok(STORY.stages[i].skill >= STORY.stages[i - 1].skill, 'never gets easier');
   assert.ok(STORY.stages.every((s) => TEMPLATE_KEYS.includes(s.key) && s.key !== 'oval'), 'real circuits, not the arena');
   assert.equal(STORY.rivals + 1, 9);
-  assert.ok(qualifies(5, 9) && !qualifies(6, 9), 'best five of nine');
-  assert.ok(qualifies(1, 2) && !qualifies(2, 2), 'a small field: everyone but last');
+  assert.deepEqual([1, 2, 3, 4, 5].map(pointsFor), [5, 3, 2, 1, 0], '5/3/2/1 then nothing');
+  assert.deepEqual(STORY.keep, [5, 4, 3]);
+  assert.equal(STORY.roster.length, STORY.rivals);
+  const ids = ['you', ...STORY.roster.map((r) => r.id)], t = newTable(ids);
+  addStage(t, ['rusty', 'you', 'nigel', 'tel', 'gaz']);
+  assert.equal(t.rusty.pts, 5); assert.equal(t.you.pts, 3); assert.equal(t.baron.pts, 0);
+  addStage(t, ['you', 'rusty', 'nigel']);
+  assert.equal(standings(t)[0].id, 'you', '8 pts beats 8 pts on wins');
+  assert.equal(survivors(t, 0).length, 5); assert.equal(survivors(t, 3).length, 9, 'the final cuts nobody');
+  assert.ok(survivors(t, 0).includes('you'));
 });
