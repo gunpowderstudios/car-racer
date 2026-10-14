@@ -653,3 +653,23 @@ test('rivals honk before an impact, but only now and then', () => {
   let n = 0; for (let i = 0; i < 20 / DT; i++) { d2.step(DT, null); for (const e of d2.events) if (e.type === 'honk') n++; d2.events.length = 0; }
   assert.ok(n <= 3, `a quiet field is a quiet field (${n} honks)`);
 });
+
+test('a rival facing the wrong way for a few seconds is put back on the road facing forwards', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle(); placeOnRoad(player, track, 100, 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 2, 5);
+  derby.time = 20;
+  const r = derby.fighters.find((f) => !f.isPlayer); r.age = 99;
+  r.driver.drive = () => ({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });   // a driver that can't sort itself out
+  placeOnRoad(r.car, track, 700, 0, 0);
+  r.car.reset(r.car.pos, { x: -r.car.az.x, y: r.car.az.y, z: -r.car.az.z, clone() { return this; } }, r.car.ay, 0);   // turn it round
+  const fwd = () => { const fr = track.frameAt(track.progressAt(r.car.pos.x, r.car.pos.y, r.car.pos.z)); return r.car.az.x * fr.fx + r.car.az.z * fr.fz; };
+  assert.ok(fwd() < -0.5, 'starts facing backwards: ' + fwd());
+  const stop = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
+  let reset = -1;
+  for (let i = 0; i < 6 / DT; i++) {
+    derby.step(DT, null); player.step(DT, stop, track); derby.events.length = 0;
+    if (reset < 0 && fwd() > 0.5) reset = i * DT;
+  }
+  assert.ok(reset > 2.5 && reset < 4.5, `reset after about 3 s (${reset.toFixed(2)})`);
+});

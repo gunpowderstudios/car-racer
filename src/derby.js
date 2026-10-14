@@ -33,6 +33,8 @@ export const DERBY = {
   hornTtc: 0.9,          // ...and would reach you within this many seconds
   hornCooldown: 9,       // seconds before the same rival may honk again
   hornGap: 4,            // seconds between honks from the whole field: no continuous horning
+  wrongWayTime: 3,       // a rival facing the wrong way this long is put back on the road facing forwards...
+  stuckTime: 4,          // ...and so is one that has been stuck (hardly moving) this long
   stallFrac: 0.14,       // one hit this big (as a share of that zone's armour) stalls your engine: a hard wall hit, a proper T-bone
   stallFracRival: 0.28,  // ...rivals have far less armour, so it takes a bigger bang to stall one
   grace: 3,              // seconds after the start before anything can hurt you
@@ -450,6 +452,18 @@ export class Derby {
     T.query(c.pos.x, c.pos.y + 0.5, c.pos.z, this._q, 1.2);
     f.offT = this._q.idx < 0 || this._q.surface === SURF.BASE ? f.offT + dt : 0;
     const far = this._dist(c.pos.x, c.pos.y, c.pos.z) > 45;
+    // Facing the wrong way for a few seconds, or stuck, even in plain sight: don't wait for it to sort itself out, put it back on the road facing the right way.
+    if (!this.lastStanding && f.driver && c.onGround && f.age > 4) {
+      const fr = T.frameAt(T.progressAt(c.pos.x, c.pos.y, c.pos.z));
+      f.wrongT = (c.az.x * fr.fx + c.az.z * fr.fz) < -0.25 ? (f.wrongT || 0) + dt : 0;
+      if (f.wrongT > DERBY.wrongWayTime || (f.idleT > DERBY.stuckTime && !c.engineOff)) {
+        const s = T.progressAt(c.pos.x, c.pos.y, c.pos.z);
+        placeOnRoad(c, T, s + 8, 0, f.driver.cruise * 0.6);
+        f.wrongT = f.idleT = f.offT = f.flipT = 0; f.driver.stuck = 0; f.driver.reverse = 0; c.engineOff = false; c.crank = 0;
+        this._pose(f, f.cur); this._pose(f, f.prev);
+        return;
+      }
+    }
     if (c.pos.y < -25 || (!this.damageEnabled && f.flipT > 3) || ((f.offT > 3 || f.idleT > 6) && far)) {
       const s = T.progressAt(c.pos.x, c.pos.y, c.pos.z);
       placeOnRoad(c, T, s + 10, 0, (f.driver ? f.driver.cruise : 20) * 0.6);
