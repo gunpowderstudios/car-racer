@@ -72,3 +72,11 @@ test('adaptive resolution: stalls and hidden-tab gaps are ignored', () => {
   assert.equal(a.scale, 1);
   assert.equal(a.feed(NaN), null); assert.equal(a.feed(-1), null);
 });
+
+test('smoke is thinned on weaker tiers: fewer puffs, fewer smoking cars, fewer sprites', async () => {
+  const { TIERS } = await import('../src/quality.js');
+  const { low, medium, high } = TIERS;
+  assert.ok(low.fx < medium.fx && medium.fx < high.fx && high.fx === 1);
+  assert.ok(low.fxCars < medium.fxCars && medium.fxCars < high.fxCars);
+  assert.ok(low.smokeCap < medium.smokeCap && medium.smokeCap <= high.smokeCap && high.smokeCap <= 180);
+});

@@ -79,6 +79,7 @@ visual.load();
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
 const particles = new Particles(stage.scene);
+particles.setQuality(tier.fx, tier.smokeCap);
 const debris = new Debris(stage.scene, tier.debris);
 const debrisQ = Track.newQuery();
 const debrisGround = (x, z, y) => (track ? track.groundAt(x, z, y + 1, debrisQ).y : 0);
@@ -131,6 +132,7 @@ function adaptFeed(rawDt) {
   const r = adapt.feed(rawDt);
   if (!r) return;
   if (r === 'floor') {
+    if (particles.density > 0.35) { particles.density = Math.max(0.3, particles.density * 0.6); return; }          // thin out the smoke first: it costs a draw call per puff and is the least missed
     if (opts.shadow) { opts.shadow = false; stage.setShadows(false); $('opt-shadow').checked = false; toast('Shadows turned off to keep the game smooth.'); }
     else if (mirror.on) { toggleMirror(); toast('Mirror turned off to keep the game smooth.'); }
     return;
@@ -522,7 +524,16 @@ function syncViews(a) {
 // ----- smoke and fire
 const zoneLocal = { front: new V3(0, 0.45, 1.8), back: new V3(0, 0.4, -1.9), left: new V3(0.8, 0.4, 0.2), right: new V3(-0.8, 0.4, 0.2) };
 const fxPos = new V3();
+const fxNear = [];                                                    // damaged rivals close enough to smoke this frame, nearest first
 function derbyFx(dt) {
+  // Smoke costs a draw call per puff, so only the few nearest damaged rivals smoke (tier.fxCars); the rest just darken.
+  fxNear.length = 0;
+  for (const f of derby.fighters) {
+    if (f.gone || f.isPlayer || f.wrecked) continue;
+    const dx = f.car.pos.x - camera.position.x, dz = f.car.pos.z - camera.position.z, d2 = dx * dx + dz * dz;
+    if (d2 < 110 * 110 && f.health.worst < 0.55) { f._fxD = d2; fxNear.push(f); }
+  }
+  if (fxNear.length > tier.fxCars) { fxNear.sort((a, b) => a._fxD - b._fxD); fxNear.length = tier.fxCars; }
   for (const f of derby.fighters) {
     if (f.gone) continue;
     const c = f.car;
@@ -538,6 +549,7 @@ function derbyFx(dt) {
     }
     const w = f.health.worst;
     if (w >= 0.55) continue;
+    if (!f.isPlayer && !fxNear.includes(f)) continue;                      // too far, or not among the nearest few smokers
     // hurt: smoke (and, when nearly dead, flames) from the weakest part
     c.toWorld(zoneLocal[f.health.worstZone], fxPos);
     const heavy = w < 0.25;

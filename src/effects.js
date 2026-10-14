@@ -56,9 +56,17 @@ export class Particles {
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1, flash: false }; scene.add(s); this.hot.push(s);
     }
     this.si = 0; this.pi = 0; this.fi = 0; this.hi = 0;
+    this.density = 1; this.smokeCap = this.smoke.length;
   }
+  /** Graphics tier: `density` is the share of ambient smoke puffs that are drawn, `smokeCap` how many smoke sprites can be on screen at once. */
+  setQuality(density, smokeCap) { this.density = density; this.smokeCap = Math.max(10, Math.min(this.smoke.length, smokeCap)); for (let i = this.smokeCap; i < this.smoke.length; i++) { this.smoke[i].visible = false; this.smoke[i].userData.life = 0; } }
+  /** Ambient smoke (damage, tyres): thinned out on weaker devices and when the frame rate sags. */
   puff(x, y, z, vx, vz, size = 1.6, life = 0.9 + Math.random() * 0.6, tint = 0xd9d4cf) {
-    const s = this.smoke[this.si++ % this.smoke.length], d = s.userData;
+    if (this.density < 1 && Math.random() > this.density) return;
+    this._puff(x, y, z, vx, vz, size, life, tint);
+  }
+  _puff(x, y, z, vx, vz, size, life, tint) {
+    const s = this.smoke[this.si++ % this.smokeCap], d = s.userData;
     s.position.set(x, y + 0.2, z); d.v.set(vx * 0.15 + (Math.random() - 0.5), 0.9 + Math.random() * 0.6, vz * 0.15 + (Math.random() - 0.5));
     d.life = d.max = life; d.size = size; s.material.color.setHex(tint); s.visible = true;
   }
@@ -94,14 +102,14 @@ export class Particles {
     }
     for (let i = 0; i < 12; i++) {
       const a = R() * Math.PI * 2, h = R() * 3 * scale;
-      this.puff(x + Math.cos(a) * h * 0.4, y + R(), z + Math.sin(a) * h * 0.4, Math.cos(a) * h * 5, Math.sin(a) * h * 5, (3.2 + R() * 2.5) * scale, 1.6 + R() * 1.4, 0x3a3538);
+      this._puff(x + Math.cos(a) * h * 0.4, y + R(), z + Math.sin(a) * h * 0.4, Math.cos(a) * h * 5, Math.sin(a) * h * 5, (3.2 + R() * 2.5) * scale, 1.6 + R() * 1.4, 0x3a3538);
     }
     for (let i = 0; i < 18 * scale; i++) this.spark(x, y, z, (R() - 0.5) * 8 * scale, (3 + R() * 6) * scale, (R() - 0.5) * 8 * scale);
   }
   /** Fire licking off a burning car: a few short flames and a plume of smoke, called every frame with the car's centre. */
   burn(x, y, z, vx, vz, dt, heavy = 1) {
     const R = Math.random;
-    if (R() < 26 * dt * heavy) {
+    if (R() < 26 * dt * heavy * (0.5 + 0.5 * this.density)) {
       const s = this.flames[this.fi++ % this.flames.length], d = s.userData;
       s.position.set(x + (R() - 0.5) * 1.4, y + 0.3 + R() * 0.5, z + (R() - 0.5) * 1.6);
       d.v.set(vx * 0.3 + (R() - 0.5), 2 + R() * 2.5, vz * 0.3 + (R() - 0.5)); d.life = d.max = 0.28 + R() * 0.22; d.size = 1.0 + R() * 0.8; s.visible = true;
