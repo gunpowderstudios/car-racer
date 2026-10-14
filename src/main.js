@@ -598,7 +598,7 @@ function frame(now) {
       if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
     }
     hud.drawMap(car, derby.enabled ? mapDots : null);
-    sound.update(car, throttleNow, !derby.over);
+    sound.update(car, throttleNow, !derby.over && !car.engineOff);
     if (!$('debug').hidden) debugText();
     if (net) {
       if (life.respawnDue(simTime)) { respawn(); mpClearDents(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment

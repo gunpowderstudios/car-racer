@@ -594,3 +594,43 @@ test('the derby keeps each car\'s hurt fractions in step with its health', () =>
   derby.stop();
   assert.equal(player.hurt.back, 0, 'plain racing: no damage');
 });
+
+test('damage takes things away: stall, no nitro with a wrecked rear, no drift with a wrecked front, roof costs speed, a hurt side turns less', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const gas = { throttle: 1, brake: 0, steer: 0, handbrake: false, boost: false };
+  const fresh = () => { const c = new Vehicle(); placeOnRoad(c, track, 100, 0, 0); return c; };
+  const go = (c, secs, inp) => { for (let i = 0; i < secs / DT; i++) { c.step(DT, inp, track); c.events.length = 0; } return c; };
+  // stalled: no throttle until restarted, then it cranks for a moment
+  const st = fresh(); st.engineOff = true; go(st, 2, gas);
+  assert.ok(st.speed < 0.5, `a stalled car does not move (${st.speed.toFixed(2)})`);
+  st.restartEngine(); go(st, 0.5, gas); assert.ok(st.engineOff, 'still cranking');
+  go(st, 3, gas); assert.ok(!st.engineOff && st.speed > 8, `drives again after the restart (${st.speed.toFixed(1)})`);
+  // nitro and drift lockouts
+  const nit = fresh(); nit.hurt.back = 0.8; go(nit, 1, gas); go(nit, 1, { ...gas, boost: true }); assert.ok(!nit.boosting, 'no nitro with the rear over 75% gone');
+  const ok = fresh(); go(ok, 1, gas); go(ok, 0.5, { ...gas, boost: true }); assert.ok(ok.boosting, 'nitro works on a healthy car');
+  const dr = fresh(); dr.hurt.front = 0.8; go(dr, 3, gas); go(dr, 0.2, { ...gas, handbrake: true }); assert.ok(!dr.handbrake, 'no drift with the front over 75% gone');
+  // roof: lower top speed
+  const a = go(fresh(), 14, gas), b = fresh(); b.hurt.roof = 0.8; go(b, 14, gas);
+  assert.ok(b.speed < a.speed * 0.92, `roof damage lowers speed ${b.speed.toFixed(1)} vs ${a.speed.toFixed(1)}`);
+  // sides: less lock towards the hurt side
+  const turn = (hurt, steer) => { const c = new Vehicle(); placeOnRoad(c, track, 100, 0, 20); Object.assign(c.hurt, hurt); for (let i = 0; i < 0.6 / DT; i++) { c.step(DT, { ...gas, throttle: 0.4, steer }, track); c.events.length = 0; } return Math.abs(c.steerAngle); };
+  assert.ok(turn({ left: 0.8 }, 1) < turn({}, 1) * 0.85, 'a hurt left side turns left less');
+  assert.ok(turn({ right: 0.8 }, -1) < turn({}, -1) * 0.85, 'a hurt right side turns right less');
+});
+
+test('a big hit stalls the engine, a small one does not, and a rival turns the key itself', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle(); placeOnRoad(player, track, 100, 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 2, 3);
+  derby.time = 10; derby.player.graceUntil = 0;
+  derby._damage(derby.player, 'back', derby.player.health.max.back * 0.05, null);
+  assert.ok(!player.engineOff, 'a small knock is fine');
+  derby._damage(derby.player, 'front', derby.player.health.max.front * 0.6, null);
+  assert.ok(player.engineOff, 'a hard hit stalls it');
+  assert.ok(derby.events.some((e) => e.type === 'stall' && e.isPlayer));
+  const r = derby.fighters.find((f) => !f.isPlayer); r.age = 99;
+  derby._damage(r, 'front', r.health.max.front * 0.4, null);
+  assert.ok(r.car.engineOff, 'a rival can stall too');
+  for (let i = 0; i < 8 / DT; i++) { derby.step(DT, null); player.step(DT, { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, track); r.car.step(DT, r.inp || { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, track); }
+  assert.ok(!r.car.engineOff && player.engineOff, 'the rival restarted itself; you have to restart yours');
+});

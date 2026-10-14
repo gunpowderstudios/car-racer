@@ -29,6 +29,8 @@ export const POINTS = {
 
 export const DERBY = {
   rivals: 6,             // how many live rivals the derby tries to keep in play
+  stallFrac: 0.14,       // one hit this big (as a share of that zone's armour) stalls your engine: a hard wall hit, a proper T-bone
+  stallFracRival: 0.28,  // ...rivals have far less armour, so it takes a bigger bang to stall one
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
@@ -201,7 +203,7 @@ export class Derby {
   }
 
   /** Switch the derby off (plain racing). */
-  stop() { if (this.player) { const h = this.player.car.hurt; h.front = h.back = h.left = h.right = 0; } this.fighters.length = 0; this.events.length = 0; this.player = null; this.over = false; this._refreshCars(); }
+  stop() { if (this.player) { const h = this.player.car.hurt; h.front = h.back = h.left = h.right = h.roof = 0; this.player.car.engineOff = false; } this.fighters.length = 0; this.events.length = 0; this.player = null; this.over = false; this._refreshCars(); }
 
   _refreshCars() {
     this.cars.length = 0;
@@ -279,9 +281,12 @@ export class Derby {
     if (!this.enabled || !this.track || !this.player) return;
     const T = this.track, P = this.player, F = this.fighters;
     this.time += dt; this._tick++;
+    for (const f of F) {                                   // a stalled rival turns the key again after a couple of seconds
+      if (!f.isPlayer && f.car.engineOff && f.car.crank <= 0 && !f.wrecked && (f.stallT -= dt) <= 0) f.car.restartEngine();
+    }
     for (const f of F) {                                   // damaged cars drive worse: tell each car how much armour it has lost
       const h = f.car.hurt, hp = f.health;
-      if (h && hp) { h.front = 1 - hp.frac('front'); h.back = 1 - hp.frac('back'); h.left = 1 - hp.frac('left'); h.right = 1 - hp.frac('right'); }
+      if (h && hp) { h.front = 1 - hp.frac('front'); h.back = 1 - hp.frac('back'); h.left = 1 - hp.frac('left'); h.right = 1 - hp.frac('right'); h.roof = 1 - hp.frac('roof'); }
     }
 
     // -------- rivals think and drive
@@ -450,6 +455,11 @@ export class Derby {
     for (const n of NEIGHBOURS[zone]) f.health.hit(n, hp * DAMAGE.bleed * (f.spec.mul?.[n] ?? 1));
     f.health.last = zone;
     f.flash = 1; f.flashZone = zone;
+    // A big single hit (about a fifth of a zone's armour in one go) kills the engine: the driver has to start it again.
+    if (!f.health.wrecked && hp * (f.spec.mul?.[zone] ?? 1) >= (f.isPlayer ? DERBY.stallFrac : DERBY.stallFracRival) * f.health.max[zone] && !f.car.engineOff) {
+      f.car.engineOff = true; f.car.crank = 0; f.stallT = 2 + this.rng() * 2.5;
+      this.events.push({ type: 'stall', id: f.id, isPlayer: f.isPlayer });
+    }
     const ev = { type: 'damage', id: f.id, isPlayer: f.isPlayer, zone, hp };
     if (dentHp !== undefined) ev.dentHp = dentHp;
     if (x !== undefined) {

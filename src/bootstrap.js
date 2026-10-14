@@ -17,6 +17,7 @@ import './aiDifficulty.js?v=16.45';
 import './multiplayerRace.js?v=16.81';
 import './soloRacePosition.js?v=16.81';
 import './modeBadge.js?v=17.72';
+import './engineOff.js?v=17.78';
 import './raceCelebration.js?v=16.81';
 import './roofDamage.js?v=16.55';
 import './roofFxGuard.js?v=16.59';

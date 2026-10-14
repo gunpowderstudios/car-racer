@@ -65,6 +65,9 @@ export const CAR = {
 
 const tmpA = new V3(), tmpB = new V3(), tmpC = new V3(), tmpD = new V3(), tmpE = new V3();
 
+/** A body zone with more than this share of its armour gone is wrecked enough to disable what it carries (rear: nitro, front: drift). */
+export const HURT_LOCKOUT = 0.75;
+
 class Wheel {
   constructor(i, spec) {
     this.i = i;
@@ -94,7 +97,9 @@ export class Vehicle {
     this.F = new V3(); this.T = new V3();
     this.q = Track.newQuery();
     this.events = [];
-    this.hurt = { front: 0, back: 0, left: 0, right: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
+    this.hurt = { front: 0, back: 0, left: 0, right: 0, roof: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
+    this.engineOff = false; this.crank = 0;                  // stalled by a big hit: throttle and boost are dead until the driver restarts it (restartEngine)
+    this._in = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
     this.hullWorld = spec.hull.map(() => new V3());
     // Static ride height: wheel centre at R above ground, suspension length = free - static compression
@@ -119,7 +124,7 @@ export class Vehicle {
     this.fwdSpeed = speed; this.speed = speed; this.latSpeed = 0; this.sideSlip = 0;
     this.onGround = false; this.airTime = 0; this.scraping = false; this.handbrake = false;
     this.driftActive = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
-    this.boosting = false;
+    this.boosting = false; this.engineOff = false; this.crank = 0;
     this.events.length = 0;
     for (const w of this.wheels) { w.contact = false; w.load = 0; w.skid = 0; w.compress = 0; }
   }
@@ -162,6 +167,15 @@ export class Vehicle {
     this.F.set(0, -this.mass * G, 0);
     this.T.set(0, 0, 0);
 
+    // --- damage takes things away: a stalled engine ignores the throttle and nitro; a wrecked rear end loses the nitro; a wrecked front end loses the drift
+    {
+      const i = this._in, hu = this.hurt, dead = this.engineOff || this.crank > 0;
+      if (this.crank > 0) { this.crank -= dt; if (this.crank <= 0) { this.crank = 0; this.engineOff = false; } }
+      i.throttle = dead ? 0 : input.throttle; i.brake = input.brake; i.steer = input.steer;
+      i.handbrake = !!input.handbrake && hu.front <= HURT_LOCKOUT && !dead;
+      i.boost = !!input.boost && hu.back <= HURT_LOCKOUT && !dead;
+      input = i;
+    }
     // --- driver inputs -> smoothed pedals, steering
     this.thr += clamp(input.throttle - this.thr, -8 * dt, 5 * dt);
     this.brk += clamp(input.brake - this.brk, -10 * dt, 7 * dt);
@@ -315,6 +329,9 @@ export class Vehicle {
   }
 
   // -------------------------------------------------------------- steering
+  /** Switch a stalled engine back on: it cranks for a moment, then the car is drivable again. */
+  restartEngine() { if (this.engineOff && this.crank <= 0) this.crank = 0.7; }
+
   _steer(dt, input) {
     const st = this.spec.steer;
     const target = clamp(input.steer, -1, 1);
@@ -325,7 +342,8 @@ export class Vehicle {
     // Full lock at low speed, tapering to roughly the front tyres' peak slip angle at speed.
     const lock = Math.min(st.max, 0.17 + 36.6 / Math.max(v * v, 60));
     const hu = this.hurt;
-    let angle = this.steerState * lock * (1 - 0.18 * hu.front);                     // a crumpled front end: less steering lock...
+    let angle = this.steerState * lock;
+    angle *= angle > 0 ? 1 - 0.5 * hu.left : 1 - 0.5 * hu.right;                  // a crumpled left side turns left less, a crumpled right side turns right less...
     if (this.speed > 3) angle += 0.022 * (hu.left - hu.right);                      // ...and a hurt side drags the car towards it
     // Counter-steer assist: when the REAR axle slides past its grip, point the front
     // wheels along the direction of travel. Normal cornering never triggers it.
@@ -452,7 +470,7 @@ export class Vehicle {
     if (this.rpm > e.limiter) torque = 0;
     if (this.shiftTimer > 0.14) torque *= 0.25;
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
-    force *= 1 - 0.22 * this.hurt.back - 0.10 * this.hurt.front;                   // a damaged rear end (drivetrain) or front (radiator) costs power
+    force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
     // engine braking when off the throttle
     if (drive < 0.05 && this.gear > 0 && this.rpm > e.idle + 400) {

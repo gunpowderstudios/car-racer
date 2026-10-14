@@ -100,7 +100,7 @@ test('a damage event says where on the car it landed, in the car\'s own space', 
 
 test('ramming a rival from behind reports a hit on my nose and on their tail', () => {
   const { track, car, derby } = arena();
-  const r = derby.add(new Vehicle());
+  const r = derby.add(new Vehicle()); r.age = 99;                      // past its spawn grace: the hit lands at once (a big hit now stalls the player's engine, so there is no second push)
   placeOnTrack(r.car, track, track.progressAt(0, 0.65, -290), 0, 0);
   placeOnTrack(car, track, track.progressAt(0, 0.65, -297), 0, 22);
   car.vel.set(0, 0, 22);
