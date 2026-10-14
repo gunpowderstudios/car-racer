@@ -347,3 +347,14 @@ test('Swedish Massage (the Volvo estate) is a listed vehicle with its own profil
   const v = vehiclePhysicsProfile('volvo');
   assert.ok(v && v.mass > 1300 && v.wheelbase > 2.5);
 });
+
+test('Rootmaster (the London bus) is a listed vehicle with its own heavy profile, model and menu picture', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'bus',\s*name: 'Rootmaster'/);
+  assert.ok(existsSync(new URL('../cars/bus-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/thumbs/bus.webp', import.meta.url)));
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const b = vehiclePhysicsProfile('bus'), mh = vehiclePhysicsProfile('motor-home');
+  assert.ok(b && b.mass > mh.mass && b.steer.max < mh.steer.max, 'heavier and slower to turn than the motorhome');
+});

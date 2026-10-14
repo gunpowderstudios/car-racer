@@ -233,6 +233,31 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 1.15,
   },
 
+  'bus': {
+    reference: '1960s Routemaster-style London double-decker (very heavy, tall, slow to turn, hard to stop)',
+    mass: 4300,
+    frontWeight: 0.50,
+    wheelbase: 4.10,
+    track: 1.90,
+    wheelRadius: 0.44,
+    mountY: 0.04,
+    inertia: { x: 14000, y: 17000, z: 6500 },
+    susp: {
+      free: 0.60, travel: 0.32,
+      kFront: 88000, kRear: 84000,
+      cCompFront: 5600, cCompRear: 5400, cRebFront: 7400, cRebRear: 7100,
+      arbFront: 32000, arbRear: 24000, bump: 320000, bumpDamp: 14000,
+    },
+    engine: { peakTorque: 520 },
+    brakeG: 1.20,
+    brakeBias: 0.62,
+    wallBounce: 0.20,
+    aero: { drag: 1.05, down: 0.22 },
+    steer: { max: 0.42, rate: 3.0, returnRate: 4.8 },
+    body: { width: 2.30, length: 6.40, bottom: -0.78, shoulder: 0.40, roof: 2.75, roofWidth: 2.10, roofLength: 5.2 },
+    mpDamageMul: 0.65,
+  },
+
   'panda': {
     reference: 'Fiat Panda-style supermini (small, tall, light, surprisingly tough and grippy)',
     mass: 860,

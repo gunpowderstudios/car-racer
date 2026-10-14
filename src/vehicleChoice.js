@@ -73,6 +73,16 @@ export const VEHICLES = [
     physicsProfile: 'campervan',
   },
   {
+    id: 'bus',
+    name: 'Rootmaster',
+    description: "She's got a ticket to ride... and she don't care!",
+    url: 'cars/bus-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 6.4,               // a real Routemaster is 8.4m: shortened so it still fits the tracks
+    damageMul: 0.7,                  // a double-decker full of steel: shrugs most hits off
+    physicsProfile: 'bus',
+  },
+  {
     id: 'motor-home', name: 'Motorhome', url: 'cars/motorhome-SHRINK.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
