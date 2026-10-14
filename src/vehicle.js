@@ -330,7 +330,7 @@ export class Vehicle {
 
   // -------------------------------------------------------------- steering
   /** Switch a stalled engine back on: it cranks for a moment, then the car is drivable again. */
-  restartEngine() { if (this.engineOff && this.crank <= 0) this.crank = 0.7; }
+  restartEngine() { if (this.engineOff && this.crank <= 0) { this.crank = 1.6; return true; } return false; }
 
   _steer(dt, input) {
     const st = this.spec.steer;

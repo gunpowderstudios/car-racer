@@ -1164,4 +1164,4 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
 }
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
-window.__app = { startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+window.__app = { sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

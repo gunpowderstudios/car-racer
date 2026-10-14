@@ -21,7 +21,7 @@ export class Sound {
       load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
-      load('music', 'sounds/background-music.mp3'),
+      load('music', 'sounds/background-music.mp3'), load('engineStart', 'sounds/engine-start.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
     this.screech = this._loop('screech', this.sfx, 0);
@@ -108,6 +108,9 @@ export class Sound {
   }
 
   /** One-shot sample. `dist` (m) fades it with distance; `cut` trims a long tail. */
+  /** Starter motor + engine catching, played when the player restarts a stalled engine. */
+  engineStart() { this._shot('engineStart', 1, 1, 0); }
+
   _shot(name, gain, rate, dist = 0, cut = 0) {
     if (!this.ready || !this.sfxOn) return;
     const b = this.buf[name]; if (!b) return;

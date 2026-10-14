@@ -673,3 +673,10 @@ test('a rival facing the wrong way for a few seconds is put back on the road fac
   }
   assert.ok(reset > 2.5 && reset < 4.5, `reset after about 3 s (${reset.toFixed(2)})`);
 });
+
+test('engine-start sound is shipped, loaded and played on restart', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  assert.ok(existsSync(new URL('../sounds/engine-start.mp3', import.meta.url)));
+  assert.match(readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8'), /load\('engineStart', 'sounds\/engine-start\.mp3'\)/);
+  assert.match(readFileSync(new URL('../src/engineOff.js', import.meta.url), 'utf8'), /engineStart/);
+});

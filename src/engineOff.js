@@ -2,6 +2,12 @@
 // Restart with Space or Enter, the gamepad A / X button, or by tapping the prompt. Rivals just turn the key on their own.
 let prompt = null, padPrev = false;
 
+// One restart path for key, tap and gamepad: cranks the engine and plays the starter sound.
+function restart() {
+  const car = window.__game?.car;
+  if (car && car.restartEngine()) window.__app?.sound?.engineStart?.();
+}
+
 function ensure() {
   if (prompt) return prompt;
   const hud = document.getElementById('hud');
@@ -18,7 +24,7 @@ function ensure() {
 @keyframes engineBlink{50%{opacity:.72}}
 @media(prefers-reduced-motion:reduce){#engine-off{animation:none}}`;
   document.head.appendChild(st);
-  prompt.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); window.__game?.car?.restartEngine(); });
+  prompt.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); restart(); });
   hud.appendChild(prompt);
   return prompt;
 }
@@ -26,7 +32,7 @@ function ensure() {
 addEventListener('keydown', (e) => {
   if (e.code !== 'Space' && e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
   const car = window.__game?.car;
-  if (car && car.engineOff) car.restartEngine();
+  if (car && car.engineOff) restart();
 });
 
 function tick() {
@@ -38,7 +44,7 @@ function tick() {
   if (off) {                                              // gamepad A / X restarts it too
     const gp = navigator.getGamepads ? [...navigator.getGamepads()].find((p) => p && p.connected) : null;
     const down = !!(gp && (gp.buttons[0]?.pressed || gp.buttons[2]?.pressed));
-    if (down && !padPrev) car.restartEngine();
+    if (down && !padPrev) restart();
     padPrev = down;
   } else padPrev = false;
 }
