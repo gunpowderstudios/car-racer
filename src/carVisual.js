@@ -36,6 +36,41 @@ export const RIVAL_LOOKS = [
 export function tidyGltfMaterial(m) {
   if (m && m.metalness >= 1 && m.roughness >= 1) { m.metalness = 0; m.roughness = 0.54; }
 }
+/** Where a wheel mesh's axle really is, in the mesh's own coordinates (the axle runs along Z). The wheels in the models were cut out of
+ *  the car, and a wheel's bounding box is not centred on its axle (it also carries bits of arch), so spinning it about the box centre
+ *  made it wobble up and down. This fits a circle to the outer rim instead, ignoring anything that sticks out past it. Cached per geometry. */
+const axleCache = new WeakMap();
+export function wheelAxle(geo) {
+  let c = axleCache.get(geo);
+  if (c) return c;
+  const a = geo.attributes.position, N = a.count, B = 72;
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  let ox = (bb.min.x + bb.max.x) / 2, oy = (bb.min.y + bb.max.y) / 2, R = Math.min(bb.max.x - bb.min.x, bb.max.y - bb.min.y) / 2;
+  const best = new Array(B);
+  for (let it = 0; it < 4; it++) {
+    best.fill(null);
+    for (let i = 0; i < N; i++) {
+      const x = a.getX(i), y = a.getY(i), dx = x - ox, dy = y - oy, r = Math.hypot(dx, dy);
+      if (it > 0 && r > R * 1.04) continue;                                   // bits of arch and trim sticking out past the tyre
+      const k = Math.min(B - 1, Math.floor((Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI) * B));
+      if (!best[k] || r > best[k].r) best[k] = { x, y, r };
+    }
+    const pts = best.filter(Boolean);
+    if (pts.length < 12) break;
+    let mx = 0, my = 0; for (const p of pts) { mx += p.x; my += p.y; } mx /= pts.length; my /= pts.length;
+    let Suu = 0, Svv = 0, Suv = 0, Suuu = 0, Svvv = 0, Suvv = 0, Svuu = 0;
+    for (const p of pts) { const u = p.x - mx, v = p.y - my; Suu += u * u; Svv += v * v; Suv += u * v; Suuu += u * u * u; Svvv += v * v * v; Suvv += u * v * v; Svuu += v * u * u; }
+    const det = Suu * Svv - Suv * Suv;
+    if (Math.abs(det) < 1e-12) break;
+    const uc = (0.5 * (Suuu + Suvv) * Svv - 0.5 * (Svvv + Svuu) * Suv) / det, vc = (0.5 * (Svvv + Svuu) * Suu - 0.5 * (Suuu + Suvv) * Suv) / det;
+    ox = uc + mx; oy = vc + my;
+    R = pts.reduce((t, p) => t + Math.hypot(p.x - ox, p.y - oy), 0) / pts.length;
+  }
+  c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2 };
+  axleCache.set(geo, c);
+  return c;
+}
 const RIVAL_TEX_MAX = 1024;
 /** Phones: shrink a car's 2048px textures to `max` px before they go to the graphics card (a quarter of the memory and bandwidth). */
 function shrinkTexture(t, max) {
@@ -223,11 +258,30 @@ export class CarVisual {
   _findWheels() {
     this.wheelNodes = null; this.wheelRest = null; this._wheelsOff = false;
     if (!this.model) return;
-    const found = {};
-    this.model.traverse((o) => { if (/^Wheel_(FL|FR|RL|RR)$/.test(o.name)) found[o.name.slice(6)] = o; });
+    const found = {}, axles = {};
+    this.model.traverse((o) => {
+      const m = /^Wheel_(FL|FR|RL|RR)(_axle)?$/.exec(o.name);
+      if (m) (m[2] ? axles : found)[m[1]] = o;
+    });
     const order = ['FL', 'FR', 'RL', 'RR'];
+    if (order.every((k) => axles[k])) {                                       // a copy of a car that is already fitted (a rival's clone)
+      this.wheelNodes = order.map((k) => axles[k]);
+      this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
+      for (const n of this.wheelNodes) n.rotation.order = 'YZX';
+      return;
+    }
     if (!order.every((k) => found[k])) return;
-    this.wheelNodes = order.map((k) => found[k]);
+    // Re-pivot every wheel on its real axle: a group sits on the axle, the mesh hangs off it, and the group is what turns.
+    this.wheelNodes = order.map((k) => {
+      const host = found[k], m = host.isMesh ? host : host.children.find((c) => c.isMesh);
+      if (!m) return host;
+      m.updateMatrix();
+      const ax = wheelAxle(m.geometry), P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
+      const pivot = new THREE.Group(); pivot.name = host.name + '_axle';
+      const parent = m.parent;
+      pivot.position.copy(P); parent.add(pivot); pivot.add(m); m.position.sub(P);
+      return pivot;
+    });
     this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
     for (const n of this.wheelNodes) n.rotation.order = 'YZX';
   }

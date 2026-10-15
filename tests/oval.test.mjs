@@ -404,3 +404,10 @@ test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and c
   const names = json.nodes.map((n) => n.name).filter(Boolean);
   for (const n of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) assert.ok(names.includes(n), n);
 });
+
+test('wheels turn about their real axle, not the bounding-box centre (no up-and-down wobble)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /export function wheelAxle\(geo\)/);
+  assert.match(cv, /_axle/, 'each wheel gets a pivot group on its axle');
+});
