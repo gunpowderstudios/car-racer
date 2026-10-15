@@ -298,7 +298,7 @@ export class Multiplayer {
     this._broadcastLobby();
   }
 
-  async joinRoom(code, name, { retryMs = 60000, delayMs = 1500, connectMs = CONNECT_MS } = {}) {
+  async joinRoom(code, name, { retryMs = 120000, delayMs = 1500, connectMs = CONNECT_MS } = {}) {
     await loadPeerJs();
     const myName = sanitizeName(name), roomCode = sanitizeName(code).toUpperCase().slice(0, 8);
     this._guest = { name: myName, code: roomCode };
