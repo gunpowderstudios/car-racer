@@ -243,7 +243,7 @@ test('drift control labels match the new assisted drift behaviour', () => {
 
 test('multiplayer join retries a temporarily unavailable mobile host', () => {
   const mpCore = readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8');
-  assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 60000/);
+  assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 120000/);
   assert.match(mpCore, /e\?\.peerType !== 'peer-unavailable'/);
   assert.match(mpCore, /Room \${roomCode} is waking up/);
   assert.match(mpCore, /_joinRoomAttempt\(roomCode, connectMs\)/);
