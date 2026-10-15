@@ -443,3 +443,14 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
   assert.match(cv, /export function trimWheel\(geo, ax\)/);
   assert.match(cv, /trimWheel\(m\.geometry, ax\)/, 'applied to every wheel as it is re-pivoted');
 });
+
+test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="btn-play-now"[^>]*>Buckle up!</);
+  assert.doesNotMatch(html, />Play Now</);
+  assert.match(html, /id="btn-multiplayer-top"/);
+  assert.match(html, /id="btn-multiplayer"/, 'the lower Multiplayer button stays');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /btn-multiplayer-top'\)\.onclick = \(\) => \$\('btn-multiplayer'\)\.click\(\)/);
+});
