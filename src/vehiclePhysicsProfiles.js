@@ -311,6 +311,32 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 0.90,
   },
 
+  'mobility-car': {
+    reference: '1960s fibreglass three-wheeled mobility car with a little two-stroke (featherweight, twitchy, easily bent)',
+    mass: 380,
+    frontWeight: 0.44,
+    wheelbase: 2.05,
+    track: 1.17,
+    wheelRadius: 0.29,
+    mountY: 0.10,
+    inertia: { x: 520, y: 480, z: 300 },
+    susp: {
+      free: 0.36, travel: 0.20,
+      kFront: 9500, kRear: 9000,
+      cCompFront: 800, cCompRear: 760, cRebFront: 1150, cRebRear: 1100,
+      arbFront: 3800, arbRear: 2600, bump: 70000, bumpDamp: 3200,
+    },
+    tyre: { muFront: 1.10, muRear: 1.04, B: 10.2, C: 1.22, slideMu: 0.80, loadSens: 0.06, rolling: 0.017 },
+    engine: { peakTorque: 66 },
+    brakeG: 1.05,
+    brakeBias: 0.58,
+    wallBounce: 0.28,
+    aero: { drag: 0.50, down: 0.06 },
+    steer: { max: 0.66, rate: 5.8, returnRate: 8.0 },
+    body: { width: 1.50, length: 2.90, bottom: -0.30, shoulder: 0.26, roof: 1.16, roofWidth: 1.22, roofLength: 1.55 },
+    mpDamageMul: 1.30,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',
