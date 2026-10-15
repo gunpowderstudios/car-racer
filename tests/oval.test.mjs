@@ -393,7 +393,7 @@ test('Race Day stages start with the three-light Red, Red, Green sequence', asyn
 test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and can throw them off', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
-  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\)/);
+  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\|F\)/);
   assert.match(cv, /setWheels\(car\)/); assert.match(cv, /detachWheels\(\)/); assert.match(cv, /restoreWheels\(\)/);
   assert.ok(existsSync(new URL('../src/wheelDebris.js', import.meta.url)));
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
@@ -410,4 +410,19 @@ test('wheels turn about their real axle, not the bounding-box centre (no up-and-
   const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
   assert.match(cv, /export function wheelAxle\(geo\)/);
   assert.match(cv, /_axle/, 'each wheel gets a pivot group on its axle');
+});
+
+test('Mobile Chariot (the three-wheeled mobility car) is listed, has its own profile, and a single front wheel is handled', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'mobility-car',\s*name: 'Mobile Chariot',\s*description: 'A fiberglass deathtrap which rolled with the times\.\.\. literally!'/);
+  assert.match(src, /url: 'cars\/mobility-car-SHRINK\.glb'/);
+  assert.ok(existsSync(new URL('../cars/mobility-car-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/lite/mobility-car-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/thumbs/mobility-car.webp', import.meta.url)));
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const m = vehiclePhysicsProfile('mobility-car');
+  assert.ok(m && m.mass < 500 && m.body.length < 3.2);
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\|F\)/, 'a three-wheeler names its one front wheel Wheel_F');
 });

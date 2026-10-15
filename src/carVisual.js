@@ -260,10 +260,14 @@ export class CarVisual {
     if (!this.model) return;
     const found = {}, axles = {};
     this.model.traverse((o) => {
-      const m = /^Wheel_(FL|FR|RL|RR)(_axle)?$/.exec(o.name);
+      const m = /^Wheel_(FL|FR|RL|RR|F)(_axle)?$/.exec(o.name);
       if (m) (m[2] ? axles : found)[m[1]] = o;
     });
-    const order = ['FL', 'FR', 'RL', 'RR'];
+    // A three-wheeler has one front wheel (Wheel_F): it stands in for both front wheels, steering and rolling with their average.
+    let order = ['FL', 'FR', 'RL', 'RR'];
+    if (!order.every((k) => found[k] || axles[k]) && (found.F || axles.F) && (found.RL || axles.RL) && (found.RR || axles.RR)) {
+      order = ['F', 'F', 'RL', 'RR'];
+    }
     if (order.every((k) => axles[k])) {                                       // a copy of a car that is already fitted (a rival's clone)
       this.wheelNodes = order.map((k) => axles[k]);
       this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
@@ -272,7 +276,9 @@ export class CarVisual {
     }
     if (!order.every((k) => found[k])) return;
     // Re-pivot every wheel on its real axle: a group sits on the axle, the mesh hangs off it, and the group is what turns.
+    const made = {};
     this.wheelNodes = order.map((k) => {
+      if (made[k]) return made[k];                                            // the single front wheel of a three-wheeler is listed twice
       const host = found[k], m = host.isMesh ? host : host.children.find((c) => c.isMesh);
       if (!m) return host;
       m.updateMatrix();
@@ -280,7 +286,7 @@ export class CarVisual {
       const pivot = new THREE.Group(); pivot.name = host.name + '_axle';
       const parent = m.parent;
       pivot.position.copy(P); parent.add(pivot); pivot.add(m); m.position.sub(P);
-      return pivot;
+      return (made[k] = pivot);
     });
     this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
     for (const n of this.wheelNodes) n.rotation.order = 'YZX';
@@ -288,10 +294,11 @@ export class CarVisual {
   /** Turn the wheels to match the physics car: front wheels steer, all four roll. Cheap; call it every frame for cars you can see up close. */
   setWheels(car) {
     if (!this.wheelNodes || this._wheelsOff || !car || !car.wheels) return;
-    const st = car.steerAngle || 0;
+    const st = car.steerAngle || 0, n = this.wheelNodes;
     for (let i = 0; i < 4; i++) {
-      const w = car.wheels[i];
-      this.wheelNodes[i].rotation.set(0, i < 2 ? st : 0, w.spin % (Math.PI * 2));
+      if (i === 1 && n[1] === n[0]) continue;                                 // one front wheel: set once, from the average of the two
+      const w = car.wheels[i], spin = n[1] === n[0] && i === 0 ? (w.spin + car.wheels[1].spin) / 2 : w.spin;
+      n[i].rotation.set(0, i < 2 ? st : 0, spin % (Math.PI * 2));
     }
   }
   /** Tear the wheels off into the scene and hand them back as { node, radius } so wheelDebris.js can throw them. */
@@ -299,7 +306,7 @@ export class CarVisual {
     if (!this.wheelNodes || this._wheelsOff || !this.root.parent) return null;
     this.root.updateWorldMatrix(true, true);
     const scene = this.root.parent, box = new THREE.Box3(), out = [];
-    for (const n of this.wheelNodes) {
+    for (const n of new Set(this.wheelNodes)) {
       box.setFromObject(n);
       const r = Math.max(0.15, (box.max.y - box.min.y) / 2);
       scene.attach(n);
