@@ -174,7 +174,7 @@ export class CarVisual {
   }
 
   adopt(src, look) {
-    if (this.loaded || !src.loaded || !src.model) return false;
+    if (this.loaded || !src.loaded || !src.model || src._wheelsOff) return false;      // (a wrecked source has no wheels on it to copy)
     const model = src.model.clone(true);
     this.mats = [];
     model.traverse((o) => {
@@ -194,6 +194,7 @@ export class CarVisual {
     this.holder.remove(this.placeholder);
     this.holder.add(model);
     this.model = model; this.loaded = true; this.hasTexture = src.hasTexture;
+    this._findWheels();
     this._initDents();
     this._lookKey = -1;
     return true;
@@ -216,11 +217,60 @@ export class CarVisual {
     }
   }
 
+  // ---- separate wheels (models exported with nodes named Wheel_FL / Wheel_FR / Wheel_RL / Wheel_RR, in the physics' wheel order).
+  // A model without them is left alone. The wheel pivots sit on the axles, nose towards -X, so a wheel is steered about its
+  // Y axis and rolled about its Z axis. Positive steer turns left, as in vehicle.js.
+  _findWheels() {
+    this.wheelNodes = null; this.wheelRest = null; this._wheelsOff = false;
+    if (!this.model) return;
+    const found = {};
+    this.model.traverse((o) => { if (/^Wheel_(FL|FR|RL|RR)$/.test(o.name)) found[o.name.slice(6)] = o; });
+    const order = ['FL', 'FR', 'RL', 'RR'];
+    if (!order.every((k) => found[k])) return;
+    this.wheelNodes = order.map((k) => found[k]);
+    this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
+    for (const n of this.wheelNodes) n.rotation.order = 'YZX';
+  }
+  /** Turn the wheels to match the physics car: front wheels steer, all four roll. Cheap; call it every frame for cars you can see up close. */
+  setWheels(car) {
+    if (!this.wheelNodes || this._wheelsOff || !car || !car.wheels) return;
+    const st = car.steerAngle || 0;
+    for (let i = 0; i < 4; i++) {
+      const w = car.wheels[i];
+      this.wheelNodes[i].rotation.set(0, i < 2 ? st : 0, w.spin % (Math.PI * 2));
+    }
+  }
+  /** Tear the wheels off into the scene and hand them back as { node, radius } so wheelDebris.js can throw them. */
+  detachWheels() {
+    if (!this.wheelNodes || this._wheelsOff || !this.root.parent) return null;
+    this.root.updateWorldMatrix(true, true);
+    const scene = this.root.parent, box = new THREE.Box3(), out = [];
+    for (const n of this.wheelNodes) {
+      box.setFromObject(n);
+      const r = Math.max(0.15, (box.max.y - box.min.y) / 2);
+      scene.attach(n);
+      out.push({ node: n, radius: r });
+    }
+    this._wheelsOff = true;
+    return out;
+  }
+  /** Put the wheels back on the car (a respawn, or the car going back in the pool). */
+  restoreWheels() {
+    if (!this.wheelNodes || !this._wheelsOff) return;
+    this.wheelNodes.forEach((n, i) => {
+      const r = this.wheelRest[i];
+      n.removeFromParent(); r.parent.add(n);
+      n.position.copy(r.pos); n.quaternion.copy(r.quat); n.scale.copy(r.scale); n.visible = true;
+      n.rotation.order = 'YZX';
+    });
+    this._wheelsOff = false;
+  }
+
   // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.
   _initDents() { this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null; }
   /** Dent the body where a crash of `hp` hit points landed at (x, y, z) in the car's own space (x right, y up, z forward, metres). */
   addDent(x, y, z, hp) { return this.dents ? this.dents.add(x, y, z, hp) : false; }
-  clearDents() { if (this.dents) this.dents.clear(); }
+  clearDents() { if (this.dents) this.dents.clear(); this.restoreWheels(); }   // (every respawn clears the dents, so it puts the wheels back too)
 
   /**
    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for
@@ -296,6 +346,7 @@ export class CarVisual {
       this.holder.remove(this.placeholder);
       this.holder.add(model);
       this.model = model; this._lookKey = -1;
+      this._findWheels();
       this._initDents();
       this.loaded = true;
       if (this._ownLook) this._applyOwnLook();

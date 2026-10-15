@@ -11,6 +11,7 @@ import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
+import { WheelFlyers } from './wheelDebris.js';
 import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual.js';
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
@@ -83,6 +84,7 @@ const particles = new Particles(stage.scene);
 particles.setQuality(tier.fx, tier.smokeCap);
 const debris = new Debris(stage.scene, tier.debris);
 const debrisQ = Track.newQuery();
+const wheelFlyers = new WheelFlyers();
 const debrisGround = (x, z, y) => (track ? track.groundAt(x, z, y + 1, debrisQ).y : 0);
 /** Spray crash debris. `speed` is the impact speed; small bumps throw nothing. */
 function crashDebris(x, y, z, speed, paint, bx = 0, bz = 0, scale = 1) {
@@ -248,7 +250,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -461,6 +463,7 @@ function derbyEvents() {
       if (e.y - g.y < 2.5) scorch.add(e.x, g.y, e.z, g.nx, g.ny, g.nz, 3.4);
       sound.explode(e.dist);
       if (e.dist < 45) chase.impact(Math.max(0, 1 - e.dist / 45) * 22);
+      { const wf = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id), wv = e.isPlayer ? visual : views.get(e.id); if (wv) wheelFlyers.launch(wv, wf && wf.car.vel); }   // the wheels fly off
       props.shock(e.x, e.y, e.z, 8);                  // a burning car sets off drums beside it
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
     } else if (e.type === 'award') {
@@ -494,7 +497,7 @@ function makeView(f) {
 }
 function releaseView(id) {
   const v = views.get(id); if (!v) return;
-  v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
+  v.restoreWheels(); v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
 }
 function clearViews() { for (const id of [...views.keys()]) releaseView(id); }
 
@@ -516,6 +519,7 @@ function syncViews(a) {
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
+    if (d2 < 60 * 60) v.setWheels(f.car);                                      // wheels steer and spin on the cars near enough to see them
     const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
     if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
@@ -578,7 +582,7 @@ function effects(dt) {
     }
   }
   if (car.scraping && wallSpot && simTime - wallSpot.t < 0.4 && Math.random() < 40 * dt) particles.spark(wallSpot.x, wallSpot.y, wallSpot.z, car.vel.x * 0.2, 1.5, car.vel.z * 0.2);
-  particles.update(dt); debris.update(dt, debrisGround);
+  particles.update(dt); debris.update(dt, debrisGround); wheelFlyers.update(dt, debrisGround);
 }
 
 // -------------------------------------------------------------------- frame
@@ -637,7 +641,7 @@ function frame(now) {
     }
     sound.update(car, 0, false);
   }
-  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
+  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ); visual.setWheels(car);
   if (derby.enabled || views.size) syncViews(mode === 'drive' ? acc / DT : 1);
   propsView.update(props);
   stage.update(drawPos, camera.position);
@@ -815,7 +819,7 @@ function mpImpactFx(x, y, z, speed) {
 /** Take health off the local player. Returns true if this was the blow that finished them (they explode). */
 function mpTakeDamage(amount) {
   if (life.damage(amount, simTime) !== 'died') return false;
-  mpExplodeAt(car.pos.x, car.pos.y, car.pos.z);
+  mpExplodeAt(car.pos.x, car.pos.y, car.pos.z); wheelFlyers.launch(visual, car.vel);
   hud.banner('Wrecked! Back in a moment...', LIFE.respawnDelay * 1000);
   return true;
 }
@@ -929,7 +933,7 @@ function mpSyncRemote() {
       bar.appendChild(p.healthFill); p.label.append(nameEl, bar); $('mp-labels').appendChild(p.label);
     }
     const health = c.health ?? 1;
-    if (health <= 0 && !p.exploded) { p.exploded = true; mpExplodeAt(p.view.root.position.x, p.view.root.position.y, p.view.root.position.z, camera.position.distanceTo(p.view.root.position)); }
+    if (health <= 0 && !p.exploded) { p.exploded = true; wheelFlyers.launch(p.view, null, 0.8); mpExplodeAt(p.view.root.position.x, p.view.root.position.y, p.view.root.position.z, camera.position.distanceTo(p.view.root.position)); }
     else if (health > 0) p.exploded = false;
     p.healthFill.style.width = Math.round(health * 100) + '%';
     p.healthFill.style.background = health > 0.5 ? '#6bd66b' : health > 0.2 ? '#e8b13a' : '#d94b3a';

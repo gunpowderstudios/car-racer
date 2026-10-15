@@ -389,3 +389,18 @@ test('Race Day stages start with the five-light grand prix sequence', async () =
   assert.match(sm, /startRaceLights\(\(\) => app\.freeze\(false\)/, 'the race is held until the lights go out');
   assert.match(sm, /cancelRaceLights\(\)/);
 });
+
+test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and can throw them off', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\)/);
+  assert.match(cv, /setWheels\(car\)/); assert.match(cv, /detachWheels\(\)/); assert.match(cv, /restoreWheels\(\)/);
+  assert.ok(existsSync(new URL('../src/wheelDebris.js', import.meta.url)));
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /visual\.setWheels\(car\)/); assert.match(main, /wheelFlyers\.launch/);
+  // the light copy of the Mini keeps its named wheels
+  const buf = readFileSync(new URL('../cars/lite/mini-SHRINK.glb', import.meta.url));
+  const json = JSON.parse(buf.slice(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+  const names = json.nodes.map((n) => n.name).filter(Boolean);
+  for (const n of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) assert.ok(names.includes(n), n);
+});
