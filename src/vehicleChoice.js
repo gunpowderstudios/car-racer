@@ -65,6 +65,16 @@ export const VEHICLES = [
     physicsProfile: 'volvo',
   },
   {
+    id: 'saab',
+    name: 'WASAABI',
+    description: 'I used to be a JET you know!',
+    url: 'cars/saab-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 4.66,
+    damageMul: 0.95,                 // solid Swedish steel: a touch tougher than average
+    physicsProfile: 'saab',
+  },
+  {
     id: 'v8-pilot',
     name: 'Classic Oil Burner',
     description: "Mum drove it, Dad fixed it. A smokin' V8 bruiser!",
@@ -102,7 +112,7 @@ export const VEHICLES = [
 // Lighter copies of the heavy models (cars/lite/, about 30-50k triangles instead of 100-320k, made with gltfpack) for phones and
 // other non-'high' devices. `url` stays the car's identity (multiplayer matches on it); only the file that gets fetched changes.
 // ?lite=1 / ?lite=0 forces it on or off for testing.
-export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/bus-SHRINK.glb', 'cars/mobility-car-SHRINK.glb'];
+export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/bus-SHRINK.glb', 'cars/mobility-car-SHRINK.glb', 'cars/saab-SHRINK.glb'];
 function wantLite() {
   try {
     const qs = new URLSearchParams(location.search), force = qs.get('lite');

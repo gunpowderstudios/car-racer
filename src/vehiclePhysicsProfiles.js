@@ -337,6 +337,33 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 1.30,
   },
 
+  'saab': {
+    reference: '1980s Saab 900 Turbo-style front-driver (nose-heavy, grippy, a big turbo kick when you boost)',
+    mass: 1250,
+    frontWeight: 0.60,
+    wheelbase: 2.52,
+    track: 1.48,
+    wheelRadius: 0.30,
+    mountY: 0.12,
+    inertia: { x: 2300, y: 2500, z: 800 },
+    susp: {
+      free: 0.44, travel: 0.24,
+      kFront: 30000, kRear: 27000,
+      cCompFront: 2200, cCompRear: 2050, cRebFront: 3100, cRebRear: 2900,
+      arbFront: 14000, arbRear: 8500, bump: 185000, bumpDamp: 8200,
+    },
+    tyre: { muFront: 1.14, muRear: 1.08, B: 10.4, C: 1.21, slideMu: 0.83, loadSens: 0.06, rolling: 0.015 },
+    engine: { peakTorque: 245 },
+    brakeG: 1.28,
+    brakeBias: 0.63,
+    wallBounce: 0.26,
+    aero: { drag: 0.50, down: 0.20 },
+    steer: { max: 0.54, rate: 4.4, returnRate: 6.4 },
+    boost: { accel: 5.4 },
+    body: { width: 1.68, length: 4.66, bottom: -0.42, shoulder: 0.32, roof: 1.00, roofWidth: 1.42, roofLength: 2.70 },
+    mpDamageMul: 0.95,
+  },
+
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
     reference: 'Bajaj/Piaggio-style three-wheeler',

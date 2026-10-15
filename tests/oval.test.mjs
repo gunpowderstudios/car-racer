@@ -426,3 +426,13 @@ test('Mobile Chariot (the three-wheeled mobility car) is listed, has its own pro
   const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
   assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\|F\)/, 'a three-wheeler names its one front wheel Wheel_F');
 });
+
+test('WASAABI (the Saab turbo) is a listed vehicle with its own profile, model, phone copy and menu picture', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'saab',\s*name: 'WASAABI',\s*description: 'I used to be a JET you know!'/);
+  for (const f of ['cars/saab-SHRINK.glb', 'cars/lite/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const sa = vehiclePhysicsProfile('saab');
+  assert.ok(sa && sa.mass > 1100 && sa.mass < 1400 && sa.boost.accel > 5);
+});
