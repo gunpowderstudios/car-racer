@@ -67,9 +67,25 @@ export function wheelAxle(geo) {
     ox = uc + mx; oy = vc + my;
     R = pts.reduce((t, p) => t + Math.hypot(p.x - ox, p.y - oy), 0) / pts.length;
   }
-  c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2 };
+  c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2, r: R };
   axleCache.set(geo, c);
   return c;
+}
+/** The wheels in some models were cut out of the car with a little of the body still attached (a lump of bumper, arch or mud flap).
+ *  Drop every triangle that is not on the wheel: one with a corner out past the tyre's radius, seen along the axle. Done once per geometry. */
+export function trimWheel(geo, ax) {
+  if (geo.userData.wheelTrimmed || !(ax.r > 0)) return;
+  geo.userData.wheelTrimmed = true;
+  const a = geo.attributes.position, lim = (ax.r * 1.08) ** 2;
+  const idx = geo.index ? geo.index.array : null, n = idx ? idx.length : a.count;
+  const out = [], inside = (i) => { const dx = a.getX(i) - ax.x, dy = a.getY(i) - ax.y; return dx * dx + dy * dy <= lim; };
+  for (let t = 0; t < n; t += 3) {
+    const i0 = idx ? idx[t] : t, i1 = idx ? idx[t + 1] : t + 1, i2 = idx ? idx[t + 2] : t + 2;
+    if (inside(i0) && inside(i1) && inside(i2)) out.push(i0, i1, i2);
+  }
+  if (out.length === n || out.length < n * 0.4) return;                  // nothing to cut, or the fit looks wrong: leave the wheel alone
+  geo.setIndex(out);
+  geo.userData.wheelCut = (n - out.length) / 3;
 }
 const RIVAL_TEX_MAX = 1024;
 /** Phones: shrink a car's 2048px textures to `max` px before they go to the graphics card (a quarter of the memory and bandwidth). */
@@ -282,7 +298,8 @@ export class CarVisual {
       const host = found[k], m = host.isMesh ? host : host.children.find((c) => c.isMesh);
       if (!m) return host;
       m.updateMatrix();
-      const ax = wheelAxle(m.geometry), P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
+      const ax = wheelAxle(m.geometry); trimWheel(m.geometry, ax);
+      const P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
       const pivot = new THREE.Group(); pivot.name = host.name + '_axle';
       const parent = m.parent;
       pivot.position.copy(P); parent.add(pivot); pivot.add(m); m.position.sub(P);

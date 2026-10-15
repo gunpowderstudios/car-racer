@@ -436,3 +436,10 @@ test('WASAABI (the Saab turbo) is a listed vehicle with its own profile, model, 
   const sa = vehiclePhysicsProfile('saab');
   assert.ok(sa && sa.mass > 1100 && sa.mass < 1400 && sa.boost.accel > 5);
 });
+
+test('wheels: bits of body cut out with a wheel are trimmed off it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /export function trimWheel\(geo, ax\)/);
+  assert.match(cv, /trimWheel\(m\.geometry, ax\)/, 'applied to every wheel as it is re-pivoted');
+});
