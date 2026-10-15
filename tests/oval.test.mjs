@@ -447,7 +447,10 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
 test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="btn-play-now"[^>]*>Buckle up!</);
+  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>A random race<\/small>/);
+  assert.match(html, /Race Day <small>What do points mean\?<\/small>/);
+  assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
+  assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);
   assert.doesNotMatch(html, />Play Now</);
   assert.match(html, /id="btn-multiplayer-top"/);
   assert.match(html, /id="btn-multiplayer"/, 'the lower Multiplayer button stays');

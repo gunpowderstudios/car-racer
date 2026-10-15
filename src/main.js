@@ -775,6 +775,7 @@ function bindMenu() {
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   $('btn-play-now').onclick = () => startDriving(makeRandomTrack());
+  $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
   $('import-file').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;

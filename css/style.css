@@ -48,6 +48,7 @@ body:not(.mode-menu) #menu { display: none; }
 .btn-play:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #8a5200, 0 14px 20px rgba(0,0,0,.4); }
 .btn-story { display: block; margin: 6px 0 6px; padding: 10px 24px; font-size: 20px; }
 .btn-story small { display: block; font-family: var(--cond); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.btn-play small { display: block; font-family: var(--cond); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
 .btn-play:active { transform: translateY(2px); box-shadow: 0 3px 0 #8a5200, 0 6px 12px rgba(0,0,0,.35); }
 .options { margin: 4px 0 12px; color: var(--peach); }
 .options summary { cursor: pointer; font-family: var(--cond); font-weight: 600; font-size: 18px; color: var(--amber); }
@@ -167,6 +168,7 @@ body:not(.mode-menu) #menu { display: none; }
   #btn-play-now { order: 2; }
   #btn-story { order: 2; }
   #btn-multiplayer-top { order: 2; }
+  #btn-new-top { order: 2; }
   #version { order: 3; }
   #menu .lede { order: 4; }
   #menu-vehicle-choice { order: 5; }
