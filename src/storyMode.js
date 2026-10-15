@@ -8,6 +8,7 @@
 // The race itself is the normal Race mode (wrecked = respawn); this file picks each stage's settings, keeps the table and runs the results panel.
 // It talks to the game through window.__app (main.js), window.__raceLaps (raceSettings.js) and the 'carracer-player-finish' event (soloRacePosition.js).
 
+import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { STORY, newTable, addStage, standings, survivors, pointsFor } from './storyData.js';
 const SKILL_OF = { easy: 0.2, normal: 0.5, hard: 0.75, expert: 1 };
 
@@ -74,7 +75,7 @@ function restore() {
 }
 
 export function endStory() {
-  clearTimeout(resultTimer); clearTimeout(introTimer);
+  clearTimeout(resultTimer); clearTimeout(introTimer); cancelRaceLights();
   if (panel) panel.hidden = true; if (intro) intro.hidden = true;
   window.__app?.freeze(false);
   if (state.active) { state.active = false; restore(); }
@@ -85,11 +86,13 @@ export function startStory(i = 0, resume = null) {
   if (i === 0 && !resume) { state.alive = ['you', ...STORY.roster.map((r) => r.id)]; state.table = newTable(state.alive); }
   ensureUi();
   if (!state.active) state.saved = { mode: app.opts.mode, rivals: app.opts.rivals, laps: window.__raceLaps?.get?.() || 1 };
-  clearTimeout(resultTimer);
+  clearTimeout(resultTimer); cancelRaceLights();
   const def = applyStage(i), s = stageDef(i);
   if (panel) panel.hidden = true;
   app.freeze(false);
   app.startDriving(def);
+  app.freeze(true);                                                       // hold the grid still for the start lights
+  startRaceLights(() => app.freeze(false), (f, d, g) => app.sound?.beep?.(f, d, g));
   ensureUi();
   if (intro) {
     intro.querySelector('strong').textContent = `Stage ${i + 1} of ${STORY.stages.length}`;
