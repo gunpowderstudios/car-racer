@@ -684,9 +684,9 @@ Multiplayer.prototype.createRoom = async function patchedCreateRoom(name, ...res
 };
 
 const originalJoinRoom = Multiplayer.prototype.joinRoom;
-Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name) {
+Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name, ...rest) {
   wrapVehicleHandlers(this);
-  const joined = await originalJoinRoom.call(this, code, name);
+  const joined = await originalJoinRoom.call(this, code, name, ...rest);
   if (this.hostConn && this.hostConn.open) {
     this.hostConn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
   }

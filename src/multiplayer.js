@@ -17,6 +17,7 @@ const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the s
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
 const STATE_HZ = 20;
 const STALE_PLAYER_MS = 5000;               // after the race starts, no state for this long means the player has gone
+const CONNECT_MS = 15000;                   // how long a guest waits for the link to the host to open before trying again: a phone on mobile data can take well over 4 seconds
 const STALE_FIRST_MS = 25000;               // ...but a player who has not sent their first state yet is still loading the track - a slow phone can take a while
 let currentMultiplayer = null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -297,7 +298,7 @@ export class Multiplayer {
     this._broadcastLobby();
   }
 
-  async joinRoom(code, name, { retryMs = 60000, delayMs = 1500 } = {}) {
+  async joinRoom(code, name, { retryMs = 60000, delayMs = 1500, connectMs = CONNECT_MS } = {}) {
     await loadPeerJs();
     const myName = sanitizeName(name), roomCode = sanitizeName(code).toUpperCase().slice(0, 8);
     this._guest = { name: myName, code: roomCode };
@@ -305,9 +306,10 @@ export class Multiplayer {
 
     // A phone host can briefly disappear from the PeerJS broker while its native Share sheet
     // or another app is in front. Treat "peer unavailable" as temporary for a few seconds.
+    if (this.h.onStatus) this.h.onStatus(`Connecting to room ${roomCode}\u2026`);
     for (;;) {
       try {
-        return await this._joinRoomAttempt(roomCode);
+        return await this._joinRoomAttempt(roomCode, connectMs);
       } catch (e) {
         if (this._leaving || e?.peerType !== 'peer-unavailable' || Date.now() >= deadline) throw e;
         if (this.h.onStatus) this.h.onStatus(`Room ${roomCode} is waking up… Keep the host game open.`);
@@ -316,7 +318,7 @@ export class Multiplayer {
     }
   }
 
-  _joinRoomAttempt(roomCode) {
+  _joinRoomAttempt(roomCode, connectMs = CONNECT_MS) {
     return new Promise((resolve, reject) => {
       const peer = new window.Peer();
       let settled = false;
@@ -348,7 +350,7 @@ export class Multiplayer {
             e.peerType = 'peer-unavailable';
             fail(e);
           }
-        }, 4500);
+        }, connectMs);
       });
     });
   }

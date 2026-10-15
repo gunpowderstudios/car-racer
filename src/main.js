@@ -980,6 +980,8 @@ function mpRenderLobby(players, hostId) {
     $('mp-start').disabled = players.length < 2;
     $('mp-need-more').hidden = !net.isHost || players.length >= 2;
     $('mp-waiting').hidden = net.isHost;
+    const host = players.find((p) => p.id === hostId);
+    $('mp-waiting').textContent = host ? `Connected! Waiting for ${host.name} to start the game\u2026` : 'Waiting for the host\u2026';
     $('mp-track-field').hidden = !net.isHost;
     $('mp-track-fixed').hidden = net.isHost;
   }
@@ -1131,7 +1133,7 @@ function bindMultiplayer() {
     store.set('cr.mpname', name);
     $('mp-join-go').disabled = true;
     try { net = new Multiplayer(mpHandlers); const joined = await net.joinRoom(code, name); chatUI.setActive(true); mpShow('mp-lobby'); $('mp-room-code').textContent = joined; }
-    catch (e) { mpErr('mp-join-error', e.message); net = null; }
+    catch (e) { mpStatus(null); mpErr('mp-join-error', e.message); net = null; }
     $('mp-join-go').disabled = false;
   };
   $('mp-start').onclick = () => {

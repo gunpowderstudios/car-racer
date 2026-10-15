@@ -246,7 +246,7 @@ test('multiplayer join retries a temporarily unavailable mobile host', () => {
   assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 60000/);
   assert.match(mpCore, /e\?\.peerType !== 'peer-unavailable'/);
   assert.match(mpCore, /Room \${roomCode} is waking up/);
-  assert.match(mpCore, /_joinRoomAttempt\(roomCode\)/);
+  assert.match(mpCore, /_joinRoomAttempt\(roomCode, connectMs\)/);
   assert.match(main, /finally \{[\s\S]*net\?\.resume\(\)/);
 });
 
