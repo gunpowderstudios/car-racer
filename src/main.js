@@ -26,6 +26,7 @@ import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quali
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
 import { selectedVehicle, multiplayerVehicleSpec } from './vehicleChoice.js';
+import { obbOverlap } from './obbOverlap.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -788,7 +789,6 @@ function bindMenu() {
 
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
-const MP_BASE_RADIUS = 1.30;   // original per-car contact radius, scaled by each vehicle's body width
 const MP_DAMAGE_HP_SCALE = 140 * TOUGHNESS; // derby crash HP converted onto multiplayer's single 0..1 health bar
 const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
@@ -854,14 +854,19 @@ function mpCollideLocal() {
     if (!p.cur) continue;
     const info = net?.players.get(id);
     const theirs = multiplayerVehicleSpec(info?.vehicleId);
-    const contactR = MP_BASE_RADIUS * (mine.width / 1.85) + MP_BASE_RADIUS * (theirs.width / 1.85);
-
-    const dx = car.pos.x - p.cur.x, dz = car.pos.z - p.cur.z;
     if (Math.abs(car.pos.y - p.cur.y) > 3) continue;             // not roughly level - a jump, most likely
-    const distSq = dx * dx + dz * dz;
-    if (distSq > contactR * contactR || distSq < 1e-6) continue;
-
-    const dist = Math.sqrt(distSq), nx = dx / dist, nz = dz / dist, overlap = contactR - dist;
+    // Each car is a rectangle (its real length and width) turned to face where it is heading. Two rectangles overlap unless some
+    // axis separates them; the least-overlapping axis is the way out. (Circles sized by width alone let a long van merge into a short car.)
+    const c = p.cur, mfx = car.az.x, mfz = car.az.z;
+    const tfx = 2 * (c.qx * c.qz + c.qw * c.qy), tfz = 1 - 2 * (c.qx * c.qx + c.qy * c.qy);
+    const ml = Math.hypot(mfx, mfz) || 1, tl = Math.hypot(tfx, tfz) || 1;
+    const A = [mfx / ml, mfz / ml], B = [tfx / tl, tfz / tl];
+    const dx = car.pos.x - c.x, dz = car.pos.z - c.z;
+    if (dx * dx + dz * dz > 64) continue;                         // more than 8 m apart: nowhere near touching
+    const mhl = mine.length * 0.48, mhw = mine.width * 0.48, thl = theirs.length * 0.48, thw = theirs.width * 0.48;
+    const hit = obbOverlap(dx, dz, A, B, mhl, mhw, thl, thw);
+    if (!hit) continue;
+    const { overlap, nx, nz } = hit;
     const totalMass = mine.mass + theirs.mass;
     const myShare = theirs.mass / totalMass;
     const theirShare = mine.mass / totalMass;

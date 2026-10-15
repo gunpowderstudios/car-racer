@@ -188,7 +188,7 @@ export function multiplayerVehicleSpec(id) {
     id: config.id,
     mass: Math.max(400, Number(p.mass) || BASE_CAR.mass),
     width: Math.max(1.2, Number(body.width) || 1.85),
-    length: Math.max(3.2, Number(body.length) || Number(config.targetLength) || 4.60),
+    length: Math.max(2.5, Number(body.length) || Number(config.targetLength) || 4.60),
     damageMul: Math.max(0.5, Math.min(1.5, Number(p.mpDamageMul ?? config.damageMul ?? 1) || 1)),
   };
 }
