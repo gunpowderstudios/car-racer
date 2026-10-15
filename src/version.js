@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.105';
-export const NOTE = 'Barrels kick harder: bigger blasts that jolt cars into the air, and drums fly further when shoved';
+export const VERSION = '17.106';
+export const NOTE = 'Barrels stay low again: the extra kick is sideways only, blast lift back to normal';

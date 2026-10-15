@@ -25,7 +25,7 @@ export const BARREL = {
   bounceAbove: 1.5,              // impacts softer than this (m/s) don't bounce, so resting barrels stay put
   lightSpeed: 3,                 // a hit from the car at this closing speed (m/s) lights the fuse
   chainSpeed: 8,                 // barrel-on-barrel or barrel-on-wall, same idea
-  kick: 0.35, pop: 0.3,          // a car's shove sends the drum off faster than physics alone would (x the closing speed), and pops it into the air (capped at 7 m/s)
+  kick: 0.35,                    // a car's shove sends the drum off faster than physics alone would (x the closing speed), sideways only: drums stay low
   fuse: 0.7,                     // seconds between being lit and going off
   clangSpeed: 1.5,               // impacts at least this hard make the clang sound
 };
@@ -37,7 +37,7 @@ export const CHICKEN = {
 export const BLAST = {
   radius: 10,                    // barrels and the car feel it this far away
   chainRadius: 4.5,              // barrels this close go off too, a moment later
-  throwSpeed: 20, lift: 8,       // what the centre of the blast does to a neighbouring barrel (m/s): thrown hard enough to carry into the next car
+  throwSpeed: 20, lift: 5,       // what the centre of the blast does to a neighbouring barrel (m/s): thrown hard enough to carry into the next car
   carPush: 11,                   // and to the car (m/s at point blank, falling off linearly)
   carLift: 0.9,                  // how much of that push is straight up: the blast jolts the car into the air
   bits: 6,                       // scrap pieces per barrel
@@ -260,7 +260,7 @@ export class Props {
       const j = -(1 + e) * rel / (invB + invC);
       b.vel.addScaled(n, j / BARREL.mass); b.w.addScaled(rn, j / INERTIA);
       car.impulseAt(n, -j, p);
-      if (-rel > 2) { b.vel.addScaled(n, -rel * BARREL.kick); b.vel.y += Math.min(7, -rel * BARREL.pop); }       // the extra kick
+      if (-rel > 2) { b.vel.x += n.x * -rel * BARREL.kick; b.vel.z += n.z * -rel * BARREL.kick; }       // the extra kick, along the ground
       // a little friction so a glancing hit spins the drum
       const vt = sT.set(vB.x - vC.x - n.x * rel, vB.y - vC.y - n.y * rel, vB.z - vC.z - n.z * rel), vtl = vt.length();
       if (vtl > 0.05) {
