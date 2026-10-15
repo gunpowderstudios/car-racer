@@ -665,8 +665,16 @@ function setMode(m) {
   input.enabled = m === 'drive';
 }
 function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
+// The big vehicles hide the road from the chase camera, so every race in one starts on the High camera (C still cycles as usual).
+const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
+let autoHighCam = false;
+function pickStartCamera() {
+  const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id);
+  if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
+  else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle
+}
 function startDriving(newDef) {
-  sound.init();
+  sound.init(); pickStartCamera();
   if (newDef) loadTrack(newDef);
   hasPlayed = true; setMode('drive'); last = performance.now();
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
