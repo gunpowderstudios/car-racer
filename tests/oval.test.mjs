@@ -379,3 +379,13 @@ test('races in the bus or the motorhome start on the High camera', async () => {
   assert.match(main, /function startDriving\(newDef\) \{\s*sound\.init\(\); pickStartCamera\(\);/);
   assert.match(main, /chase\.mode = 1/, 'mode 1 is High (Chase, High, Bumper)');
 });
+
+test('Race Day stages start with the five-light grand prix sequence', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  assert.ok(existsSync(new URL('../src/raceLights.js', import.meta.url)));
+  const rl = readFileSync(new URL('../src/raceLights.js', import.meta.url), 'utf8');
+  assert.match(rl, /'<div class="rl-col">.*\.repeat\(5\)/, 'five lights');
+  const sm = readFileSync(new URL('../src/storyMode.js', import.meta.url), 'utf8');
+  assert.match(sm, /startRaceLights\(\(\) => app\.freeze\(false\)/, 'the race is held until the lights go out');
+  assert.match(sm, /cancelRaceLights\(\)/);
+});

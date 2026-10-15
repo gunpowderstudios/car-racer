@@ -144,6 +144,13 @@ export class Sound {
     const a = this._hornVoice(gain, pitch); a.stop(0.16);
     setTimeout(() => { if (this.ctx) { const b = this._hornVoice(gain, pitch); b.stop(0.2); } }, 230);
   }
+  /** A short pure beep (the start lights): `freq` Hz for `dur` seconds. */
+  beep(freq = 440, dur = 0.18, gain = 0.3) {
+    if (!this.ready || !this.sfxOn || !this.ctx) return;
+    const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.01); g.gain.setTargetAtTime(0, t + dur * 0.6, dur * 0.2);
+    o.connect(g).connect(this.sfx); o.start(t); o.stop(t + dur + 0.1);
+  }
   /** A chicken meeting its end. */
   splat(dist = 0) { this._shot('cluck', 0.85, 0.85 + Math.random() * 0.3, dist, 0.5); }
 }
