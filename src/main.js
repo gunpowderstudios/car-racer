@@ -519,6 +519,7 @@ function syncViews(a) {
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
+    if (v._wheelsOff && !f.wrecked) v.restoreWheels();                         // safety net: only a wreck goes without wheels
     if (d2 < 60 * 60) v.setWheels(f.car);                                      // wheels steer and spin on the cars near enough to see them
     const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
     if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
@@ -641,7 +642,9 @@ function frame(now) {
     }
     sound.update(car, 0, false);
   }
-  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ); visual.setWheels(car);
+  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
+  if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
+  visual.setWheels(car);
   if (derby.enabled || views.size) syncViews(mode === 'drive' ? acc / DT : 1);
   propsView.update(props);
   stage.update(drawPos, camera.position);
