@@ -25,6 +25,7 @@ export class CaravanView {
     this.dims = null;                       // { dAxle, wheelR, length, width } once loaded
     this._prev = null; this._cur = null;
     this._e = new THREE.Euler(0, 0, 0, 'YXZ');
+    this._spinAxis = new THREE.Vector3(); this._hq = new THREE.Quaternion();
   }
 
   /** A copy for a rival's caravan, painted in the rival's colour (`look` is one of RIVAL_LOOKS; the model's own paint is a mint green, not the cars' orange). Needs this one loaded. */
@@ -139,7 +140,7 @@ export class CaravanView {
     let bodyFront = 0;
     for (const [k, e] of bins) if (e[1] - e[0] > 0.6 * fs.x && k / 10 > bodyFront) bodyFront = k / 10;
     // The ball is put just ahead of the body, so the drawbar tucks under the back of the car and the caravan looks hitched on, not trailing behind with a gap.
-    this.dims = { dAxle: Math.min(fb.max.z, Math.max(1.5, bodyFront + 0.25)), tip: fb.max.z, front: bodyFront, rear: fb.min.z, wheelR, length: fs.z, width: fs.x, wheelsFound: wheelNodes.length };
+    this.dims = { dAxle: Math.min(fb.max.z, Math.max(1.5, bodyFront + 0.4)), tip: fb.max.z, front: bodyFront, rear: fb.min.z, wheelR, length: fs.z, width: fs.x, wheelsFound: wheelNodes.length };
   }
 
   /** Remember where the caravan is after a physics step (the picture blends between the last two). Call with null when there is no caravan. */
@@ -170,6 +171,8 @@ export class CaravanView {
     this._shade(c[8]);
     this.root.quaternion.setFromEuler(this._e);
     const spin = l(p[6], c[6]) % (Math.PI * 2);
-    for (const w of this.wheels) w.rotation.x = spin;
+    // spin about the car's sideways axis (the holder is turned to face the car, so that axis is not the pivots' own x)
+    this._spinAxis.set(1, 0, 0).applyQuaternion(this._hq.copy(this.holder.quaternion).invert());
+    for (const w of this.wheels) w.quaternion.setFromAxisAngle(this._spinAxis, spin);
   }
 }

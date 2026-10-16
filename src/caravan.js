@@ -13,7 +13,7 @@ const G = 9.81;
 
 export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
-  dAxle: 2.25,            // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
+  dAxle: 2.4,             // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
   rear: -1.63, front: 2.0,  // m from the axle to the back and the front of the caravan's body (the drawbar sticks out past `front`)
   hp: 220,                // how much battering the caravan takes before the hitch gives way and it is left behind
   wallMul: 9, carMul: 3,  // a caravan's thin skin takes more from the same knock than a car does
@@ -135,9 +135,9 @@ export class Caravan {
     this.yaw += this.yawRate * dt;
     // top-heavy: the body rocks out the way the sideways push does, and rolls back and forth on its springs
     const aLat = ax * lx + az * lz;
-    const swayT = clamp(aLat / G * 0.26, -0.24, 0.24);
-    this.swayRate += (38 * (swayT - this.sway) - 3.2 * this.swayRate) * dt;
-    this.sway = clamp(this.sway + this.swayRate * dt, -0.32, 0.32);
+    const swayT = clamp(aLat / G * 0.1, -0.1, 0.1);
+    this.swayRate += (38 * (swayT - this.sway) - 4 * this.swayRate) * dt;
+    this.sway = clamp(this.sway + this.swayRate * dt, -0.14, 0.14);
     this._walls();
     this.spin += (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
 

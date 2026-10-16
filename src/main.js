@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
-import { Derby, DERBY } from './derby.js';
+import { Derby, DERBY, collideVanCar } from './derby.js';
 import { IDLE } from './ai.js';
 import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
 import { DENT } from './dentMath.js';
@@ -117,6 +117,7 @@ const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
 const derby = new Derby();
 const views = new Map();            // rival id -> CarVisual
+const towHit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
 const towViews = new Map();         // rivals' caravan pictures, by rival id
 const viewPool = [];                // visuals of rivals that have gone, ready to be reused
 const derbyBest = () => store.get('cr.derby', {});
@@ -328,6 +329,7 @@ function sim(seconds, inp) {
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
     car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track);
+    if (car.tow && !derby.enabled) { car.refreshFrame(); collideVanCar(car.tow, car, towHit); }   // (with rivals, derby.step does this)
     if (derby.enabled) derby.step(DT, props.barrels);
     props.step(DT, derby.enabled ? derby.cars : car); simTime += DT; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);

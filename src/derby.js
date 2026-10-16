@@ -449,7 +449,8 @@ export class Derby {
       const va = a.car.tow;
       if (!va || a.gone) continue;
       for (const b of F) {
-        if (b === a || b.gone) continue;
+        if (b.gone) continue;
+        if (b === a) { collideVanCar(va, a.car, H); continue; }       // the car and the caravan it tows keep out of each other's way, but do no damage
         if (collideVanCar(va, b.car, H) && H.closing > 1.2) {
           if (H.closing > 2.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
           va.struck('car', H.closing, H.x, H.y, H.z, crashDamage(H.mu, H.closing) * va.spec.carMul);
