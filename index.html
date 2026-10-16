@@ -318,6 +318,18 @@ html.invite-loading #invite-loading {
   </div>
 </section>
 
+<div id="shared-track" hidden role="dialog" aria-modal="true" aria-labelledby="shared-title">
+  <div class="shared-box">
+    <p class="fine">A friend sent you a track</p>
+    <h2 id="shared-title"></h2>
+    <p id="shared-info" class="fine"></p>
+    <button id="shared-drive" class="btn btn-play" type="button">Drive it!</button>
+    <button id="shared-edit" class="btn" type="button">Edit it</button>
+    <button id="shared-save" class="btn" type="button">Save to my tracks</button>
+    <button id="shared-close" class="btn ghost" type="button">Not now</button>
+  </div>
+</div>
+
 <div id="mp-labels" aria-hidden="true"></div>
 
 <!-- ============================ EDITOR ============================ -->
@@ -348,6 +360,7 @@ html.invite-loading #invite-loading {
     <div class="ed-spacer"></div>
     <div class="ed-group">
       <button id="ed-save">Save</button>
+      <button id="ed-share" title="Copy a link that opens this track for a friend">Share link</button>
       <button id="ed-export">Export</button>
       <button id="ed-drive" class="primary">Drive it</button>
       <button id="ed-close">Menu</button>
