@@ -10,9 +10,10 @@
 
 import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { STORY, newTable, addStage, standings, survivors, pointsFor } from './storyData.js';
+import { TEMPLATE_KEYS, makeTemplate } from './templates.js';
 const SKILL_OF = { easy: 0.2, normal: 0.5, hard: 0.75, expert: 1 };
 
-const state = window.__story = { active: false, stage: 0, total: STORY.stages.length, laps: 1, saved: null, name: '', table: null, alive: [], order: [] };
+const state = window.__story = { active: false, stage: 0, total: STORY.stages.length, laps: 1, saved: null, name: '', table: null, alive: [], order: [], single: null };
 let panel = null, intro = null, introTimer = null, resultTimer = null;
 const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10 > 3 ? 0 : n % 10]}`;
 const store = { get() { try { return JSON.parse(localStorage.getItem('cr.story')) || {}; } catch { return {}; } }, set(v) { try { localStorage.setItem('cr.story', JSON.stringify(v)); } catch { /* storage unavailable */ } } };
@@ -48,7 +49,10 @@ function ensureUi() {
   hud.appendChild(panel); hud.appendChild(intro);
 }
 
-function stageDef(i) { return STORY.stages[i]; }
+/** The stages being played: the four-circuit championship, or one single race on a track picked on the Race Day screen. */
+const stages = () => (state.single ? [{ key: state.single, laps: 1, skill: 0.6, level: 'Medium' }] : STORY.stages);
+const keepOf = (i) => (state.single ? 0 : STORY.keep[i]);
+function stageDef(i) { return stages()[i]; }
 /** Laps for a stage: one by default, or whatever the Laps option was set to when the story began. */
 function lapsFor(i) { return Math.max(1, (state.saved && state.saved.laps) || stageDef(i).laps); }
 
@@ -84,6 +88,7 @@ export function endStory() {
 export function startStory(i = 0, resume = null) {
   const app = window.__app; if (!app) return;
   if (i === 0 && !resume) { state.alive = ['you', ...STORY.roster.map((r) => r.id)]; state.table = newTable(state.alive); }
+  state.total = stages().length;
   ensureUi();
   if (!state.active) state.saved = { mode: app.opts.mode, rivals: app.opts.rivals, laps: window.__raceLaps?.get?.() || 1 };
   clearTimeout(resultTimer); cancelRaceLights();
@@ -95,8 +100,8 @@ export function startStory(i = 0, resume = null) {
   startRaceLights(() => app.freeze(false), (f, d, g) => app.sound?.beep?.(f, d, g));
   ensureUi();
   if (intro) {
-    intro.querySelector('strong').textContent = `Stage ${i + 1} of ${STORY.stages.length}`;
-    intro.querySelector('span').textContent = `${def.name} - ${lapsFor(i)} ${lapsFor(i) === 1 ? 'lap' : 'laps'} - ${s.level} - ${STORY.points.join('/')} points${STORY.keep[i] ? ` - top ${STORY.keep[i]} go on` : ' - points leader wins'}`;
+    intro.querySelector('strong').textContent = (state.single ? 'Race Day' : `Stage ${i + 1} of ${stages().length}`);
+    intro.querySelector('span').textContent = `${def.name} - ${lapsFor(i)} ${lapsFor(i) === 1 ? 'lap' : 'laps'} - ${s.level} - ${STORY.points.join('/')} points${keepOf(i) ? ` - top ${keepOf(i)} go on` : state.single ? '' : ' - points leader wins'}`;
     const names = intro.querySelector('em'); if (names) names.textContent = 'Racing: ' + rivalsAlive().map(nameOf).join(', ');
     intro.hidden = false; clearTimeout(introTimer); introTimer = setTimeout(() => { intro.hidden = true; }, 4200);
   }
@@ -118,19 +123,19 @@ function table(rows, cutAfter) {
 
 function show(kind, place, rows, cutAfter) {
   ensureUi(); if (!panel) return;
-  const i = state.stage, last = i === STORY.stages.length - 1, card = panel.querySelector('.sp-card');
+  const i = state.stage, last = i === stages().length - 1, card = panel.querySelector('.sp-card');
   const h = card.querySelector('h2'), line = card.querySelector('.sp-line'), next = card.querySelector('.sp-next'), btns = card.querySelector('.sp-btns');
   panel.classList.toggle('out', kind === 'out'); btns.innerHTML = ''; card.querySelector('table')?.remove();
   const add = (label, fn, cls = '') => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn; btns.appendChild(b); return b; };
   const mine = rows.findIndex((r) => r.id === 'you') + 1, mp = rows[mine - 1]?.pts ?? 0;
   let primary;
   if (kind === 'out') {
-    h.textContent = 'You\'re out!'; line.textContent = `Finished the stage ${ordinal(place)}, but ${ordinal(mine)} in the standings on ${mp} pts - only the top ${STORY.keep[i]} go on.`; next.textContent = `You reached stage ${i + 1} of ${STORY.stages.length}.`;
+    h.textContent = 'You\'re out!'; line.textContent = `Finished the stage ${ordinal(place)}, but ${ordinal(mine)} in the standings on ${mp} pts - only the top ${keepOf(i)} go on.`; next.textContent = `You reached stage ${i + 1} of ${stages().length}.`;
     primary = add('Start again', () => startStory(0), 'btn-play'); add('Menu', () => { endStory(); window.__app.showMenu(); });
   } else if (last) {
     const champ = mine === 1;
-    h.textContent = champ ? 'Champion!' : 'Season over!'; line.textContent = `You finished ${ordinal(mine)} overall on ${mp} points.`;
-    next.textContent = champ ? 'Four circuits, and you beat the lot.' : `${nameOf(rows[0].id)} takes the title. Go again?`;
+    h.textContent = state.single ? (champ ? 'You won!' : 'Race over!') : champ ? 'Champion!' : 'Season over!'; line.textContent = state.single ? `You finished ${ordinal(place)} on ${state.name}.` : `You finished ${ordinal(mine)} overall on ${mp} points.`;
+    next.textContent = state.single ? (champ ? 'Beat all eight rivals.' : `${nameOf(rows[0].id)} wins it. Go again?`) : champ ? 'Four circuits, and you beat the lot.' : `${nameOf(rows[0].id)} takes the title. Go again?`;
     primary = add('Play again', () => startStory(0), 'btn-play'); add('Menu', () => { endStory(); window.__app.showMenu(); });
   } else {
     const n = stageDef(i + 1), nd = window.__app.makeTemplate(n.key);
@@ -153,11 +158,12 @@ function finishStage(detail) {
   addStage(state.table, order);
   const sub = {}; for (const id of state.alive) sub[id] = state.table[id];
   const ranked = standings(sub).map((r) => ({ id: r.id, pts: r.pts, gain: gain[r.id] || 0 }));
-  const keep = STORY.keep[i], through = !keep || ranked.slice(0, keep).some((r) => r.id === 'you');
+  const keep = keepOf(i), through = !keep || ranked.slice(0, keep).some((r) => r.id === 'you');
   const place = order.indexOf('you') + 1;
   if (through && keep) state.alive = survivors(sub, i);
   const b = store.get();
-  if (through) store.set({ ...b, best: Math.max(b.best || 0, i + 1), champ: keep ? { stage: i + 1, table: state.table, alive: state.alive } : null });
+  if (state.single) { /* a single race leaves any championship you have on the go alone */ }
+  else if (through) store.set({ ...b, best: Math.max(b.best || 0, i + 1), champ: keep ? { stage: i + 1, table: state.table, alive: state.alive } : null });
   else store.set({ ...b, champ: null });
   show(through ? 'through' : 'out', place, ranked, keep || null);
 }
@@ -178,10 +184,45 @@ setInterval(() => {
   if (g && drive && g.track?.def?.name !== state.name) endStory();
 }, 1500);
 
+/** The Race Day screen: the championship, or a single race on any circuit, and how many laps. */
+function openSetup() {
+  let ov = document.getElementById('story-setup');
+  if (!ov) {
+    const st = document.createElement('style');
+    st.textContent = `#story-setup{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,6,24,.78)}#story-setup[hidden]{display:none}
+#story-setup .sp-card{width:min(460px,92vw);padding:22px 28px 24px;background:rgba(42,29,74,.97);border-block:5px solid #ffb31f;box-shadow:0 14px 40px rgba(0,0,0,.5);text-align:left;color:#f6d9b0;font-family:"Barlow Condensed",Arial,sans-serif;font-size:19px}
+#story-setup h2{margin:0 0 6px;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:44px;text-transform:uppercase;color:#ffb31f;text-shadow:3px 3px 0 #e8392c}
+#story-setup label{display:block;margin-top:12px}#story-setup select{display:block;width:100%;margin-top:4px;background:#2a1d4a;color:#f6d9b0;border:1px solid rgba(246,217,176,.45);padding:6px 8px;font:inherit}
+#story-setup .sp-btns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}#story-setup p{margin:4px 0 0;font-size:16px;opacity:.85}`;
+    document.head.appendChild(st);
+    ov = document.createElement('div'); ov.id = 'story-setup'; ov.hidden = true;
+    const tracks = TEMPLATE_KEYS.filter((k) => k !== 'random' && k !== 'oval').map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
+    ov.innerHTML = `<div class="sp-card"><h2>Race Day</h2><p>Race eight named rivals for points: a four-circuit championship, or one race on a track of your choice.</p>
+<label>Track<select id="sp-track"><option value="champ">The championship (all four circuits)</option>${tracks}</select></label>
+<label>Laps<select id="sp-laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option></select></label>
+<div class="sp-btns"><button id="sp-go" class="btn btn-play" type="button">Go!</button><button id="sp-cancel" class="btn ghost" type="button">Cancel</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#sp-cancel').onclick = () => { ov.hidden = true; };
+    ov.querySelector('#sp-go').onclick = () => {
+      ov.hidden = true;
+      const pick = ov.querySelector('#sp-track').value;
+      window.__raceLaps?.set?.(+ov.querySelector('#sp-laps').value);
+      try { localStorage.setItem('cr.storyTrack', pick); } catch { /* storage unavailable */ }
+      if (pick !== 'champ') { state.single = pick; startStory(0); return; }
+      state.single = null;
+      const c = store.get().champ;
+      if (c && c.table && c.alive?.includes('you') && STORY.stages[c.stage] && confirm(`Continue your championship at stage ${c.stage + 1} of ${STORY.stages.length}?\n\nOK = continue, Cancel = start a new one.`)) {
+        state.table = c.table; state.alive = c.alive; startStory(c.stage, true);
+      } else startStory(0);
+    };
+  }
+  let saved = 'champ'; try { saved = localStorage.getItem('cr.storyTrack') || 'champ'; } catch { /* storage unavailable */ }
+  const sel = ov.querySelector('#sp-track'); sel.value = [...sel.options].some((o) => o.value === saved) ? saved : 'champ';
+  ov.querySelector('#sp-laps').value = String(window.__raceLaps?.get?.() || 1);
+  ov.hidden = false;
+}
+
 document.getElementById('btn-story')?.addEventListener('click', () => {
   if (state.active) endStory();
-  const c = store.get().champ;
-  if (c && c.table && c.alive?.includes('you') && STORY.stages[c.stage] && confirm(`Continue your championship at stage ${c.stage + 1} of ${STORY.stages.length}?\n\nOK = continue, Cancel = start a new one.`)) {
-    state.table = c.table; state.alive = c.alive; startStory(c.stage, true);
-  } else startStory(0);
+  openSetup();
 });
