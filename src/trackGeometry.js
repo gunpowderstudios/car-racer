@@ -48,7 +48,7 @@ export function buildTrackGeometry(track) {
   const vgrid = L / Math.max(1, Math.round(L / 20));       // texture repeat length that divides the loop exactly
 
   // generic quad-strip builder: cols(i) -> array of {p:[x,y,z], n:[..], c:[..], u}
-  const strip = (buf, cols, C, vOf, skip) => {
+  const strip = (buf, cols, C, vOf, skip, flip) => {
     const base = buf.count;
     for (let i = 0; i <= n; i++) {
       const k = i % n, cs = cols(k), v = vOf(i);
@@ -60,7 +60,7 @@ export function buildTrackGeometry(track) {
       if (skip && (skip(i) || skip(j))) continue;
       for (let c = 0; c < C - 1; c++) {
         const a = base + i * C + c, b = a + 1, d = base + (i + 1) * C + c, e = d + 1;
-        buf.idx.push(a, b, d, b, e, d);
+        if (flip) buf.idx.push(a, d, b, b, d, e); else buf.idx.push(a, b, d, b, e, d);
       }
     }
   };
@@ -150,7 +150,7 @@ export function buildTrackGeometry(track) {
         const kEnd = 4.4 + Math.max(0, (e[1] + 1.5 - GROUND_Y)) / 1.0 + 0.2;       // the far foot: where the falling bank meets the ground
         cols.push({ p: [e[0] + track.lx[i] * sg * kEnd, GROUND_Y, e[2] + track.lz[i] * sg * kEnd], n: [track.lx[i] * sg, 1, track.lz[i] * sg], c: col(5) });
         return cols;
-      }, OFFS.length + 1, sv);
+      }, OFFS.length + 1, sv, undefined, sg === 1);      // (the left bank is built running the other way from the road, so its triangles are turned over to face up - otherwise it is lit from underneath and looks dark)
     }
   }
 

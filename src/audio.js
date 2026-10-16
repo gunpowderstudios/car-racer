@@ -136,7 +136,7 @@ export class Sound {
     return { stop: (after = 0) => { if (done && after === 0) return; try { const n = c.currentTime + after; g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(0, n, 0.025); for (const o of oscs) o.stop(n + 0.2); done = true; } catch { /* already stopped */ } } };
   }
   /** Hold-to-honk for the player: starts a voice and returns it; call .stop() on the voice when the key comes up. */
-  hornStart() { if (!this.ready || !this.sfxOn) return null; const v = this._hornVoice(0.42, 1); v.stop(1.6); return v; }
+  hornStart() { if (!this.ready || !this.sfxOn) return null; const v = this._hornVoice(0.336, 1); v.stop(1.6); return v; }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1) {
     if (!this.ready || !this.sfxOn) return;
