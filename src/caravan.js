@@ -16,7 +16,7 @@ export const CARAVAN = {
   cog: 0.5,               // m: the weight sits this far ahead of the axle, as on a real caravan: it keeps the tail from wagging the car
   wheelR: 0.33,           // m
   width: 2.0, length: 4.6,
-  hitchH: 0.55,           // m: ball height above the axle centre line (the drawbar is a bit above the axle)
+  hitchH: 0.14,           // m: ball height above the axle centre line (a car's tow ball is only ~0.45 m off the road, so the caravan sits nearly level)
   tyreMu: 0.85,           // sideways grip
   tyreStiff: 25,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
   rolling: 0.016,         // rolling resistance
