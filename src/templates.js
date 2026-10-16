@@ -163,7 +163,7 @@ function rallyScatter(def) {
  *  comes off the top and runs back down a long descending straight and a U-turn to the start. (The road is a surface with a height, so there is no upside-down
  *  loop: the corkscrew is a rising spiral, as on a multi-storey car park ramp.) */
 function twister() {
-  const R = 70, cx = 220, rise = 10, turns = 2.5, g = 0.65, out = [];
+  const R = 70, cx = 220, rise = 13, turns = 2.5, g = 0.65, out = [];
   const rad = (d) => d * Math.PI / 180, top = g + rise * turns;
   for (let x = -120; x <= 190; x += 62) out.push({ x, y: g, z: -R });                          // ground straight, heading east, into the spiral
   const steps = turns * 12;
