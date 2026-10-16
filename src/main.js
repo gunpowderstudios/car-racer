@@ -782,7 +782,20 @@ function toast(msg) {
 }
 
 // ---------------------------------------------------------------------- menu
+/** Choose a track from the list: its 3D view comes up on the right (where the vehicle was) and Go! starts it. */
+let trackPreview = null, chosenDef = null;
+function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; trackPreview?.stop(); }
+function chooseTrack(d, blurb) {
+  chosenDef = d;
+  let t; try { t = new Track(d); } catch { toast('That track could not be read.'); return; }
+  if (!trackPreview) { try { trackPreview = new EditorPreview($('menu-track-canvas')); } catch { startDriving(d); return; } }
+  $('menu-track-name').textContent = d.name; $('menu-track-blurb').textContent = blurb;
+  $('menu-track-preview').hidden = false; document.body.classList.add('track-chosen');
+  trackPreview.setTrack(t); trackPreview.spin = true; trackPreview.play();
+  $('menu-track-preview').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
 function renderMenu() {
+  hideTrackPreview();
   const ul = $('track-list'); ul.innerHTML = '';
   const row = (name, meta, cls, buttons) => {
     const li = document.createElement('li'); if (cls) li.className = cls;
@@ -795,18 +808,20 @@ function renderMenu() {
   if (track && hasPlayed) row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]);
   for (const k of TEMPLATE_KEYS) {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
-    row(d.name, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`, '', [['Drive', () => startDriving(d)], ['Edit', () => openEditor(d)]]);
+    row(d.name, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`, '', [['Choose', () => chooseTrack(d, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`)], ['Edit', () => openEditor(d)]]);
   }
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
     row(name, `${km} km. Made in the editor`, 'mine', [
-      ['Drive', () => startDriving(d)], ['Edit', () => openEditor(d)],
+      ['Choose', () => chooseTrack(d, `${km} km. Made in the editor`)], ['Edit', () => openEditor(d)],
       ['Delete', () => { const a = userTracks(); delete a[name]; store.set('cr.tracks', a); renderMenu(); }, 'danger'],
     ]);
   }
 }
 
 function bindMenu() {
+  $('menu-track-go').onclick = () => { if (chosenDef) { const d = chosenDef; hideTrackPreview(); startDriving(d); } };
+  $('menu-track-back').onclick = hideTrackPreview;
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   { const co = $('caravan-opt'), cb = $('opt-caravan');          // The caravan option (a card in the vehicle gallery; the Saloon, Volvo, Saab and BMW can tow it)
     co.hidden = true; cb.checked = !!opts.caravan && TOW_CARS.includes(selectedVehicle().id);   // the checkbox just holds the state; the Hastings 2000 card in the vehicle gallery is the control
