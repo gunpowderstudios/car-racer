@@ -126,6 +126,7 @@ export class Vehicle {
     this.driftActive = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
     this.boosting = false; this.engineOff = false; this.crank = 0;
     this.events.length = 0;
+    if (this.tow) this.tow.reset(this);                       // a caravan goes back behind the car
     for (const w of this.wheels) { w.contact = false; w.load = 0; w.skid = 0; w.compress = 0; }
   }
 
@@ -166,6 +167,7 @@ export class Vehicle {
     this._axes();
     this.F.set(0, -this.mass * G, 0);
     this.T.set(0, 0, 0);
+    if (this.tow) this.tow.applyTo(this, dt);                 // a caravan on the hitch (see caravan.js): its pull goes on F and T
 
     // --- damage takes things away: a stalled engine ignores the throttle and nitro; a wrecked rear end loses the nitro; a wrecked front end loses the drift
     {

@@ -442,6 +442,7 @@ export class ChaseCamera {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
     this.boosting = false; this.kick = 0;
+    this.towLen = 0; this._tow = 0;              // metres of caravan behind the car: the camera drops back and up so it can see over it
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
   cycle() { this.mode = (this.mode + 1) % 4; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet'][this.mode]; }
@@ -479,7 +480,8 @@ export class ChaseCamera {
     this.y += (p.y - this.y) * (1 - Math.exp(-9 * dt));
     this.ly += (p.y - this.ly) * (1 - Math.exp(-14 * dt));
     const far = this.mode === 1;
-    const dist = (far ? 12 : 7.2) + speed * 0.025, h = far ? 5.8 : 2.5;
+    this._tow += (this.towLen - this._tow) * (1 - Math.exp(-3 * dt));
+    const dist = (far ? 12 : 7.2) + speed * 0.025 + this._tow * (far ? 0.7 : 1.0), h = (far ? 5.8 : 2.5) + this._tow * (far ? 0.4 : 0.85);
     const sx = Math.sin(this.yaw), cz = Math.cos(this.yaw);
     this.pos.set(p.x - sx * dist, this.y + h, p.z - cz * dist);
     const q = track.query(this.pos.x, this.pos.y + 3, this.pos.z, this._q, 3);

@@ -28,6 +28,8 @@ import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
 import { selectedVehicle, multiplayerVehicleSpec } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
+import { Caravan, HITCH } from './caravan.js';
+import { CaravanView } from './caravanView.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -44,7 +46,7 @@ const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes
 const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', handling: 'arcade', skill: 'hard', rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', handling: 'arcade', skill: 'hard', caravan: false, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
@@ -64,6 +66,18 @@ const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
 const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
+const caravan = new Caravan(HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
+/** Should there be a caravan on the car right now? Only if asked for, on the 70s Saloon, and not in multiplayer. */
+const caravanWanted = () => !!opts.caravan && selectedVehicle().id === 'escort' && !net && !caravanView.failed;
+function syncCaravan() {
+  if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
+  caravan.track = track; car.tow = caravan; caravan.reset(car);
+  caravanView.visible = true;
+  const ready = () => { Object.assign(caravan.spec, { dAxle: caravanView.dims.dAxle, wheelR: caravanView.dims.wheelR, length: caravanView.dims.length, width: caravanView.dims.width }); if (car.tow) { caravan.reset(car); caravanView.snap(caravan); } };
+  if (caravanView.loaded) { ready(); return; }
+  caravanView.snap(caravan);
+  caravanView.load().then((d) => { if (d) ready(); else { opts.caravan = false; store.set('cr.opts', opts); const cb = $('opt-caravan'); if (cb) cb.checked = false; car.tow = null; toast('The caravan model could not be loaded.'); } });
+}
 visual.setPaint(PAINTS[opts.paint][1]);
 visual.onLoad = (v) => {
   $('swatches').hidden = v.textured;            // a textured car brings its own paint
@@ -275,6 +289,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
   }
   safe.s = s; safe.off = offset; safe.t = 0;
   chase.snap(); trouble.flipped = trouble.lost = 0; acc = 0;
+  syncCaravan();
 }
 
 /** The Oval has no start line: you begin near one end of the floor, facing the middle. */
@@ -380,6 +395,7 @@ function stepPhysics(dt) {
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
+    if (car.tow) caravanView.capture(car.tow);
     if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -608,7 +624,7 @@ function frame(now) {
     const a = acc / DT;
     drawPos.copy(prevPos).lerp(curPos, a); drawQ.copy(prevQ).slerp(curQ, a);
     velV.set(car.vel.x, car.vel.y, car.vel.z);
-    chase.boosting = car.boosting;
+    chase.boosting = car.boosting; chase.towLen = car.tow ? car.tow.spec.length : 0;
     chase.update(dt, drawPos, drawQ, velV, track);
     effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
@@ -647,6 +663,7 @@ function frame(now) {
   visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
   if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
   visual.setWheels(car);
+  if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }
   if (derby.enabled || views.size) syncViews(mode === 'drive' ? acc / DT : 1);
   propsView.update(props);
   stage.update(drawPos, camera.position);
@@ -749,6 +766,10 @@ function renderMenu() {
 
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
+  { const co = $('caravan-opt'), cb = $('opt-caravan');          // Tow a caravan: the 70s Saloon only, for now
+    co.hidden = selectedVehicle().id !== 'escort'; cb.checked = !!opts.caravan && !co.hidden;
+    cb.onchange = () => { opts.caravan = cb.checked; store.set('cr.opts', opts); syncCaravan(); toast(cb.checked ? 'Caravan hitched up!' : 'Caravan unhitched.'); };
+  }
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
   const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';
   hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = opts.handling === 'standard' ? 0 : 1; store.set('cr.opts', opts); };

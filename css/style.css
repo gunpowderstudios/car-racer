@@ -599,3 +599,9 @@ html.chat-quick-only .chat-row { display: none; }
 .shared-box h2 { margin: 0; font-size: 34px; word-break: break-word; }
 .shared-box .btn { text-align: center; margin: 0; }
 .shared-box .btn-play { min-width: 0; margin: 6px 0 2px; }
+
+/* Tow a caravan (home screen, 70s Saloon only) */
+.caravan-opt { display: flex; align-items: center; gap: 10px; margin: 2px 0 16px; padding: 10px 14px; max-width: 420px; cursor: pointer; font-family: var(--cond); font-weight: 600; font-size: 20px; color: var(--peach); background: rgba(246,217,176,.08); box-shadow: inset 0 0 0 2px rgba(246,217,176,.3); }
+.caravan-opt[hidden] { display: none; }
+.caravan-opt input { width: 22px; height: 22px; accent-color: var(--amber); }
+.caravan-opt small { display: block; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
