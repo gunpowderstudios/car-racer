@@ -129,6 +129,7 @@ export function buildTrackGeometry(track) {
           }
         }
       }
+      for (let i = 0; i < n; i++) if (track.py[i] > 3.5) noBank[sg][i] = 1;       // a high road (a spiral ramp) stands on pillars: no grass hill under it
       const src = noBank[sg].slice();                       // widen the opening a little either side
       for (let i = 0; i < n; i++) if (src[i]) for (let d = -14; d <= 14; d++) noBank[sg][(i + d + n) % n] = 1;
     }

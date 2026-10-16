@@ -159,6 +159,24 @@ function rallyScatter(def) {
   return { bumps, puddles };
 }
 
+/** The Twister: a corkscrew. A ground straight runs into a banked spiral that climbs two and a half turns round a tower (each turn passes over the one below), then
+ *  comes off the top and runs back down a long descending straight and a U-turn to the start. (The road is a surface with a height, so there is no upside-down
+ *  loop: the corkscrew is a rising spiral, as on a multi-storey car park ramp.) */
+function twister() {
+  const R = 70, cx = 220, rise = 10, turns = 2.5, g = 0.65, out = [];
+  const rad = (d) => d * Math.PI / 180, top = g + rise * turns;
+  for (let x = -120; x <= 190; x += 62) out.push({ x, y: g, z: -R });                          // ground straight, heading east, into the spiral
+  const steps = turns * 12;
+  for (let k = 0; k <= steps; k++) {                                                          // the spiral, counter-clockwise, from its south point up to its north point
+    const a = rad(-90 + 30 * k);
+    out.push({ x: cx + R * Math.cos(a), y: g + (top - g) * k / steps, z: R * Math.sin(a) });
+  }
+  const run = 440 + Math.PI * R, desc = (d) => top - (top - g) * Math.min(1, d / run);       // the way down: 440 m straight west, then a half-circle U-turn
+  for (let d = 85; d <= 440; d += 85) out.push({ x: cx - d, y: desc(d), z: R });
+  for (let a = 120; a <= 270; a += 30) { const ar = rad(a); out.push({ x: cx - 440 + R * Math.cos(ar) + 0, y: desc(440 + R * (rad(a - 90))), z: R * Math.sin(ar) }); }
+  return out;
+}
+
 const RAW = {
   speedway: {
     name: 'Speedway', width: 26,
@@ -202,6 +220,11 @@ const RAW = {
     autoBank: false,
     dirt: true, berm: true, walls: false,      // loose surface, dirt banks instead of barriers
     props: [],
+  },
+  twister: {
+    name: 'The Twister', width: 22,
+    handles: twister(),
+    autoBank: true, bankMax: 16,
   },
   overpass: {
     name: 'Overpass', width: 22,
@@ -285,7 +308,7 @@ export function makeTemplate(key) {
   if (!raw) throw new Error('Unknown template ' + key);
   let def = normalizeTrack({ ...raw, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
   if (raw.autoBank) {
-    const banks = suggestBanks(new Track(def), 9);
+    const banks = suggestBanks(new Track(def), raw.bankMax || 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
   if (raw.dirt) { const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
@@ -300,6 +323,7 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
+  twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
   bluebell: 'A windy dirt rally stage through the woods: loose surface, narrow and twisty',
   random: 'A different circuit every time - hills, jumps, banks, barrels and chickens',
 };
