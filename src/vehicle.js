@@ -239,6 +239,7 @@ export class Vehicle {
 
     // --- walls
     this._walls(track, dt);
+    if (track.rocks) this._rocks(track);
 
     // --- integrate pose
     const vl = this.vel.length();
@@ -638,6 +639,33 @@ export class Vehicle {
     }
     if (corrN) this.pos.addScaled(corrN, Math.min(corrPen, 0.5) * 0.7);
     if (touched) this.scraping = this.scraping || worstV > 0;
+    if (worstV > 1.5) this.events.push({ type: 'wall', speed: worstV, x: wx, y: wy, z: wz });
+  }
+  /** Boulders: solid upright cylinders. A hull point inside one is pushed out and bounces off like a wall. */
+  _rocks(track) {
+    const hull = this.spec.hull;
+    let worstV = 0, wx = 0, wy = 0, wz = 0, nx = 0, nz = 0, pen = 0;
+    for (const rk of track.rocks) {
+      const ddx = this.pos.x - rk.x, ddz = this.pos.z - rk.z, reach = rk.r + 4;
+      if (ddx * ddx + ddz * ddz > reach * reach || this.pos.y > rk.y + rk.h + 3) continue;
+      const R = rk.r * 0.9;
+      for (let i = 0; i < hull.length; i++) {
+        const p = this.toWorld(hull[i], this.hullWorld[i]);
+        if (p.y > rk.y + rk.h * 0.85 || p.y < rk.y - 1.5) continue;
+        const dx = p.x - rk.x, dz = p.z - rk.z, d = Math.hypot(dx, dz);
+        if (d >= R) continue;
+        const n = tmpE.set(d > 1e-4 ? dx / d : 1, 0, d > 1e-4 ? dz / d : 0);
+        const r = tmpC.copy(p).sub(this.pos), v = this._velAt(r, tmpD), vn = v.dot(n);
+        if (R - d > pen) { pen = R - d; nx = n.x; nz = n.z; }
+        if (vn >= 0) continue;
+        const rr = r.clone(), nn = n.clone();
+        const e = this.spec.wallBounce * clamp((-vn - 0.5) / 2.5, 0, 1);
+        this._impulse(nn, -(1 + e) * vn / this._kAt(rr, nn), rr);
+        if (-vn > worstV) { worstV = -vn; wx = p.x; wy = p.y; wz = p.z; }
+      }
+    }
+    if (pen > 0) { this.pos.x += nx * Math.min(pen, 0.5) * 0.7; this.pos.z += nz * Math.min(pen, 0.5) * 0.7; }
+    if (worstV > 0) this.scraping = true;
     if (worstV > 1.5) this.events.push({ type: 'wall', speed: worstV, x: wx, y: wy, z: wz });
   }
   _impulse(dir, j, r) {

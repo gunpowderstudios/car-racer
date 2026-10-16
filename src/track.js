@@ -103,6 +103,22 @@ export function bumpAt(bumps, x, z, out) {
 }
 const _bump = { h: 0, gx: 0, gz: 0 };
 
+// ---------------------------------------------------------------- rocks and boulders (rally stages)
+
+/** Grey boulders beside (and a little onto) a rally stage: { x, z, r (radius on the ground, m), h (height, m) }. Solid: cars bounce off them. */
+export const MAX_ROCKS = 90;
+export function normalizeRocks(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_ROCKS || !b) continue;
+    const x = Number(b.x), z = Number(b.z), r = Number(b.r), h = Number(b.h);
+    if (![x, z, r, h].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
+    out.push({ x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, r: clamp(r, 0.3, 3.5), h: clamp(h, 0.3, 3.5) });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- dirt banks and puddles (rally stages)
 
 /** A dirt bank along each side of a rally stage: rises BERM_H over BERM_RISE m from the road edge (smoothly), a flat crest, then falls away.
@@ -164,6 +180,7 @@ export function normalizeTrack(input) {
     if (src.berm) out.berm = true;               // dirt banks along both sides instead of walls
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;       // humps in the road
     const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;
+    const rocks = normalizeRocks(src.rocks); if (rocks.length) out.rocks = rocks;
   }
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
@@ -228,6 +245,9 @@ export class Track {
     this.puddles = this.def.puddles || null;
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
+    // boulders: remember how high the ground is under each (the car's collision needs it)
+    this.rocks = (this.def.rocks || []).map((b) => ({ ...b, y: this.query(b.x, 40, b.z, undefined, 2).y }));
+    if (!this.rocks.length) this.rocks = null;
   }
 
   _build() {

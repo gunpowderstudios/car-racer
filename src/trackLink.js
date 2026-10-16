@@ -68,6 +68,9 @@ function encodeTrack(d) {
   const pud = d.puddles || [];
   o.u(pud.length); px = 0; pz = 0;
   for (const b of pud) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 10); px = x; pz = z; }
+  const rocks = d.rocks || [];
+  o.u(rocks.length); px = 0; pz = 0;
+  for (const b of rocks) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 20); o.u(b.h * 20); px = x; pz = z; }
   return Uint8Array.from(o.b);
 }
 
@@ -95,6 +98,9 @@ function decodeTrack(bytes) {
   const pud = []; px = 0; pz = 0;
   for (let i = 0, c = r.count(100); i < c; i++) { px += r.z(); pz += r.z(); pud.push({ x: px / Q.xz, z: pz / Q.xz, r: r.u() / 10 }); }
   if (pud.length) def.puddles = pud;
+  const rocks = []; px = 0; pz = 0;
+  if (r.i < r.a.length) for (let i = 0, c = r.count(200); i < c; i++) { px += r.z(); pz += r.z(); rocks.push({ x: px / Q.xz, z: pz / Q.xz, r: r.u() / 20, h: r.u() / 20 }); }
+  if (rocks.length) def.rocks = rocks;
   return def;
 }
 

@@ -165,11 +165,27 @@ function rallyScatter(def) {
     if (k > 0.0045 || Math.abs(track.curv[Math.round((s + 14) / track.ds) % track.n]) > 0.0045) continue;      // bends stay clean: only on the straighter stretches
     const f = track.frameAt(s), off = (rnd() - 0.5) * f.hw * 0.95, x = f.x + f.lx * off, z = f.z + f.lz * off;
     if (puddles.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 5)) continue;
-    const r = 3 + Math.pow(rnd(), 1.6) * 7.5;                                  // mostly small, a few big
-    const h = Math.min(0.34, 0.08 + rnd() * r * 0.04);           // small ones short and sharp, big ones long and low: a rough road, not a ramp
+    const r = 2.6 + Math.pow(rnd(), 1.5) * 7;                                  // mostly small and sharp, a few long ones
+    const h = Math.min(0.58, 0.15 + rnd() * r * 0.07);           // proper humps: up to about 0.6 m, some of them steep
     bumps.push({ x, z, r, h }); mounds.push(s);
   }
-  return { bumps, puddles };
+  // grey boulders, mostly along the edges (some a little way onto the road), in loose groups, never near the start or a jump
+  const rocks = [];
+  for (let guard = 0; guard < 9000 && rocks.length < 80; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 50 || jumpS.some((j) => dist(s, j) < 30)) continue;
+    const f = track.frameAt(s), sg = rnd() < 0.5 ? 1 : -1, inside = rnd() < 0.14;
+    const group = rnd() < 0.4 ? 2 + Math.floor(rnd() * 3) : 1;
+    for (let g = 0; g < group && rocks.length < 80; g++) {
+      const r = 0.5 + Math.pow(rnd(), 2.2) * (inside ? 0.8 : 2.2), h = r * (0.65 + rnd() * 0.5);
+      const along = (g ? (rnd() - 0.5) * 7 : 0), lat = inside ? f.hw - 0.2 - rnd() * 0.9 : f.hw + 0.5 + rnd() * 5 + (g ? (rnd() - 0.5) * 3 : 0);
+      const cs = s + along, cf = track.frameAt(((cs % track.length) + track.length) % track.length);
+      const x = cf.x + cf.lx * sg * lat, z = cf.z + cf.lz * sg * lat;
+      if (puddles.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 1.5) || rocks.some((q) => Math.hypot(q.x - x, q.z - z) < (q.r + r) * 0.9)) continue;
+      rocks.push({ x, z, r, h });
+    }
+  }
+  return { bumps, puddles, rocks };
 }
 
 /** The Twister: a corkscrew. A ground straight runs into a banked spiral that climbs two and a half turns round a tower (each turn passes over the one below), then

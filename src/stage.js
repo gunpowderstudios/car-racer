@@ -132,6 +132,27 @@ export class Stage {
       }
     }
 
+    // boulders beside a rally stage: one lumpy grey rock shape, stretched and turned a different way for each
+    if (track.rocks) {
+      const rg = new THREE.IcosahedronGeometry(1, 2), pos = rg.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const n = Math.sin(x * 5.1 + y * 3.3) * Math.cos(z * 4.7 - y * 2.1) * 0.5 + Math.sin(x * 11 + z * 9) * 0.25;
+        const k = 1 + 0.22 * n; pos.setXYZ(i, x * k, y * k * (y < 0 ? 0.6 : 1), z * k);
+      }
+      rg.computeVertexNormals();
+      const rm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: true });
+      const im = new THREE.InstancedMesh(rg, rm, track.rocks.length), m4 = new THREE.Matrix4(), qq = new THREE.Quaternion(), ee = new THREE.Euler(), pp = new THREE.Vector3(), ss = new THREE.Vector3(), cc = new THREE.Color();
+      const rnd = mulberry(77);
+      track.rocks.forEach((rk, i) => {
+        ee.set((rnd() - 0.5) * 0.35, rnd() * 6.28, (rnd() - 0.5) * 0.35); qq.setFromEuler(ee);
+        pp.set(rk.x, rk.y + rk.h * 0.4, rk.z); ss.set(rk.r * (0.95 + rnd() * 0.2), rk.h * 0.6, rk.r * (0.95 + rnd() * 0.2));
+        m4.compose(pp, qq, ss); im.setMatrixAt(i, m4);
+        const g = 0.38 + rnd() * 0.22; cc.setRGB(g, g * 0.98, g * 0.95); im.setColorAt(i, cc);          // greys, a touch of warmth
+      });
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; g.add(im);
+    }
+
     // pillars
     if (geo.pillars.length) {
       const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x6b6870, roughness: 0.95 }), geo.pillars.length);

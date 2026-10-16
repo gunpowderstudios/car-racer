@@ -11,7 +11,7 @@ test('every built-in track survives being packed into a link and unpacked again'
     assert.equal(back.handles.length, d.handles.length, k);
     d.handles.forEach((h, i) => { for (const f of ['x', 'y', 'z', 'bank', 'gap', 'lip', 'kick', 'w']) assert.ok(Math.abs(h[f] - back.handles[i][f]) < 0.06, `${k} handle ${i} ${f}`); assert.equal(!!h.open, !!back.handles[i].open); });
     for (const f of ['name', 'width', 'walls', 'dirt', 'berm', 'lowCam', 'mode']) assert.equal(back[f], d[f], `${k} ${f}`);
-    assert.equal((back.bumps || []).length, (d.bumps || []).length); assert.equal((back.puddles || []).length, (d.puddles || []).length); assert.equal(back.props.length, d.props.length);
+    assert.equal((back.bumps || []).length, (d.bumps || []).length); assert.equal((back.puddles || []).length, (d.puddles || []).length); assert.equal(back.props.length, d.props.length); assert.equal((back.rocks || []).length, (d.rocks || []).length, k + ' rocks');
   }
 });
 
