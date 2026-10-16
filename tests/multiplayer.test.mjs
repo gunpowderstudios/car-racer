@@ -1,0 +1,212 @@
+// The hit-relay routing: guests can't reach each other directly (star topology), so every hit
+// goes via the host either way. These test the routing contract directly, without real WebRTC.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { Multiplayer, cleanDent } from '../src/multiplayer.js';
+
+function mockConn(peerId) {
+  const sent = [];
+  return { peer: peerId, open: true, send: (msg) => sent.push(msg), _sent: sent };
+}
+
+function noopHandlers(overrides = {}) {
+  return { onLobby: () => {}, onStart: () => {}, onState: () => {}, onHit: () => {}, onBoom: () => {}, onPlayerLeft: () => {}, onError: () => {}, ...overrides };
+}
+
+test('host relays a hit aimed at itself straight to its own onHit handler', () => {
+  let got = null;
+  const mp = new Multiplayer(noopHandlers({ onHit: (from, d) => { got = { from, d }; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  mp._onHostMessage('guestA', { t: 'hit', to: 'host', d: { nx: 1, nz: 0, speed: 5 } });
+  assert.deepEqual(got, { from: 'guestA', d: { nx: 1, nz: 0, speed: 5 } });
+});
+
+test('host relays a hit aimed at another guest to that guest, not to itself', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'hit', to: 'guestB', d: { nx: 0, nz: 1, speed: 3 } });
+  assert.equal(connA._sent.length, 0, 'the sender should not get their own hit echoed back');
+  assert.equal(connB._sent.length, 1);
+  assert.deepEqual(connB._sent[0], { t: 'hit', from: 'guestA', d: { nx: 0, nz: 1, speed: 3 } });
+});
+
+test('a guest sending a hit always goes via the host, whoever the actual target is', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.sendHit('guestB', { nx: 1, nz: 0, speed: 4 });
+  assert.equal(hostConn._sent.length, 1);
+  assert.deepEqual(hostConn._sent[0], { t: 'hit', to: 'guestB', d: { nx: 1, nz: 0, speed: 4 } });
+});
+
+test('the host sending a hit to a guest goes directly, no relay needed', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'); mp.conns.set('guestA', connA);
+  mp.sendHit('guestA', { nx: -1, nz: 0, speed: 6 });
+  assert.equal(connA._sent.length, 1);
+  assert.deepEqual(connA._sent[0], { t: 'hit', from: 'host', d: { nx: -1, nz: 0, speed: 6 } });
+});
+
+test('sendHit never sends anything if you somehow target yourself', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.sendHit('guestA', { nx: 1, nz: 0, speed: 1 });
+  assert.equal(hostConn._sent.length, 0);
+});
+
+test('a hit to an unknown or disconnected guest is silently dropped, not thrown', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  assert.doesNotThrow(() => mp.sendHit('nobody', { nx: 1, nz: 0, speed: 1 }));
+  assert.doesNotThrow(() => mp._onHostMessage('guestA', { t: 'hit', to: 'nobody', d: {} }));
+});
+
+test('startGame sends the host\'s chosen track to every guest, and fires onStart with it locally', () => {
+  let started = null;
+  const mp = new Multiplayer(noopHandlers({ onStart: (track) => { started = track; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  const track = { name: 'Kidney', handles: [{ x: 0, z: 0 }] };
+  mp.startGame(track);
+  assert.equal(mp.started, true);
+  assert.deepEqual(connA._sent[0], { t: 'start', track });
+  assert.deepEqual(connB._sent[0], { t: 'start', track });
+  assert.deepEqual(started, track, 'the host itself should start on the same track it sent out');
+});
+
+test('startGame does nothing if called by a guest - only the host can start the race', () => {
+  let called = false;
+  const mp = new Multiplayer(noopHandlers({ onStart: () => { called = true; } }));
+  mp.isHost = false; mp.selfId = 'guestA';
+  const hostConn = mockConn('host'); mp.hostConn = hostConn;
+  mp.startGame({ name: 'Kidney' });
+  assert.equal(called, false);
+  assert.equal(mp.started, false);
+  assert.equal(hostConn._sent.length, 0);
+});
+
+test('host relays a barrel explosion from one guest to everyone else, and applies it itself', () => {
+  const got = [];
+  const mp = new Multiplayer(noopHandlers({ onBoom: (from, i) => got.push([from, i]) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'boom', i: 7 });
+  assert.deepEqual(got, [['guestA', 7]]);
+  assert.equal(connA._sent.length, 0, 'the sender is not told about their own barrel');
+  assert.deepEqual(connB._sent, [{ t: 'boom', from: 'guestA', i: 7 }]);
+});
+
+test('a barrel message with a nonsense index is ignored, not applied or relayed', () => {
+  let called = 0;
+  const mp = new Multiplayer(noopHandlers({ onBoom: () => { called++; } }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connB = mockConn('guestB'); mp.conns.set('guestB', connB);
+  for (const bad of ['3', 1.5, null, undefined, NaN]) mp._onHostMessage('guestA', { t: 'boom', i: bad });
+  assert.equal(called, 0);
+  assert.equal(connB._sent.length, 0);
+});
+
+test('sendBoom: the host tells every guest directly; a guest tells the host, who relays it', () => {
+  const host = new Multiplayer(noopHandlers());
+  host.isHost = true; host.selfId = 'host';
+  const a = mockConn('guestA'), b = mockConn('guestB');
+  host.conns.set('guestA', a); host.conns.set('guestB', b);
+  host.sendBoom(4);
+  assert.deepEqual(a._sent, [{ t: 'boom', from: 'host', i: 4 }]);
+  assert.deepEqual(b._sent, [{ t: 'boom', from: 'host', i: 4 }]);
+
+  const guest = new Multiplayer(noopHandlers());
+  guest.isHost = false; guest.selfId = 'guestA';
+  const hostConn = mockConn('host'); guest.hostConn = hostConn;
+  guest.sendBoom(9);
+  assert.deepEqual(hostConn._sent, [{ t: 'boom', i: 9 }]);
+});
+
+test('colours are picked at random from those still free - not lowest-first - and never repeat until they run out', () => {
+  const mp = new Multiplayer(noopHandlers());
+  assert.equal(mp._assignHue(() => 0.999), 6, 'a high roll gets a high colour, so the first player is not always colour 0');
+  assert.equal(mp._assignHue(() => 0), 0, 'a low roll gets the lowest one still free');
+  const got = new Set([6, 0]);
+  for (let i = 0; i < 5; i++) got.add(mp._assignHue());
+  assert.equal(got.size, 7, 'seven players get seven different colours');
+  const eighth = mp._assignHue();
+  assert.ok(Number.isInteger(eighth) && eighth >= 0 && eighth < 7, 'an eighth player shares one, but still gets a real colour');
+});
+
+test('every one of the seven colours can be dealt to the first player (the host)', () => {
+  const first = new Set();
+  for (let k = 0; k < 7; k++) first.add(new Multiplayer(noopHandlers())._assignHue(() => (k + 0.5) / 7));
+  assert.equal(first.size, 7);
+});
+
+test('a colour freed by someone leaving can be dealt again', () => {
+  const mp = new Multiplayer(noopHandlers());
+  mp.isHost = true; mp.selfId = 'host';
+  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 2 }); mp.usedHues.add(2);
+  mp._playerLeft('guestA');
+  assert.equal(mp.usedHues.has(2), false);
+});
+
+test('when a guest leaves, the host removes them and tells the remaining guests (but not the leaver)', () => {
+  const left = [];
+  const mp = new Multiplayer(noopHandlers({ onPlayerLeft: (id) => left.push(id) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const a = mockConn('guestA'), b = mockConn('guestB');
+  mp.conns.set('guestA', a); mp.conns.set('guestB', b);
+  mp.players.set('host', { id: 'host', name: 'H', hue: 0 });
+  mp.players.set('guestA', { id: 'guestA', name: 'A', hue: 3 });
+  mp.players.set('guestB', { id: 'guestB', name: 'B', hue: 5 });
+  mp._playerLeft('guestA');
+  assert.deepEqual(left, ['guestA'], 'the host clears the car on its own screen');
+  assert.ok(!mp.players.has('guestA'));
+  assert.ok(b._sent.some((m) => m.t === 'left' && m.id === 'guestA'), 'the other guest is told, so their copy of the car goes too');
+  assert.equal(a._sent.length, 0, 'the leaver is not messaged');
+});
+
+test('cleanDent keeps good dents and the repair signal, and throws away anything odd', () => {
+  assert.deepEqual(cleanDent({ x: 0.9, y: 0.2, z: -1.5, hp: 12.5, extra: 'x' }), { x: 0.9, y: 0.2, z: -1.5, hp: 12.5 });
+  assert.deepEqual(cleanDent({ clear: true, x: 99 }), { clear: true });
+  for (const bad of [null, undefined, 'dent', 5, {}, { x: 1, y: 1, z: 1 }, { x: '1', y: 1, z: 1, hp: 5 }, { x: NaN, y: 0, z: 0, hp: 5 },
+    { x: 50, y: 0, z: 0, hp: 5 }, { x: 0, y: 0, z: 0, hp: -3 }, { x: 0, y: 0, z: 0, hp: 9999 }, { clear: 'yes' }]) assert.equal(cleanDent(bad), null, JSON.stringify(bad));
+});
+
+test('host applies a guest\'s dent and relays it to everyone else, with the true sender, and drops nonsense and floods', () => {
+  const got = [];
+  const mp = new Multiplayer(noopHandlers({ onDent: (from, d) => got.push([from, d]) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'dent', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } });
+  assert.deepEqual(got, [['guestA', { x: 0.9, y: 0.2, z: 1.5, hp: 20 }]]);
+  assert.equal(connA._sent.length, 0, 'the sender is not told about their own dent');
+  assert.deepEqual(connB._sent, [{ t: 'dent', from: 'guestA', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } }]);
+  mp._onHostMessage('guestA', { t: 'dent', d: { x: 0.9, y: 0.2, z: 1.5, hp: 20 } });          // straight away again: a flood
+  mp._onHostMessage('guestB', { t: 'dent', d: { x: 'bad', y: 0, z: 0, hp: 5 } });             // nonsense
+  assert.equal(got.length, 1); assert.equal(connB._sent.length, 1); assert.equal(connA._sent.length, 0);
+});
+
+test('sendDent: the host tells every guest directly; a guest tells the host; a guest hears about other cars\' dents but not its own', () => {
+  const host = new Multiplayer(noopHandlers());
+  host.isHost = true; host.selfId = 'host';
+  const a = mockConn('guestA'); host.conns.set('guestA', a);
+  host.sendDent({ x: 0.5, y: 0.1, z: 2, hp: 9 });
+  assert.deepEqual(a._sent, [{ t: 'dent', from: 'host', d: { x: 0.5, y: 0.1, z: 2, hp: 9 } }]);
+  host.sendDent({ x: 'bad' }); assert.equal(a._sent.length, 1, 'a bad dent is never sent');
+
+  const seen = [];
+  const guest = new Multiplayer(noopHandlers({ onDent: (from, d) => seen.push([from, d]) }));
+  guest.isHost = false; guest.selfId = 'guestA';
+  const hostConn = mockConn('host'); guest.hostConn = hostConn;
+  guest.sendDent({ clear: true });
+  assert.deepEqual(hostConn._sent, [{ t: 'dent', d: { clear: true } }]);
+  guest._onGuestMessage({ t: 'dent', from: 'guestB', d: { x: 1, y: 0, z: 0, hp: 15 } });
+  guest._onGuestMessage({ t: 'dent', from: 'guestA', d: { x: 1, y: 0, z: 0, hp: 15 } });
+  guest._onGuestMessage({ t: 'dent', from: 'guestB', d: { x: 99, y: 0, z: 0, hp: 15 } });
+  assert.deepEqual(seen, [['guestB', { x: 1, y: 0, z: 0, hp: 15 }]]);
+});
