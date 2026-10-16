@@ -61,7 +61,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier.aa, powerPref
 const baseRatio = Math.min(devicePixelRatio || 1, tier.pixelRatio);
 renderer.setPixelRatio(baseRatio);
 renderer.shadowMap.enabled = opts.shadow; renderer.shadowMap.type = tier.shadowType === 'pcfsoft' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 7000);
 const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);

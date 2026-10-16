@@ -6,7 +6,9 @@ import { buildTrackGeometry } from './trackGeometry.js';
 import { Track } from './track.js';
 import { buildArena } from './arenaView.js';
 
-const SKY_TOP = 0x2a2560, SKY_MID = 0xb04a72, SKY_LOW = 0xf6a05a, FOG = 0xdf8f69;
+// Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
+const SKY_TOP = 0x1f3a72, SKY_MID = 0xc2557a, SKY_LOW = 0xffa45c, FOG = 0xe39a6a;
+const SUN_OFFSET = [-250, 95, -190];          // (x, y, z) from the car: y over the ground distance is about tan(17 degrees)
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -18,24 +20,27 @@ export class Stage {
   constructor(renderer, q = {}) {
     this.renderer = renderer;
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(FOG, 320, 2600);
+    this.scene.fog = new THREE.Fog(FOG, 240, 2200);
     const aniso = Math.min(q.aniso ?? 8, renderer.capabilities.getMaxAnisotropy());
     this.aniso = aniso;
 
     // environment for reflections on the car paint
     const pm = new THREE.PMREMGenerator(renderer);
     this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.45;
+    this.scene.environmentIntensity = 0.4;
     pm.dispose();
 
     // sky dome
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { top: { value: new THREE.Color(SKY_TOP) }, mid: { value: new THREE.Color(SKY_MID) }, low: { value: new THREE.Color(SKY_LOW) } },
+      uniforms: { top: { value: new THREE.Color(SKY_TOP) }, mid: { value: new THREE.Color(SKY_MID) }, low: { value: new THREE.Color(SKY_LOW) }, sunDir: { value: new THREE.Vector3(...SUN_OFFSET).normalize() } },
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low;
+      fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low; uniform vec3 sunDir;
         void main(){ float h = clamp(vP.y, -0.1, 1.0);
           vec3 c = mix(low, mid, smoothstep(0.0, 0.28, h)); c = mix(c, top, smoothstep(0.22, 0.8, h));
+          float sd = max(dot(normalize(vP), sunDir), 0.0);
+          c += vec3(1.0, 0.55, 0.22) * (pow(sd, 6.0) * 0.45 + pow(sd, 28.0) * 0.5) * (1.0 - smoothstep(0.0, 0.7, h));   // warm glow round the sun, strongest low down
+          c = mix(c, vec3(1.0, 0.93, 0.78), smoothstep(0.9988, 0.9996, sd));                                          // the sun itself
           gl_FragColor = vec4(c, 1.0); }`,
     });
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(4200, 24, 14), skyMat);
@@ -43,15 +48,15 @@ export class Stage {
     this.scene.add(this.sky);
 
     // lights
-    this.hemi = new THREE.HemisphereLight(0x9a8ad6, 0x4a3327, 0.75);
+    this.hemi = new THREE.HemisphereLight(0x6a80c4, 0x3c2a24, 0.3);       // weak cool fill, so shadows stay dark and blue next to the warm sun
     this.scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(0xffd0a0, 2.6);
+    this.sun = new THREE.DirectionalLight(0xffb468, 4.3);               // low sun: strong and golden (the ground sees only a third of it at this angle)
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(q.shadowSize ?? 2048, q.shadowSize ?? 2048);
     const R = q.shadowRange ?? 70;
     const sc = this.sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 700;
-    this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.35;
-    this.sunOffset = new THREE.Vector3(-170, 210, -120);
+    this.sun.shadow.bias = -0.0005; this.sun.shadow.normalBias = 0.5;           // (a low sun needs more bias or the road speckles)
+    this.sunOffset = new THREE.Vector3(...SUN_OFFSET);
     this.scene.add(this.sun, this.sun.target);
 
     // ground

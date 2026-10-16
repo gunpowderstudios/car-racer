@@ -646,3 +646,7 @@ body.track-chosen #menu-vehicle-preview { display: none; }
   #menu .btn-story { font-size: 16px; padding: 5px 14px; }
   #menu .btn-story small { font-size: 12px; }
 }
+
+/* a very light darkening at the screen edges while driving (cinematic) */
+#vignette { position: fixed; inset: 0; z-index: 5; pointer-events: none; display: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(14,6,22,.38) 100%); }
+body.mode-drive #vignette { display: block; }
