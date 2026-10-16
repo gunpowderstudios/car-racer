@@ -558,6 +558,7 @@ function makeView(f) {
 }
 function releaseView(id) {
   const v = views.get(id); if (!v) return;
+  const bar = rivalBars.get(id); if (bar) { bar.el.remove(); rivalBars.delete(id); }
   v.restoreWheels(); v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
 }
 function clearViews() { for (const id of [...views.keys()]) releaseView(id); for (const id of [...towViews.keys()]) dropTowView(id); }
@@ -577,6 +578,30 @@ function syncTowViews(a) {
     tv.root.visible = dx * dx + dz * dz < 300 * 300;
   }
   for (const id of [...towViews.keys()]) if (!derby.fighters.some((f) => f.id === id && !f.gone)) dropTowView(id);
+}
+
+// ----- a small health bar floating over each rival, so you can see who is weak (same look as the multiplayer ones)
+const rivalBars = new Map();                                      // rival id -> {el, fill}
+const rivalBarV = new THREE.Vector3();
+function syncRivalBar(f, v) {
+  let b = rivalBars.get(f.id);
+  const dist = v.root.position.distanceTo(camera.position);
+  if (f.wrecked || !v.root.visible || dist > 150) { if (b) b.el.style.display = 'none'; return; }
+  if (!b) {
+    const el = document.createElement('div'); el.className = 'mp-label ai-bar';
+    const bar = document.createElement('div'); bar.className = 'mp-health';
+    const fill = document.createElement('div'); fill.className = 'mp-health-fill';
+    bar.appendChild(fill); el.appendChild(bar); $('mp-labels').appendChild(el);
+    b = { el, fill }; rivalBars.set(f.id, b);
+  }
+  rivalBarV.set(v.root.position.x, v.root.position.y + 2.3, v.root.position.z).project(camera);
+  if (rivalBarV.z > 1) { b.el.style.display = 'none'; return; }
+  const h = Math.max(0, Math.min(1, f.health.worst));
+  b.el.style.display = ''; b.el.style.opacity = String(Math.max(0.2, 1 - dist / 150));
+  b.el.style.left = (rivalBarV.x * 0.5 + 0.5) * innerWidth + 'px';
+  b.el.style.top = (-rivalBarV.y * 0.5 + 0.5) * innerHeight + 'px';
+  b.fill.style.width = Math.round(h * 100) + '%';
+  b.fill.style.background = h > 0.5 ? '#6bd66b' : h > 0.2 ? '#e8b13a' : '#d94b3a';
 }
 
 /** Place each rival's visual at its (interpolated) physics pose. At most two new ones are built per frame. */
@@ -602,6 +627,7 @@ function syncViews(a) {
     const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
     if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
+    syncRivalBar(f, v);
   }
 }
 

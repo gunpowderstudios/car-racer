@@ -383,6 +383,8 @@ body:not(.mode-mp) #mp { display: none; }
 .mp-label { position: absolute; transform: translate(-50%, -100%); font-family: var(--cond); font-weight: 600; font-size: 14px; color: var(--peach);
   background: rgba(27,18,51,.55); padding: 3px 8px 5px; border-radius: 3px; white-space: nowrap; will-change: transform, opacity; text-align: center; }
 .mp-name { display: block; }
+.ai-bar { padding: 2px 3px; background: rgba(27,18,51,.45); }
+.ai-bar .mp-health { margin: 0; width: 40px; }
 .mp-health { width: 46px; height: 4px; margin: 3px auto 0; background: rgba(0,0,0,.45); border-radius: 2px; overflow: hidden; }
 .mp-health-fill { height: 100%; width: 100%; background: #6bd66b; border-radius: 2px; transition: width .15s linear, background .15s linear; }
 body:not(.mode-drive) .mp-label { display: none; }
