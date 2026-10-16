@@ -457,3 +457,16 @@ test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', as
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /btn-multiplayer-top'\)\.onclick = \(\) => \$\('btn-multiplayer'\)\.click\(\)/);
 });
+
+test('The Twister: the spiral has no barriers, coming back from it means starting at its foot, and the open flag survives sharing', async () => {
+  const { Track, normalizeTrack } = await import('../src/track.js');
+  const def = makeTemplate('twister'), track = new Track(def);
+  assert.ok(track.openA > 0 && track.openB > track.openA + 500, 'there is an open spiral stretch');
+  const mid = (track.openA + track.openB) / 2;
+  assert.ok(track.inOpen(mid) && !track.inOpen(track.openA - 40) && !track.inOpen(track.openB + 40));
+  assert.ok(Math.abs(track.restartS(mid) - (track.openA - 14)) < 1e-6);                                  // a car brought back from up the spiral starts at its foot
+  assert.equal(track.restartS(track.openB + 40), track.openB + 40);                     // anywhere else it is put back where it was
+  assert.equal(track.wallOff[Math.floor(mid / track.ds)], 1);
+  const shared = new Track(normalizeTrack(JSON.parse(JSON.stringify(def))));            // as sent to a friend
+  assert.equal(shared.openA, track.openA);
+});

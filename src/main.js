@@ -283,6 +283,7 @@ function loadTrack(newDef) {
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
+  s = track.restartS(s);                                      // (a spiral ramp with no barriers sends you back to its foot)
   const L = track.length, f = track.frameAt(s);
   const h = car.restHeight + 0.08;
   car.reset(new V3(f.x + f.lx * offset + f.nx * h, f.y + f.ly * offset + f.ny * h, f.z + f.lz * offset + f.nz * h),
@@ -326,6 +327,7 @@ function restartRace() {
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
 }
 
+let spiralCam = null;     // set while the camera has been switched to chase for the corkscrew
 function respawn() {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
@@ -383,6 +385,13 @@ function updateRace(dt) {
     }
   }
   if (lapped && race.reverseT > 1.6) { hud.banner('Wrong way', 700); }
+
+  // the corkscrew: always the chase camera while you are on it (what you were using comes back when you leave)
+  if (track.openA >= 0) {
+    const on = track.inOpen(track.progressAt(car.pos.x, car.pos.y, car.pos.z));
+    if (on && !spiralCam) { spiralCam = { mode: chase.mode }; chase.mode = 0; chase.ready = false; }
+    else if (!on && spiralCam && car.onGround) { chase.mode = spiralCam.mode; chase.ready = false; spiralCam = null; }
+  } else spiralCam = null;
 
   // remember a safe spot to come back to
   safe.t += dt;

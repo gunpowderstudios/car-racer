@@ -181,7 +181,7 @@ export function collideVanVan(a, b, out) {
 
 /** Put a car on the road at arc length s, `offset` metres left of the centreline, moving at `speed`. */
 export function placeOnRoad(car, track, s, offset = 0, speed = 0) {
-  const f = track.frameAt(s), h = car.restHeight + 0.08;
+  const f = track.frameAt(track.restartS(s)), h = car.restHeight + 0.08;
   car.reset(new V3(f.x + f.lx * offset + f.nx * h, f.y + f.ly * offset + f.ny * h, f.z + f.lz * offset + f.nz * h),
     new V3(f.fx, f.fy, f.fz), new V3(f.nx, f.ny, f.nz), speed);
   return f;

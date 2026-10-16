@@ -191,7 +191,7 @@ export function buildTrackGeometry(track) {
           { p: [ib[0], yt, ib[2]], n: [0, 1, 0], c }, { p: [ob[0], yt, ob[2]], n: [0, 1, 0], c },
           { p: [ob[0], yt, ob[2]], n: outward, c }, { p: [ob[0], ob[1] - 0.1, ob[2]], n: outward, c },
         ];
-      }, 6, sv);
+      }, 6, sv, (i) => track.wallOff[i]);
       // Columns 1->2 and 3->4 join faces at identical points, so those quads are zero-area.
     }
   }

@@ -169,7 +169,7 @@ function twister() {
   const steps = turns * 12;
   for (let k = 0; k <= steps; k++) {                                                          // the spiral, counter-clockwise, from its south point up to its north point
     const a = rad(-90 + 30 * k);
-    out.push({ x: cx + R * Math.cos(a), y: g + (top - g) * k / steps, z: R * Math.sin(a) });
+    out.push({ x: cx + R * Math.cos(a), y: g + (top - g) * k / steps, z: R * Math.sin(a), open: k < steps });       // (open: no barriers on the spiral)
   }
   const run = 440 + Math.PI * R, desc = (d) => top - (top - g) * Math.min(1, d / run);       // the way down: 440 m straight west, then a half-circle U-turn
   for (let d = 85; d <= 440; d += 85) out.push({ x: cx - d, y: desc(d), z: R });

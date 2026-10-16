@@ -115,6 +115,7 @@ export function bermProfile(off, out) {
   out.h = BERM_H - (off - BERM_RISE - BERM_CREST) * 1.0; out.g = -1.0; return out;
 }
 const _berm = { h: 0, g: 0 };
+const Cy_open = (py, i, j, t) => py[i] + (py[j] - py[i]) * t;
 
 /** Puddles on a rally stage: round pools of water on the road, { x, z, r (radius, m) }. */
 export const MAX_PUDDLES = 24;
@@ -145,6 +146,7 @@ export function normalizeTrack(input) {
     bank: clamp(Number(h.bank) || 0, -20, 20),          // degrees
     gap: h.gap ? clamp(Number(h.gap), 6, 40) : (h.gapAfter ? 14 : 0), // metres of missing road
     lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
+    open: h.open ? true : undefined,                    // no barriers on the stretch from here to the next point (a spiral ramp)
     kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
   }));
   const out = {
@@ -241,6 +243,15 @@ export class Track {
     const ds = total / n;
     this.n = n; this.ds = ds; this.length = total;
     this.handleS = handleDense.map((k) => cum[k]);
+    // open stretches (no barriers, and a fall off the edge): the samples from an `open` point to the next point. Coming back from one means starting again at its foot.
+    this.wallOff = new Uint8Array(n); this.openA = -1; this.openB = -1;
+    def.handles.forEach((h, hi) => {
+      if (!h.open) return;
+      const a = this.handleS[hi], b = hi + 1 < def.handles.length ? this.handleS[hi + 1] : total;
+      if (this.openA < 0 || a < this.openA) this.openA = a;
+      if (b > this.openB) this.openB = b;
+      for (let i = Math.floor(a / ds); i < Math.min(n, Math.ceil(b / ds)); i++) this.wallOff[i] = 1;
+    });
 
     const px = (this.px = new Float64Array(n)), py = (this.py = new Float64Array(n)), pz = (this.pz = new Float64Array(n));
     const hw = (this.hw = new Float64Array(n)), bank = (this.bank = new Float64Array(n));
@@ -386,6 +397,7 @@ export class Track {
     const hw = HW[i] + (HW[j] - HW[i]) * t;
     const ad = Math.abs(d);
     if (ad > hw + this.margin) return null;
+    if (ad > hw + 0.6 && this.wallOff[i] && Cy_open(this.py, i, j, t) > 3) return null;       // open spiral road: nothing beside it, you fall
     const Cy = py[i] + (py[j] - py[i]) * t;
     let Nx = nx[i] + (nx[j] - nx[i]) * t, Ny = ny[i] + (ny[j] - ny[i]) * t, Nz = nz[i] + (nz[j] - nz[i]) * t;
     let yc, yEdge;
@@ -430,6 +442,21 @@ export class Track {
     return out;
   }
 
+  /** Is road distance `s` on an open spiral stretch (no barriers)? */
+  inOpen(s) {
+    if (this.openA < 0) return false;
+    const L = this.length, u = ((s % L) + L) % L;
+    return u >= this.openA - 1 && u <= this.openB;
+  }
+
+  /** Where to put a car that is being brought back to the road from road distance `s`: the same place, unless that is on an open spiral stretch,
+   *  in which case it starts again at the foot of the spiral. */
+  restartS(s) {
+    if (this.openA < 0) return s;
+    const L = this.length;
+    return this.inOpen(s) ? ((this.openA - 14) % L + L) % L : s;
+  }
+
   /** How deep the water is at (x, z): 0 = dry, up to 1 in the middle of a puddle (eased towards the edge). */
   puddleAt(x, z) {
     if (!this.puddles) return 0;
@@ -443,7 +470,7 @@ export class Track {
 
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */
   wallPenetration(q, y) {
-    if (!this.def.walls || q.idx < 0) return 0;
+    if (!this.def.walls || q.idx < 0 || this.wallOff[q.idx]) return 0;
     const ad = Math.abs(q.d), face = q.hw + WALL_GAP;
     if (ad <= face || ad > face + 2.4) return 0;
     if (y > q.edgeY + WALL_HEIGHT) return 0;
