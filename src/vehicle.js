@@ -84,6 +84,7 @@ class Wheel {
   }
 }
 
+const WATER_DRAG = 0.35;      // 1/s: deceleration per m/s of speed while a wheel is in standing water
 export class Vehicle {
   constructor(spec = CAR) {
     this.spec = spec;
@@ -541,6 +542,7 @@ export class Vehicle {
       const rr = ty.rolling * (w.surface === SURF.ROAD ? 1 + 3 * (w.wet || 0) : 8) * Fz;
       Fx -= sgn * Math.min(rr, capL * mag);
       Fx = clamp(Fx, -Fmax, Fmax);
+      if (w.wet > 0) Fx -= sgn * Math.min(WATER_DRAG * (this.mass / 4) * w.wet * mag, capL * mag);   // wading through a puddle slows the car (about 2-4 m/s per puddle at speed)
 
       // lateral: slip angle curve, reduced by whatever grip the longitudinal force already uses
       const alpha = Math.atan2(vlat, Math.max(Math.abs(vlong), 1.5));

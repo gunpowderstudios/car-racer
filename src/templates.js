@@ -142,20 +142,33 @@ function bluebell() {
 function rallyScatter(def) {
   const track = new Track(def), rnd = mulberry(20261016), bumps = [], puddles = [], taken = [];
   const jumpS = track.handleS.filter((_, hi) => def.handles[hi].gap);
-  const free = (s, clear = 55) => {
+  const free = (s, clear = 55, gap = 32) => {
     const dist = (a, b) => { let d = Math.abs(a - b); return Math.min(d, track.length - d); };
     const straight = [-12, 0, 12].every((o) => Math.abs(track.curv[Math.round((((s + o) % track.length) + track.length) % track.length / track.ds) % track.n]) < 0.005);     // only where the road is fairly straight
-    return straight && dist(s, 0) > 70 && jumpS.every((j) => dist(s, j) > clear) && taken.every((t) => dist(s, t) > 32);
+    return straight && dist(s, 0) > 70 && jumpS.every((j) => dist(s, j) > clear) && taken.every((t) => dist(s, t) > gap);
   };
-  const place = (count, make, clear) => {
+  const place = (count, make, clear, gap) => {
     for (let guard = 0; guard < 400 && count > 0; guard++) {
-      const s = rnd() * track.length; if (!free(s, clear)) continue;
+      const s = rnd() * track.length; if (!free(s, clear, gap)) continue;
       const f = track.frameAt(s), off = (rnd() - 0.5) * f.hw * 0.9;
       make(f.x + f.lx * off, f.z + f.lz * off, f); taken.push(s); count--;
     }
   };
-  place(10, (x, z) => bumps.push({ x, z, r: 6 + rnd() * 3, h: 0.2 + rnd() * 0.15 }));
-  place(9, (x, z) => puddles.push({ x, z, r: 3.5 + rnd() * 2.2 }), 120);       // (well clear of where a jump lands)
+  place(9, (x, z) => puddles.push({ x, z, r: 3.5 + rnd() * 2.2 }), 120, 105);       // (well clear of where a jump lands)
+  // lots of bumps of all sizes and heights, scattered along the whole stage (gentler on bends), clear of the jumps, puddles and the start line
+  const dist = (a, b) => { let d = Math.abs(a - b); return Math.min(d, track.length - d); };
+  const mounds = [];
+  for (let guard = 0; guard < 6000 && bumps.length < 56; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 60 || jumpS.some((j) => dist(s, j) < 45) || mounds.some((m) => dist(s, m) < 9)) continue;
+    const k = Math.abs(track.curv[Math.round(s / track.ds) % track.n]);
+    if (k > 0.0045 || Math.abs(track.curv[Math.round((s + 14) / track.ds) % track.n]) > 0.0045) continue;      // bends stay clean: only on the straighter stretches
+    const f = track.frameAt(s), off = (rnd() - 0.5) * f.hw * 0.95, x = f.x + f.lx * off, z = f.z + f.lz * off;
+    if (puddles.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 5)) continue;
+    const r = 3 + Math.pow(rnd(), 1.6) * 7.5;                                  // mostly small, a few big
+    const h = Math.min(0.34, 0.08 + rnd() * r * 0.04);           // small ones short and sharp, big ones long and low: a rough road, not a ramp
+    bumps.push({ x, z, r, h }); mounds.push(s);
+  }
   return { bumps, puddles };
 }
 

@@ -76,7 +76,7 @@ export function normalizeProps(list) {
 // ---------------------------------------------------------------- bumps
 
 /** Humps in an arena floor: round mounds, { x, z, r (radius, m), h (height, m) }, smooth all over and flat at the edge. */
-export const MAX_BUMPS = 12;
+export const MAX_BUMPS = 80;
 export function normalizeBumps(list) {
   const out = [];
   if (!Array.isArray(list)) return out;

@@ -668,6 +668,20 @@ function derbyFx(dt) {
   }
 }
 
+/** Spray off each wheel that is in a puddle (a bigger burst as it first hits the water). */
+function waterSpray(c, dt) {
+  if (!track.puddles || !track.puddles.length) return;
+  for (let i = 0; i < 4; i++) {
+    const w = c.wheels[i], wet = w.contact ? w.wet || 0 : 0, was = w._wasWet || 0;
+    w._wasWet = wet;
+    if (wet < 0.2 || c.speed < 2) continue;
+    const p = w.contactPoint, power = Math.min(1.4, c.speed / 22);
+    let ox = p.x - c.pos.x, oz = p.z - c.pos.z; const side = ox * c.ax.x + oz * c.ax.z; ox = c.ax.x * Math.sign(side || 1); oz = c.ax.z * Math.sign(side || 1);
+    if (was < 0.2 && c.speed > 7) particles.splashBurst(p.x, p.y, p.z, c.vel.x, c.vel.z, power, ox, oz);
+    if (Math.random() < Math.min(1, 55 * dt * (0.3 + power))) particles.splash(p.x, p.y, p.z, c.vel.x, c.vel.z, power * wet, ox, oz);
+  }
+}
+
 const boostLocal = new V3(), boostPos = new THREE.Vector3();
 function effects(dt) {
   for (let i = 0; i < 4; i++) {
@@ -677,6 +691,8 @@ function effects(dt) {
       if (w.skid > 0.55 && Math.random() < 14 * dt) particles.puff(w.contactPoint.x, w.contactPoint.y, w.contactPoint.z, car.vel.x, car.vel.z, 1.2 + w.skid);
     } else skid.lift(i);
   }
+  waterSpray(car, dt);
+  if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone || f.wrecked) continue; const dx = f.car.pos.x - camera.position.x, dz = f.car.pos.z - camera.position.z; if (dx * dx + dz * dz < 80 * 80) waterSpray(f.car, dt); }
   if (car.boosting) {
     // flames from twin exhausts under the rear bumper
     const n = Math.random() < 0.5 ? 2 : 3;

@@ -55,6 +55,13 @@ export class Particles {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xffb040, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       s.visible = false; s.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1, flash: false }; scene.add(s); this.hot.push(s);
     }
+    // water: droplets thrown up by wheels going through a puddle
+    this.drops = [];
+    for (let i = 0; i < 240; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xdff0ff, transparent: true, depthWrite: false, opacity: 0 }));
+      sp.visible = false; sp.userData = { life: 0, max: 1, v: new THREE.Vector3(), size: 1 }; scene.add(sp); this.drops.push(sp);
+    }
+    this.di = 0;
     this.si = 0; this.pi = 0; this.fi = 0; this.hi = 0;
     this.density = 1; this.smokeCap = this.smoke.length;
   }
@@ -83,6 +90,20 @@ export class Particles {
     if (speed > 3) this._sparkOne(x, y, z, vx * 0.8, vy * 0.9 + 0.6, vz * 0.8, 1.3, 0.95);
     if (speed > 7) this._sparkOne(x, y, z, vx * 0.6, vy * 0.75 + 1.2, vz * 0.6, 1.4, 0.9);
   }
+  /** Spray from a wheel in a puddle: droplets thrown up and out in a fan behind and beside it, plus a low misty puff. `power` 0..1+ is how hard it is churning. */
+  splash(x, y, z, vx, vz, power = 1, ox = 0, oz = 0) {   // (ox, oz): the way out from the car's side
+    const R = Math.random, n = Math.max(1, Math.round((2 + 5 * power) * this.density));
+    for (let i = 0; i < n; i++) {
+      const s = this.drops[this.di++ % this.drops.length], d = s.userData;
+      const out = (0.5 + R() * 1.6) * (1 + power), sx = ox, sz = oz;       // sideways, away from the car
+      s.position.set(x + (R() - 0.5) * 0.3, y + 0.08, z + (R() - 0.5) * 0.3);
+      d.v.set(vx * 0.55 + sx * out * 1.8 + (R() - 0.5) * 2.2, 2.2 + R() * 4.2 * (0.6 + power * 0.6), vz * 0.55 + sz * out * 1.8 + (R() - 0.5) * 2.2);
+      d.life = d.max = 0.45 + R() * 0.5; d.size = 0.14 + R() * 0.2; s.material.opacity = 0.9; s.visible = true;
+    }
+    if (R() < 0.7 * this.density) this._puff(x, y - 0.05, z, vx * 0.6, vz * 0.6, 1.1 + power * 0.9, 0.5 + R() * 0.4, 0xdfeaf3);
+  }
+  /** A big splash when a wheel first hits the water. */
+  splashBurst(x, y, z, vx, vz, power = 1, ox = 0, oz = 0) { for (let i = 0; i < 4; i++) this.splash(x, y, z, vx, vz, power * 1.6, ox, oz); }
   /** Boost exhaust flame: short-lived, hot at the pipe, fading to orange. */
   flame(x, y, z, vx, vy, vz) {
     const s = this.flames[this.fi++ % this.flames.length], d = s.userData;
@@ -144,6 +165,13 @@ export class Particles {
       s.scale.setScalar(d.size * (0.6 + t * 2.4)); s.material.opacity = 0.42 * (1 - t);
       if (d.life <= 0) s.visible = false;
     }
+    for (const s of this.drops) {
+      const d = s.userData; if (d.life <= 0) continue;
+      d.life -= dt; d.v.y -= 16 * dt; d.v.x *= 1 - 0.6 * dt; d.v.z *= 1 - 0.6 * dt; s.position.addScaledVector(d.v, dt);
+      const t = 1 - d.life / d.max;
+      s.scale.setScalar(d.size * (1 - t * 0.35)); s.material.opacity = 0.9 * (1 - t * t);
+      if (d.life <= 0 || s.position.y < 0) { s.visible = false; d.life = 0; }
+    }
     for (const s of this.sparks) {
       const d = s.userData; if (d.life <= 0) continue;
       d.life -= dt; d.v.y -= 14 * dt; s.position.addScaledVector(d.v, dt);
@@ -152,7 +180,7 @@ export class Particles {
       if (d.life <= 0) s.visible = false;
     }
   }
-  clear() { for (const s of [...this.smoke, ...this.sparks, ...this.flames, ...this.hot]) { s.visible = false; s.userData.life = 0; } }
+  clear() { for (const s of [...this.smoke, ...this.sparks, ...this.flames, ...this.hot, ...this.drops]) { s.visible = false; s.userData.life = 0; } }
 }
 
 /** Dark scorch marks left on the road by explosions. */
