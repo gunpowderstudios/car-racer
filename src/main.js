@@ -417,6 +417,7 @@ function stepPhysics(dt) {
       car.tow.events.length = 0;
     }
     if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
+    if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car]);                  // boulders waiting by the road roll out when a car comes near
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -594,6 +595,7 @@ function syncRivalBar(f, v) {
     bar.appendChild(fill); el.appendChild(bar); $('mp-labels').appendChild(el);
     b = { el, fill }; rivalBars.set(f.id, b);
   }
+  camera.updateMatrixWorld();                                    // the camera has moved since the last render: project with its current matrix, or the bars lag behind the cars
   rivalBarV.set(v.root.position.x, v.root.position.y + 2.3, v.root.position.z).project(camera);
   if (rivalBarV.z > 1) { b.el.style.display = 'none'; return; }
   const h = Math.max(0, Math.min(1, f.health.worst));
@@ -770,7 +772,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
-  stage.update(drawPos, camera.position);
+  stage.update(drawPos, camera.position); stage.updateRollers();
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);
@@ -1151,6 +1153,7 @@ function mpSyncRemote() {
     p.healthFill.style.background = health > 0.5 ? '#6bd66b' : health > 0.2 ? '#e8b13a' : '#d94b3a';
     mpLabelV.set(p.view.root.position.x, p.view.root.position.y + 2.6, p.view.root.position.z);
     const dist = camera.position.distanceTo(p.view.root.position);
+    camera.updateMatrixWorld();
     mpLabelV.project(camera);
     if (mpLabelV.z > 1 || dist > 220) { p.label.style.display = 'none'; continue; }
     p.label.style.display = ''; p.label.style.opacity = String(Math.max(0.15, 1 - dist / 220));

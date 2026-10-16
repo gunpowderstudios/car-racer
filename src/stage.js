@@ -15,6 +15,18 @@ function mulberry(seed) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
+/** A lumpy rock: a squashed, roughened sphere (lit with flat facets). */
+function rockGeometry() {
+  const rg = new THREE.IcosahedronGeometry(1, 2), pos = rg.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const n = Math.sin(x * 5.1 + y * 3.3) * Math.cos(z * 4.7 - y * 2.1) * 0.5 + Math.sin(x * 11 + z * 9) * 0.25;
+    const k = 1 + 0.22 * n; pos.setXYZ(i, x * k, y * k * (y < 0 ? 0.6 : 1), z * k);
+  }
+  rg.computeVertexNormals();
+  return rg;
+}
+
 export class Stage {
   /** `q` is a quality tier from quality.js (aniso, shadowSize, shadowRange); the defaults match the old fixed values. */
   constructor(renderer, q = {}) {
@@ -84,6 +96,18 @@ export class Stage {
     t.offset.set(camPos.x / 9000 * 400, -camPos.z / 9000 * 400);
   }
 
+  /** Put each rolling boulder where the simulation has it, turning as it rolls. */
+  updateRollers() {
+    if (!this.rollerMeshes || !this.rollerMeshes.length) return;
+    const ax = new THREE.Vector3(), dq = new THREE.Quaternion();
+    for (const m of this.rollerMeshes) {
+      const rk = m.userData.rock;
+      m.position.set(rk.x, rk.y + rk.h * 0.5, rk.z);
+      if (rk.state === 'roll') { ax.set(rk.dz, 0, -rk.dx); dq.setFromAxisAngle(ax, (rk.ang - (m.userData.ang || 0))); m.quaternion.premultiply(dq); m.userData.ang = rk.ang; }
+      else if (rk.state === 'wait') m.userData.ang = rk.ang;
+    }
+  }
+
   clearTrack() {
     if (!this.trackGroup) return;
     this.scene.remove(this.trackGroup);
@@ -133,24 +157,24 @@ export class Stage {
     }
 
     // boulders beside a rally stage: one lumpy grey rock shape, stretched and turned a different way for each
+    this.rollerMeshes = [];
     if (track.rocks) {
-      const rg = new THREE.IcosahedronGeometry(1, 2), pos = rg.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-        const n = Math.sin(x * 5.1 + y * 3.3) * Math.cos(z * 4.7 - y * 2.1) * 0.5 + Math.sin(x * 11 + z * 9) * 0.25;
-        const k = 1 + 0.22 * n; pos.setXYZ(i, x * k, y * k * (y < 0 ? 0.6 : 1), z * k);
-      }
-      rg.computeVertexNormals();
-      const rm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: true });
-      const im = new THREE.InstancedMesh(rg, rm, track.rocks.length), m4 = new THREE.Matrix4(), qq = new THREE.Quaternion(), ee = new THREE.Euler(), pp = new THREE.Vector3(), ss = new THREE.Vector3(), cc = new THREE.Color();
+      const rg = rockGeometry(), rm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: true });
+      const still = track.rocks.filter((r) => !r.roller);
+      const im = new THREE.InstancedMesh(rg, rm, Math.max(1, still.length)), m4 = new THREE.Matrix4(), qq = new THREE.Quaternion(), ee = new THREE.Euler(), pp = new THREE.Vector3(), ss = new THREE.Vector3(), cc = new THREE.Color();
       const rnd = mulberry(77);
-      track.rocks.forEach((rk, i) => {
+      still.forEach((rk, i) => {
         ee.set((rnd() - 0.5) * 0.35, rnd() * 6.28, (rnd() - 0.5) * 0.35); qq.setFromEuler(ee);
         pp.set(rk.x, rk.y + rk.h * 0.4, rk.z); ss.set(rk.r * (0.95 + rnd() * 0.2), rk.h * 0.6, rk.r * (0.95 + rnd() * 0.2));
         m4.compose(pp, qq, ss); im.setMatrixAt(i, m4);
-        const g = 0.38 + rnd() * 0.22; cc.setRGB(g, g * 0.98, g * 0.95); im.setColorAt(i, cc);          // greys, a touch of warmth
+        const gg = 0.38 + rnd() * 0.22; cc.setRGB(gg, gg * 0.98, gg * 0.95); im.setColorAt(i, cc);          // greys, a touch of warmth
       });
-      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; g.add(im);
+      im.count = still.length; im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; g.add(im);
+      for (const rk of track.rocks) if (rk.roller) {                                                           // the ones that roll across the road: a rounder rock each, moved every frame
+        const m = new THREE.Mesh(rg, rm.clone()); m.material.color.setRGB(0.5, 0.49, 0.47);
+        m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.scale.set(rk.r, rk.r * 0.95, rk.r);
+        m.userData.rock = rk; g.add(m); this.rollerMeshes.push(m);
+      }
     }
 
     // pillars

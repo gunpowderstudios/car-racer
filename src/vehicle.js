@@ -655,7 +655,7 @@ export class Vehicle {
         const dx = p.x - rk.x, dz = p.z - rk.z, d = Math.hypot(dx, dz);
         if (d >= R) continue;
         const n = tmpE.set(d > 1e-4 ? dx / d : 1, 0, d > 1e-4 ? dz / d : 0);
-        const r = tmpC.copy(p).sub(this.pos), v = this._velAt(r, tmpD), vn = v.dot(n);
+        const r = tmpC.copy(p).sub(this.pos), v = this._velAt(r, tmpD), vn = v.dot(n) - (rk.vx ? rk.vx * n.x : 0) - (rk.vz ? rk.vz * n.z : 0);      // (a rolling boulder: speed relative to it)
         if (R - d > pen) { pen = R - d; nx = n.x; nz = n.z; }
         if (vn >= 0) continue;
         const rr = r.clone(), nn = n.clone();

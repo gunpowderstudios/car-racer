@@ -46,7 +46,8 @@ export function wheelAxle(geo) {
   const a = geo.attributes.position, N = a.count, B = 72;
   geo.computeBoundingBox();
   const bb = geo.boundingBox;
-  let ox = (bb.min.x + bb.max.x) / 2, oy = (bb.min.y + bb.max.y) / 2, R = Math.min(bb.max.x - bb.min.x, bb.max.y - bb.min.y) / 2;
+  const cx0 = (bb.min.x + bb.max.x) / 2, cy0 = (bb.min.y + bb.max.y) / 2, R0 = Math.min(bb.max.x - bb.min.x, bb.max.y - bb.min.y) / 2;
+  let ox = cx0, oy = cy0, R = R0;
   const best = new Array(B);
   for (let it = 0; it < 4; it++) {
     best.fill(null);
@@ -67,6 +68,7 @@ export function wheelAxle(geo) {
     ox = uc + mx; oy = vc + my;
     R = pts.reduce((t, p) => t + Math.hypot(p.x - ox, p.y - oy), 0) / pts.length;
   }
+  if (!(R > R0 * 0.75) || !(R < R0 * 1.25)) { ox = cx0; oy = cy0; R = R0; }       // the fit went wrong (a sparse wheel, as on the Dodge): fall back to the middle of the box
   c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2, r: R };
   axleCache.set(geo, c);
   return c;
@@ -83,7 +85,7 @@ export function trimWheel(geo, ax) {
     const i0 = idx ? idx[t] : t, i1 = idx ? idx[t + 1] : t + 1, i2 = idx ? idx[t + 2] : t + 2;
     if (inside(i0) && inside(i1) && inside(i2)) out.push(i0, i1, i2);
   }
-  if (out.length === n || out.length < n * 0.4) return;                  // nothing to cut, or the fit looks wrong: leave the wheel alone
+  if (out.length === n || out.length < n * 0.85) return;                 // nothing to cut, or the fit looks wrong (a real clean-up only removes a few lumps): leave the wheel alone
   geo.setIndex(out);
   geo.userData.wheelCut = (n - out.length) / 3;
 }

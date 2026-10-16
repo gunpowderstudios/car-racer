@@ -197,7 +197,53 @@ export class Driver {
         if (gap < 7) { vT = Math.min(vT, Math.max(8, gap * 1.5 + 8)); brake = Math.max(brake, 0.15); }
       }
     }
-    this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
+    // washboard patches shake the car about: come into them slower, so it is not thrown off line
+    if (track.def.rough) for (const rp of track.def.rough) {
+      let ds = rp.s - s; if (ds < -track.length / 2) ds += track.length; if (ds > track.length / 2) ds -= track.length;
+      if (ds < 45 && ds > -rp.len) vT = Math.min(vT, 16 + Math.max(0, ds) * 0.2);
+    }
+    // boulders on or beside the road: find the nearest gap to drive through (round a pair of them, not between), and ease off for the close ones (rolling boulders too)
+    let rockShift = 0;
+    if (track.rocks) {
+      const blk = this._blk || (this._blk = []); blk.length = 0; let carLat;
+      for (const b of track.rocks) {
+        let rx = b.x - car.pos.x, rz = b.z - car.pos.z, ahead, side0;
+        if (b.roller) ahead = rx * fx + rz * fz;
+        else {                                                                  // a rock that stays put: where it is along and across the ROAD (the car's heading is no use on a bend)
+          if (b.rs === undefined) { b.rs = track.progressAt(b.x, b.y, b.z); const bf = track.frameAt(b.rs); b.rl = (b.x - bf.x) * bf.lx + (b.z - bf.z) * bf.lz; }
+          ahead = b.rs - s; if (ahead < -track.length / 2) ahead += track.length; if (ahead > track.length / 2) ahead -= track.length;
+          if (carLat === undefined) { const cf = track.frameAt(s); carLat = (car.pos.x - cf.x) * cf.lx + (car.pos.z - cf.z) * cf.lz; }
+          side0 = carLat - b.rl;
+        }
+        if (ahead < 0 || ahead > (b.roller ? 70 : 65) || Math.abs(b.y - car.pos.y) > 3.5) continue;
+        if (b.roller && b.state === 'roll') {                                                                   // where a rolling boulder will be when we get there
+          const tA = Math.min(3.5, ahead / Math.max(car.fwdSpeed, 6)), tacc = Math.max(0, (9.5 - b.speed) / 6);
+          const run = tA < tacc ? b.speed * tA + 3 * tA * tA : b.speed * tacc + 3 * tacc * tacc + 9.5 * (tA - tacc);
+          rx += b.dx * run; rz += b.dz * run;
+        } else if (b.roller && b.state === 'wait') { if (ahead < 75 && Math.abs(rx * car.ax.x + rz * car.ax.z) < 16) vT = Math.min(vT, 17); continue; }     // about to go: ease off and watch it
+        const side = b.roller ? rx * car.ax.x + rz * car.ax.z : side0;
+        if (Math.abs(side) > b.r + 3.2) continue;
+        blk.push({ side, w: b.r * 0.9 + 2.5 });
+        if (!b.roller && ahead < 60 && Math.abs(side) < b.r * 0.9 + 2.5) { vT = Math.min(vT, Math.max(10, 4 + ahead * 0.3)); if (ahead < 50) brake = Math.max(brake, 0.2); }      // on our line: be slow enough to swing round it
+        if (b.roller ? ahead < 60 : ahead < 32 && Math.abs(side) < b.r + 1.9) { vT = Math.min(vT, Math.max(b.roller ? 8 : 11, ahead * (b.roller ? 0.5 : 0.9) + 4)); brake = Math.max(brake, b.roller ? 0.5 : 0.2); }
+      }
+      if (blk.length) {
+        const free = (c) => blk.every((o) => Math.abs(c - o.side) >= o.w);
+        let best = 0;
+        if (!free(0)) {
+          const cand = [];
+          for (const o of blk) for (const sg of [-1, 1]) { const c = o.side + sg * o.w; if (free(c)) cand.push(c); }
+          const pick = (sg) => cand.filter((c) => sg === 0 || (c > 0) === (sg > 0)).sort((x, y) => Math.abs(x) - Math.abs(y))[0];
+          let c = this._pass ? pick(this._pass) : undefined;                                         // pick a side once and stay with it (no dithering as the boulder slides past)
+          if (c === undefined) c = pick(0);
+          if (c === undefined) c = blk[0].side > 0 ? -3 : 3;
+          this._pass = c > 0 ? 1 : -1; best = c;
+        }
+        rockShift = best;
+      } else this._pass = 0;
+    } else this._pass = 0;
+    if (rockShift) this.laneNow += clamp(-rockShift / usable * 1.8 * dt, -1.3 * dt, 1.3 * dt);       // (lane runs the opposite way to "side"; steer round, then drift back once clear)
+    else this.laneNow += clamp((this.lane + clamp(laneBias, -1, 1) * 0.5 - this.laneNow) * 0.9 * dt, -0.6 * dt, 0.6 * dt);
     this.laneNow = clamp(this.laneNow, -0.85, 0.85);
 
     // ---------------------------------------------------------------- hills / jumps

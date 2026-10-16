@@ -106,7 +106,7 @@ const _bump = { h: 0, gx: 0, gz: 0 };
 // ---------------------------------------------------------------- rocks and boulders (rally stages)
 
 /** Grey boulders beside (and a little onto) a rally stage: { x, z, r (radius on the ground, m), h (height, m) }. Solid: cars bounce off them. */
-export const MAX_ROCKS = 90;
+export const MAX_ROCKS = 130;
 export function normalizeRocks(list) {
   const out = [];
   if (!Array.isArray(list)) return out;
@@ -115,6 +115,35 @@ export function normalizeRocks(list) {
     const x = Number(b.x), z = Number(b.z), r = Number(b.r), h = Number(b.h);
     if (![x, z, r, h].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
     out.push({ x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, r: clamp(r, 0.3, 3.5), h: clamp(h, 0.3, 3.5) });
+  }
+  return out;
+}
+
+/** Rough patches: stretches of the road with deep, regular ridges and grooves (washboard) that rattle a car: { s (where it starts, m along the road), len (m), amp (m) }. */
+export const MAX_ROUGH = 14, ROUGH_WAVE = 4.5;
+export function normalizeRough(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_ROUGH || !b) continue;
+    const s = Number(b.s), len = Number(b.len), amp = Number(b.amp);
+    if (![s, len, amp].every(Number.isFinite) || s < 0 || s > 1e5) continue;
+    out.push({ s: Math.round(s), len: clamp(Math.round(len), 10, 150), amp: clamp(Math.round(amp * 100) / 100, 0.03, 0.22) });
+  }
+  return out;
+}
+
+/** Boulders that start by the side of a rally stage and roll across the road when a car gets near: { x, z (where it waits), r (m), dx, dz (the way it rolls, unit) }. */
+export const MAX_ROLLERS = 12;
+export function normalizeRollers(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_ROLLERS || !b) continue;
+    const x = Number(b.x), z = Number(b.z), r = Number(b.r); let dx = Number(b.dx), dz = Number(b.dz);
+    const m = Math.hypot(dx, dz);
+    if (![x, z, r, dx, dz].every(Number.isFinite) || m < 1e-6 || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
+    out.push({ x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, r: clamp(r, 0.8, 2.6), dx: Math.round(dx / m * 1000) / 1000, dz: Math.round(dz / m * 1000) / 1000 });
   }
   return out;
 }
@@ -181,6 +210,8 @@ export function normalizeTrack(input) {
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;       // humps in the road
     const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;
     const rocks = normalizeRocks(src.rocks); if (rocks.length) out.rocks = rocks;
+    const rough = normalizeRough(src.rough); if (rough.length) out.rough = rough;
+    const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
@@ -247,7 +278,45 @@ export class Track {
     this._build();
     // boulders: remember how high the ground is under each (the car's collision needs it)
     this.rocks = (this.def.rocks || []).map((b) => ({ ...b, y: this.query(b.x, 40, b.z, undefined, 2).y }));
+    // boulders that roll across the road: they sit by the roadside (as rocks) until a car comes near
+    this.rollers = (this.def.rollers || []).map((b, i) => {
+      const q = this.query(b.x, 40, b.z, undefined, 3);
+      return { x: b.x, z: b.z, y: q.y, r: b.r, h: b.r * 1.9, roller: true, vx: 0, vz: 0, x0: b.x, z0: b.z, dx: b.dx, dz: b.dz, state: 'wait', speed: 0, ang: 0, rest: 0,
+        tArr: 2.5 + ((i * 37) % 11) * 0.1, travel: Math.abs(q.d) + q.hw + 8 };
+    });
+    for (const r of this.rollers) this.rocks.push(r);
+    if (!this.rollers.length) this.rollers = null;
     if (!this.rocks.length) this.rocks = null;
+    this._rq = Track.newQuery(); this._rollN = 0;
+  }
+
+  /** Run the rolling boulders one step. `cars` are the things that set them off (anything with .pos and .vel). */
+  stepRollers(dt, cars) {
+    if (!this.rollers) return;
+    for (const b of this.rollers) {
+      if (b.state === 'wait') {
+        b.vx = b.vz = 0;
+        for (const c of cars) {
+          const rx = b.x0 - c.pos.x, rz = b.z0 - c.pos.z, d = Math.hypot(rx, rz);
+          const closing = (c.vel.x * rx + c.vel.z * rz) / Math.max(d, 1);
+          if (d > 6 && closing > 8 && d / closing < b.tArr) { b.state = 'roll'; b.speed = 0; b.go = 0; break; }       // a car is coming this way at speed: it will be here in about 2.5-3.5 s
+        }
+      } else if (b.state === 'roll') {
+        b.speed = Math.min(9.5, b.speed + 6 * dt);
+        b.x += b.dx * b.speed * dt; b.z += b.dz * b.speed * dt; b.go += b.speed * dt;
+        b.vx = b.dx * b.speed; b.vz = b.dz * b.speed; b.ang += b.speed * dt / b.r;
+        const q = this.query(b.x, b.y + 3, b.z, this._rq, 3);
+        if (q.idx >= 0) b.y = q.y;
+        if (b.go >= b.travel) { b.state = 'rest'; b.rest = 0; b.vx = b.vz = 0; }
+      } else if (b.state === 'rest') {
+        b.rest += dt;
+        if (b.rest > 25) {                                         // go back to the start, but only when nobody can see it happen
+          let seen = false;
+          for (const c of cars) if (Math.hypot(c.pos.x - b.x, c.pos.z - b.z) < 80 || Math.hypot(c.pos.x - b.x0, c.pos.z - b.z0) < 80) seen = true;
+          if (!seen) { b.x = b.x0; b.z = b.z0; b.state = 'wait'; b.ang = 0; const q = this.query(b.x, b.y + 3, b.z, this._rq, 3); if (q.idx >= 0) b.y = q.y; }
+        }
+      }
+    }
   }
 
   _build() {
@@ -292,6 +361,15 @@ export class Track {
     // Banking pivots about the LOW edge, so the handle height is the lowest point of the road
     // and no part of a banked road ever dips below the ground.
     for (let i = 0; i < n; i++) py[i] += hw[i] * Math.abs(Math.tan(bank[i]));
+
+    // rough patches: washboard ridges and grooves, fading in and out at each end
+    for (const rp of def.rough || []) {
+      for (let i = 0; i < n; i++) {
+        const u = s[i] - rp.s; if (u < 0 || u > rp.len) continue;
+        const taper = smoothstep(Math.min(u, rp.len - u) / 10);
+        py[i] += rp.amp * taper * Math.sin(2 * Math.PI * u / ROUGH_WAVE);
+      }
+    }
 
     // gaps ("jumps"): stretches with no road surface at all. Each one gets a takeoff ramp
     // and a slightly lower landing so it is a real jump rather than a step.

@@ -135,17 +135,27 @@ function bluebell() {
     if (BB.jumps.includes(k)) Object.assign(h, { y: Math.max(h.y, 3), gap: BB.gap, kick: BB.kick[k % 3], lip: BB.lip });
     out.push(h);
   }
+  const HILLS = { 2: 7, 9: 9, 17: 8 };                                        // three big hills, each rising and falling over three handles (about 130 m up, 130 m down)
+  for (const [k, peak] of Object.entries(HILLS)) { out[k].y += peak; out[k - 1].y += peak * 0.5; out[(+k + 1) % n].y += peak * 0.5; }
   return out;
+}
+
+/** The few tightest corners of a dirt stage get steep banks (up to about 17 degrees). */
+function steepBanks(def) {
+  const banks = suggestBanks(new Track(def), 17), n = def.handles.length;
+  const nearJump = (i) => [-1, 0, 1].some((o) => def.handles[(i + o + n) % n].gap);
+  const order = banks.map((b, i) => [Math.abs(b), i]).filter(([, i]) => i > 1 && !nearJump(i)).sort((a, b) => b[0] - a[0]).slice(0, 7).map(([, i]) => i);
+  return { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: order.includes(i) ? banks[i] : 0 })) };
 }
 
 /** Humps and puddles scattered along a dirt stage at fixed random spots (never near the start or a jump, nor on top of each other). */
 function rallyScatter(def) {
-  const track = new Track(def), rnd = mulberry(20261016), bumps = [], puddles = [], taken = [];
+  const track = new Track(def), rnd = mulberry(20261016), bumps = [], puddles = [], taken = [], rough = [];
   const jumpS = track.handleS.filter((_, hi) => def.handles[hi].gap);
   const free = (s, clear = 55, gap = 32) => {
     const dist = (a, b) => { let d = Math.abs(a - b); return Math.min(d, track.length - d); };
     const straight = [-12, 0, 12].every((o) => Math.abs(track.curv[Math.round((((s + o) % track.length) + track.length) % track.length / track.ds) % track.n]) < 0.005);     // only where the road is fairly straight
-    return straight && dist(s, 0) > 70 && jumpS.every((j) => dist(s, j) > clear) && taken.every((t) => dist(s, t) > gap);
+    return straight && dist(s, 0) > 70 && jumpS.every((j) => dist(s, j) > clear) && taken.every((t) => dist(s, t) > gap) && !rough.some((p) => s > p.s - 20 && s < p.s + p.len + 20);
   };
   const place = (count, make, clear, gap) => {
     for (let guard = 0; guard < 400 && count > 0; guard++) {
@@ -154,13 +164,21 @@ function rallyScatter(def) {
       make(f.x + f.lx * off, f.z + f.lz * off, f); taken.push(s); count--;
     }
   };
+  // rough patches: washboard stretches (deep ridges and grooves) on the straighter parts, clear of the start and the jumps
+  const curvAt = (u) => Math.abs(track.curv[Math.round((((u % track.length) + track.length) % track.length) / track.ds) % track.n]);
+  for (let guard = 0; guard < 3000 && rough.length < 8; guard++) {
+    const s = Math.floor(rnd() * track.length), len = 28 + Math.floor(rnd() * 34), amp = 0.07 + rnd() * 0.05;
+    if (s + len > track.length - 40 || s < 90 || jumpS.some((j) => j > s - 60 && j < s + len + 60) || rough.some((p) => s < p.s + p.len + 90 && s + len > p.s - 90)) continue;
+    if ([0, 0.25, 0.5, 0.75, 1].some((u) => curvAt(s + u * len) > 0.0045)) continue;
+    rough.push({ s, len, amp: Math.round(amp * 100) / 100 });
+  }
   place(9, (x, z) => puddles.push({ x, z, r: 3.5 + rnd() * 2.2 }), 120, 105);       // (well clear of where a jump lands)
   // lots of bumps of all sizes and heights, scattered along the whole stage (gentler on bends), clear of the jumps, puddles and the start line
   const dist = (a, b) => { let d = Math.abs(a - b); return Math.min(d, track.length - d); };
   const mounds = [];
   for (let guard = 0; guard < 6000 && bumps.length < 56; guard++) {
     const s = rnd() * track.length;
-    if (dist(s, 0) < 60 || jumpS.some((j) => dist(s, j) < 45) || mounds.some((m) => dist(s, m) < 9)) continue;
+    if (dist(s, 0) < 60 || jumpS.some((j) => dist(s, j) < 45) || mounds.some((m) => dist(s, m) < 9) || rough.some((p) => s > p.s - 10 && s < p.s + p.len + 10)) continue;
     const k = Math.abs(track.curv[Math.round(s / track.ds) % track.n]);
     if (k > 0.0045 || Math.abs(track.curv[Math.round((s + 14) / track.ds) % track.n]) > 0.0045) continue;      // bends stay clean: only on the straighter stretches
     const f = track.frameAt(s), off = (rnd() - 0.5) * f.hw * 0.95, x = f.x + f.lx * off, z = f.z + f.lz * off;
@@ -185,7 +203,32 @@ function rallyScatter(def) {
       rocks.push({ x, z, r, h });
     }
   }
-  return { bumps, puddles, rocks };
+  // (a driver heading for a jump looks only at the jump, so nothing in the road within 145 m before one or 40 m after it)
+  const beforeJump = (u) => jumpS.some((j) => { let d = j - u; if (d < -track.length / 2) d += track.length; if (d > track.length / 2) d -= track.length; return d > -40 && d < 145; });
+  // a few boulders right out in the road, to dodge (single or in pairs, never across the whole width, well spaced, never on a bend or near a jump)
+  const inRoad = [];
+  for (let guard = 0; guard < 6000 && inRoad.length < 15; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 90 || beforeJump(s) || beforeJump(s + 12) || inRoad.some((m) => dist(s, m) < 55) || rough.some((p) => s > p.s - 15 && s < p.s + p.len + 15)) continue;
+    if ([-14, 0, 14].some((o) => curvAt(s + o) > 0.0045)) continue;
+    const f = track.frameAt(s), pair = rnd() < 0.3, lat = (rnd() * 2 - 1) * (f.hw - 3);
+    for (let k = 0; k < (pair ? 2 : 1); k++) {
+      const r = 0.7 + rnd() * 0.8, o = lat + (k ? (rnd() < 0.5 ? -1 : 1) * (2.2 + rnd()) : 0);
+      if (Math.abs(o) > f.hw - 1.5) continue;
+      rocks.push({ x: f.x + f.lx * o, z: f.z + f.lz * o, r, h: r * (0.85 + rnd() * 0.4) });
+    }
+    inRoad.push(s);
+  }
+  // boulders that wait on the bank and roll across the road when a car comes near (always at the same places, but when they go depends on you)
+  const rollers = [], rolled = [];
+  for (let guard = 0; guard < 6000 && rollers.length < 7; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 100 || beforeJump(s) || beforeJump(s + 40) || rolled.some((m) => dist(s, m) < 150) || rough.some((p) => s > p.s - 15 && s < p.s + p.len + 15)) continue;
+    if ([-20, 0, 20].some((o) => curvAt(s + o) > 0.005)) continue;
+    const f = track.frameAt(s), sg = rnd() < 0.5 ? 1 : -1, r = 1 + rnd() * 1.2;
+    rollers.push({ x: f.x + f.lx * sg * (f.hw + 5.5), z: f.z + f.lz * sg * (f.hw + 5.5), r, dx: -sg * f.lx, dz: -sg * f.lz }); rolled.push(s);
+  }
+  return { bumps, puddles, rocks, rough, rollers };
 }
 
 /** The Twister: a corkscrew. A ground straight runs into a banked spiral that climbs two and a half turns round a tower (each turn passes over the one below), then
@@ -340,7 +383,7 @@ export function makeTemplate(key) {
     const banks = suggestBanks(new Track(def), raw.bankMax || 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
-  if (raw.dirt) { const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
+  if (raw.dirt) { def = normalizeTrack(steepBanks(def)); const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', bumps: OVAL_BUMPS }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }
