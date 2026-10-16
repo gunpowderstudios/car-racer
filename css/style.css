@@ -588,13 +588,13 @@ html.chat-quick-only .chat-row { display: none; }
 }
 
 /* Home screen buttons: 30% see-through, fully solid when you roll over them. Multiplayer is a purple strip, Design-a-track! a green one. */
-#menu .btn { background: rgba(235,150,10,.7); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65), 0 0 1px rgba(0,0,0,.5); transition: background .15s, transform .08s; }
+#menu .btn { background: #eb960a; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65), 0 0 1px rgba(0,0,0,.5); transition: background .15s, transform .08s; }
 #menu .btn:hover, #menu .btn:focus-visible { background: #e08f00; }
-#menu .btn.ghost { background: rgba(120,100,150,.7); color: #fff; }
+#menu .btn.ghost { background: #786496; color: #fff; }
 #menu .btn.ghost:hover, #menu .btn.ghost:focus-visible { background: #786496; }
-#menu #btn-multiplayer-top { background: rgba(138,66,224,.7); color: #fff; box-shadow: none; }
+#menu #btn-multiplayer-top { background: #8a42e0; color: #fff; box-shadow: none; }
 #menu #btn-multiplayer-top:hover, #menu #btn-multiplayer-top:focus-visible { background: #8a42e0; }
-#menu #btn-new-top { background: rgba(38,170,86,.7); color: #fff; box-shadow: none; }
+#menu #btn-new-top { background: #26aa56; color: #fff; box-shadow: none; }
 #menu #btn-new-top:hover, #menu #btn-new-top:focus-visible { background: #26aa56; }
 @media (hover: none) { #menu .btn:active { background: #e08f00; } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-new-top:active { background: #26aa56; } }
 
@@ -633,3 +633,16 @@ body.track-chosen #menu-vehicle-preview { display: none; }
 #van-dmg .vd-bar { grid-column: 1 / 3; height: 7px; background: rgba(0,0,0,.45); }
 #van-dmg .vd-bar i { display: block; height: 100%; width: 100%; background: #6fd36f; transition: width .15s, background .15s; }
 #van-dmg b { grid-row: 1; grid-column: 2; color: var(--ink, #f6d9b0); }
+
+/* Home screen buttons: solid, small and compact (v17.157) */
+#menu .btn-play { font-size: 26px; padding: 9px 22px; min-width: min(100%, 260px); margin: 6px 0 4px; box-shadow: 0 4px 0 #8a5200, 0 6px 12px rgba(0,0,0,.35); line-height: 1.1; }
+#menu .btn-play small { font-size: 13px; }
+#menu .btn-story { margin: 4px 0; padding: 6px 16px; font-size: 17px; line-height: 1.15; min-width: min(100%, 260px); }
+#menu .btn-story small { font-size: 12px; letter-spacing: .04em; }
+#menu .btn { text-shadow: 0 1px 2px rgba(0,0,0,.75); }
+@media (max-width: 600px) {
+  #menu .btn-play, #menu .btn-story { min-width: 0; width: min(100%, 300px); }
+  #menu .btn-play { font-size: 24px; padding: 8px 16px; }
+  #menu .btn-story { font-size: 16px; padding: 5px 14px; }
+  #menu .btn-story small { font-size: 12px; }
+}
