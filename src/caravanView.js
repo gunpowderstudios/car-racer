@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { assetUrl } from './assetVersion.js';
 import { recolour } from './carVisual.js';
+import { splitWheelTriangles } from './wheelSplit.js';
 
 export const CARAVAN_MODEL = { url: 'cars/caravan-SHRINK.glb', length: 4.4 };
 
@@ -104,6 +105,18 @@ export class CaravanView {
     // wheels
     const wheelNodes = [];
     model.traverse((o) => { if (/wheel/i.test(o.name || '') && !wheelNodes.some((w) => { let p = o.parent; while (p) { if (p === w) return true; p = p.parent; } return false; })) wheelNodes.push(o); });
+    // the wheel meshes carry a bit of the body's wheel-arch skirt: hand that back to the body so it stays put when the wheel turns
+    for (const w of wheelNodes.slice()) {
+      if (!w.isMesh || !w.geometry.index) continue;
+      const { wheel, rest } = splitWheelTriangles(w.geometry);
+      if (!rest.length || !wheel.length) continue;
+      const mk = (ix) => { const g = new THREE.BufferGeometry(); for (const k in w.geometry.attributes) g.setAttribute(k, w.geometry.attributes[k]); g.setIndex(ix); return g; };
+      const arch = new THREE.Mesh(mk(rest), w.material);
+      arch.name = 'ArchSkirt'; arch.position.copy(w.position); arch.quaternion.copy(w.quaternion); arch.scale.copy(w.scale);
+      w.parent.add(arch);
+      w.geometry = mk(wheel);
+    }
+    this.holder.updateMatrixWorld(true);
     const hb = new THREE.Box3().setFromObject(this.holder), hs = hb.getSize(new THREE.Vector3());
     let axleX = 0, axleZ = (hb.min.z + hb.max.z) / 2 - hs.z * 0.05, floor = hb.min.y, wheelR = 0.33;
     const centres = [];
