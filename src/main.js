@@ -29,6 +29,7 @@ import { VERSION } from './version.js';
 import { selectedVehicle, multiplayerVehicleSpec, vehicleById } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
+import { remoteCarHitsVan, carHitsRemoteVan } from './mpVanContacts.js';
 import { CaravanView } from './caravanView.js';
 
 const $ = (id) => document.getElementById(id);
@@ -403,7 +404,7 @@ function stepPhysics(dt) {
       for (const e of car.tow.events) caravanEvent(e);
       car.tow.events.length = 0;
     }
-    if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
+    if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -968,6 +969,21 @@ function mpCollideLocal() {
       p.lastHitSent = now;
       mpImpactFx((car.pos.x + p.cur.x) / 2, car.pos.y + 0.6, (car.pos.z + p.cur.z) / 2, closing);
     }
+  }
+}
+
+/** Caravans and other players' cars (see mpVanContacts.js): each side moves only what it owns. */
+const mpFwd = new THREE.Vector3(), mpQ = new THREE.Quaternion();
+function mpVanContacts() {
+  if (!net) return;
+  const mine = multiplayerVehicleSpec(selectedVehicle().id), van = car.tow;
+  if (van) car.refreshFrame();
+  for (const [id, p] of remotePlayers) {
+    const c = p.cur; if (!c || c.alive === false) continue;
+    const theirs = multiplayerVehicleSpec(net.players.get(id)?.vehicleId);
+    mpFwd.set(0, 0, 1).applyQuaternion(mpQ.set(c.qx, c.qy, c.qz, c.qw));
+    if (van && !van.detached) { const hit = remoteCarHitsVan(van, c, mpFwd.x, mpFwd.z, theirs); if (hit && hit.closing > 1.5) van.struck('car', hit.closing, hit.x, van.pos.y + 0.5, hit.z, crashDamage(hit.mu, hit.closing) * van.spec.carMul); }
+    carHitsRemoteVan(car, c.van, caravan.spec, mine);
   }
 }
 function mpMakeView(hue) {

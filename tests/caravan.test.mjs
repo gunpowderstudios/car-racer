@@ -141,3 +141,25 @@ test('multiplayer: the host sends the finishing order for a podium, which every 
   assert.match(rd('../src/bootstrap.js'), /podium\.js/);
   assert.match(rd('../src/podium.js'), /came 1st!/);
 });
+
+test('multiplayer: another player\'s car ramming my caravan shoves and hurts it, and my car is stopped by their caravan', async () => {
+  const { remoteCarHitsVan, carHitsRemoteVan } = await import('../src/mpVanContacts.js');
+  const { crashDamage } = await import('../src/damage.js');
+  const s = setup(true, 0);
+  const spec = { width: 1.8, length: 4.2, mass: 1100 };
+  // their car comes at the caravan's side from 6 m away at 15 m/s
+  const v = s.van; const side = { x: Math.cos(v.yaw), z: -Math.sin(v.yaw) };      // the caravan's sideways direction
+  const c = { x: v.pos.x + side.x * 2.2, y: v.pos.y, z: v.pos.z + side.z * 2.2, vx: -side.x * 15, vz: -side.z * 15 };
+  const hp0 = v.health;
+  const hit = remoteCarHitsVan(v, c, -side.x, -side.z, spec);
+  assert.ok(hit && hit.closing > 10, 'the caravan felt the hit');
+  assert.ok(v.vel.x * -side.x + v.vel.z * -side.z > 0.5, 'and was shoved the way the car was going');
+  v.struck('car', hit.closing, hit.x, v.pos.y, hit.z, crashDamage(hit.mu, hit.closing) * v.spec.carMul);
+  assert.ok(v.health < hp0, 'and was damaged');
+  // my own car driving into their caravan is pushed back out and slowed
+  const car = { pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 12 }, az: { x: 0, z: 1 } };
+  const vs = [0, 0, 2.2, 0, 0, 0, 0, 0, 1];                     // their caravan's axle 2.2 m ahead, facing the same way
+  assert.ok(carHitsRemoteVan(car, vs, { ...v.spec }, { width: 1.8, length: 4.2 }));
+  assert.ok(car.pos.z < 0 && car.vel.z < 12 * 0.6, 'my car was moved clear of it and lost speed');
+  assert.equal(carHitsRemoteVan({ pos: { x: 50, y: 0, z: 0 }, vel: { x: 0, z: 0 }, az: { x: 0, z: 1 } }, vs, v.spec, spec), false);
+});
