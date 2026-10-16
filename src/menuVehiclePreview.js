@@ -65,14 +65,16 @@ function installPreview({
     // Cars that can tow: show the caravan hitched on behind the car when "Tow a caravan" is ticked
     const showCaravan = async () => {
       if (!rig || !van) return;
-      const want = caravanOn();
+      let want = caravanOn();
       if (want && !van.loaded) await van.load();
-      if (!van.loaded) return;
-      van.root.position.set(0, van.dims.wheelR, (HITCH[vehicle.id] || HITCH.escort).z - van.dims.dAxle);
-      van.root.rotation.set(0, 0, 0);
-      van.root.visible = true;
+      if (!van.loaded) want = false;      // no caravan model (yet): still frame the car on its own
+      if (want) {
+        van.root.position.set(0, van.dims.wheelR, (HITCH[vehicle.id] || HITCH.escort).z - van.dims.dAxle);
+        van.root.rotation.set(0, 0, 0);
+        van.root.visible = true;
+        rig.add(van.root);
+      } else rig.remove(van.root);   // out of the rig when unticked, so the framing ignores it
       if (blurbEl) blurbEl.textContent = want ? `Towing ${CARAVAN_INFO.name}: ${CARAVAN_INFO.blurb}` : baseBlurb;
-      if (want) rig.add(van.root); else rig.remove(van.root);   // out of the rig when unticked, so the framing ignores it
       rig.position.set(0, 0, 0);
       frameModel(rig, want ? 1.12 : 1);
       holder.rotation.set(pitch, yaw, 0);
@@ -127,6 +129,7 @@ function installPreview({
         rig = new THREE.Group();
         rig.add(face);
         van = new CaravanView(rig);
+        rig.remove(van.root);
         holder.add(rig);
         showCaravan();
       } else {
