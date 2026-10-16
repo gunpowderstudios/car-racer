@@ -75,13 +75,13 @@ test('a caravan goes back behind the car when the car is put back on the road', 
   assert.ok(Math.abs(s.van.jackknife) < 0.01);
 });
 
-test('the Tow a caravan option is on the home screen, saved, for the saloon cars (70s Saloon, Volvo, Saab, BMW), and in multiplayer too', async () => {
+test('the Tow a caravan option is on the home screen, saved, for every car but the bus, campervan and motor home, and in multiplayer too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="opt-caravan" type="checkbox"/);
   assert.match(main, /TOW_CARS\.includes\(selectedVehicle\(\)\.id\) && !caravanView\.failed/);
   assert.match(main, /van: car\.tow \? mpVanState\(car\.tow\) : null/);      // the others are told where it is
-  assert.deepEqual(Object.keys(HITCH).sort(), ['bmw', 'escort', 'saab', 'volvo']);
+  assert.deepEqual(Object.keys(HITCH).sort(), ['bmw', 'car', 'escort', 'french-cheese', 'mini', 'mobility-car', 'panda', 'saab', 'tuk-tuk', 'v8-pilot', 'volvo']);   // everything but the bus, campervan and motor home
 });
 
 test('a car and caravan left alone at the start line stay put (no creeping, swinging or dragging the car)', () => {

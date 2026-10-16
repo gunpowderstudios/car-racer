@@ -36,6 +36,14 @@ export const HITCH = {
   bmw: { x: 0, y: -0.02, z: -2.27 },
   volvo: { x: 0, y: -0.02, z: -2.5 },
   saab: { x: 0, y: -0.02, z: -2.43 },
+  // every other car except the bus, campervan and motor home: ball about 0.1 m behind the rear bumper (body length / 2 + 0.1)
+  car: { x: 0, y: -0.02, z: -2.55 },
+  'v8-pilot': { x: 0, y: -0.02, z: -2.32 },
+  mini: { x: 0, y: -0.02, z: -1.63 },
+  'french-cheese': { x: 0, y: -0.02, z: -2.02 },
+  panda: { x: 0, y: -0.02, z: -1.87 },
+  'mobility-car': { x: 0, y: -0.02, z: -1.55 },
+  'tuk-tuk': { x: 0, y: -0.02, z: -1.5 },
 };
 
 /** The cars that can tow the caravan, and the caravan's name and blurb for the menu. */
