@@ -453,13 +453,19 @@ function propEvents() {
 
 /** Something happened to your caravan: a knock (sound, sparks, a shake) or the hitch giving way. */
 function caravanEvent(e) {
-  if (e.type === 'van-lost') {
-    hud.banner('Caravan lost! The hitch snapped', 2000);
+  if (e.type === 'van-wrecked') {
+    hud.banner('Caravan wrecked! Wheels off - drag it home', 2200);
     particles.blast(e.x, e.y + 0.4, e.z, 1.2);
     crashDebris(e.x, e.y + 0.6, e.z, 16, 0xdfe9e0, 0, 0, 1.6);
+    wheelFlyers.launch(caravanView, car.vel, 0.7);
+    return;
+  }
+  if (e.type === 'van-scrape') {                                    // dragging the wreck: a trail of sparks
+    for (let i = 0; i < 2; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 4, 1 + Math.random() * 2.5, (Math.random() - 0.5) * 4);
     return;
   }
   if (e.type !== 'van') return;
+  caravanView.dent(e);
   sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car'); chase.impact(e.speed * 0.6);
   const n = Math.min(8, 2 + e.speed * 0.4);
   for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5);
@@ -554,6 +560,7 @@ function syncTowViews(a) {
     let tv = towViews.get(f.id);
     if (!tv) { if (!caravanView.loaded) continue; tv = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[f.hue]); towViews.set(f.id, tv); tv.snap(van); }
     tv.update(a);
+    if (tv.wrecked && !tv._wheelsOff) wheelFlyers.launch(tv, van.vel, 0.7);                                   // a rival's wrecked caravan loses its wheels too
     const dx = tv.root.position.x - camera.position.x, dz = tv.root.position.z - camera.position.z;
     tv.root.visible = dx * dx + dz * dz < 300 * 300;
   }
@@ -997,7 +1004,7 @@ function mpVanContacts() {
     const c = p.cur; if (!c || c.alive === false) continue;
     const theirs = multiplayerVehicleSpec(net.players.get(id)?.vehicleId);
     mpFwd.set(0, 0, 1).applyQuaternion(mpQ.set(c.qx, c.qy, c.qz, c.qw));
-    if (van && !van.detached) { const hit = remoteCarHitsVan(van, c, mpFwd.x, mpFwd.z, theirs); if (hit && hit.closing > 1.5) van.struck('car', hit.closing, hit.x, van.pos.y + 0.5, hit.z, crashDamage(hit.mu, hit.closing) * van.spec.carMul); }
+    if (van) { const hit = remoteCarHitsVan(van, c, mpFwd.x, mpFwd.z, theirs); if (hit && hit.closing > 1.5) van.struck('car', hit.closing, hit.x, van.pos.y + 0.5, hit.z, crashDamage(hit.mu, hit.closing) * van.spec.carMul); }
     carHitsRemoteVan(car, c.van, caravan.spec, mine);
   }
 }
@@ -1038,6 +1045,7 @@ function mpSyncVan(p, a0, a1, rt, k) {
   const w = p.vanView; w._prev = w._cur = null;
   if (rt >= a1.t) { w.capture(mpVanObj(v1)); w.capture(mpVanObj(v1)); w.update(1); }
   else { w.capture(mpVanObj(v0)); w.capture(mpVanObj(v1)); w.update(k); }
+  if (w.wrecked && !w._wheelsOff) wheelFlyers.launch(w, null, 0.7);
   w.root.visible = p.view.root.visible;
 }
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */

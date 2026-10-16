@@ -8,8 +8,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { assetUrl } from './assetVersion.js';
-import { recolour } from './carVisual.js';
+import { recolour, CarVisual } from './carVisual.js';
 import { splitWheelTriangles } from './wheelSplit.js';
+import { makeDentable } from './dents.js';
 
 export const CARAVAN_MODEL = { url: 'cars/caravan-SHRINK.glb', length: 4.4 };
 
@@ -41,10 +42,34 @@ export class CaravanView {
       o.material.color.setHex(0xffffff).lerp(tint, 0.55); o.material.userData.base = o.material.color.clone();      // the model's paint is a pale pastel, so give it some of the colour on top of the turned hue
     });
     v.wheels = []; v.holder.traverse((o) => { if (o.userData?.pivot) v.wheels.push(o); });
+    v._markRest();
     v.loaded = true; v.dims = this.dims; v._wantVisible = true; v.root.visible = true;
     return v;
   }
 
+  _markRest() { for (const w of this.wheels) w.userData.rest = { pos: w.position.clone(), quat: w.quaternion.clone(), scale: w.scale.clone() }; }
+  /** Dent the body where a knock landed (`e` has the world x, y, z and the damage `hp`). */
+  dent(e) {
+    if (!this.dents || !(e.hp > 0)) return;
+    this._dv = this._dv || new THREE.Vector3();
+    this.root.updateWorldMatrix(true, false);
+    this.root.worldToLocal(this._dv.set(e.x, e.y, e.z));
+    this.dents.add(this._dv.x, this._dv.y, this._dv.z, e.hp);
+  }
+  /** Hand the wheels over to be thrown off (see wheelDebris.js); the same shape as CarVisual.detachWheels. */
+  detachWheels() {
+    if (!this.loaded || !this.wheels.length || this._wheelsOff || !this.root.parent) return null;
+    this.root.updateWorldMatrix(true, true);
+    const scene = this.root.parent, out = [];
+    for (const w of this.wheels) { scene.attach(w); out.push({ node: w, radius: (this.dims?.wheelR || 0.3) }); }
+    this._wheelsOff = true;
+    return out;
+  }
+  restoreWheels() {
+    if (!this._wheelsOff) return;
+    for (const w of this.wheels) { const r = w.userData.rest; w.removeFromParent(); this.holder.add(w); if (r) { w.position.copy(r.pos); w.quaternion.copy(r.quat); w.scale.copy(r.scale); } w.visible = true; }
+    this._wheelsOff = false;
+  }
   get visible() { return this.root.visible; }
   set visible(v) { this.root.visible = !!v && this.loaded; this._wantVisible = !!v; }
 
@@ -137,6 +162,11 @@ export class CaravanView {
       const pivot = new THREE.Group(); pivot.userData.pivot = true; this.holder.add(pivot); pivot.position.copy(this.holder.worldToLocal(c.clone()));
       pivot.updateMatrixWorld(true); pivot.attach(w); this.wheels.push(pivot);
     });
+    this._markRest();
+    // dents: the body gets a material of its own, so the wheels and wheel-arch skirt (which share the model's one material) are not dented with it
+    let body = null; model.traverse((o) => { if (o.isMesh && !/wheel|arch/i.test(o.name || '') && (!body || o.geometry.attributes.position.count > body.geometry.attributes.position.count)) body = o; });
+    if (body && !Array.isArray(body.material)) body.material = body.material.clone();
+    this.dents = CarVisual.dentMax > 0 ? makeDentable(this.root, this.holder, 8) : null;
     const fb = new THREE.Box3().setFromObject(this.holder), fs = fb.getSize(new THREE.Vector3());
     // where the body ends and the A-frame drawbar starts: the furthest slice along the caravan that is still nearly as wide as the whole thing
     const bins = new Map(), pv = new THREE.Vector3();
@@ -182,10 +212,14 @@ export class CaravanView {
     this.root.position.set(l(p[0], c[0]), l(p[1], c[1]), l(p[2], c[2]));
     this._e.set(-l(p[4], c[4]), p[3] + wrap(c[3] - p[3]) * a, l(p[5], c[5]) + l(p[7], c[7]));      // (road lean + the body rocking on its springs)
     this._shade(c[8]);
+    this.wrecked = c[8] <= 0;
+    if (!this.wrecked && this._wheelsOff) this.restoreWheels();                       // repaired / a restart: wheels back on
+    if (c[8] >= 0.999 && this.dents && this.dents.count) this.dents.clear();
+    if (this.wrecked) this.root.position.y -= 0.18;                                    // no wheels: it sits lower, on its belly
     this.root.quaternion.setFromEuler(this._e);
     const spin = l(p[6], c[6]) % (Math.PI * 2);
     // spin about the car's sideways axis (the holder is turned to face the car, so that axis is not the pivots' own x)
     this._spinAxis.set(1, 0, 0).applyQuaternion(this._hq.copy(this.holder.quaternion).invert());
-    for (const w of this.wheels) w.quaternion.setFromAxisAngle(this._spinAxis, spin);
+    if (!this._wheelsOff) for (const w of this.wheels) w.quaternion.setFromAxisAngle(this._spinAxis, spin);
   }
 }

@@ -97,7 +97,7 @@ test('a car and caravan left alone at the start line stay put (no creeping, swin
   assert.ok(Math.abs(s.van.jackknife) < 0.1, `caravan swung ${s.van.jackknife.toFixed(2)} rad`);
 });
 
-test('a caravan hits the walls, takes damage, and the hitch gives way when it is wrecked', async () => {
+test('a caravan hits the walls, takes damage, and it is wrecked (and stays hitched, to be dragged)', async () => {
   const { makeTemplate } = await import('../src/templates.js');
   const s = setup(true, 0);
   s.track = new Track(makeTemplate('speedway')); s.van.track = s.track;
@@ -109,10 +109,10 @@ test('a caravan hits the walls, takes damage, and the hitch gives way when it is
   assert.ok(s.van.health < s.van.spec.hp, 'the walls should have dented the caravan');
   assert.ok([s.van.pos.x, s.van.yaw].every(Number.isFinite));
   s.van.hurt(1e6);
-  assert.equal(s.van.detached, true);
-  assert.ok(s.van.events.some((e) => e.type === 'van-lost'));
+  assert.equal(s.van.wrecked, true);
+  assert.ok(s.van.events.some((e) => e.type === 'van-wrecked'));
   s.van.reset(s.car);
-  assert.equal(s.van.detached, false);
+  assert.equal(s.van.wrecked, false);
   assert.equal(s.van.health, s.van.spec.hp);
 });
 
@@ -162,4 +162,23 @@ test('multiplayer: another player\'s car ramming my caravan shoves and hurts it,
   assert.ok(carHitsRemoteVan(car, vs, { ...v.spec }, { width: 1.8, length: 4.2 }));
   assert.ok(car.pos.z < 0 && car.vel.z < 12 * 0.6, 'my car was moved clear of it and lost speed');
   assert.equal(carHitsRemoteVan({ pos: { x: 50, y: 0, z: 0 }, vel: { x: 0, z: 0 }, az: { x: 0, z: 1 } }, vs, v.spec, spec), false);
+});
+
+test('a wrecked caravan stays hitched and is dragged along: it scrapes (sparks) and slows the car more', () => {
+  const run = (wreck) => {
+    const s = setup(true, 0);
+    Object.assign(s.van.spec, { dAxle: 2.2, length: 4.4, width: 2.03 }); s.van.reset(s.car);
+    if (wreck) s.van.hurt(1e6);
+    let scrapes = 0, maxDist = 0;
+    for (let i = 0; i < 12 / DT; i++) {
+      s.car.step(DT, { throttle: 0.8, brake: 0, steer: 0, handbrake: false, boost: false }, s.track);
+      s.car.events.length = 0; scrapes += s.van.events.filter((e) => e.type === 'van-scrape').length; s.van.events.length = 0;
+      maxDist = Math.max(maxDist, s.van.dist);
+    }
+    return { speed: s.car.speed, scrapes, maxDist, along: Math.hypot(s.van.pos.x - s.car.pos.x, s.van.pos.z - s.car.pos.z) };
+  };
+  const good = run(false), bad = run(true);
+  assert.ok(bad.scrapes > 10 && good.scrapes === 0, 'only the wreck scrapes');
+  assert.ok(bad.speed < good.speed - 1, 'and drags the car back');
+  assert.ok(bad.along < 8 && bad.maxDist < 1.5, 'still hitched behind the car');
 });

@@ -15,7 +15,7 @@ export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
   dAxle: 2.4,             // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
   rear: -1.63, front: 2.0,  // m from the axle to the back and the front of the caravan's body (the drawbar sticks out past `front`)
-  hp: 220,                // how much battering the caravan takes before the hitch gives way and it is left behind
+  hp: 220,                // how much battering the caravan takes before it is wrecked: its wheels fly off and the car has to drag it around
   wallMul: 9, carMul: 3,  // a caravan's thin skin takes more from the same knock than a car does
   cog: 0.5,               // m: the weight sits this far ahead of the axle, as on a real caravan: it keeps the tail from wagging the car
   wheelR: 0.294,          // m (the model's wheels)
@@ -55,7 +55,7 @@ export class Caravan {
     this.track = null;
     this._ball = new V3(); this._q = null;
     this.jackknife = 0;       // how far the caravan is folded round, radians (for the HUD or a sound)
-    this.health = this.spec.hp; this.detached = false;   // knocked about; once it is wrecked the hitch gives way and it is left behind
+    this.health = this.spec.hp; this.wrecked = false;   // knocked about; once it is wrecked its wheels come off and the car drags it along, scraping
     this.events = [];         // knocks this step ({type:'van', kind, speed, x, y, z}, or {type:'van-lost'}), for sound and sparks
     this.sway = 0; this.swayRate = 0;   // top-heavy rocking from side to side, radians (just for looks)
     this._wq = null; this._I = 600;
@@ -69,7 +69,7 @@ export class Caravan {
   ballOn(car, out = this._ball) { return car.toWorld(tmpH.set(this.hitch.x, this.hitch.y, this.hitch.z), out); }
 
   /** Put the caravan straight behind `car`, moving with it, and hold it there for a moment while the car settles on its springs. */
-  reset(car) { this._place(car); this.settleT = 0.6; this.health = this.spec.hp; this.detached = false; this.sway = this.swayRate = 0; this.events.length = 0; }
+  reset(car) { this._place(car); this.settleT = 0.6; this.health = this.spec.hp; this.wrecked = false; this.scrapeT = 0; this.sway = this.swayRate = 0; this.events.length = 0; }
 
   _place(car) {
     const s = this.spec, b = this.ballOn(car, new V3());
@@ -113,16 +113,16 @@ export class Caravan {
     let jz = s.jointK * (ball.z - tz) + s.jointC * (cvz - tvz);
     const jl = Math.hypot(jx, jz);
     if (jl > s.jointMax) { jx *= s.jointMax / jl; jz *= s.jointMax / jl; }
-    if (this.detached) { jx = jz = 0; }                 // wrecked: the hitch has given way and it rolls on its own
     this.dist = Math.hypot(ball.x - tx, ball.z - tz);
 
     // the caravan: joint pull, tyres (sideways grip and rolling), swing damping
     const m = s.mass, I = this._I = m * (s.length * s.length + s.width * s.width) / 12 * 0.6 + m * 0.1;
     const vLong = this.vel.x * fx + this.vel.z * fz, vLat = this.vel.x * lx + this.vel.z * lz;
-    const grip = s.tyreMu * m * G * (this.onGround ? 1 : 0);
+    const wr = this.wrecked;                            // wheels gone: it is dragged along on its belly, scraping, and grips and drags a lot less smoothly
+    const grip = (wr ? 0.6 : s.tyreMu) * m * G * (this.onGround ? 1 : 0);
     const vLatAxle = vLat - this.yawRate * s.cog;       // the tyres feel the sideways speed at the axle, which swings as the caravan turns
     const fLat = clamp(-m * s.tyreStiff * vLatAxle, -grip, grip);
-    const fLong = this.onGround ? -Math.sign(vLong) * Math.min(Math.abs(vLong) * m / dt * 0.5, s.rolling * m * G) : 0;
+    const fLong = this.onGround ? -Math.sign(vLong) * Math.min(Math.abs(vLong) * m / dt * 0.5, (wr ? 0.55 : s.rolling) * m * G) : 0;
     const ax = (jx + lx * fLat + fx * fLong) / m, az = (jz + lz * fLat + fz * fLong) / m;
     const torque = rz * jx - rx * jz - s.cog * fLat;     // the drawbar pulls the nose round; the tyres, behind the weight, pull it straight
     this.yawRate += (torque / I - this.yawRate * s.yawDamp) * dt;
@@ -139,7 +139,8 @@ export class Caravan {
     this.swayRate += (38 * (swayT - this.sway) - 4 * this.swayRate) * dt;
     this.sway = clamp(this.sway + this.swayRate * dt, -0.14, 0.14);
     this._walls();
-    this.spin += (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
+    this.spin += this.wrecked ? 0 : (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
+    if (this.wrecked && this.onGround) { this.scrapeT -= dt; const sp = Math.hypot(this.vel.x, this.vel.z); if (this.scrapeT <= 0 && sp > 3) { this.scrapeT = 0.06; if (this.events.length < 12) this.events.push({ type: 'van-scrape', speed: sp, x: this.pos.x - fx * 0.8, y: this.pos.y - s.wheelR * 0.6, z: this.pos.z - fz * 0.8 }); } }
 
     // up and down: sit on the road, or fly
     const ax0 = this.pos.x - fx * s.cog, az0 = this.pos.z - fz * s.cog;
@@ -151,7 +152,7 @@ export class Caravan {
       if (this.pos.y <= gy) { this.pos.y = gy; this.vel.y = 0; this.onGround = true; }
     } else { this.pos.y += (gy - this.pos.y) * Math.min(1, dt * 30); this.vel.y = 0; this.onGround = true; }
     // the ball holds the nose: pitch so that the drawbar meets it
-    const want = this.detached ? 0 : clamp((ball.y - (this.pos.y + s.hitchH)) / s.dAxle, -0.6, 0.6);
+    const want = clamp((ball.y - (this.pos.y + s.hitchH)) / s.dAxle, -0.6, 0.6);
     this.pitch += (Math.asin(want) - this.pitch) * Math.min(1, dt * 14);
     // lean with the road
     if (this._q && this.onGround) this.roll += (clamp(-(this._q.nx * lx + this._q.nz * lz), -0.5, 0.5) - this.roll) * Math.min(1, dt * 10);
@@ -159,7 +160,7 @@ export class Caravan {
     let rel = this.yaw - Math.atan2(car.az.x, car.az.z); rel = Math.atan2(Math.sin(rel), Math.cos(rel));
     this.jackknife = rel;
     // a rival's caravan (auto): if it has been folded up for a while (reversing, a shunt), it is tucked straight again rather than left jammed
-    if (this.auto && !this.detached) { this.foldT = Math.abs(rel) > 0.9 ? (this.foldT || 0) + dt : 0; if (this.foldT > 1.2) { this.foldT = 0; this._place(car); this.settleT = 0.25; return; } }
+    if (this.auto && !this.wrecked) { this.foldT = Math.abs(rel) > 0.9 ? (this.foldT || 0) + dt : 0; if (this.foldT > 1.2) { this.foldT = 0; this._place(car); this.settleT = 0.25; return; } }
 
     // and the same pull the other way on the car, at the ball: force -J, torque r x (-J)
     car.F.x -= jx; car.F.z -= jz;
@@ -170,11 +171,11 @@ export class Caravan {
   hurt(hp) {
     if (!(hp > 0) || this.health <= 0) return;
     this.health = Math.max(0, this.health - hp);
-    if (this.health <= 0 && !this.detached) { this.detached = true; if (this.events.length < 12) this.events.push({ type: 'van-lost', x: this.pos.x, y: this.pos.y, z: this.pos.z }); }
+    if (this.health <= 0 && !this.wrecked) { this.wrecked = true; if (this.events.length < 12) this.events.push({ type: 'van-wrecked', x: this.pos.x, y: this.pos.y, z: this.pos.z }); }
   }
   /** A knock of `speed` m/s at a point (for sound, sparks and shaking the camera) and what it cost, in hit points. */
   struck(kind, speed, x, y, z, hp) {
-    if (this.events.length < 12) this.events.push({ type: 'van', kind, speed, x, y, z });
+    if (this.events.length < 12) this.events.push({ type: 'van', kind, speed, x, y, z, hp });
     this.hurt(hp);
   }
   /** Where the caravan's three round "bumpers" are (world x, z), and how big they are. They stand in for the box of the body. */
