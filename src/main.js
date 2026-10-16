@@ -393,10 +393,10 @@ function updateRace(dt) {
     if (q.surface === SURF.ROAD && Math.abs(q.d) < q.hw - 1.5) { safe.s = q.s; safe.off = q.d; safe.t = 0; }
   }
   // stuck on the roof, or fell off the world?
-  trouble.flipped = car.ay.y < 0.15 && car.speed < 5 ? trouble.flipped + dt : 0;
+  trouble.flipped = car.ay.y < 0.5 && car.speed < 4 ? trouble.flipped + dt : 0;   // on the roof OR propped up on its side
   const q2 = track.query(car.pos.x, car.pos.y + 0.5, car.pos.z, undefined, 1.2);
   trouble.lost = q2.surface === SURF.BASE && car.pos.y < 2 ? trouble.lost + dt : 0;
-  if (trouble.flipped > 2.5) respawn();
+  if (trouble.flipped > 2) respawn();
   else if (trouble.lost > 1.4 || car.pos.y < -30) respawn();
 }
 
