@@ -115,7 +115,7 @@ body:not(.mode-menu) #menu { display: none; }
   position: absolute;
   top: clamp(78px, 9vh, 118px);
   right: clamp(22px, 5vw, 78px);
-  width: min(clamp(752px, 75.2vw, 1216px), calc(100vw - 500px));   /* 15% smaller than 885px, 88.5vw, 1430px; before that */ bigger again (was 681px, 68.1vw, 1100px and 100vw - 590px), but never so wide it covers the buttons on the left */
+  width: min(clamp(752px, 75.2vw, 1216px), calc(100vw - 500px));   /* 15% smaller than 885px, 88.5vw, 1430px; before that: bigger again (was 681px, 68.1vw, 1100px and 100vw - 590px), but never so wide it covers the buttons on the left */
   pointer-events: auto;
   text-align: center;
   color: var(--peach);
