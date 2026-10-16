@@ -42,12 +42,14 @@ function curvAhead(track, s, span = 130) {
 }
 
 /** Is there a jump gap in the road within the next `span` metres? */
-function gapAhead(track, s, span = 90) {
-  for (let o = 0; o < span; o += 6) {
+function gapAhead(track, s, span = 130) {
+  let len = 0;
+  for (let o = 0; o < span + 80; o += 3) {
     const i = Math.floor(((s + o) % track.length + track.length) % track.length / track.ds) % track.n;
-    if (track.gap[i]) return true;
+    if (track.gap[i]) len += 3; else if (len) break;       // the first gap's length, so long jumps get more speed
+    if (!len && o >= span) break;
   }
-  return false;
+  return len;
 }
 
 /** Average road climb over the next few car lengths. Positive means uphill.
@@ -202,7 +204,7 @@ export class Driver {
     const uphillGrade = gradeAhead(track, s);
     const steepUphill = uphillGrade > 0.075;   // about a 7.5% average climb ahead
     const jump = gapAhead(track, s);
-    if (jump) { vT = Math.max(vT, AI.jumpSpeed); ax = f.x; az = f.z; }
+    if (jump) { vT = Math.max(vT, AI.jumpSpeed, 4.6 * Math.sqrt(jump)); ax = f.x; az = f.z; }
 
     // ---------------------------------------------------------------- steer
     const dx = ax - car.pos.x, dz = az - car.pos.z;

@@ -144,7 +144,7 @@ export function normalizeTrack(input) {
     z: Number(h.z) || 0,
     w: h.w ? clamp(Number(h.w), 12, 40) : 0,           // 0 = use track default
     bank: clamp(Number(h.bank) || 0, -20, 20),          // degrees
-    gap: h.gap ? clamp(Number(h.gap), 6, 40) : (h.gapAfter ? 14 : 0), // metres of missing road
+    gap: h.gap ? clamp(Number(h.gap), 6, 70) : (h.gapAfter ? 14 : 0), // metres of missing road
     lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
     open: h.open ? true : undefined,                    // no barriers on the stretch from here to the next point (a spiral ramp)
     kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
