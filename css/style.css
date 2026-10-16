@@ -584,3 +584,14 @@ html.chat-quick-only .chat-row { display: none; }
   #derby-score #hud-race-position-value { font-size: 22px; }
   #feed { top: calc(max(14px, env(safe-area-inset-top)) + 76px); }
 }
+
+/* Home screen buttons: 80% see-through, solid when you roll over them. Multiplayer is a purple strip, Design-a-track! a green one. */
+#menu .btn { background: rgba(255,179,31,.2); color: #ffd98a; transition: background .15s, color .15s, transform .08s; }
+#menu .btn:hover, #menu .btn:focus-visible { background: var(--amber); color: #2a1a00; }
+#menu .btn.ghost { background: rgba(246,217,176,.2); color: var(--peach); }
+#menu .btn.ghost:hover, #menu .btn.ghost:focus-visible { background: #f6d9b0; color: #2a1a00; }
+#menu #btn-multiplayer-top { background: rgba(138,66,224,.2); color: #e2c9ff; box-shadow: inset 0 0 0 2px rgba(138,66,224,.7); }
+#menu #btn-multiplayer-top:hover, #menu #btn-multiplayer-top:focus-visible { background: #8a42e0; color: #fff; }
+#menu #btn-new-top { background: rgba(38,170,86,.2); color: #b9f0cc; box-shadow: inset 0 0 0 2px rgba(38,170,86,.7); }
+#menu #btn-new-top:hover, #menu #btn-new-top:focus-visible { background: #26aa56; color: #fff; }
+@media (hover: none) { #menu .btn:active { background: var(--amber); color: #2a1a00; } #menu #btn-multiplayer-top:active { background: #8a42e0; color: #fff; } #menu #btn-new-top:active { background: #26aa56; color: #fff; } }
