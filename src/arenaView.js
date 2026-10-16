@@ -44,7 +44,7 @@ export function buildArena(track, aniso = 8) {
   const bumps = track.bumps || [];
   if (bumps.length) {
     const bd = dirtTexture(aniso); bd.repeat.set(1 / 24, 1 / 24);
-    const bumpMat = std({ map: bd, color: 0xffe9d2, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const bumpMat = std({ map: bd, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     const RINGS = 14, SEG = 36, tmp = { h: 0, gx: 0, gz: 0 };
     for (const b of bumps) {
       const pos = [0, y0 + b.h, 0], idx = [];
@@ -60,9 +60,9 @@ export function buildArena(track, aniso = 8) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       // texture coordinates in world space, so the mound's dirt lines up with the floor around it
-      const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push((pos[i] + b.x) / 24, -(pos[i + 2] + b.z) / 24);
+      const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push(pos[i] + b.x, -(pos[i + 2] + b.z));
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
-      const mound = new THREE.Mesh(geo, bumpMat); mound.position.set(b.x, 0, b.z); mound.receiveShadow = true; mound.castShadow = true; mound.frustumCulled = false;
+      const mound = new THREE.Mesh(geo, bumpMat); mound.position.set(b.x, 0, b.z); mound.receiveShadow = true; mound.castShadow = false; mound.frustumCulled = false;
       g.add(mound);
     }
   }

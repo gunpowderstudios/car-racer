@@ -125,6 +125,16 @@ function arenaProps(def) {
   return props;
 }
 
+/** Bluebell Woods: a windy dirt rally stage. The radius wanders in and out with two overlapping waves, with gentle rises and dips. */
+function bluebell() {
+  const n = 26, out = [];
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * Math.PI * 2, r = 240 + 52 * Math.sin(3 * t + 0.4) + 24 * Math.sin(5 * t + 1.3);
+    out.push({ x: r * Math.cos(t) * 1.25, y: 0.65 + 2.2 * (1 + Math.sin(2 * t + 0.8)), z: r * Math.sin(t) });
+  }
+  return out;
+}
+
 const RAW = {
   speedway: {
     name: 'Speedway', width: 26,
@@ -161,6 +171,12 @@ const RAW = {
       { x: -220, y: 3, z: -150 },
     ],
     autoBank: true,
+  },
+  bluebell: {
+    name: 'Bluebell Woods', width: 20,
+    handles: bluebell(),
+    autoBank: false,
+    dirt: true,
   },
   overpass: {
     name: 'Overpass', width: 22,
@@ -242,7 +258,7 @@ export function makeTemplate(key) {
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];
   if (!raw) throw new Error('Unknown template ' + key);
-  let def = normalizeTrack({ ...raw, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
+  let def = normalizeTrack({ ...raw, dirt: raw.dirt, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
   if (raw.autoBank) {
     const banks = suggestBanks(new Track(def), 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
@@ -258,5 +274,6 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
+  bluebell: 'A windy dirt rally stage through the woods: loose surface, narrow and twisty',
   random: 'A different circuit every time - hills, jumps, banks, barrels and chickens',
 };

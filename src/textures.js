@@ -45,6 +45,29 @@ export function roadTexture(aniso) {
   return tex(c, { repeat: true, aniso });
 }
 
+/** A rally stage's dirt road: packed brown earth with two darker wheel ruts, stones and a lighter crown. u = across the road, v = along (20 m). */
+export function dirtRoadTexture(aniso) {
+  const r = rng(9);
+  const c = canvas(256, 512, (g, w, h) => {
+    g.fillStyle = '#8f7149'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 70; i++) {
+      g.fillStyle = `hsla(${26 + r() * 8},${30 + r() * 15}%,${30 + r() * 26}%,0.12)`;
+      g.beginPath(); g.ellipse(r() * w, r() * h, 12 + r() * 40, 20 + r() * 70, 0, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 12000; i++) {
+      const l = 25 + r() * 50;
+      g.fillStyle = `hsla(${24 + r() * 10},28%,${l}%,0.25)`;
+      g.fillRect(r() * w, r() * h, 1 + r() * 3, 1 + r() * 2);
+    }
+    g.fillStyle = 'rgba(40,24,12,0.20)';                 // wheel ruts
+    g.fillRect(w * 0.26, 0, w * 0.1, h); g.fillRect(w * 0.64, 0, w * 0.1, h);
+    const edge = g.createLinearGradient(0, 0, w, 0);     // grass creeping in at both edges
+    edge.addColorStop(0, 'rgba(60,70,35,0.55)'); edge.addColorStop(0.07, 'rgba(60,70,35,0)'); edge.addColorStop(0.93, 'rgba(60,70,35,0)'); edge.addColorStop(1, 'rgba(60,70,35,0.55)');
+    g.fillStyle = edge; g.fillRect(0, 0, w, h);
+  });
+  return tex(c, { repeat: true, aniso });
+}
+
 export function grassTexture(aniso) {
   const r = rng(21);
   const c = canvas(256, 256, (g, w, h) => {

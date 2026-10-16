@@ -128,6 +128,7 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
+  if (src.dirt) out.dirt = true;                 // a loose-surface rally stage: dirt road, no kerbs, less grip
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor

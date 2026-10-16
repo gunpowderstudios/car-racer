@@ -26,7 +26,7 @@ test('The Oval is a preloaded track, replacing Bed Pan', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
   assert.equal(makeTemplate('oval').name, 'The Oval (Demolition Derby)');
   assert.match(TEMPLATE_INFO.oval, /last one standing/i);
-  assert.equal(TEMPLATE_KEYS.length, 6, 'still five tracks and the random one');
+  assert.equal(TEMPLATE_KEYS.length, 7, 'six tracks and the random one');
 });
 
 test('it is marked as a last-one-standing arena, and other tracks are not', () => {
@@ -264,12 +264,12 @@ test('The Oval has four humps, one in each corner, that the physics ground follo
   assert.deepEqual(new Set(def.bumps.map((b) => Math.sign(b.x) + ',' + Math.sign(b.z))).size, 4, 'one in each corner');
   assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same humps');
   for (const b of def.bumps) {
-    track.query(b.x, A.y + 5, b.z, q, 6);
+    track.query(b.x, A.y + 5, b.z, q, 7);
     assert.ok(Math.abs(q.y - (A.y + b.h)) < 0.01, 'the top of the hump is h above the floor: ' + q.y);
     assert.ok(q.ny > 0.99, 'level at the very top');
-    track.query(b.x + b.r * 0.5, A.y + 5, b.z, q, 6);
+    track.query(b.x + b.r * 0.5, A.y + 5, b.z, q, 7);
     assert.ok(q.y > A.y + 0.2 && q.y < A.y + b.h && q.nx > 0.05, 'on the slope the ground is lower and tilts away from the top (nx ' + q.nx.toFixed(2) + ')');
-    track.query(b.x + b.r + 0.5, A.y + 5, b.z, q, 6);
+    track.query(b.x + b.r + 0.5, A.y + 5, b.z, q, 7);
     assert.ok(Math.abs(q.y - A.y) < 0.01, 'flat floor again outside it');
   }
   const ps = arenaPlayerStart(A);

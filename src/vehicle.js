@@ -163,6 +163,7 @@ export class Vehicle {
 
   // ------------------------------------------------------------ main step
   step(dt, input, track) {
+    this.roadMu = track && track.def && track.def.dirt ? 0.9 : 1;       // loose dirt grips less than asphalt
     const sp = this.spec;
     this._axes();
     this.F.set(0, -this.mass * G, 0);
@@ -500,7 +501,7 @@ export class Vehicle {
     const rL = r.clone(), fL = f.clone(), lL = l.clone();     // keep copies; tmp vectors get reused below
     const mEffLong = 1 / this._kAt(rL, fL), mEffLat = 1 / this._kAt(rL, lL);
 
-    const surfMu = w.surface === SURF.ROAD ? 1 : 0.6;
+    const surfMu = w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6;
     const muBase = w.front ? ty.muFront : ty.muRear;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less

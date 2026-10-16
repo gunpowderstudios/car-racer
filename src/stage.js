@@ -1,7 +1,7 @@
 // The world around the car: dusk sky, lights, ground, plus the meshes for a given track.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { roadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
+import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
 import { buildArena } from './arenaView.js';
 
@@ -106,10 +106,10 @@ export class Stage {
       m.castShadow = cast; m.receiveShadow = receive; m.frustumCulled = false;
       g.add(m); return m;
     };
-    const roadMat = new THREE.MeshStandardMaterial({ map: this.textures.road, roughness: 0.93, metalness: 0, side: THREE.DoubleSide });
+    const dirty = !!track.def.dirt, roadMat = new THREE.MeshStandardMaterial({ map: dirty ? dirtRoadTexture(this.aniso || 8) : this.textures.road, roughness: 0.93, metalness: 0, side: THREE.DoubleSide });
     const vcMat = (rough = 0.9) => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: 0, side: THREE.DoubleSide });
     mesh(geo.road, roadMat);
-    mesh(geo.kerb, vcMat(0.8));
+    if (!dirty) mesh(geo.kerb, vcMat(0.8));
     mesh(geo.bank, vcMat(1));
     mesh(geo.slab, vcMat(0.95), { cast: true });
     mesh(geo.wall, vcMat(0.75), { cast: true });
