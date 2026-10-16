@@ -15,8 +15,8 @@ export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
   dAxle: 2.4,             // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
   rear: -1.63, front: 2.0,  // m from the axle to the back and the front of the caravan's body (the drawbar sticks out past `front`)
-  hp: 220,                // how much battering the caravan takes before it is wrecked: its wheels fly off and the car has to drag it around
-  wallMul: 9, carMul: 3,  // a caravan's thin skin takes more from the same knock than a car does
+  hp: 60,                 // how much battering the caravan takes before it is wrecked: its wheels fly off and the car has to drag it around
+  wallMul: 14, carMul: 5,  // a caravan's thin skin takes more from the same knock than a car does
   cog: 0.5,               // m: the weight sits this far ahead of the axle, as on a real caravan: it keeps the tail from wagging the car
   wheelR: 0.294,          // m (the model's wheels)
   width: 2.03, length: 4.4,

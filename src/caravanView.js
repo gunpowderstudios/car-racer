@@ -219,7 +219,7 @@ export class CaravanView {
       const drop = this._h - c[8];
       if (drop > 0.02 && this.dims) {
         const n = (this._n = (this._n || 0) + 1), d = this.dims, side = n % 3 === 0 ? 0 : (n % 2 ? 1 : -1);
-        this.dents.add(side * d.width / 2, 0.9, side ? d.rear + (d.front - d.rear) * ((n * 0.37) % 1) : d.rear, drop * 220 * DENT_BOOST * 4);
+        this.dents.add(side * d.width / 2, 0.9, side ? d.rear + (d.front - d.rear) * ((n * 0.37) % 1) : d.rear, drop * 60 * DENT_BOOST * 4);
         this._h = c[8];
       } else if (drop < 0) this._h = c[8];
       if (c[8] >= 0.999 && this.dents.count) this.dents.clear();
