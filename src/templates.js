@@ -224,7 +224,7 @@ const RAW = {
   twister: {
     name: 'The Twister', width: 22,
     handles: twister(),
-    autoBank: true, bankMax: 16,
+    autoBank: true, bankMax: 16, lowCam: true,
   },
   overpass: {
     name: 'Overpass', width: 22,

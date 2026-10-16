@@ -18,7 +18,7 @@ const tough = (hp) => Object.fromEntries(Object.entries(hp).map(([zone, v]) => [
 /** Hit points per zone. */
 export const ARMOUR = {
   player: tough({ front: 320, back: 160, left: 180, right: 180, roof: 150 }),
-  rival: tough({ front: 95, back: 85, left: 85, right: 85, roof: 75 }),
+  rival: tough({ front: 140, back: 95, left: 100, right: 100, roof: 90 }),   // (a rival's crumple zones: the nose takes most, the doors least)
 };
 
 export const DAMAGE = {
@@ -28,7 +28,7 @@ export const DAMAGE = {
   perKJ: 0.65,
   minSpeed: 3,          // m/s of closing speed that is simply shrugged off (nudges, bumping in a queue)
   bleed: 0.25,          // share of a hit that also crumples the neighbouring zones
-  maxHit: 110,          // most one crash can take off one zone: from full health, a single hit never kills you
+  maxHit: 80,           // most one crash can take off one zone: even a flat-out head-on needs a second hit to finish a rival's nose (a T-bone to the doors can still do it in one)
   // Barriers and the ground hurt much less than another car: they are softer than a bumper.
   wall: 0.12, ground: 0.04,
   // Explosions. `point` is what a rival loses at point blank, `radius` how far the blast reaches.
@@ -48,7 +48,7 @@ export const NEIGHBOURS = {
 export const SPECS = {
   // `mul` scales the damage a zone takes: the plate welded across your front end soaks up half of every hit.
   player: { hp: ARMOUR.player, blastMul: 0.4, wallMul: 1, mul: { front: 0.5 } },
-  rival: { hp: ARMOUR.rival, blastMul: 1, wallMul: 1, mul: {} },
+  rival: { hp: ARMOUR.rival, blastMul: 1, wallMul: 1, mul: { front: 0.8, left: 1.15, right: 1.15 } },   // like a real car: the front has the crumple zone, the sides are the weak spot
 };
 
 /** Which zone of `car` is nearest world point (x, y, z). Needs the car's frame to be current. */

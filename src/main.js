@@ -271,6 +271,7 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
 function loadTrack(newDef) {
   def = normalizeTrack(newDef);
   track = new Track(def);
+  chase.low = !!def.lowCam; if (chase.low) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // (see pickStartCamera)
   stage.setTrack(track);
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
@@ -327,7 +328,6 @@ function restartRace() {
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
 }
 
-let spiralCam = null;     // set while the camera has been switched to chase for the corkscrew
 function respawn() {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
@@ -385,13 +385,6 @@ function updateRace(dt) {
     }
   }
   if (lapped && race.reverseT > 1.6) { hud.banner('Wrong way', 700); }
-
-  // the corkscrew: always the chase camera while you are on it (what you were using comes back when you leave)
-  if (track.openA >= 0) {
-    const on = track.inOpen(track.progressAt(car.pos.x, car.pos.y, car.pos.z));
-    if (on && !spiralCam) { spiralCam = { mode: chase.mode }; chase.mode = 0; chase.ready = false; }
-    else if (!on && spiralCam && car.onGround) { chase.mode = spiralCam.mode; chase.ready = false; spiralCam = null; }
-  } else spiralCam = null;
 
   // remember a safe spot to come back to
   safe.t += dt;
@@ -764,6 +757,8 @@ function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
 const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
 let autoHighCam = false;
 function pickStartCamera() {
+  chase.low = !!track.def.lowCam;                 // The Twister: a low tail camera, whatever you drive (the road above would hide the car from a high one)
+  if (chase.low) { chase.mode = 0; chase.ready = false; autoHighCam = false; return; }
   const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
   if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
   else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle

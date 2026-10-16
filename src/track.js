@@ -158,6 +158,7 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
+  if (src.lowCam) out.lowCam = true;             // roads stacked above each other: the game uses a low tail camera so the road above cannot hide the car
   if (src.dirt) {                                // a loose-surface rally stage: dirt road, no kerbs, less grip
     out.dirt = true;
     if (src.berm) out.berm = true;               // dirt banks along both sides instead of walls
