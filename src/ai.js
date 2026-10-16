@@ -247,7 +247,7 @@ export class Driver {
       && car.boostFuel > 0.2
       && (!P || playerLead > 10);
     // Good drivers use their nitro on the straights, whoever is around, and keep a little back for later.
-    const straightBoost = sk > 0.6 && k < 0.004 && !jump && Math.abs(ang) < 0.1 && car.fwdSpeed > 18 && car.boostFuel > 0.6;
+    const straightBoost = sk > 0.5 && k < 0.006 && !jump && Math.abs(ang) < 0.12 && car.fwdSpeed > 18 && car.boostFuel > 0.3;
     inp.boost = hillBoost || raceBoost || straightBoost;
     return inp;
   }
