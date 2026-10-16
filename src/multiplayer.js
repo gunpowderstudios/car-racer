@@ -15,7 +15,7 @@ import { ChatLimiter, normaliseChat } from './chat.js';
 
 const PEER_PREFIX = 'carracer-';           // namespaces our room codes on the shared public broker
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O/1/I/L - easy to read aloud
-const STATE_HZ = 20;
+const STATE_HZ = 30;
 const STALE_PLAYER_MS = 5000;               // after the race starts, no state for this long means the player has gone
 const CONNECT_MS = 15000;                   // how long a guest waits for the link to the host to open before trying again: a phone on mobile data can take well over 4 seconds
 const STALE_FIRST_MS = 25000;               // ...but a player who has not sent their first state yet is still loading the track - a slow phone can take a while
@@ -401,6 +401,8 @@ export class Multiplayer {
     } else if (msg.t === 'chat') {
       const m = normaliseChat(msg);
       if (m && msg.from !== this.selfId && this.h.onChat) this.h.onChat(String(msg.from), m);
+    } else if (msg.t === 'opts') {
+      this.h.onOpts?.({ track: String(msg.track || '').slice(0, 40), laps: Math.max(1, Math.min(3, Math.round(+msg.laps || 1))) });   // what the host has picked, for the lobby
     } else if (msg.t === 'bye') {
       this._hostBye = true;                                       // the host closed the room on purpose: do not wait for them to come back
     }

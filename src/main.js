@@ -26,7 +26,7 @@ import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
-import { selectedVehicle, multiplayerVehicleSpec } from './vehicleChoice.js';
+import { selectedVehicle, multiplayerVehicleSpec, vehicleById } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { CaravanView } from './caravanView.js';
@@ -67,8 +67,8 @@ stage.setShadows(opts.shadow);
 const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
-/** Should there be a caravan on the car right now? Only if asked for, on the 70s Saloon, and not in multiplayer. */
-const caravanWanted = () => !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !net && !caravanView.failed;
+/** Should there be a caravan on the car right now? Only if asked for and on a car that can tow it (in multiplayer too: the others see it through the state reports). */
+const caravanWanted = () => !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !caravanView.failed;
 function syncCaravan() {
   if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
   caravan.track = track; car.tow = caravan; caravan.reset(car);
@@ -529,6 +529,7 @@ function derbyEvents() {
 
 // ----- how the rivals look
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+const MP_DELAY = 110;      // ms: how far behind the latest report the other players' cars are drawn
 function makeView(f) {
   let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
   if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
@@ -684,7 +685,8 @@ function frame(now) {
       if (life.respawnDue(simTime)) { respawn(); mpClearDents(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
       visual.setLook(life.dead ? 0.15 : 1, 0);                                                       // your own wreck goes dark, as it does on everyone else's screen
       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
-        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health,
+        vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health, ts: performance.now(),
+        van: car.tow ? mpVanState(car.tow) : null,
         alive: !(derby.enabled && derby.player && derby.player.wrecked) && !life.dead });
       mpSyncRemote();
     }
@@ -974,7 +976,9 @@ function mpMakeView(hue) {
   v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   return v;
 }
+function mpDropVan(p) { if (p.vanView) { p.vanView.root.removeFromParent(); p.vanView = null; } }
 function mpReleasePlayer(p) {
+  mpDropVan(p);
   if (p.view) { p.view.root.visible = false; (mpViewPool[p.view.hue] || (mpViewPool[p.view.hue] = [])).push(p.view); p.view = null; }
   if (p.label) { p.label.remove(); p.label = null; }
 }
@@ -987,22 +991,56 @@ function mpTeardown() {
   if (net) { net.leave(); net = null; }
   visual.setOwnLook(null);                                    // back to your own paint
 }
+/** What the others need to draw our caravan: where it is, how it is turned and rocking, its wheel angle and health (a fraction). */
+const r3 = (v) => Math.round(v * 1000) / 1000;
+function mpVanState(v) { return [r3(v.axle.x), r3(v.axle.y), r3(v.axle.z), r3(v.yaw), r3(v.pitch), r3(v.roll), r3(v.spin % 6.2832), r3(v.sway), r3(v.health / v.spec.hp)]; }
+const mpVanObj = (a) => ({ axle: { x: a[0], y: a[1], z: a[2] }, yaw: a[3], pitch: a[4], roll: a[5], spin: a[6], sway: a[7], health: a[8], spec: { hp: 1 } });
+/** Another player's caravan, drawn between the same two reports as their car. */
+function mpSyncVan(p, a0, a1, rt, k) {
+  const v1 = a1.s.van;
+  if (!v1 || !Array.isArray(v1) || v1.length < 9 || !v1.every(Number.isFinite)) { mpDropVan(p); return; }
+  if (!p.vanView) {
+    if (!caravanView.loaded) { caravanView.load(); return; }
+    p.vanView = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[p.hue]);
+  }
+  const v0 = a0.s.van && a0.s.van.length >= 9 && a0.s.van.every(Number.isFinite) ? a0.s.van : v1;
+  const w = p.vanView; w._prev = w._cur = null;
+  if (rt >= a1.t) { w.capture(mpVanObj(v1)); w.capture(mpVanObj(v1)); w.update(1); }
+  else { w.capture(mpVanObj(v0)); w.capture(mpVanObj(v1)); w.update(k); }
+  w.root.visible = p.view.root.visible;
+}
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */
 function mpSyncRemote() {
   const now = performance.now();
   for (const p of remotePlayers.values()) {
-    if (!p.cur) continue;
+    if (!p.cur || !p.buf || !p.buf.length) continue;
     if (!p.view) p.view = mpMakeView(p.hue);
     if (!p.view.loaded && visual.loaded) p.view.adopt(visual, RIVAL_LOOKS[p.hue]);
-    const t = Math.min(1.4, (now - p.recvAt) / 50), c = p.cur, pr = p.prev || c;
-    p.view.root.position.set(lerp(pr.x, c.x, t), lerp(pr.y, c.y, t), lerp(pr.z, c.z, t));
-    qa.set(pr.qx, pr.qy, pr.qz, pr.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
-    p.view.root.quaternion.slerpQuaternions(qa, qb, Math.min(1, t));
+    const c = p.cur, b = p.buf;
+    // Draw the car a little in the past (MP_DELAY), between two real reports, so a late or bunched-up packet doesn't make it jump:
+    // the sender's clock is mapped onto ours with p.off (the quickest the packets have been getting here).
+    const rt = now - (p.off || 0) - MP_DELAY;
+    let i = b.length - 1; while (i > 0 && b[i - 1].t > rt) i--;
+    const a0 = b[Math.max(0, i - 1)], a1 = b[i];
+    let x, y, z, vk = 1;
+    if (rt >= a1.t) {                                              // ahead of the newest report: carry on at its speed for a moment, then hold
+      const dt = Math.min(0.2, (rt - a1.t) / 1000), s1 = a1.s;
+      x = s1.x + (+s1.vx || 0) * dt; y = s1.y + (+s1.vy || 0) * dt; z = s1.z + (+s1.vz || 0) * dt;
+      qa.set(s1.qx, s1.qy, s1.qz, s1.qw); p.view.root.quaternion.copy(qa);
+    } else {
+      const span = Math.max(1, a1.t - a0.t), k = Math.max(0, Math.min(1, (rt - a0.t) / span)), s0 = a0.s, s1 = a1.s;
+      vk = k;
+      x = lerp(s0.x, s1.x, k); y = lerp(s0.y, s1.y, k); z = lerp(s0.z, s1.z, k);
+      qa.set(s0.qx, s0.qy, s0.qz, s0.qw); qb.set(s1.qx, s1.qy, s1.qz, s1.qw);
+      p.view.root.quaternion.slerpQuaternions(qa, qb, k);
+    }
+    p.view.root.position.set(x, y, z);
     p.view.setLook(c.alive === false ? 0.15 : 1, 0);
     const dx = p.view.root.position.x - camera.position.x, dz = p.view.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     p.view.root.visible = d2 < 300 * 300;   // 200,000 triangles each: skip the far ones, same as AI rivals
     if (tier.lodDist) p.view.setFar(d2 > (p.view._far ? tier.lodDist * 0.7 : tier.lodDist) ** 2);
+    mpSyncVan(p, a0, a1, rt, vk);
     if (!p.label) {
       p.label = document.createElement('div'); p.label.className = 'mp-label';
       const nameEl = document.createElement('div'); nameEl.className = 'mp-name'; nameEl.textContent = p.name;
@@ -1035,6 +1073,7 @@ function mpRenderLobby(players, hostId) {
   let differs = false;
   for (const p of players) {
     const li = document.createElement('li'); li.textContent = p.name;
+    const vh = document.createElement('span'); vh.className = 'mp-vehicle-tag'; vh.textContent = ` \u00b7 ${vehicleById(p.vehicleId).name}${p.caravan ? ' + caravan' : ''}`; li.appendChild(vh);
     if (p.id === hostId) { const tag = document.createElement('span'); tag.className = 'mp-host-tag'; tag.textContent = '(host)'; li.appendChild(tag); }
     if (p.v !== VERSION) {                                   // a different (or, for older games, unreported) version: chat and newer features may not work for them
       const old = document.createElement('span'); old.className = 'mp-old-tag'; old.textContent = p.v ? `(v${p.v})` : '(older version)'; li.appendChild(old);
@@ -1052,7 +1091,14 @@ function mpRenderLobby(players, hostId) {
     $('mp-waiting').textContent = host ? `Connected! Waiting for ${host.name} to start the game\u2026` : 'Waiting for the host\u2026';
     $('mp-track-field').hidden = !net.isHost;
     $('mp-track-fixed').hidden = net.isHost;
+    if (net.isHost) { $('mp-laps').value = String(mpRaceLaps()); mpSendOpts(); }
   }
+}
+/** Tell the other players which track and how many laps the host has picked (shown in their lobby). */
+function mpSendOpts() {
+  if (!net || !net.isHost) return;
+  const sel = $('mp-track'), name = sel.options[sel.selectedIndex]?.text || '';
+  net._sendAll({ t: 'opts', track: name, laps: mpRaceLaps() });
 }
 function mpBeginDrive(trackDef) {
   life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
@@ -1115,14 +1161,18 @@ const mpHandlers = {
   onChat: (id, m) => chatUI.receive(id, m),
   onStatus: (text) => mpStatus(text),
   onLobby: (players, hostId) => mpRenderLobby(players, hostId),
+  onOpts: (o) => { $('mp-track-fixed').textContent = `The host picked: ${o.track} \u00b7 ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`; },
   onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {
     if (id === net.selfId) return;
     let p = remotePlayers.get(id);
     if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
-    p.prev = p.cur || s;
-    if (p.cur && Math.hypot(s.x - p.cur.x, s.z - p.cur.z) > 15) p.prev = s;   // a respawn (or back-on-road), not driving: snap, don't slide
-    p.cur = s; p.recvAt = performance.now();
+    const rx = performance.now(), ts = Number.isFinite(s.ts) ? s.ts : rx;
+    if (!p.buf || (p.cur && Math.hypot(s.x - p.cur.x, s.z - p.cur.z) > 15)) p.buf = [];   // a respawn (or back-on-road), not driving: snap, don't slide
+    const sample = rx - ts;
+    p.off = p.off == null ? sample : sample < p.off ? sample : p.off + (sample - p.off) * 0.02;   // follows the quickest packets, creeping up slowly if the connection slows
+    p.buf.push({ t: ts, s }); if (p.buf.length > 24) p.buf.shift();
+    p.cur = s; p.recvAt = rx;
   },
   onPlayerLeft: (id) => {
     const p = remotePlayers.get(id);
@@ -1204,6 +1254,8 @@ function bindMultiplayer() {
     catch (e) { mpStatus(null); mpErr('mp-join-error', e.message); net = null; }
     $('mp-join-go').disabled = false;
   };
+  $('mp-track').onchange = mpSendOpts;
+  $('mp-laps').onchange = () => { window.__raceLaps?.set?.(+$('mp-laps').value); mpSendOpts(); };
   $('mp-start').onclick = () => {
     if (!net) return;
     const key = $('mp-track').value;

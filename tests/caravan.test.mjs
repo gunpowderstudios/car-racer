@@ -75,11 +75,12 @@ test('a caravan goes back behind the car when the car is put back on the road', 
   assert.ok(Math.abs(s.van.jackknife) < 0.01);
 });
 
-test('the Tow a caravan option is on the home screen, saved, for the saloon cars (70s Saloon, Volvo, Saab, BMW), and not used in multiplayer', async () => {
+test('the Tow a caravan option is on the home screen, saved, for the saloon cars (70s Saloon, Volvo, Saab, BMW), and in multiplayer too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="opt-caravan" type="checkbox"/);
-  assert.match(main, /TOW_CARS\.includes\(selectedVehicle\(\)\.id\) && !net/);
+  assert.match(main, /TOW_CARS\.includes\(selectedVehicle\(\)\.id\) && !caravanView\.failed/);
+  assert.match(main, /van: car\.tow \? mpVanState\(car\.tow\) : null/);      // the others are told where it is
   assert.deepEqual(Object.keys(HITCH).sort(), ['bmw', 'escort', 'saab', 'volvo']);
 });
 
@@ -131,4 +132,12 @@ test('a rival that runs into the back of your caravan hurts it and is stopped by
   assert.ok(van.health < van.spec.hp * 0.5, `the caravan only lost ${van.spec.hp - van.health} hp`);
   assert.ok(rival.speed < 20, 'the rival should have been slowed by the crash');
   assert.ok([van.pos.x, van.yaw, rival.pos.x].every(Number.isFinite));
+});
+
+test('multiplayer: the host sends the finishing order for a podium, which every player shows', async () => {
+  const { readFileSync } = await import('node:fs');
+  const rd = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+  assert.match(rd('../src/multiplayerRace.js'), /race-podium/);
+  assert.match(rd('../src/bootstrap.js'), /podium\.js/);
+  assert.match(rd('../src/podium.js'), /came 1st!/);
 });

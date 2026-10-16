@@ -60,6 +60,23 @@ function recordFinishAsHost(net, id) {
   net._raceFinishPlaces.set(id, place);
   net._sendAll({ t: 'race-finish-result', ...result });
   emitFinish(net, result);
+  // The podium comes up once everyone has finished, or a few seconds after the winner so a straggler can't hold it back
+  clearTimeout(net._podiumTimer);
+  const all = net._raceFinishPlaces.size >= net.players.size;
+  net._podiumTimer = setTimeout(() => sendPodium(net), all ? 2500 : place === 1 ? 9000 : 4000);
+}
+
+/** The finishing order as the host sees it: who finished, in order, then the rest by how far they got. */
+function sendPodium(net) {
+  if (!net.isHost || net._podiumSent) return;
+  net._podiumSent = true;
+  const order = [...net.players.values()].map((p) => {
+    const st = net._raceStates.get(p.id), place = net._raceFinishPlaces.get(p.id) || null;
+    return { id: p.id, name: p.name, hue: p.hue, vehicleId: p.vehicleId || 'car', place, progress: Number.isFinite(st?.raceProgress) ? st.raceProgress : -Infinity };
+  }).sort((a, b) => (a.place && b.place ? a.place - b.place : a.place ? -1 : b.place ? 1 : b.progress - a.progress));
+  const list = order.map(({ id, name, hue, vehicleId }) => ({ id, name, hue, vehicleId }));
+  net._sendAll({ t: 'race-podium', list });
+  window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: net.selfId } }));
 }
 
 const originalSendState = Multiplayer.prototype.sendState;
@@ -100,6 +117,7 @@ Multiplayer.prototype.joinRoom = async function raceJoinRoom(code, name) {
         window.__raceLaps?.set?.(this._raceLaps);
       } else if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
       else if (msg?.t === 'race-finish-result' && msg.id && Number.isInteger(msg.place)) emitFinish(this, msg);
+      else if (msg?.t === 'race-podium' && Array.isArray(msg.list)) window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { selfId: this.selfId, list: msg.list.slice(0, 12).map((p) => ({ id: String(p.id), name: String(p.name || 'Driver').slice(0, 24), hue: Number.isInteger(p.hue) ? p.hue : 0, vehicleId: String(p.vehicleId || 'car').slice(0, 24) })) } }));
       else if (msg?.t === 'left' && msg.id) {
         this._raceStates.delete(msg.id);
         this._raceFinishPlaces.delete(msg.id);
@@ -125,6 +143,7 @@ Multiplayer.prototype.startGame = function raceStartGame(trackDef) {
   this._raceStates.clear();
   this._raceFinishPlaces.clear();
   this._raceFinishReported = false;
+  this._podiumSent = false; clearTimeout(this._podiumTimer);
   return originalStartGame.call(this, trackDef);
 };
 
@@ -132,7 +151,7 @@ const originalLeave = Multiplayer.prototype.leave;
 Multiplayer.prototype.leave = function raceLeave() {
   if (this._raceStates) this._raceStates.clear();
   if (this._raceFinishPlaces) this._raceFinishPlaces.clear();
-  this._raceFinishReported = false;
+  this._raceFinishReported = false; clearTimeout(this._podiumTimer);
   return originalLeave.call(this);
 };
 

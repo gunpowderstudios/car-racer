@@ -372,7 +372,9 @@ function addMultiplayerVehicleSelector(containerId, selectId, screen) {
   const field = document.createElement('div');
   field.className = 'mp-field';
   field.id = selectId;
-  field.append('Vehicle', buildVehicleGallery((id) => changeMultiplayerVehicle(id, screen), 'small'));
+  const gallery = buildVehicleGallery((id) => changeMultiplayerVehicle(id, screen), 'small');
+  addCaravanCard(gallery);
+  field.append('Vehicle', gallery);
   nameLabel.insertAdjacentElement('afterend', field);
 }
 
@@ -683,6 +685,13 @@ CarVisual.prototype.adopt = function patchedAdopt(src, look) {
 };
 
 // ---------------------------------------------------------------- multiplayer vehicle identity
+/** Is this player towing the caravan? (ticked, and on a car that can tow it) */
+function towingNow() {
+  if (!TOW_CARS.includes(selectedVehicle().id)) return false;
+  const cb = document.getElementById('opt-caravan');
+  if (cb) return !!cb.checked;
+  try { return !!JSON.parse(localStorage.getItem('cr.opts') || '{}').caravan; } catch { return false; }
+}
 // Keep the existing multiplayer protocol intact and add one small optional message. Each player
 // announces their vehicle after joining; the host stores it in the normal lobby roster and
 // broadcasts that roster. Old/missing values safely fall back to the car.
@@ -720,6 +729,7 @@ Multiplayer.prototype.createRoom = async function patchedCreateRoom(name, ...res
   const mine = this.players.get(this.selfId);
   if (mine) {
     mine.vehicleId = selectedVehicle().id;
+    mine.caravan = towingNow();
     syncVehicleLooks(this.players.values());
     this._broadcastLobby();
   }
@@ -731,7 +741,7 @@ Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name, ...r
   wrapVehicleHandlers(this);
   const joined = await originalJoinRoom.call(this, code, name, ...rest);
   if (this.hostConn && this.hostConn.open) {
-    this.hostConn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
+    this.hostConn.send({ t: 'vehicle', vehicleId: selectedVehicle().id, caravan: towingNow() });
   }
   return joined;
 };
@@ -740,7 +750,7 @@ Multiplayer.prototype.joinRoom = async function patchedJoinRoom(code, name, ...r
 const originalRejoinOpen = Multiplayer.prototype._onRejoinOpen;
 Multiplayer.prototype._onRejoinOpen = function patchedRejoinOpen(conn) {
   originalRejoinOpen.call(this, conn);
-  conn.send({ t: 'vehicle', vehicleId: selectedVehicle().id });
+  conn.send({ t: 'vehicle', vehicleId: selectedVehicle().id, caravan: towingNow() });
 };
 
 const originalHostMessage = Multiplayer.prototype._onHostMessage;
@@ -749,6 +759,7 @@ Multiplayer.prototype._onHostMessage = function patchedHostMessage(id, msg) {
     const p = this.players.get(id);
     if (!p) return;
     p.vehicleId = vehicleById(msg.vehicleId).id;
+    p.caravan = !!msg.caravan && TOW_CARS.includes(p.vehicleId);
     syncVehicleLooks(this.players.values());
     this._broadcastLobby();
     return;
