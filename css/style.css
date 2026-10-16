@@ -591,3 +591,11 @@ html.chat-quick-only .chat-row { display: none; }
 #menu #btn-new-top { background: rgba(38,170,86,.7); color: #fff; box-shadow: none; }
 #menu #btn-new-top:hover, #menu #btn-new-top:focus-visible { background: #26aa56; }
 @media (hover: none) { #menu .btn:active { background: #e08f00; } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-new-top:active { background: #26aa56; } }
+
+/* A track a friend sent as a link */
+#shared-track { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10,6,24,.82); }
+#shared-track[hidden] { display: none; }
+.shared-box { width: min(420px, 100%); padding: 24px 22px 20px; text-align: center; background: #1b1233; border: 2px solid rgba(246,217,176,.35); border-radius: 6px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.shared-box h2 { margin: 0; font-size: 34px; word-break: break-word; }
+.shared-box .btn { text-align: center; margin: 0; }
+.shared-box .btn-play { min-width: 0; margin: 6px 0 2px; }

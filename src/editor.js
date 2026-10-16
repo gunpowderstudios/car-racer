@@ -11,8 +11,8 @@ const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#e
 const DEG = 180 / Math.PI;
 
 export class Editor {
-  constructor({ onDrive, onClose, onSave, toast, preview }) {
-    this.cb = { onDrive, onClose, onSave, toast };
+  constructor({ onDrive, onClose, onSave, onShare, toast, preview }) {
+    this.cb = { onDrive, onClose, onSave, onShare, toast };
     this.preview = preview || null;               // optional 3D view (EditorPreview)
     if (this.preview) this.preview.onScale = (ex) => { $('ed-3d-ex').textContent = ex > 1 ? `heights \u00d7${ex}` : ''; };
     try { this.show3d = localStorage.getItem('cr.ed3d') !== '0'; } catch { this.show3d = true; }
@@ -570,6 +570,7 @@ export class Editor {
     $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };
     $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };
     $('ed-save').onclick = () => { this.cb.onSave(this.def); };
+    $('ed-share').onclick = () => this.cb.onShare?.(this.def);
     $('ed-export').onclick = () => {
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([this.json], { type: 'application/json' }));
       a.download = (this.def.name || 'track').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);

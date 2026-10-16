@@ -21,6 +21,7 @@ import { Sound } from './audio.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
+import { packedFromHash, unpackTrack, trackLinkUrl } from './trackLink.js';
 import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
 import { createChatUI } from './mpChat.js';
@@ -704,6 +705,13 @@ const editor = window.__editor = new Editor({
   },
   onClose: (d) => { editor.close(); store.set('cr.draft', d); if (!track) loadTrack(makeTemplate('speedway')); showMenu(); },
   onSave: (d) => { saveUserTrack(d); toast(`Saved "${d.name}". It is in the track list.`); },
+  onShare: async (d) => {                                     // a link that opens this track on a friend's screen
+    try {
+      const url = await trackLinkUrl(d);
+      try { await navigator.clipboard.writeText(url); toast('Link copied. Send it to a friend and they can drive your track.'); }
+      catch { window.prompt('Copy this link and send it to a friend:', url); }
+    } catch { toast('Could not make a link for this track.'); }
+  },
 });
 
 function saveUserTrack(d) {
@@ -1187,6 +1195,27 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   $('mp-join-name').value = store.get('cr.mpname', '');
   $('mp-code').value = params.get('room').toUpperCase();
 }
+
+// ----- a track a friend sent as a link (see src/trackLink.js): offer to drive it, edit it or keep it
+async function openSharedTrack(packed) {
+  const d = await unpackTrack(packed);
+  history.replaceState(null, '', location.pathname + location.search);            // so a reload does not ask again
+  if (!d) { toast('That track link did not work. Ask your friend to send it again.'); return; }
+  const box = $('shared-track'), close = () => { box.hidden = true; };
+  const km = (new Track(d).length / 1000).toFixed(2);
+  $('shared-title').textContent = d.name; $('shared-info').textContent = `${km} km lap`;
+  $('shared-edit').hidden = matchMedia('(pointer: coarse)').matches;            // the editor needs a desktop computer
+  $('shared-drive').onclick = () => { close(); startDriving(d); };
+  $('shared-edit').onclick = () => { close(); openEditor(d); };
+  $('shared-save').onclick = () => {
+    const all = userTracks(); let name = d.name, n = 2;
+    while (all[name]) name = `${d.name.slice(0, 34)} (${n++})`;                 // never overwrite a track you already have
+    saveUserTrack({ ...d, name }); renderMenu(); toast(`Saved "${name}" to your tracks.`); close();
+  };
+  $('shared-close').onclick = close;
+  box.hidden = false;
+}
+{ const packed = packedFromHash(location.hash); if (packed) openSharedTrack(packed); }
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

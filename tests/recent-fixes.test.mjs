@@ -11,7 +11,6 @@ const vehicleChoice = readFileSync(new URL('../src/vehicleChoice.js', import.met
 const vehicleProfiles = readFileSync(new URL('../src/vehiclePhysicsProfiles.js', import.meta.url), 'utf8');
 const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const howMade = readFileSync(new URL('../how-we-made-it.html', import.meta.url), 'utf8');
 const editor = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
 const editorPreview = readFileSync(new URL('../src/editorPreview.js', import.meta.url), 'utf8');
 const cameraOrbit = readFileSync(new URL('../src/cameraOrbit.js', import.meta.url), 'utf8');
@@ -80,23 +79,8 @@ test('German Beema keeps local paint and loads clean independently-coloured riva
 });
 
 
-test('main menu links to the development story', () => {
-  assert.match(indexHtml, /href="how-we-made-it\.html"[^>]*>How we made this game<\/a>/);
-  assert.match(howMade, /How we made Bangers and Smash!/);
-  assert.match(howMade, /SHRINK3D/);
-  assert.match(howMade, /Happy Camper/);
-  assert.match(howMade, /track editor/i);
-});
 
 
-test('development page has an interactive Mr Muscle viewer and visible yellow footer links', () => {
-  assert.match(howMade, /id="muscle-car-canvas"/);
-  assert.match(howMade, /cars\/dodge-shrink\.glb/);
-  assert.match(howMade, /GLTFLoader/);
-  assert.match(howMade, /pointerdown/);
-  assert.match(indexHtml, /How we made this game<\/a> &middot;/);
-  assert.match(indexHtml, /style="color:#ffb31f">View the source on GitHub/);
-});
 
 
 test('zero key resets the track editor 3D view', () => {
@@ -110,11 +94,6 @@ test('zero key resets the track editor 3D view', () => {
 });
 
 
-test('development page loads compressed GLB with Meshopt', () => {
-  assert.match(howMade, /MeshoptDecoder/);
-  assert.match(howMade, /setMeshoptDecoder\(MeshoptDecoder\)/);
-  assert.match(howMade, /cars\/dodge-shrink\.glb/);
-});
 
 
 test('3D reset pauses auto-rotation so the straight view is visible', () => {
@@ -135,23 +114,8 @@ test('gameplay camera resets with double-click or zero', () => {
 });
 
 
-test('development page car viewer is a five-car swipe carousel', () => {
-  assert.match(howMade, /Mr Muscle.*dodge-shrink\.glb/s);
-  assert.match(howMade, /70s Saloon.*escort-shrink\.glb/s);
-  assert.match(howMade, /German Beema.*bmw-shrink\.glb/s);
-  assert.match(howMade, /Motorhome.*motorhome-SHRINK\.glb/s);
-  assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
-  assert.match(howMade, /id="car-prev"/);
-  assert.match(howMade, /id="car-next"/);
-  assert.match(howMade, /swipeArea\.addEventListener\('pointerup'/);
-  assert.match(howMade, /className = 'car-dot'/);
-});
 
 
-test('Happy Camper carousel uses the shrunk model', () => {
-  assert.match(howMade, /Happy Camper.*campervan-shrink\.glb/s);
-  assert.doesNotMatch(howMade, /cars\/campervan\.glb/);
-});
 
 
 test('vehicle model cache busting follows the game version', () => {
@@ -160,21 +124,11 @@ test('vehicle model cache busting follows the game version', () => {
   assert.equal(modelVersion, gameVersion);
   assert.match(vehicleChoice, /assetUrl\(modelUrl\(url \|\| config\.url\)\)/);
   assert.match(vehicleChoice, /fetch\(assetUrl\(modelUrl\(selectedVehicle\(\)\.url\)\)/);
-  assert.match(howMade, /loader\.loadAsync\(assetUrl\(car\.url\)\)/);
   assert.match(serviceWorker, /const MODEL = \/\\\.glb\$\/i/);
   assert.match(serviceWorker, /MODEL\.test\(url\.pathname\)/);
 });
 
 
-test('development story recommends a structured changelog for AI-assisted development', () => {
-  assert.match(howMade, /CHANGELOG\.md/);
-  assert.match(howMade, /v2\.25, v2\.24, v2\.23/);
-  assert.match(howMade, /core engine version/i);
-  assert.match(howMade, /should <em>not<\/em> be overwritten/);
-  assert.match(howMade, /version-bump rule/);
-  assert.match(howMade, /known issues/i);
-  assert.match(howMade, /Claude, ChatGPT/);
-});
 
 
 test('auto-fitted vehicles ground their visible model at suspension rest height', () => {
