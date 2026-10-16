@@ -582,12 +582,12 @@ html.chat-quick-only .chat-row { display: none; }
 }
 
 /* Home screen buttons: 30% see-through, fully solid when you roll over them. Multiplayer is a purple strip, Design-a-track! a green one. */
-#menu .btn { background: rgba(255,179,31,.7); color: #2a1a00; transition: background .15s, transform .08s; }
-#menu .btn:hover, #menu .btn:focus-visible { background: var(--amber); }
-#menu .btn.ghost { background: rgba(246,217,176,.7); color: #2a1a00; }
-#menu .btn.ghost:hover, #menu .btn.ghost:focus-visible { background: #f6d9b0; }
+#menu .btn { background: rgba(235,150,10,.7); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65), 0 0 1px rgba(0,0,0,.5); transition: background .15s, transform .08s; }
+#menu .btn:hover, #menu .btn:focus-visible { background: #e08f00; }
+#menu .btn.ghost { background: rgba(120,100,150,.7); color: #fff; }
+#menu .btn.ghost:hover, #menu .btn.ghost:focus-visible { background: #786496; }
 #menu #btn-multiplayer-top { background: rgba(138,66,224,.7); color: #fff; box-shadow: none; }
 #menu #btn-multiplayer-top:hover, #menu #btn-multiplayer-top:focus-visible { background: #8a42e0; }
 #menu #btn-new-top { background: rgba(38,170,86,.7); color: #fff; box-shadow: none; }
 #menu #btn-new-top:hover, #menu #btn-new-top:focus-visible { background: #26aa56; }
-@media (hover: none) { #menu .btn:active { background: var(--amber); } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-new-top:active { background: #26aa56; } }
+@media (hover: none) { #menu .btn:active { background: #e08f00; } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-new-top:active { background: #26aa56; } }
