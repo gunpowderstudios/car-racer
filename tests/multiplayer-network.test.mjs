@@ -240,3 +240,22 @@ test('the lobby carries each player\'s game version, so a player on a different 
   assert.equal(h.mp.players.get(a.mp.selfId).v, '');
   delete ver.H; delete ver.A; delete ver.B;
 });
+
+test('a guest on a slow link (mobile data) still gets into the lobby instead of giving up and starting over', async () => {
+  const { broker, make } = world();
+  const host = make('Host'), guest = make('Phone');
+  const code = await host.mp.createRoom('Host');
+  broker.connectDelay = 400;                                           // the link takes a good while to open
+  await guest.mp.joinRoom(code, 'Phone', { connectMs: 2000, retryMs: 0 });
+  await until(() => host.mp.players.size === 2, 1500, 'host to see the guest');
+  assert.ok(guest.rec.status.some((m) => /Connecting to room/.test(m)), 'the guest is told it is connecting');
+  assert.equal(guest.rec.status.at(-1), null, 'and the message goes away once connected');
+});
+
+test('a link that never opens is given up on after the connect wait, not forever', async () => {
+  const { broker, make } = world();
+  const host = make('Host'), guest = make('Phone');
+  const code = await host.mp.createRoom('Host');
+  broker.connectDelay = 5000;
+  await assert.rejects(guest.mp.joinRoom(code, 'Phone', { connectMs: 200, retryMs: 0 }), /Room not found/);
+});

@@ -9,7 +9,7 @@ class Emitter {
 const tick = (fn, ms = 1) => setTimeout(fn, ms);
 
 export class Broker {
-  constructor() { this.ids = new Map(); this.n = 0; this.releaseDelay = 0; this.offline = false; }
+  constructor() { this.ids = new Map(); this.n = 0; this.releaseDelay = 0; this.offline = false; this.connectDelay = 1; }   // connectDelay: how long a data link takes to open (a phone on mobile data is slow)
   fresh() { return 'mock' + (++this.n); }
 }
 
@@ -43,7 +43,7 @@ export function makePeerClass(broker) {
         const theirs = new DataConn(target, this.id);
         mine.other = theirs; theirs.other = mine; target.conns.add(theirs);
         target.emit('connection', theirs);
-        tick(() => { mine.open = true; theirs.open = true; mine.emit('open'); theirs.emit('open'); });
+        tick(() => { mine.open = true; theirs.open = true; mine.emit('open'); theirs.emit('open'); }, broker.connectDelay);
       });
       return mine;
     }

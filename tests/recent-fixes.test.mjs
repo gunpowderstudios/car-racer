@@ -212,11 +212,11 @@ test('mobile brake label damage chart and braking tyre sound are clearer', () =>
 });
 
 
-test('mobile multiplayer hides duplicate copy invite but keeps share invite', () => {
+test('multiplayer lobby shows both Share invite and Copy link, on phones too', () => {
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(indexHtml, /id="mp-share"[^>]*>Share invite<\/button>/);
-  assert.match(indexHtml, /id="mp-copy"[^>]*>Copy invite link<\/button>/);
-  assert.match(css, /@media \(pointer: coarse\) and \(max-width: 760px\)[\s\S]*#mp-copy \{ display: none !important; \}/);
+  assert.match(indexHtml, /id="mp-copy"[^>]*>Copy link<\/button>/);
+  assert.doesNotMatch(css, /#mp-copy \{ display: none/);
 });
 
 
@@ -243,10 +243,10 @@ test('drift control labels match the new assisted drift behaviour', () => {
 
 test('multiplayer join retries a temporarily unavailable mobile host', () => {
   const mpCore = readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8');
-  assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 60000/);
+  assert.match(mpCore, /joinRoom\(code, name, \{ retryMs = 120000/);
   assert.match(mpCore, /e\?\.peerType !== 'peer-unavailable'/);
   assert.match(mpCore, /Room \${roomCode} is waking up/);
-  assert.match(mpCore, /_joinRoomAttempt\(roomCode\)/);
+  assert.match(mpCore, /_joinRoomAttempt\(roomCode, connectMs\)/);
   assert.match(main, /finally \{[\s\S]*net\?\.resume\(\)/);
 });
 
