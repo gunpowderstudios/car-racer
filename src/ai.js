@@ -69,7 +69,7 @@ export class Driver {
     this.laneNow = this.lane; this.lane0 = this.lane;
     this.mood = 'cruise';
     this.moodT = 3 + rng() * 6;
-    this.stuck = 0; this.reverse = 0; this.revSteer = 0;
+    this.stuck = 0; this.reverse = 0; this.revSteer = 0; this.turn = null;
     this.s = 0; this.sT = 0;
     this.q = Track.newQuery(); this.q2 = Track.newQuery();
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
@@ -231,6 +231,22 @@ export class Driver {
       this.stuck += dt;
       if (this.stuck > 1.6) { this.reverse = 1.3; this.revSteer = steer || (this.rng() < 0.5 ? 1 : -1); }
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
+
+    // ---------------------------------------------------------------- spun round and facing the wrong way: turn round like a driver would (a three-point turn)
+    const fr0 = track.frameAt(s), facing = car.az.x * fr0.fx + car.az.z * fr0.fz;
+    if (!this.turn && facing < -0.25 && car.speed < 9 && car.onGround && car.ay.y > 0.5) this.turn = { dir: Math.sign(ang) || 1, rev: false, t: 0, total: 0 };
+    if (this.turn) {
+      const T = this.turn; T.t += dt; T.total += dt;
+      const lane = Math.abs((car.pos.x - fr0.x) * fr0.lx + (car.pos.z - fr0.z) * fr0.lz), edge = lane > fr0.hw - 2.2;
+      if (facing > 0.5 || T.total > 25 || !car.onGround) this.turn = null;
+      else if (!T.rev) {                                    // forwards, full lock towards the way round, until it runs out of road or time
+        steer = T.dir; throttle = 0.65; brk = 0;
+        if (T.t > 1.8 || (edge && T.t > 0.7) || (T.t > 0.5 && car.fwdSpeed < 0.6)) { T.rev = true; T.t = 0; }
+      } else {                                              // then backwards with the lock the other way, so the nose keeps swinging round
+        steer = -T.dir; throttle = 0; brk = 1;
+        if (T.t > 1.6 || (edge && T.t > 0.7) || (T.t > 0.9 && car.speed < 0.6)) { T.rev = false; T.t = 0; }
+      }
+    }
 
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
     // Nitro still uses the real finite tank. Rivals may also spend it to rescue a genuine steep climb:

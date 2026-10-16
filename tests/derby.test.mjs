@@ -654,24 +654,44 @@ test('rivals honk before an impact, but only now and then', () => {
   assert.ok(n <= 3, `a quiet field is a quiet field (${n} honks)`);
 });
 
-test('a rival facing the wrong way for a few seconds is put back on the road facing forwards', () => {
+test('a rival that cannot turn itself round (a lost cause) is, in the end, put back on the road facing forwards', () => {
   const track = new Track(makeTemplate('speedway'));
   const player = new Vehicle(); placeOnRoad(player, track, 100, 0, 0);
   const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 2, 5);
   derby.time = 20;
   const r = derby.fighters.find((f) => !f.isPlayer); r.age = 99;
   r.driver.drive = () => ({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });   // a driver that can't sort itself out
-  placeOnRoad(r.car, track, 700, 0, 0);
+  placeOnRoad(r.car, track, 700, 0, 0); placeOnRoad(player, track, 680, 0, 0);             // (in plain sight of the player)
   r.car.reset(r.car.pos, { x: -r.car.az.x, y: r.car.az.y, z: -r.car.az.z, clone() { return this; } }, r.car.ay, 0);   // turn it round
   const fwd = () => { const fr = track.frameAt(track.progressAt(r.car.pos.x, r.car.pos.y, r.car.pos.z)); return r.car.az.x * fr.fx + r.car.az.z * fr.fz; };
   assert.ok(fwd() < -0.5, 'starts facing backwards: ' + fwd());
   const stop = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
   let reset = -1;
-  for (let i = 0; i < 6 / DT; i++) {
+  for (let i = 0; i < 17 / DT; i++) {
     derby.step(DT, null); player.step(DT, stop, track); derby.events.length = 0;
     if (reset < 0 && fwd() > 0.5) reset = i * DT;
   }
-  assert.ok(reset > 2.5 && reset < 4.5, `reset after about 3 s (${reset.toFixed(2)})`);
+  assert.ok(reset > 9 && reset < 15.5, `reset after 10-14 s (${reset.toFixed(2)})`);
+});
+
+test('a rival that has spun round turns itself round with a three-point turn: no teleporting', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle(); placeOnRoad(player, track, 100, 0, 0);
+  const derby = new Derby(); derby.enabled = true; derby.damageEnabled = true; derby.start(track, player, 2, 5);
+  derby.time = 20;
+  const r = derby.fighters.find((f) => !f.isPlayer); r.age = 99;
+  placeOnRoad(r.car, track, 700, 0, 0); placeOnRoad(player, track, 680, 0, 0);
+  r.car.reset(r.car.pos, { x: -r.car.az.x, y: r.car.az.y, z: -r.car.az.z, clone() { return this; } }, r.car.ay, 0);
+  const fwd = () => { const fr = track.frameAt(track.progressAt(r.car.pos.x, r.car.pos.y, r.car.pos.z)); return r.car.az.x * fr.fx + r.car.az.z * fr.fz; };
+  const stop = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
+  let jump = 0, back = -1, px = r.car.pos.x, pz = r.car.pos.z;
+  for (let i = 0; i < 12 / DT; i++) {
+    derby.step(DT, null); player.step(DT, stop, track); derby.events.length = 0;
+    jump = Math.max(jump, Math.hypot(r.car.pos.x - px, r.car.pos.z - pz)); px = r.car.pos.x; pz = r.car.pos.z;
+    if (back < 0 && fwd() > 0.5) back = i * DT;
+  }
+  assert.ok(back > 0 && back < 10, `it turned round (${back})`);
+  assert.ok(jump < 2, `never jumped (${jump.toFixed(2)} m in one step)`);
 });
 
 test('engine-start sound is shipped, loaded and played on restart', async () => {

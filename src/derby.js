@@ -34,8 +34,8 @@ export const DERBY = {
   hornTtc: 0.9,          // ...and would reach you within this many seconds
   hornCooldown: 9,       // seconds before the same rival may honk again
   hornGap: 4,            // seconds between honks from the whole field: no continuous horning
-  wrongWayTime: 3,       // a rival facing the wrong way this long is put back on the road facing forwards...
-  stuckTime: 4,          // ...and so is one that has been stuck (hardly moving) this long
+  wrongWayTime: 14,      // a rival still facing the wrong way after this long (it has had a good go at turning round: see ai.js) is put back on the road facing forwards...
+  stuckTime: 10,         // ...and so is one that has been stuck (hardly moving) this long
   stallFrac: 0.14,       // one hit this big (as a share of that zone's armour) stalls your engine: a hard wall hit, a proper T-bone
   stallFracRival: 0.28,  // ...rivals have far less armour, so it takes a bigger bang to stall one
   grace: 3,              // seconds after the start before anything can hurt you
@@ -552,7 +552,7 @@ export class Derby {
       if (f.wrongT > DERBY.wrongWayTime || (f.idleT > DERBY.stuckTime && !c.engineOff)) {
         const s = T.progressAt(c.pos.x, c.pos.y, c.pos.z);
         placeOnRoad(c, T, s + 8, 0, f.driver.cruise * 0.6);
-        f.wrongT = f.idleT = f.offT = f.flipT = 0; f.driver.stuck = 0; f.driver.reverse = 0; c.engineOff = false; c.crank = 0;
+        f.wrongT = f.idleT = f.offT = f.flipT = 0; f.driver.stuck = 0; f.driver.reverse = 0; f.driver.turn = null; c.engineOff = false; c.crank = 0;
         this._pose(f, f.cur); this._pose(f, f.prev);
         return;
       }
