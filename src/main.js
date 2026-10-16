@@ -691,11 +691,11 @@ function setMode(m) {
   input.enabled = m === 'drive';
 }
 function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
-// The big vehicles hide the road from the chase camera, so every race in one starts on the High camera (C still cycles as usual).
+// The big vehicles (and anything towing a caravan) hide the road from the chase camera, so every race in one starts on the High camera (C still cycles as usual).
 const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
 let autoHighCam = false;
 function pickStartCamera() {
-  const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id);
+  const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
   if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
   else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle
 }

@@ -82,3 +82,16 @@ test('the Tow a caravan option is on the home screen, saved, for the saloon cars
   assert.match(main, /TOW_CARS\.includes\(selectedVehicle\(\)\.id\) && !net/);
   assert.deepEqual(Object.keys(HITCH).sort(), ['bmw', 'escort', 'saab', 'volvo']);
 });
+
+test('a car and caravan left alone at the start line stay put (no creeping, swinging or dragging the car)', () => {
+  const s = setup(true, 0);
+  Object.assign(s.van.spec, { dAxle: 2.2, length: 4.4, width: 2.03 });   // as measured from the real model
+  s.van.reset(s.car);
+  let top = 0;
+  for (let i = 0; i < 8 / DT; i++) {
+    s.car.step(DT, { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false }, s.track); s.car.events.length = 0;
+    top = Math.max(top, Math.hypot(s.car.vel.x, s.car.vel.z));
+  }
+  assert.ok(top < 0.15, `car crept at ${top.toFixed(2)} m/s with nobody driving`);
+  assert.ok(Math.abs(s.van.jackknife) < 0.1, `caravan swung ${s.van.jackknife.toFixed(2)} rad`);
+});

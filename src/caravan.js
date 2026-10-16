@@ -21,7 +21,7 @@ export const CARAVAN = {
   tyreStiff: 25,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
   rolling: 0.016,         // rolling resistance
   jointK: 380000,         // N/m the drawbar joint
-  jointC: 26000,          // N.s/m its damping
+  jointC: 11000,          // N.s/m its damping
   jointMax: 38000,        // N: the most it can pull (stops a glitch becoming an explosion)
   yawDamp: 0.9,           // 1/s extra damping of the swing (air drag and tyre scrub)
 };
@@ -60,8 +60,10 @@ export class Caravan {
   /** The ball on the car, in the world. */
   ballOn(car, out = this._ball) { return car.toWorld(tmpH.set(this.hitch.x, this.hitch.y, this.hitch.z), out); }
 
-  /** Put the caravan straight behind `car`, moving with it. */
-  reset(car) {
+  /** Put the caravan straight behind `car`, moving with it, and hold it there for a moment while the car settles on its springs. */
+  reset(car) { this._place(car); this.settleT = 0.6; }
+
+  _place(car) {
     const s = this.spec, b = this.ballOn(car, new V3());
     const fx = car.az.x, fz = car.az.z, fl = Math.hypot(fx, fz) || 1;
     this.yaw = Math.atan2(fx / fl, fz / fl); this.yawRate = 0;
@@ -84,6 +86,8 @@ export class Caravan {
    * moves the caravan on by `dt` and adds the pull on the hitch to the car's `F` and `T`.
    */
   applyTo(car, dt) {
+    // just after being put behind the car (a new race, a respawn) the car is still dropping onto its springs: keep the caravan tucked behind it and do not pull on it yet
+    if (this.settleT > 0) { this.settleT -= dt; this._place(car); return; }
     const s = this.spec, sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw);
     const fx = sinY, fz = cosY;                         // caravan's forward
     const lx = cosY, lz = -sinY;                        // its sideways
@@ -115,6 +119,9 @@ export class Caravan {
     this.yawRate += (torque / I - this.yawRate * s.yawDamp) * dt;
     this.yawRate = clamp(this.yawRate, -4, 4);
     this.vel.x += ax * dt; this.vel.z += az * dt;
+    // parked (the car is all but stopped): the caravan's brake is on, so it cannot creep or swing and drag the car about
+    const park = 1 - clamp(Math.hypot(car.vel.x, car.vel.z) / 0.8, 0, 1);
+    if (park > 0) { const k = Math.exp(-6 * park * dt); this.vel.x = car.vel.x + (this.vel.x - car.vel.x) * k; this.vel.z = car.vel.z + (this.vel.z - car.vel.z) * k; this.yawRate *= k; }
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     this.yaw += this.yawRate * dt;
     this.spin += (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
