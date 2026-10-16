@@ -73,7 +73,7 @@ function syncCaravan() {
   if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
   caravan.track = track; car.tow = caravan; caravan.reset(car);
   caravanView.visible = true;
-  const ready = () => { Object.assign(caravan.spec, { dAxle: caravanView.dims.dAxle, wheelR: caravanView.dims.wheelR, length: caravanView.dims.length, width: caravanView.dims.width }); if (car.tow) { caravan.reset(car); caravanView.snap(caravan); } };
+  const ready = () => { Object.assign(caravan.spec, { dAxle: caravanView.dims.dAxle, wheelR: caravanView.dims.wheelR, length: caravanView.dims.length, width: caravanView.dims.width, rear: caravanView.dims.rear, front: caravanView.dims.front }); if (car.tow) { caravan.reset(car); caravanView.snap(caravan); } };
   if (caravanView.loaded) { ready(); return; }
   caravanView.snap(caravan);
   caravanView.load().then((d) => { if (d) ready(); else { opts.caravan = false; store.set('cr.opts', opts); const cb = $('opt-caravan'); if (cb) cb.checked = false; car.tow = null; toast('The caravan model could not be loaded.'); } });
@@ -396,7 +396,11 @@ function stepPhysics(dt) {
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
-    if (car.tow) caravanView.capture(car.tow);
+    if (car.tow) {
+      caravanView.capture(car.tow);
+      for (const e of car.tow.events) caravanEvent(e);
+      car.tow.events.length = 0;
+    }
     if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
@@ -442,6 +446,20 @@ function propEvents() {
     }
   }
   props.events.length = 0;
+}
+
+/** Something happened to your caravan: a knock (sound, sparks, a shake) or the hitch giving way. */
+function caravanEvent(e) {
+  if (e.type === 'van-lost') {
+    hud.banner('Caravan lost! The hitch snapped', 2000);
+    particles.blast(e.x, e.y + 0.4, e.z, 1.2);
+    crashDebris(e.x, e.y + 0.6, e.z, 16, 0xdfe9e0, 0, 0, 1.6);
+    return;
+  }
+  if (e.type !== 'van') return;
+  sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car'); chase.impact(e.speed * 0.6);
+  const n = Math.min(8, 2 + e.speed * 0.4);
+  for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5);
 }
 
 // ------------------------------------------------------- destruction derby

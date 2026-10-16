@@ -140,6 +140,7 @@ function sphereBox(c, R, car, box) {
   return true;
 }
 
+const vanB = new Float64Array(6), vanV = { x: 0, z: 0 };
 export class Props {
   constructor() {
     this.track = null; this.defs = [];
@@ -201,7 +202,7 @@ export class Props {
     for (const c of cars) c.refreshFrame();
     const bs = this.barrels;
     if (bs.length) {
-      for (const c of cars) this._carContacts(c);
+      for (const c of cars) { this._carContacts(c); if (c.tow) this._vanContacts(c.tow); }
       for (const b of bs) if (b.alive && !b.asleep) this._integrate(b, dt);
       this._pairs();
       for (const b of bs) {
@@ -270,6 +271,35 @@ export class Props {
       }
       if (-rel >= BARREL.lightSpeed) this._light(b, BARREL.fuse);
       this._emitClang(b, -rel, p.x, p.y, p.z);
+    }
+  }
+
+  // ------------------------------------------------------- caravan <-> barrels
+  /** A towed caravan knocks drums about too: its three round bumpers against each drum, in the flat of the road. */
+  _vanContacts(van) {
+    const r = van.bumpers(vanB);
+    for (const b of this.barrels) {
+      if (!b.alive) continue;
+      const dx = b.pos.x - van.pos.x, dz = b.pos.z - van.pos.z;
+      if (dx * dx + dz * dz > 25) continue;
+      if (Math.abs(b.pos.y - van.pos.y) > 2) continue;
+      for (let i = 0; i < 3; i++) {
+        const cx = vanB[i * 2], cz = vanB[i * 2 + 1], ex = b.pos.x - cx, ez = b.pos.z - cz, D = r + BARREL.reach, d2 = ex * ex + ez * ez;
+        if (d2 >= D * D) continue;
+        const d = Math.sqrt(d2) || 1e-6, nx = ex / d, nz = ez / d, px = cx + nx * r, pz = cz + nz * r;
+        this._wake(b);
+        b.pos.x += nx * (D - d); b.pos.z += nz * (D - d);
+        van.velAt(px, pz, vanV);
+        const rel = (b.vel.x - vanV.x) * nx + (b.vel.z - vanV.z) * nz;
+        if (rel >= 0) continue;
+        const e = -rel > BARREL.bounceAbove ? BARREL.bounce : 0, j = -(1 + e) * rel / (1 / BARREL.mass + van.invMassAt(nx, nz, px, pz));
+        b.vel.x += nx * j / BARREL.mass; b.vel.z += nz * j / BARREL.mass;
+        van.impulse(nx, nz, -j, px, pz);
+        if (-rel > 2) { b.vel.x += nx * -rel * BARREL.kick; b.vel.z += nz * -rel * BARREL.kick; }
+        if (-rel >= BARREL.lightSpeed) this._light(b, BARREL.fuse);
+        this._emitClang(b, -rel, px, van.pos.y, pz);
+        if (-rel > 5) van.hurt((-rel - 5) * 0.8);               // drums dent a caravan a little
+      }
     }
   }
 

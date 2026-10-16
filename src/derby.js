@@ -118,6 +118,67 @@ export function collideCars(A, B, out) {
   return out.closing > 0;
 }
 
+const vbA = new Float64Array(6), vbB = new Float64Array(6), vVan = { x: 0, z: 0 }, vVan2 = { x: 0, z: 0 }, vN = new V3(), vP = new V3(), vCar = new V3();
+/**
+ * A caravan against a car (its frame must be current): the caravan's three round bumpers against the car's row of spheres, in the
+ * flat of the road. Applies the impulses and pushes them apart; `out` gets the closing speed and effective mass. True if they struck.
+ */
+export function collideVanCar(van, car, out) {
+  out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0;
+  const dx = car.pos.x - van.pos.x, dz = car.pos.z - van.pos.z;
+  if (dx * dx + dz * dz > 64) return false;
+  const rv = van.bumpers(vbA), rc = layoutBalls(car, ballsB);
+  let deepest = 0, dnx = 0, dnz = 0;
+  for (let k = 0; k < ballsB.length; k++) car.toWorld(ballsB[k], wb[k]);
+  const D = rv + rc;
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < 3; i++) {
+      const cx = vbA[i * 2], cz = vbA[i * 2 + 1];
+      for (let j = 0; j < wb.length; j++) {
+        if (Math.abs(wb[j].y - van.pos.y) > 1.6) continue;
+        const ex = wb[j].x - cx, ez = wb[j].z - cz, d2 = ex * ex + ez * ez;
+        if (d2 >= D * D) continue;
+        const d = Math.sqrt(d2) || 1e-6, pen = D - d, nx = ex / d, nz = ez / d;      // from the caravan towards the car
+        const px = cx + nx * rv, pz = cz + nz * rv;
+        if (pass === 0 && pen > deepest) { deepest = pen; dnx = nx; dnz = nz; }
+        vP.set(px, wb[j].y, pz); vN.set(nx, 0, nz);
+        van.velAt(px, pz, vVan); car.velocityAt(vP, vCar);
+        const vn = (vCar.x - vVan.x) * nx + (vCar.z - vVan.z) * nz;
+        if (vn >= 0) continue;
+        const mu = 1 / (van.invMassAt(nx, nz, px, pz) + car.invMassAt(vN, vP));
+        const j2 = -(1 + (-vn > 2 ? 0.2 : 0)) * vn * mu;
+        van.impulse(nx, nz, -j2, px, pz); car.impulseAt(vN, j2, vP);
+        if (pass === 0 && -vn > out.closing) { out.closing = -vn; out.mu = mu; out.x = px; out.y = wb[j].y; out.z = pz; }
+      }
+    }
+  }
+  if (deepest > 0.005) { const c = Math.min(deepest, 0.35) * 0.5; van.pos.x -= dnx * c; van.pos.z -= dnz * c; car.pos.x += dnx * c; car.pos.z += dnz * c; }
+  return out.closing > 0;
+}
+
+/** One caravan against another (the rivals each tow one): round bumpers against round bumpers. */
+export function collideVanVan(a, b, out) {
+  out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0;
+  const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
+  if (dx * dx + dz * dz > 64) return false;
+  const ra = a.bumpers(vbA), rb = b.bumpers(vbB), D = ra + rb;
+  let deepest = 0, dnx = 0, dnz = 0;
+  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    const ex = vbB[j * 2] - vbA[i * 2], ez = vbB[j * 2 + 1] - vbA[i * 2 + 1], d2 = ex * ex + ez * ez;
+    if (d2 >= D * D) continue;
+    const d = Math.sqrt(d2) || 1e-6, pen = D - d, nx = ex / d, nz = ez / d, px = vbA[i * 2] + nx * ra, pz = vbA[i * 2 + 1] + nz * ra;
+    if (pass === 0 && pen > deepest) { deepest = pen; dnx = nx; dnz = nz; }
+    a.velAt(px, pz, vVan); b.velAt(px, pz, vVan2);
+    const vn = (vVan2.x - vVan.x) * nx + (vVan2.z - vVan.z) * nz;
+    if (vn >= 0) continue;
+    const mu = 1 / (a.invMassAt(nx, nz, px, pz) + b.invMassAt(nx, nz, px, pz)), j2 = -vn * mu * 1.2;
+    a.impulse(nx, nz, -j2, px, pz); b.impulse(nx, nz, j2, px, pz);
+    if (pass === 0 && -vn > out.closing) { out.closing = -vn; out.mu = mu; out.x = px; out.y = a.pos.y; out.z = pz; }
+  }
+  if (deepest > 0.005) { const c = Math.min(deepest, 0.35) * 0.5; a.pos.x -= dnx * c; a.pos.z -= dnz * c; b.pos.x += dnx * c; b.pos.z += dnz * c; }
+  return out.closing > 0;
+}
+
 /** Put a car on the road at arc length s, `offset` metres left of the centreline, moving at `speed`. */
 export function placeOnRoad(car, track, s, offset = 0, speed = 0) {
   const f = track.frameAt(s), h = car.restHeight + 0.08;
@@ -382,6 +443,25 @@ export class Derby {
         }
       }
     }
+
+    // -------- caravans against cars and each other (a caravan never collides with the car that tows it)
+    for (const a of F) {
+      const va = a.car.tow;
+      if (!va || a.gone) continue;
+      for (const b of F) {
+        if (b === a || b.gone) continue;
+        if (collideVanCar(va, b.car, H) && H.closing > 1.2) {
+          if (H.closing > 2.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
+          va.struck('car', H.closing, H.x, H.y, H.z, crashDamage(H.mu, H.closing) * va.spec.carMul);
+        }
+        const vb = b.car.tow;
+        if (vb && b.id > a.id && collideVanVan(va, vb, H) && H.closing > 1.2) {
+          const hp = crashDamage(H.mu, H.closing) * va.spec.carMul;
+          va.struck('car', H.closing, H.x, H.y, H.z, hp); vb.struck('car', H.closing, H.x, H.y, H.z, hp);
+        }
+      }
+    }
+    for (const f of F) if (!f.isPlayer && f.car.tow) f.car.tow.events.length = 0;   // (the player's caravan knocks are left for main.js: sound, sparks)
 
     // -------- housekeeping
     let wrecks = 0;

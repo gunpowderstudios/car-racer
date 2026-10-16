@@ -12,6 +12,7 @@ import { recolour } from './carVisual.js';
 
 export const CARAVAN_MODEL = { url: 'cars/caravan-SHRINK.glb', length: 4.4 };
 
+const clampH = (h) => (h > 1 ? 1 : h < 0 ? 0 : h || 0);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class CaravanView {
@@ -35,7 +36,7 @@ export class CaravanView {
       if (!o.isMesh) return;
       o.material = o.material.clone();
       if (o.material.map) { const t = recolour(o.material.map, l); if (t) o.material.map = t; }
-      o.material.color.setHex(0xffffff).lerp(tint, 0.55);      // the model's paint is a pale pastel, so give it some of the colour on top of the turned hue
+      o.material.color.setHex(0xffffff).lerp(tint, 0.55); o.material.userData.base = o.material.color.clone();      // the model's paint is a pale pastel, so give it some of the colour on top of the turned hue
     });
     v.wheels = []; v.holder.traverse((o) => { if (o.userData?.pivot) v.wheels.push(o); });
     v.loaded = true; v.dims = this.dims; v._wantVisible = true; v.root.visible = true;
@@ -114,7 +115,7 @@ export class CaravanView {
       axleX = sx / wheelNodes.length; axleZ = sz / wheelNodes.length; wheelR = rMax || wheelR; floor = yMin;
     }
     // origin of the caravan = the centre of the axle, at the wheel centre height; the ground is wheelR below
-    model.position.set(-axleX, -wheelR - floor, -axleZ);
+    this.holder.position.set(-axleX, -wheelR - floor, -axleZ);       // (the holder, not the model: these numbers are in the car-facing frame, the model is turned inside the holder)
     this.holder.updateMatrixWorld(true);
     this.wheels = [];
     wheelNodes.forEach((w) => {
@@ -123,14 +124,40 @@ export class CaravanView {
       pivot.updateMatrixWorld(true); pivot.attach(w); this.wheels.push(pivot);
     });
     const fb = new THREE.Box3().setFromObject(this.holder), fs = fb.getSize(new THREE.Vector3());
-    this.dims = { dAxle: Math.max(1.5, fb.max.z), wheelR, length: fs.z, width: fs.x, wheelsFound: wheelNodes.length };
+    // where the body ends and the A-frame drawbar starts: the furthest slice along the caravan that is still nearly as wide as the whole thing
+    const bins = new Map(), pv = new THREE.Vector3();
+    this.holder.updateMatrixWorld(true);
+    this.holder.traverse((o) => {
+      if (!o.isMesh) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 2) {
+        pv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        const k = Math.round(pv.z * 10), e = bins.get(k) || [Infinity, -Infinity];
+        if (pv.x < e[0]) e[0] = pv.x; if (pv.x > e[1]) e[1] = pv.x; bins.set(k, e);
+      }
+    });
+    let bodyFront = 0;
+    for (const [k, e] of bins) if (e[1] - e[0] > 0.6 * fs.x && k / 10 > bodyFront) bodyFront = k / 10;
+    // The ball is put just ahead of the body, so the drawbar tucks under the back of the car and the caravan looks hitched on, not trailing behind with a gap.
+    this.dims = { dAxle: Math.min(fb.max.z, Math.max(1.5, bodyFront + 0.25)), tip: fb.max.z, front: bodyFront, rear: fb.min.z, wheelR, length: fs.z, width: fs.x, wheelsFound: wheelNodes.length };
   }
 
   /** Remember where the caravan is after a physics step (the picture blends between the last two). Call with null when there is no caravan. */
   capture(van) {
     if (!van) { this._prev = this._cur = null; return; }
-    const a = van.axle, snap = [a.x, a.y, a.z, van.yaw, van.pitch, van.roll, van.spin];
+    const a = van.axle, snap = [a.x, a.y, a.z, van.yaw, van.pitch, van.roll, van.spin, van.sway, van.health / van.spec.hp];
     this._prev = this._cur || snap; this._cur = snap;
+  }
+  /** Battered paint: the less health, the darker and dirtier the caravan looks. */
+  _shade(h) {
+    h = Math.round(clampH(h) * 20) / 20;
+    if (h === this._shaded) return;
+    this._shaded = h;
+    const k = 0.42 + 0.58 * h;
+    this.holder.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (!m.userData.base) m.userData.base = m.color.clone(); m.color.copy(m.userData.base).multiplyScalar(k); }
+    });
   }
   /** Put the picture straight at the caravan's state, with nothing to blend from. */
   snap(van) { this._prev = this._cur = null; this.capture(van); this.capture(van); this.update(1); }
@@ -139,7 +166,8 @@ export class CaravanView {
     if (!this.loaded || !this._cur) return;
     const p = this._prev || this._cur, c = this._cur, l = (x, y) => x + (y - x) * a;
     this.root.position.set(l(p[0], c[0]), l(p[1], c[1]), l(p[2], c[2]));
-    this._e.set(-l(p[4], c[4]), p[3] + wrap(c[3] - p[3]) * a, l(p[5], c[5]));
+    this._e.set(-l(p[4], c[4]), p[3] + wrap(c[3] - p[3]) * a, l(p[5], c[5]) + l(p[7], c[7]));      // (road lean + the body rocking on its springs)
+    this._shade(c[8]);
     this.root.quaternion.setFromEuler(this._e);
     const spin = l(p[6], c[6]) % (Math.PI * 2);
     for (const w of this.wheels) w.rotation.x = spin;

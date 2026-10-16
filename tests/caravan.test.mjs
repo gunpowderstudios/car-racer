@@ -95,3 +95,40 @@ test('a car and caravan left alone at the start line stay put (no creeping, swin
   assert.ok(top < 0.15, `car crept at ${top.toFixed(2)} m/s with nobody driving`);
   assert.ok(Math.abs(s.van.jackknife) < 0.1, `caravan swung ${s.van.jackknife.toFixed(2)} rad`);
 });
+
+test('a caravan hits the walls, takes damage, and the hitch gives way when it is wrecked', async () => {
+  const { makeTemplate } = await import('../src/templates.js');
+  const s = setup(true, 0);
+  s.track = new Track(makeTemplate('speedway')); s.van.track = s.track;
+  placeOnTrack(s.car, s.track, s.track.startS(12), 0, 15); s.van.reset(s.car);
+  for (let i = 0; i < 30 / DT; i++) {
+    const t = i * DT;
+    s.car.step(DT, { throttle: 0.7, brake: 0, steer: t > 4 ? 0.35 : 0, handbrake: false, boost: false }, s.track); s.car.events.length = 0;
+  }
+  assert.ok(s.van.health < s.van.spec.hp, 'the walls should have dented the caravan');
+  assert.ok([s.van.pos.x, s.van.yaw].every(Number.isFinite));
+  s.van.hurt(1e6);
+  assert.equal(s.van.detached, true);
+  assert.ok(s.van.events.some((e) => e.type === 'van-lost'));
+  s.van.reset(s.car);
+  assert.equal(s.van.detached, false);
+  assert.equal(s.van.health, s.van.spec.hp);
+});
+
+test('a rival that runs into the back of your caravan hurts it and is stopped by it', async () => {
+  const { Derby, placeOnRoad } = await import('../src/derby.js');
+  const track = new Track(DRAG_DEF), car = new Vehicle(); car.opts.stability = 1;
+  const s0 = track.progressAt(0, 0.65, -900);
+  placeOnTrack(car, track, s0, 0, 0);
+  const van = new Caravan({ x: 0, y: -0.02, z: -2.55 }); van.track = track; car.tow = van; van.reset(car);
+  const d = new Derby(); d.enabled = true; d.damageEnabled = true; d.start(track, car, 0, 7, 'race'); d.time = 99;
+  const rival = new Vehicle(); placeOnRoad(rival, track, s0 - 22, 0, 25); d.add(rival, null);
+  for (let i = 0; i < 4 / DT; i++) {
+    car.step(DT, { throttle: 0, brake: 1, steer: 0, handbrake: false, boost: false }, track); car.events.length = 0;
+    d.step(DT, []); d.events.length = 0;
+    van.events.length = 0;
+  }
+  assert.ok(van.health < van.spec.hp * 0.5, `the caravan only lost ${van.spec.hp - van.health} hp`);
+  assert.ok(rival.speed < 20, 'the rival should have been slowed by the crash');
+  assert.ok([van.pos.x, van.yaw, rival.pos.x].every(Number.isFinite));
+});

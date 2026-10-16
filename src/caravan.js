@@ -7,12 +7,16 @@
 // Nothing here imports three.js: see caravanView.js for how it looks.
 
 import { V3, clamp } from './math.js';
+import { wallDamage } from './damage.js';
 
 const G = 9.81;
 
 export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
-  dAxle: 2.2,             // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
+  dAxle: 2.25,            // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
+  rear: -1.63, front: 2.0,  // m from the axle to the back and the front of the caravan's body (the drawbar sticks out past `front`)
+  hp: 220,                // how much battering the caravan takes before the hitch gives way and it is left behind
+  wallMul: 9, carMul: 3,  // a caravan's thin skin takes more from the same knock than a car does
   cog: 0.5,               // m: the weight sits this far ahead of the axle, as on a real caravan: it keeps the tail from wagging the car
   wheelR: 0.294,          // m (the model's wheels)
   width: 2.03, length: 4.4,
@@ -51,6 +55,10 @@ export class Caravan {
     this.track = null;
     this._ball = new V3(); this._q = null;
     this.jackknife = 0;       // how far the caravan is folded round, radians (for the HUD or a sound)
+    this.health = this.spec.hp; this.detached = false;   // knocked about; once it is wrecked the hitch gives way and it is left behind
+    this.events = [];         // knocks this step ({type:'van', kind, speed, x, y, z}, or {type:'van-lost'}), for sound and sparks
+    this.sway = 0; this.swayRate = 0;   // top-heavy rocking from side to side, radians (just for looks)
+    this._wq = null; this._I = 600;
     this.dist = 0;            // m: how far the ball is from the drawbar (should be about zero)
   }
 
@@ -61,7 +69,7 @@ export class Caravan {
   ballOn(car, out = this._ball) { return car.toWorld(tmpH.set(this.hitch.x, this.hitch.y, this.hitch.z), out); }
 
   /** Put the caravan straight behind `car`, moving with it, and hold it there for a moment while the car settles on its springs. */
-  reset(car) { this._place(car); this.settleT = 0.6; }
+  reset(car) { this._place(car); this.settleT = 0.6; this.health = this.spec.hp; this.detached = false; this.sway = this.swayRate = 0; this.events.length = 0; }
 
   _place(car) {
     const s = this.spec, b = this.ballOn(car, new V3());
@@ -105,10 +113,11 @@ export class Caravan {
     let jz = s.jointK * (ball.z - tz) + s.jointC * (cvz - tvz);
     const jl = Math.hypot(jx, jz);
     if (jl > s.jointMax) { jx *= s.jointMax / jl; jz *= s.jointMax / jl; }
+    if (this.detached) { jx = jz = 0; }                 // wrecked: the hitch has given way and it rolls on its own
     this.dist = Math.hypot(ball.x - tx, ball.z - tz);
 
     // the caravan: joint pull, tyres (sideways grip and rolling), swing damping
-    const m = s.mass, I = m * (s.length * s.length + s.width * s.width) / 12 * 0.6 + m * 0.1;
+    const m = s.mass, I = this._I = m * (s.length * s.length + s.width * s.width) / 12 * 0.6 + m * 0.1;
     const vLong = this.vel.x * fx + this.vel.z * fz, vLat = this.vel.x * lx + this.vel.z * lz;
     const grip = s.tyreMu * m * G * (this.onGround ? 1 : 0);
     const vLatAxle = vLat - this.yawRate * s.cog;       // the tyres feel the sideways speed at the axle, which swings as the caravan turns
@@ -124,6 +133,12 @@ export class Caravan {
     if (park > 0) { const k = Math.exp(-6 * park * dt); this.vel.x = car.vel.x + (this.vel.x - car.vel.x) * k; this.vel.z = car.vel.z + (this.vel.z - car.vel.z) * k; this.yawRate *= k; }
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     this.yaw += this.yawRate * dt;
+    // top-heavy: the body rocks out the way the sideways push does, and rolls back and forth on its springs
+    const aLat = ax * lx + az * lz;
+    const swayT = clamp(aLat / G * 0.26, -0.24, 0.24);
+    this.swayRate += (38 * (swayT - this.sway) - 3.2 * this.swayRate) * dt;
+    this.sway = clamp(this.sway + this.swayRate * dt, -0.32, 0.32);
+    this._walls();
     this.spin += (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
 
     // up and down: sit on the road, or fly
@@ -136,7 +151,7 @@ export class Caravan {
       if (this.pos.y <= gy) { this.pos.y = gy; this.vel.y = 0; this.onGround = true; }
     } else { this.pos.y += (gy - this.pos.y) * Math.min(1, dt * 30); this.vel.y = 0; this.onGround = true; }
     // the ball holds the nose: pitch so that the drawbar meets it
-    const want = clamp((ball.y - (this.pos.y + s.hitchH)) / s.dAxle, -0.6, 0.6);
+    const want = this.detached ? 0 : clamp((ball.y - (this.pos.y + s.hitchH)) / s.dAxle, -0.6, 0.6);
     this.pitch += (Math.asin(want) - this.pitch) * Math.min(1, dt * 14);
     // lean with the road
     if (this._q && this.onGround) this.roll += (clamp(-(this._q.nx * lx + this._q.nz * lz), -0.5, 0.5) - this.roll) * Math.min(1, dt * 10);
@@ -144,11 +159,68 @@ export class Caravan {
     let rel = this.yaw - Math.atan2(car.az.x, car.az.z); rel = Math.atan2(Math.sin(rel), Math.cos(rel));
     this.jackknife = rel;
     // a rival's caravan (auto): if it has been folded up for a while (reversing, a shunt), it is tucked straight again rather than left jammed
-    if (this.auto) { this.foldT = Math.abs(rel) > 0.9 ? (this.foldT || 0) + dt : 0; if (this.foldT > 1.2) { this.foldT = 0; this._place(car); this.settleT = 0.25; return; } }
+    if (this.auto && !this.detached) { this.foldT = Math.abs(rel) > 0.9 ? (this.foldT || 0) + dt : 0; if (this.foldT > 1.2) { this.foldT = 0; this._place(car); this.settleT = 0.25; return; } }
 
     // and the same pull the other way on the car, at the ball: force -J, torque r x (-J)
     car.F.x -= jx; car.F.z -= jz;
     car.T.x += cr.y * -jz; car.T.y += cr.z * -jx - cr.x * -jz; car.T.z += cr.y * jx;
+  }
+  // ------------------------------------------------------------ knocks
+  /** The caravan takes `hp` of damage. When it runs out the hitch gives way. */
+  hurt(hp) {
+    if (!(hp > 0) || this.health <= 0) return;
+    this.health = Math.max(0, this.health - hp);
+    if (this.health <= 0 && !this.detached) { this.detached = true; if (this.events.length < 12) this.events.push({ type: 'van-lost', x: this.pos.x, y: this.pos.y, z: this.pos.z }); }
+  }
+  /** A knock of `speed` m/s at a point (for sound, sparks and shaking the camera) and what it cost, in hit points. */
+  struck(kind, speed, x, y, z, hp) {
+    if (this.events.length < 12) this.events.push({ type: 'van', kind, speed, x, y, z });
+    this.hurt(hp);
+  }
+  /** Where the caravan's three round "bumpers" are (world x, z), and how big they are. They stand in for the box of the body. */
+  bumpers(out) {
+    const s = this.spec, sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw), ax = this.pos.x - sinY * s.cog, az = this.pos.z - cosY * s.cog;
+    const r = Math.max(0.5, s.width * 0.47), a = s.rear + r, b = s.front - r;
+    for (let k = 0; k < 3; k++) { const zr = a + (b - a) * k * 0.5; out[k * 2] = ax + sinY * zr; out[k * 2 + 1] = az + cosY * zr; }
+    return r;
+  }
+  /** Sideways-and-along speed of the caravan's body at a world point, written to `out` (x, z). */
+  velAt(px, pz, out) { const rx = px - this.pos.x, rz = pz - this.pos.z; out.x = this.vel.x + this.yawRate * rz; out.z = this.vel.z - this.yawRate * rx; return out; }
+  /** How easily a push along (nx, nz) at (px, pz) moves it: 1 / effective mass. */
+  invMassAt(nx, nz, px, pz) { const rx = px - this.pos.x, rz = pz - this.pos.z, arm = rz * nx - rx * nz; return 1 / this.spec.mass + arm * arm / this._I; }
+  /** An impulse j along (nx, nz) at (px, pz). */
+  impulse(nx, nz, j, px, pz) {
+    const rx = px - this.pos.x, rz = pz - this.pos.z;
+    this.vel.x += nx * j / this.spec.mass; this.vel.z += nz * j / this.spec.mass;
+    this.yawRate = clamp(this.yawRate + (rz * nx - rx * nz) * j / this._I, -5, 5);
+  }
+
+  /** Walls: six points round the body against the road's barriers, with impulses. */
+  _walls() {
+    const T = this.track;
+    if (!T) return;
+    if (!this._wq) this._wq = T.constructor.newQuery();
+    const s = this.spec, sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw), m = s.mass, I = this._I, y = this.pos.y + 0.4;
+    const ax = this.pos.x - sinY * s.cog, az = this.pos.z - cosY * s.cog, hw = s.width * 0.47;
+    let corrPen = 0, cnx = 0, cnz = 0, worst = 0, wx = 0, wz = 0;
+    for (let k = 0; k < 6; k++) {
+      const zr = k < 2 ? s.rear : k < 4 ? (s.rear + s.front) * 0.5 : s.front, side = k & 1 ? 1 : -1;
+      const px = ax + sinY * zr + cosY * hw * side, pz = az + cosY * zr - sinY * hw * side;
+      T.query(px, y, pz, this._wq, 0.8);
+      const q = this._wq, pen = T.wallPenetration(q, y);
+      if (pen <= 0) continue;
+      const sg = q.d < 0 ? -1 : 1, nx = -q.lx * sg, nz = -q.lz * sg;
+      const rx = px - this.pos.x, rz = pz - this.pos.z;
+      const vx = this.vel.x + this.yawRate * rz, vz = this.vel.z - this.yawRate * rx, vn = vx * nx + vz * nz;
+      if (pen > corrPen) { corrPen = pen; cnx = nx; cnz = nz; }
+      if (vn >= 0) continue;
+      const arm = rz * nx - rx * nz, e = 0.25 * clamp((-vn - 0.5) / 2.5, 0, 1);
+      const j = -(1 + e) * vn / (1 / m + arm * arm / I);
+      this.vel.x += nx * j / m; this.vel.z += nz * j / m; this.yawRate = clamp(this.yawRate + arm * j / I, -5, 5);
+      if (-vn > worst) { worst = -vn; wx = px; wz = pz; }
+    }
+    if (corrPen > 0) { const c = Math.min(corrPen, 0.5) * 0.7; this.pos.x += cnx * c; this.pos.z += cnz * c; }
+    if (worst > 1.5) this.struck('wall', worst, wx, y, wz, wallDamage(m, worst) * s.wallMul);
   }
 }
 
