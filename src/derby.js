@@ -263,7 +263,8 @@ export class Derby {
     const perRow = Math.max(1, DERBY.gridPerRow);
     const row = Math.floor(k / perRow), col = k % perRow;
     const cols = Math.min(perRow, of - row * perRow);
-    let s = ps + DERBY.gridLead + row * DERBY.gridRow;
+    const rowGap = this.towing ? DERBY.gridRow + 6 : DERBY.gridRow;       // everyone has a caravan trailing behind them: leave room for it
+    let s = ps + DERBY.gridLead + row * rowGap;
     s = ((s % L) + L) % L;
     const fr = T.frameAt(s);
     const lane = Math.max(2, fr.hw - 3);

@@ -1156,7 +1156,8 @@ function mpPlaceOnGrid() {
   const perRow = 2, row = Math.floor(myIndex / perRow), col = myIndex % perRow;
   const cols = Math.min(perRow, roster.length - row * perRow);
   const L = track.length;
-  let s = track.startS(12) + row * 8; s = ((s % L) + L) % L;
+  const rowGap = roster.some((p) => p.caravan) ? 14 : 8;            // caravans trail behind: leave room for them
+  let s = track.startS(12) + row * rowGap; s = ((s % L) + L) % L;
   const lane = Math.max(2, track.frameAt(s).hw - 3);
   const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : 0;
   placeCar(s, off, 0);
