@@ -612,3 +612,7 @@ html.chat-quick-only .chat-row { display: none; }
 
 /* the big coloured buttons at the top do these jobs; the originals stay in the page (they are what the top ones click) but are not shown */
 #menu #btn-new, #menu .menu-multiplayer-actions, #menu #btn-multiplayer { display: none !important; }
+
+#mp-host-opts > span { display: block; margin-bottom: 4px; }
+.mp-host-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-family: var(--cond); font-weight: 600; font-size: 16px; color: var(--peach); }
+.mp-host-row select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); padding: 4px 8px; font-family: var(--cond); font-size: 16px; max-width: 70vw; }

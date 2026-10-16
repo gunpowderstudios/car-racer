@@ -1222,6 +1222,14 @@ const mpHandlers = {
 function bindMultiplayer() {
   $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Random circuit' : makeTemplate(k).name}</option>`).join('');
   $('mp-track').value = 'random';
+  // the same track and laps choice up on the first multiplayer screen, so the host sets the game up before creating the room
+  $('mp-home-track').innerHTML = $('mp-track').innerHTML;
+  const savedTrack = store.get('cr.mptrack', 'random');
+  $('mp-home-track').value = TEMPLATE_KEYS.includes(savedTrack) ? savedTrack : 'random';
+  $('mp-home-laps').value = String(mpRaceLaps());
+  const homeToLobby = () => { $('mp-track').value = $('mp-home-track').value; store.set('cr.mptrack', $('mp-home-track').value); window.__raceLaps?.set?.(+$('mp-home-laps').value); $('mp-laps').value = $('mp-home-laps').value; mpSendOpts(); };
+  $('mp-home-track').onchange = homeToLobby; $('mp-home-laps').onchange = homeToLobby;
+  homeToLobby();
   $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); updateResume(); };
   $('mp-back').onclick = () => { clearSavedRoom(); showMenu(); };
   $('mp-create').onclick = async () => {
