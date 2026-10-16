@@ -125,14 +125,38 @@ function arenaProps(def) {
   return props;
 }
 
-/** Bluebell Woods: a windy dirt rally stage. The radius wanders in and out with two overlapping waves, with gentle rises and dips. */
+/** Bluebell Woods: a windy dirt rally stage. The radius wanders in and out with two overlapping waves, with gentle rises and dips, and three jumps. */
+const BB = { jumps: [5, 13, 21], gap: 8, kick: [3, 5, 7], lip: 0.8 };
 function bluebell() {
   const n = 26, out = [];
   for (let k = 0; k < n; k++) {
     const t = (k / n) * Math.PI * 2, r = 240 + 52 * Math.sin(3 * t + 0.4) + 24 * Math.sin(5 * t + 1.3);
-    out.push({ x: r * Math.cos(t) * 1.25, y: 0.65 + 2.2 * (1 + Math.sin(2 * t + 0.8)), z: r * Math.sin(t) });
+    const h = { x: r * Math.cos(t) * 1.25, y: 0.65 + 1.2 * (1 + Math.sin(2 * t + 0.8)), z: r * Math.sin(t) };
+    if (BB.jumps.includes(k)) Object.assign(h, { y: Math.max(h.y, 3), gap: BB.gap, kick: BB.kick[k % 3], lip: BB.lip });
+    out.push(h);
   }
   return out;
+}
+
+/** Humps and puddles scattered along a dirt stage at fixed random spots (never near the start or a jump, nor on top of each other). */
+function rallyScatter(def) {
+  const track = new Track(def), rnd = mulberry(20261016), bumps = [], puddles = [], taken = [];
+  const jumpS = track.handleS.filter((_, hi) => def.handles[hi].gap);
+  const free = (s, clear = 55) => {
+    const dist = (a, b) => { let d = Math.abs(a - b); return Math.min(d, track.length - d); };
+    const straight = [-12, 0, 12].every((o) => Math.abs(track.curv[Math.round((((s + o) % track.length) + track.length) % track.length / track.ds) % track.n]) < 0.005);     // only where the road is fairly straight
+    return straight && dist(s, 0) > 70 && jumpS.every((j) => dist(s, j) > clear) && taken.every((t) => dist(s, t) > 32);
+  };
+  const place = (count, make, clear) => {
+    for (let guard = 0; guard < 400 && count > 0; guard++) {
+      const s = rnd() * track.length; if (!free(s, clear)) continue;
+      const f = track.frameAt(s), off = (rnd() - 0.5) * f.hw * 0.9;
+      make(f.x + f.lx * off, f.z + f.lz * off, f); taken.push(s); count--;
+    }
+  };
+  place(10, (x, z) => bumps.push({ x, z, r: 6 + rnd() * 3, h: 0.2 + rnd() * 0.15 }));
+  place(9, (x, z) => puddles.push({ x, z, r: 3.5 + rnd() * 2.2 }), 120);       // (well clear of where a jump lands)
+  return { bumps, puddles };
 }
 
 const RAW = {
@@ -176,7 +200,8 @@ const RAW = {
     name: 'Bluebell Woods', width: 20,
     handles: bluebell(),
     autoBank: false,
-    dirt: true,
+    dirt: true, berm: true, walls: false,      // loose surface, dirt banks instead of barriers
+    props: [],
   },
   overpass: {
     name: 'Overpass', width: 22,
@@ -258,11 +283,12 @@ export function makeTemplate(key) {
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];
   if (!raw) throw new Error('Unknown template ' + key);
-  let def = normalizeTrack({ ...raw, dirt: raw.dirt, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
+  let def = normalizeTrack({ ...raw, mode: raw.arena ? 'lastStanding' : undefined, handles: raw.handles.map((h) => ({ ...h })) });
   if (raw.autoBank) {
     const banks = suggestBanks(new Track(def), 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
+  if (raw.dirt) { const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', bumps: OVAL_BUMPS }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }

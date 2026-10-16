@@ -393,6 +393,7 @@ export class Vehicle {
     w.contactPoint.copy(P);
     w.normal.set(w.q.nx, w.q.ny, w.q.nz);
     w.surface = w.q.surface;
+    w.wet = track.puddles ? track.puddleAt(P.x, P.z) : 0;          // standing in a puddle?
 
     // spring + damper along the ground normal
     tmpC.copy(P).sub(this.pos);
@@ -501,7 +502,7 @@ export class Vehicle {
     const rL = r.clone(), fL = f.clone(), lL = l.clone();     // keep copies; tmp vectors get reused below
     const mEffLong = 1 / this._kAt(rL, fL), mEffLat = 1 / this._kAt(rL, lL);
 
-    const surfMu = w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6;
+    const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
     const muBase = w.front ? ty.muFront : ty.muRear;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
@@ -537,7 +538,7 @@ export class Vehicle {
       const sgn = vlong >= 0 ? 1 : -1;
       const mag = Math.abs(vlong);
       if (brakeF > 0) Fx -= sgn * Math.min(brakeF, capL * mag);
-      const rr = ty.rolling * (w.surface === SURF.ROAD ? 1 : 8) * Fz;
+      const rr = ty.rolling * (w.surface === SURF.ROAD ? 1 + 3 * (w.wet || 0) : 8) * Fz;
       Fx -= sgn * Math.min(rr, capL * mag);
       Fx = clamp(Fx, -Fmax, Fmax);
 

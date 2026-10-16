@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
+import { Track } from './track.js';
 import { buildArena } from './arenaView.js';
 
 const SKY_TOP = 0x2a2560, SKY_MID = 0xb04a72, SKY_LOW = 0xf6a05a, FOG = 0xdf8f69;
@@ -114,6 +115,18 @@ export class Stage {
     mesh(geo.slab, vcMat(0.95), { cast: true });
     mesh(geo.wall, vcMat(0.75), { cast: true });
 
+    // puddles on a rally stage: flat, glossy pools lying on the road (turned to follow its slope)
+    if (dirty && track.puddles) {
+      const wm = new THREE.MeshStandardMaterial({ color: 0x2f5c78, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.82, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+      const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
+      for (const p of track.puddles) {
+        track.query(p.x, 1e4, p.z, q, 1);
+        const m = new THREE.Mesh(new THREE.CircleGeometry(p.r, 28), wm);
+        nrm.set(q.nx, q.ny, q.nz); m.quaternion.setFromUnitVectors(zAxis, nrm);
+        m.position.set(p.x, q.y + 0.04, p.z); m.receiveShadow = false; m.frustumCulled = false; g.add(m);
+      }
+    }
+
     // pillars
     if (geo.pillars.length) {
       const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x6b6870, roughness: 0.95 }), geo.pillars.length);
@@ -130,7 +143,7 @@ export class Stage {
     }
 
     // lamp posts
-    if (geo.lamps.length) {
+    if (!dirty && geo.lamps.length) {
       const pole = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 7, 0.16), new THREE.MeshStandardMaterial({ color: 0x2e2c38, roughness: 0.6 }), geo.lamps.length);
       const head = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.16, 0.5), new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffa640, emissiveIntensity: 2.2 }), geo.lamps.length);
       const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);

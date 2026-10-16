@@ -131,7 +131,7 @@ export class Driver {
     const usable = Math.max(2, f.hw - 3.6);
     let ax, az, vT;
     const k = curvAhead(track, s);
-    const tow = this.towing ? 0.78 : 1;        // with a caravan on the back: slower, and gentle in the bends so it does not fold up
+    const tow = (this.towing ? 0.78 : 1) * (track.def.dirt ? 0.88 : 1);     // (loose dirt: less grip, so gentler in the bends too)        // with a caravan on the back: slower, and gentle in the bends so it does not fold up
     const aLat = (hunting ? AI.aLatHunt : AI.aLatCruise) * tow * tow;
     vT = Math.min((hunting ? AI.huntMax * (1 + 0.3 * d) : this.cruise * pace) * tow, Math.sqrt(aLat * (1 + 0.5 * d) / Math.max(k, 1e-4)));
 

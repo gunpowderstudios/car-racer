@@ -3,7 +3,7 @@
 // plane, a verge that falls away at EMBANKMENT m/m, and walls with their face WALL_GAP
 // outside the road edge.
 
-import { SURF, WALL_GAP, WALL_HEIGHT, WALL_T, EMBANKMENT, Track, takeoffRamp } from './track.js';
+import { SURF, WALL_GAP, WALL_HEIGHT, WALL_T, EMBANKMENT, Track, takeoffRamp, bumpAt, bermProfile, GROUND_Y } from './track.js';
 
 const KERB_W = 0.6;
 const SLAB = 0.7;                 // visible thickness of the road slab (matters on bridges)
@@ -66,11 +66,25 @@ export function buildTrackGeometry(track) {
   };
   const sv = (i) => (i === n ? L : track.s[i]) / vgrid;
 
-  // ---- road surface (u across, v along)
-  strip(road, (i) => {
-    const l = edge(i, 1), r = edge(i, -1), nn = [track.nx[i], track.ny[i], track.nz[i]];
-    return [{ p: l, n: nn, u: 0 }, { p: r, n: nn, u: 1 }];
-  }, 2, sv);
+  // ---- road surface (u across, v along). A road with humps in it gets several columns across, so the humps can be seen.
+  if (track.bumps) {
+    const COLS = 9, tmp = { h: 0, gx: 0, gz: 0 };
+    strip(road, (i) => {
+      const l = edge(i, 1), r = edge(i, -1), nn = [track.nx[i], track.ny[i], track.nz[i]], cols = [];
+      for (let c = 0; c < COLS; c++) {
+        const t = c / (COLS - 1), x = l[0] + (r[0] - l[0]) * t, y = l[1] + (r[1] - l[1]) * t, z = l[2] + (r[2] - l[2]) * t;
+        bumpAt(track.bumps, x, z, tmp);
+        const nx = nn[0] - tmp.gx * nn[1], nz = nn[2] - tmp.gz * nn[1], m = Math.hypot(nx, nn[1], nz) || 1;
+        cols.push({ p: [x, y + tmp.h, z], n: [nx / m, nn[1] / m, nz / m], u: t });
+      }
+      return cols;
+    }, COLS, sv);
+  } else {
+    strip(road, (i) => {
+      const l = edge(i, 1), r = edge(i, -1), nn = [track.nx[i], track.ny[i], track.nz[i]];
+      return [{ p: l, n: nn, u: 0 }, { p: r, n: nn, u: 1 }];
+    }, 2, sv);
+  }
 
   // Ramps and landings beside a jump are built as solid earthworks: their sides drop to the ground.
   const solid = new Uint8Array(n), LANDING_SPAN = 10;
@@ -120,8 +134,27 @@ export function buildTrackGeometry(track) {
     }
   }
 
+  // ---- dirt banks (rally stages): a smooth rise from the road edge, a crest, then down to the ground
+  if (track.berm) {
+    const OFFS = [0, 0.5, 1.2, 2.0, 2.7, 3.2, 4.4], tb = { h: 0, g: 0 };
+    for (const sg of [1, -1]) {
+      strip(bank, (i) => {
+        const e = edge(i, sg), cols = [], shade = 0.9 + 0.1 * Math.sin(i * 0.41 + sg);
+        const col = (k) => { const f = k < 0.5 ? 0 : Math.min(1, (k - 0.5) / 4); return [(0.2 - 0.1 * f) * shade, (0.115 - 0.02 * f) * shade, (0.06 - 0.02 * f) * shade]; };
+        for (const k of OFFS) {
+          bermProfile(k, tb);
+          const nrm = [-track.lx[i] * sg * tb.g, 1, -track.lz[i] * sg * tb.g];
+          cols.push({ p: [e[0] + track.lx[i] * sg * k, Math.max(GROUND_Y, e[1] + tb.h), e[2] + track.lz[i] * sg * k], n: nrm, c: col(k) });
+        }
+        const kEnd = 4.4 + Math.max(0, (e[1] + 1.5 - GROUND_Y)) / 1.0 + 0.2;       // the far foot: where the falling bank meets the ground
+        cols.push({ p: [e[0] + track.lx[i] * sg * kEnd, GROUND_Y, e[2] + track.lz[i] * sg * kEnd], n: [track.lx[i] * sg, 1, track.lz[i] * sg], c: col(5) });
+        return cols;
+      }, OFFS.length + 1, sv);
+    }
+  }
+
   // ---- kerbs and embankments (both sides), painted in alternating blocks
-  for (const sg of [1, -1]) {
+  for (const sg of (track.berm ? [] : [1, -1])) {
     const blockCol = (i, a, b) => (Math.floor(i / 5) % 2 ? a : b);
     strip(kerb, (i) => {
       const p0 = out(i, sg, 0), p1 = out(i, sg, KERB_W);

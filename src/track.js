@@ -27,6 +27,7 @@ const CELL = 8;
 const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its ends
 const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
 const QUERY_MARGIN = 4.5;
+const BERM_MARGIN = 14;             // a dirt-banked stage's embankments reach this far past the road edge
 const TAKEOFF_LEN = 12, TAKEOFF_RISE = 0.5;   // ramp up to a gap (the default, flat-lipped ramp)
 export const LIP = { minH: 0.3, maxH: 3, maxDeg: 30, minLen: 5, maxLen: 30 };
 const LANDING_LEN = 10, LANDING_DROP = 0.4;   // far side sits a little lower           // how far outside the road edge a query still "sees" it
@@ -102,6 +103,33 @@ export function bumpAt(bumps, x, z, out) {
 }
 const _bump = { h: 0, gx: 0, gz: 0 };
 
+// ---------------------------------------------------------------- dirt banks and puddles (rally stages)
+
+/** A dirt bank along each side of a rally stage: rises BERM_H over BERM_RISE m from the road edge (smoothly), a flat crest, then falls away.
+ *  `off` is the distance past the road edge; the height above the edge goes in `out.h` and its slope (up = positive) in `out.g`. */
+export const BERM_H = 1.5, BERM_RISE = 3.2, BERM_CREST = 1.2;
+export function bermProfile(off, out) {
+  if (off <= 0) { out.h = 0; out.g = 0; return out; }
+  if (off < BERM_RISE) { const u = off / BERM_RISE; out.h = BERM_H * u * u * (3 - 2 * u); out.g = BERM_H * 6 * u * (1 - u) / BERM_RISE; return out; }
+  if (off < BERM_RISE + BERM_CREST) { out.h = BERM_H; out.g = 0; return out; }
+  out.h = BERM_H - (off - BERM_RISE - BERM_CREST) * 1.0; out.g = -1.0; return out;
+}
+const _berm = { h: 0, g: 0 };
+
+/** Puddles on a rally stage: round pools of water on the road, { x, z, r (radius, m) }. */
+export const MAX_PUDDLES = 24;
+export function normalizePuddles(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_PUDDLES || !b) continue;
+    const x = Number(b.x), z = Number(b.z), r = Number(b.r);
+    if (![x, z, r].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
+    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 1.5, 9) });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- definition
 
 /** Fill defaults, migrate legacy (v4, v5) editor data, and clamp values. */
@@ -128,7 +156,12 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
-  if (src.dirt) out.dirt = true;                 // a loose-surface rally stage: dirt road, no kerbs, less grip
+  if (src.dirt) {                                // a loose-surface rally stage: dirt road, no kerbs, less grip
+    out.dirt = true;
+    if (src.berm) out.berm = true;               // dirt banks along both sides instead of walls
+    const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;       // humps in the road
+    const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;
+  }
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
@@ -188,6 +221,8 @@ export class Track {
     this.apron = this.def.walls ? APRON : 0;
     this.overshoot = this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;
     this.bumps = this.def.bumps || null;
+    this.berm = !!this.def.berm; this.margin = this.berm ? BERM_MARGIN : QUERY_MARGIN;
+    this.puddles = this.def.puddles || null;
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
   }
@@ -275,7 +310,7 @@ export class Track {
     const n = this.n, cells = new Map();
     const key = (cx, cz) => (cx + 4096) * 8192 + (cz + 4096);
     for (let i = 0; i < n; i++) {
-      const R = this.hw[i] + QUERY_MARGIN + 1.5;
+      const R = this.hw[i] + this.margin + 1.5;
       const x0 = Math.floor((this.px[i] - R) / CELL), x1 = Math.floor((this.px[i] + R) / CELL);
       const z0 = Math.floor((this.pz[i] - R) / CELL), z1 = Math.floor((this.pz[i] + R) / CELL);
       for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) {
@@ -350,7 +385,7 @@ export class Track {
     const d = (x - cx) * Lx + (z - cz) * Lz;
     const hw = HW[i] + (HW[j] - HW[i]) * t;
     const ad = Math.abs(d);
-    if (ad > hw + QUERY_MARGIN) return null;
+    if (ad > hw + this.margin) return null;
     const Cy = py[i] + (py[j] - py[i]) * t;
     let Nx = nx[i] + (nx[j] - nx[i]) * t, Ny = ny[i] + (ny[j] - ny[i]) * t, Nz = nz[i] + (nz[j] - nz[i]) * t;
     let yc, yEdge;
@@ -360,7 +395,7 @@ export class Track {
     } else {
       const sg = d < 0 ? -1 : 1;
       yEdge = Cy - (Nx * Lx * hw * sg + Nz * Lz * hw * sg) / Ny;
-      yc = Math.max(GROUND_Y, yEdge - Math.max(0, ad - hw - this.apron) * EMBANKMENT);
+      yc = this.berm ? Math.max(GROUND_Y, yEdge + bermProfile(ad - hw, _berm).h) : Math.max(GROUND_Y, yEdge - Math.max(0, ad - hw - this.apron) * EMBANKMENT);
     }
     if (out) {
       out.d = d; out.hw = hw; out.lx = Lx; out.lz = Lz; out.edgeY = yEdge; out.y = yc;
@@ -368,7 +403,10 @@ export class Track {
         out.surface = SURF.ROAD;
       } else {
         out.surface = SURF.VERGE;
-        if (ad - hw <= this.apron) {          // flat kerb in front of / under the wall
+        if (this.berm) {                      // dirt bank: the normal leans with the bank's slope
+          const sg = d < 0 ? -1 : 1;
+          if (yc > GROUND_Y + 1e-6) { bermProfile(ad - hw, _berm); Nx = -Lx * sg * _berm.g; Ny = 1; Nz = -Lz * sg * _berm.g; } else { Nx = 0; Ny = 1; Nz = 0; }
+        } else if (ad - hw <= this.apron) {   // flat kerb in front of / under the wall
           Nx = 0; Ny = 1; Nz = 0;
         } else if (yc > GROUND_Y + 1e-6) {    // sloping embankment: normal tilts away from the road
           const sg = d < 0 ? -1 : 1;
@@ -390,6 +428,17 @@ export class Track {
     this.query(x, yHint, z, out, 0.9);
     if (top && out.idx < 0) this.query(x, 1e4, z, out, 1);
     return out;
+  }
+
+  /** How deep the water is at (x, z): 0 = dry, up to 1 in the middle of a puddle (eased towards the edge). */
+  puddleAt(x, z) {
+    if (!this.puddles) return 0;
+    let w = 0;
+    for (const p of this.puddles) {
+      const d = Math.hypot(x - p.x, z - p.z);
+      if (d < p.r) w = Math.max(w, Math.min(1, (1 - d / p.r) * 2.2));
+    }
+    return w;
   }
 
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */

@@ -10,6 +10,7 @@ for (const key of TEMPLATE_KEYS) {
     const g = buildTrackGeometry(track);
     for (const part of ['road', 'kerb', 'bank', 'slab', 'wall']) {
       const a = g[part];
+      if (track.berm && (part === 'kerb' || part === 'wall')) continue;       // a dirt-banked rally stage has dirt banks instead of kerbs and walls
       assert.ok(a.position.length > 0, part + ' empty');
       assert.equal(a.position.length / 3, a.normal.length / 3);
       assert.equal(a.position.length / 3, a.uv.length / 2);
