@@ -75,11 +75,10 @@ test('a caravan goes back behind the car when the car is put back on the road', 
   assert.ok(Math.abs(s.van.jackknife) < 0.01);
 });
 
-test('the Tow a caravan option is on the home screen, saved, for the 70s Saloon only, and not used in multiplayer', async () => {
+test('the Tow a caravan option is on the home screen, saved, for the saloon cars (70s Saloon, Volvo, Saab, BMW), and not used in multiplayer', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(html, /id="opt-caravan" type="checkbox"/);
-  assert.match(main, /selectedVehicle\(\)\.id === 'escort' && !net/);
-  assert.match(main, /co\.hidden = selectedVehicle\(\)\.id !== 'escort'/);
-  assert.deepEqual(Object.keys(HITCH), ['escort']);
+  assert.match(main, /TOW_CARS\.includes\(selectedVehicle\(\)\.id\) && !net/);
+  assert.deepEqual(Object.keys(HITCH).sort(), ['bmw', 'escort', 'saab', 'volvo']);
 });

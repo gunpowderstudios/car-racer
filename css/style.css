@@ -103,6 +103,10 @@ body:not(.mode-menu) #menu { display: none; }
 .vcard:hover { background: rgba(255,255,255,.12); border-color: rgba(246,217,176,.6); transform: translateY(-1px); }
 .vcard:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .vcard[aria-checked=true] { background: rgba(255,176,32,.16); border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); color: var(--amber); cursor: default; transform: none; }
+.vcard.caravan-card { cursor: pointer; justify-content: center; min-height: 64px; }
+.vcard.caravan-card[aria-checked=true] { cursor: pointer; }
+.vcard.caravan-card.disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
+.vcard.caravan-card.disabled:hover { background: rgba(255,255,255,.06); border-color: rgba(246,217,176,.3); transform: none; }
 .vgallery.small { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; margin-top: 6px; }
 .vgallery.small .vcard { font-size: 12px; }
 

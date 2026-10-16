@@ -5,7 +5,7 @@ import { VEHICLES, selectedVehicle, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
 import { tidyGltfMaterial } from './carVisual.js';
 import { CaravanView } from './caravanView.js';
-import { HITCH } from './caravan.js';
+import { HITCH, TOW_CARS, CARAVAN_INFO } from './caravan.js';
 
 const COPY = {
   car: 'Big, loud and happiest going sideways.',
@@ -30,7 +30,8 @@ function installPreview({
   const chosen = selectedVehicle();
   const vehicle = VEHICLES.find((v) => v.id === chosen.id) || chosen;
   if (nameEl) nameEl.textContent = vehicle.name;
-  if (blurbEl) blurbEl.textContent = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
+  const baseBlurb = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
+  if (blurbEl) blurbEl.textContent = baseBlurb;
 
   try {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -56,22 +57,24 @@ function installPreview({
 
     let model = null, rig = null, van = null;
     const caravanOn = () => {
+      if (!blurbEl) return false;      // the multiplayer pickers never tow
       const cb = document.getElementById('opt-caravan');
       if (cb) return cb.checked;
       try { return !!JSON.parse(localStorage.getItem('cr.opts') || '{}').caravan; } catch { return false; }
     };
-    // Escort only: show the caravan hitched on behind the car when "Tow a caravan" is ticked
+    // Cars that can tow: show the caravan hitched on behind the car when "Tow a caravan" is ticked
     const showCaravan = async () => {
       if (!rig || !van) return;
       const want = caravanOn();
       if (want && !van.loaded) await van.load();
       if (!van.loaded) return;
-      van.root.position.set(0, van.dims.wheelR, HITCH.escort.z - van.dims.dAxle);
+      van.root.position.set(0, van.dims.wheelR, (HITCH[vehicle.id] || HITCH.escort).z - van.dims.dAxle);
       van.root.rotation.set(0, 0, 0);
       van.root.visible = true;
+      if (blurbEl) blurbEl.textContent = want ? `Towing ${CARAVAN_INFO.name}: ${CARAVAN_INFO.blurb}` : baseBlurb;
       if (want) rig.add(van.root); else rig.remove(van.root);   // out of the rig when unticked, so the framing ignores it
       rig.position.set(0, 0, 0);
-      frameModel(rig);
+      frameModel(rig, want ? 1.12 : 1);
       holder.rotation.set(pitch, yaw, 0);
       wrap.classList.add('ready'); loading.textContent = '';
     };
@@ -83,7 +86,9 @@ function installPreview({
     let resumeAt = 0;
     let last = performance.now();
 
-    const frameModel = (next) => {
+    const frameModel = (next, room = 1) => {
+      holder.rotation.set(0, 0, 0);          // measure the model un-turned, so the framing is the same whichever way it faces
+      holder.updateMatrixWorld(true);
       next.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(next);
       const centre = box.getCenter(new THREE.Vector3());
@@ -94,7 +99,7 @@ function installPreview({
 
       const framed = new THREE.Box3().setFromObject(next);
       const framedSize = framed.getSize(new THREE.Vector3());
-      const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.66;
+      const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.66 * room;
       camera.position.set(radius * 1.48, radius * 0.64, radius * 1.92);
       camera.lookAt(0, framedSize.y * 0.015, 0);
       camera.near = Math.max(0.01, radius / 50);
@@ -106,7 +111,7 @@ function installPreview({
     loader.loadAsync(assetUrl(modelUrl(vehicle.url))).then((gltf) => {
       model = gltf.scene;
       model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });
-      if (vehicle.id === 'escort') {
+      if (TOW_CARS.includes(vehicle.id)) {
         // Lay the car out the way the game does (length-fitted, centred, facing +z) so a caravan can be hitched on behind it
         model.updateMatrixWorld(true);
         let b = new THREE.Box3().setFromObject(model);

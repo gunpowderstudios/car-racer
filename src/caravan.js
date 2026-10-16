@@ -29,7 +29,14 @@ export const CARAVAN = {
 /** Where the tow ball sits on each car, in the car's own space (x left, y up, z forward, metres from its centre of mass). */
 export const HITCH = {
   escort: { x: 0, y: -0.02, z: -2.12 },
+  bmw: { x: 0, y: -0.02, z: -2.27 },
+  volvo: { x: 0, y: -0.02, z: -2.5 },
+  saab: { x: 0, y: -0.02, z: -2.43 },
 };
+
+/** The cars that can tow the caravan, and the caravan's name and blurb for the menu. */
+export const TOW_CARS = Object.keys(HITCH);
+export const CARAVAN_INFO = { name: 'The Hastings 2000', blurb: "It's holiday time folks! and time to block up the roads!" };
 
 export class Caravan {
   constructor(hitch, spec = {}) {

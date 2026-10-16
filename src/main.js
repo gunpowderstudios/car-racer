@@ -28,7 +28,7 @@ import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
 import { selectedVehicle, multiplayerVehicleSpec } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
-import { Caravan, HITCH } from './caravan.js';
+import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { CaravanView } from './caravanView.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,9 +66,9 @@ const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
 const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
-const caravan = new Caravan(HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
+const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
 /** Should there be a caravan on the car right now? Only if asked for, on the 70s Saloon, and not in multiplayer. */
-const caravanWanted = () => !!opts.caravan && selectedVehicle().id === 'escort' && !net && !caravanView.failed;
+const caravanWanted = () => !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !net && !caravanView.failed;
 function syncCaravan() {
   if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
   caravan.track = track; car.tow = caravan; caravan.reset(car);
@@ -767,7 +767,7 @@ function renderMenu() {
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   { const co = $('caravan-opt'), cb = $('opt-caravan');          // Tow a caravan: the 70s Saloon only, for now
-    co.hidden = selectedVehicle().id !== 'escort'; cb.checked = !!opts.caravan && !co.hidden;
+    co.hidden = true; cb.checked = !!opts.caravan && TOW_CARS.includes(selectedVehicle().id);   // the checkbox just holds the state; the Hastings 2000 card in the vehicle gallery is the control
     cb.onchange = () => { opts.caravan = cb.checked; store.set('cr.opts', opts); syncCaravan(); toast(cb.checked ? 'Caravan hitched up!' : 'Caravan unhitched.'); };
   }
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });

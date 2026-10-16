@@ -3,6 +3,7 @@ import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
 import { CAR } from './vehicle.js';
 import { SPECS } from './damage.js';
 import { Multiplayer } from './multiplayer.js';
+import { TOW_CARS, CARAVAN_INFO } from './caravan.js';
 import { assetUrl } from './assetVersion.js';
 import { vehiclePhysicsProfile } from './vehiclePhysicsProfiles.js';
 import { TIER_NAMES, detectTier, probeDevice } from './quality.js';
@@ -293,10 +294,52 @@ function addVehicleSelector() {
   const heading = document.createElement('div');
   heading.className = 'vgallery-title';
   heading.textContent = 'Choose your vehicle';
-  slot.append(heading, buildVehicleGallery((id) => {
+  const gallery = buildVehicleGallery((id) => {
     try { localStorage.setItem(KEY, id); } catch { /* storage unavailable */ }
     location.reload();
-  }));
+  });
+  slot.append(heading, gallery);
+  addCaravanCard(gallery);
+}
+
+/**
+ * The caravan sits in the gallery as a card of its own. It is greyed out until a car that can tow it (see TOW_CARS) is picked;
+ * after that, clicking it hitches / unhitches it. The state lives in the hidden #opt-caravan checkbox that main.js saves.
+ */
+function addCaravanCard(gallery) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'vcard caravan-card';
+  card.dataset.id = 'caravan';
+  card.setAttribute('role', 'checkbox');
+  const img = new Image();
+  img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
+  img.addEventListener('error', () => img.remove());
+  img.src = assetUrl('cars/thumbs/caravan.webp');
+  const name = document.createElement('span');
+  name.textContent = CARAVAN_INFO.name;
+  card.append(img, name);
+  const towable = TOW_CARS.includes(selectedVehicle().id);
+  const checkbox = () => document.getElementById('opt-caravan');
+  const sync = () => {
+    const on = towable && !!checkbox()?.checked;
+    card.classList.toggle('disabled', !towable);
+    card.classList.toggle('on', on);
+    card.setAttribute('aria-checked', String(on));
+    card.setAttribute('aria-disabled', String(!towable));
+    card.title = towable ? `${CARAVAN_INFO.name} - ${CARAVAN_INFO.blurb}` : `${CARAVAN_INFO.name} - pick the 70s Saloon, Swedish Massage, WASAABI or German Beema to tow it`;
+  };
+  card.addEventListener('click', () => {
+    const cb = checkbox();
+    if (!towable || !cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+    sync();
+  });
+  window.addEventListener('change', (e) => { if (e.target?.id === 'opt-caravan') sync(); });
+  addEventListener('load', sync);
+  sync();
+  gallery.appendChild(card);
 }
 
 // Multiplayer gets its own obvious vehicle selector on BOTH the Create and Join screens.
