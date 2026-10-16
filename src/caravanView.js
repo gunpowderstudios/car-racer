@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { assetUrl } from './assetVersion.js';
+import { recolour } from './carVisual.js';
 
 export const CARAVAN_MODEL = { url: 'cars/caravan-SHRINK.glb', length: 4.4 };
 
@@ -23,6 +24,22 @@ export class CaravanView {
     this.dims = null;                       // { dAxle, wheelR, length, width } once loaded
     this._prev = null; this._cur = null;
     this._e = new THREE.Euler(0, 0, 0, 'YXZ');
+  }
+
+  /** A copy for a rival's caravan, painted in the rival's colour (`look` is one of RIVAL_LOOKS; the model's own paint is a mint green, not the cars' orange). Needs this one loaded. */
+  cloneFor(scene, look) {
+    const v = new CaravanView(scene);
+    v.root.remove(v.holder); v.holder = this.holder.clone(true); v.root.add(v.holder);
+    const l = { ...look, rot: look.rot - 135 }, tint = new THREE.Color(look.tint);
+    v.holder.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = o.material.clone();
+      if (o.material.map) { const t = recolour(o.material.map, l); if (t) o.material.map = t; }
+      o.material.color.setHex(0xffffff).lerp(tint, 0.55);      // the model's paint is a pale pastel, so give it some of the colour on top of the turned hue
+    });
+    v.wheels = []; v.holder.traverse((o) => { if (o.userData?.pivot) v.wheels.push(o); });
+    v.loaded = true; v.dims = this.dims; v._wantVisible = true; v.root.visible = true;
+    return v;
   }
 
   get visible() { return this.root.visible; }
@@ -102,7 +119,7 @@ export class CaravanView {
     this.wheels = [];
     wheelNodes.forEach((w) => {
       const c = new THREE.Box3().setFromObject(w).getCenter(new THREE.Vector3());
-      const pivot = new THREE.Group(); this.holder.add(pivot); pivot.position.copy(this.holder.worldToLocal(c.clone()));
+      const pivot = new THREE.Group(); pivot.userData.pivot = true; this.holder.add(pivot); pivot.position.copy(this.holder.worldToLocal(c.clone()));
       pivot.updateMatrixWorld(true); pivot.attach(w); this.wheels.push(pivot);
     });
     const fb = new THREE.Box3().setFromObject(this.holder), fs = fb.getSize(new THREE.Vector3());

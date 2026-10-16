@@ -101,7 +101,7 @@ function installPreview({
 
       const framed = new THREE.Box3().setFromObject(next);
       const framedSize = framed.getSize(new THREE.Vector3());
-      const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.66 * room;
+      const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.55 * room;   // (was 0.66: the model fills more of its window)
       camera.position.set(radius * 1.48, radius * 0.64, radius * 1.92);
       camera.lookAt(0, framedSize.y * 0.015, 0);
       camera.near = Math.max(0.01, radius / 50);

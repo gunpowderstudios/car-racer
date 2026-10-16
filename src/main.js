@@ -117,6 +117,7 @@ const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
 const derby = new Derby();
 const views = new Map();            // rival id -> CarVisual
+const towViews = new Map();         // rivals' caravan pictures, by rival id
 const viewPool = [];                // visuals of rivals that have gone, ready to be reused
 const derbyBest = () => store.get('cr.derby', {});
 let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
@@ -398,6 +399,7 @@ function stepPhysics(dt) {
     if (car.tow) caravanView.capture(car.tow);
     if (net) mpCollideLocal();                                  // soft, local-only push out of remote cars
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
+    if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
     syncPose(); acc -= DT; n++; simTime += DT;
     if (props.events.length) { propEvents(); }
@@ -449,7 +451,8 @@ function derbyStart() {
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const field = arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals;
+  derby.towing = derby.enabled && caravanWanted();                                      // everyone tows a caravan, so the field is smaller: 4 at most
+  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
   if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, opts.mode); else derby.stop();
@@ -517,7 +520,23 @@ function releaseView(id) {
   const v = views.get(id); if (!v) return;
   v.restoreWheels(); v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
 }
-function clearViews() { for (const id of [...views.keys()]) releaseView(id); }
+function clearViews() { for (const id of [...views.keys()]) releaseView(id); for (const id of [...towViews.keys()]) dropTowView(id); }
+
+// ----- the rivals' caravans (each in its rival's colour)
+function dropTowView(id) { const tv = towViews.get(id); if (!tv) return; stage.scene.remove(tv.root); towViews.delete(id); }
+function syncTowViews(a) {
+  for (const f of derby.fighters) {
+    if (f.isPlayer) continue;
+    const van = f.car.tow;
+    if (!van || f.gone) { dropTowView(f.id); continue; }
+    let tv = towViews.get(f.id);
+    if (!tv) { if (!caravanView.loaded) continue; tv = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[f.hue]); towViews.set(f.id, tv); tv.snap(van); }
+    tv.update(a);
+    const dx = tv.root.position.x - camera.position.x, dz = tv.root.position.z - camera.position.z;
+    tv.root.visible = dx * dx + dz * dz < 300 * 300;
+  }
+  for (const id of [...towViews.keys()]) if (!derby.fighters.some((f) => f.id === id && !f.gone)) dropTowView(id);
+}
 
 /** Place each rival's visual at its (interpolated) physics pose. At most two new ones are built per frame. */
 function syncViews(a) {
@@ -664,7 +683,7 @@ function frame(now) {
   if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
   visual.setWheels(car);
   if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }
-  if (derby.enabled || views.size) syncViews(mode === 'drive' ? acc / DT : 1);
+  if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
   stage.update(drawPos, camera.position);
   renderer.render(stage.scene, camera);
@@ -766,9 +785,9 @@ function renderMenu() {
 
 function bindMenu() {
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
-  { const co = $('caravan-opt'), cb = $('opt-caravan');          // Tow a caravan: the 70s Saloon only, for now
+  { const co = $('caravan-opt'), cb = $('opt-caravan');          // The caravan option (a card in the vehicle gallery; the Saloon, Volvo, Saab and BMW can tow it)
     co.hidden = true; cb.checked = !!opts.caravan && TOW_CARS.includes(selectedVehicle().id);   // the checkbox just holds the state; the Hastings 2000 card in the vehicle gallery is the control
-    cb.onchange = () => { opts.caravan = cb.checked; store.set('cr.opts', opts); syncCaravan(); toast(cb.checked ? 'Caravan hitched up!' : 'Caravan unhitched.'); };
+    cb.onchange = () => { opts.caravan = cb.checked; store.set('cr.opts', opts); syncCaravan(); if (track) derbyStart(); toast(cb.checked ? 'Caravan hitched up!' : 'Caravan unhitched.'); };
   }
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
   const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';

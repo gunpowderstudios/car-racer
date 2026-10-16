@@ -12,10 +12,10 @@ const G = 9.81;
 
 export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
-  dAxle: 2.75,            // m from the axle to the tow ball (set from the model once it has loaded)
+  dAxle: 2.2,             // m from the axle to the tow ball (as measured from the model; main.js also sets it once the model has loaded)
   cog: 0.5,               // m: the weight sits this far ahead of the axle, as on a real caravan: it keeps the tail from wagging the car
-  wheelR: 0.33,           // m
-  width: 2.0, length: 4.6,
+  wheelR: 0.294,          // m (the model's wheels)
+  width: 2.03, length: 4.4,
   hitchH: 0.14,           // m: ball height above the axle centre line (a car's tow ball is only ~0.45 m off the road, so the caravan sits nearly level)
   tyreMu: 0.85,           // sideways grip
   tyreStiff: 25,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
@@ -143,6 +143,8 @@ export class Caravan {
     // folded round how far
     let rel = this.yaw - Math.atan2(car.az.x, car.az.z); rel = Math.atan2(Math.sin(rel), Math.cos(rel));
     this.jackknife = rel;
+    // a rival's caravan (auto): if it has been folded up for a while (reversing, a shunt), it is tucked straight again rather than left jammed
+    if (this.auto) { this.foldT = Math.abs(rel) > 0.9 ? (this.foldT || 0) + dt : 0; if (this.foldT > 1.2) { this.foldT = 0; this._place(car); this.settleT = 0.25; return; } }
 
     // and the same pull the other way on the car, at the ball: force -J, torque r x (-J)
     car.F.x -= jx; car.F.z -= jz;

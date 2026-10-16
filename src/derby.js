@@ -14,6 +14,7 @@ import { V3 } from './math.js';
 import { Vehicle } from './vehicle.js';
 import { Track, SURF } from './track.js';
 import { Driver, IDLE, AI } from './ai.js';
+import { Caravan } from './caravan.js';
 import { ArenaDriver, arenaInfo, arenaSpawn } from './arena.js';
 import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage, roofDentHp } from './damage.js';
 
@@ -133,6 +134,9 @@ function mulberry(seed) {
 const pose = () => ({ x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 });
 const HUES = 7;
 
+/** Where the tow ball is on a rival (the standard car body). */
+const RIVAL_HITCH = { x: 0, y: -0.02, z: -2.55 };
+
 export class Derby {
   constructor() {
     this.enabled = false; this.damageEnabled = true;
@@ -141,6 +145,7 @@ export class Derby {
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
     this.slotSkill = null;                               // optional { raceSlot: skill offset }
     this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
+    this.towing = false;                               // set by main.js: every rival tows a caravan
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
@@ -266,6 +271,10 @@ export class Derby {
       expire: false, expireT: 0,
       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,
     };
+    if (this.towing && this.track) {                      // a rival with a caravan on the back (slower and gentler through the bends, see Driver.towing)
+      const van = new Caravan(RIVAL_HITCH, { yawDamp: 2.0 }); van.auto = true; van.track = this.track; car.tow = van; van.reset(car);
+      if (driver) driver.towing = true;
+    }
     this._pose(f, f.cur); this._pose(f, f.prev);
     this.fighters.push(f);
     this._refreshCars();

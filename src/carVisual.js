@@ -104,7 +104,7 @@ function shrinkTexture(t, max) {
 const recoloured = new WeakMap();
 const pristine = new WeakMap();
 
-function recolour(tex, look) {
+export function recolour(tex, look) {
   let per = recoloured.get(tex);
   if (!per) recoloured.set(tex, per = new Map());
   if (per.has(look)) return per.get(look);
