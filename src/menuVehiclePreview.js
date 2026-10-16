@@ -4,6 +4,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { VEHICLES, selectedVehicle, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
 import { tidyGltfMaterial } from './carVisual.js';
+import { CaravanView } from './caravanView.js';
+import { HITCH } from './caravan.js';
 
 const COPY = {
   car: 'Big, loud and happiest going sideways.',
@@ -52,7 +54,28 @@ function installPreview({
     const holder = new THREE.Group();
     scene.add(holder);
 
-    let model = null;
+    let model = null, rig = null, van = null;
+    const caravanOn = () => {
+      const cb = document.getElementById('opt-caravan');
+      if (cb) return cb.checked;
+      try { return !!JSON.parse(localStorage.getItem('cr.opts') || '{}').caravan; } catch { return false; }
+    };
+    // Escort only: show the caravan hitched on behind the car when "Tow a caravan" is ticked
+    const showCaravan = async () => {
+      if (!rig || !van) return;
+      const want = caravanOn();
+      if (want && !van.loaded) await van.load();
+      if (!van.loaded) return;
+      van.root.position.set(0, van.dims.wheelR, HITCH.escort.z - van.dims.dAxle);
+      van.root.rotation.set(0, 0, 0);
+      van.root.visible = true;
+      if (want) rig.add(van.root); else rig.remove(van.root);   // out of the rig when unticked, so the framing ignores it
+      rig.position.set(0, 0, 0);
+      frameModel(rig);
+      holder.rotation.set(pitch, yaw, 0);
+      wrap.classList.add('ready'); loading.textContent = '';
+    };
+    window.addEventListener('change', (e) => { if (e.target?.id === 'opt-caravan') showCaravan(); });
     let dragging = false;
     let lastX = 0;
     let yaw = -0.58;
@@ -83,8 +106,28 @@ function installPreview({
     loader.loadAsync(assetUrl(modelUrl(vehicle.url))).then((gltf) => {
       model = gltf.scene;
       model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });
-      holder.add(model);
-      frameModel(model);
+      if (vehicle.id === 'escort') {
+        // Lay the car out the way the game does (length-fitted, centred, facing +z) so a caravan can be hitched on behind it
+        model.updateMatrixWorld(true);
+        let b = new THREE.Box3().setFromObject(model);
+        const sz = b.getSize(new THREE.Vector3());
+        model.scale.setScalar((vehicle.targetLength || 4.05) / Math.max(sz.x, sz.z));
+        model.updateMatrixWorld(true);
+        b = new THREE.Box3().setFromObject(model);
+        const c = b.getCenter(new THREE.Vector3());
+        model.position.set(-c.x, -b.min.y, -c.z);
+        const face = new THREE.Group();
+        face.rotation.y = vehicle.flip ? -Math.PI / 2 : Math.PI / 2;
+        face.add(model);
+        rig = new THREE.Group();
+        rig.add(face);
+        van = new CaravanView(rig);
+        holder.add(rig);
+        showCaravan();
+      } else {
+        holder.add(model);
+        frameModel(model);
+      }
       holder.rotation.set(pitch, yaw, 0);
       wrap.classList.add('ready');
       loading.textContent = '';
