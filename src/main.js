@@ -69,6 +69,16 @@ const car = new Vehicle();
 const visual = new CarVisual(stage.scene, car.restHeight);
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
 /** Should there be a caravan on the car right now? Only if asked for and on a car that can tow it (in multiplayer too: the others see it through the state reports). */
+let vanHudShown = -1;
+/** The caravan's health, under the car's damage card (0 = wrecked). */
+function vanHud(van) {
+  const box = document.getElementById('van-dmg'); if (!box) return;
+  const pct = van ? Math.max(0, Math.round(100 * van.health / van.spec.hp)) : -1;
+  if (pct === vanHudShown) return; vanHudShown = pct;
+  box.hidden = pct < 0; if (pct < 0) return;
+  const f = document.getElementById('van-dmg-fill'); f.style.width = pct + '%'; f.style.background = pct > 60 ? '#6fd36f' : pct > 25 ? '#ffb31f' : '#e8392c';
+  document.getElementById('van-dmg-n').textContent = pct;
+}
 const caravanWanted = () => !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !caravanView.failed;
 function syncCaravan() {
   if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
@@ -269,7 +279,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -713,6 +723,7 @@ function frame(now) {
   if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
   visual.setWheels(car);
   if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }
+  vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
   stage.update(drawPos, camera.position);

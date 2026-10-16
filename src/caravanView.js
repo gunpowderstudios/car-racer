@@ -15,6 +15,8 @@ import { makeDentable } from './dents.js';
 export const CARAVAN_MODEL = { url: 'cars/caravan-SHRINK.glb', length: 4.4 };
 
 const clampH = (h) => (h > 1 ? 1 : h < 0 ? 0 : h || 0);
+const DENT_BOOST = 3;     // a caravan's thin skin crumples visibly even from a modest knock
+const vanDentMax = () => Math.max(CarVisual.dentMax, 6);   // dents show even on the low quality tier: it is the one clear sign the caravan is being hurt
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class CaravanView {
@@ -43,6 +45,7 @@ export class CaravanView {
     });
     v.wheels = []; v.holder.traverse((o) => { if (o.userData?.pivot) v.wheels.push(o); });
     v._markRest();
+    v.dents = makeDentable(v.root, v.holder, vanDentMax()); v.isClone = true; v._h = 1;      // (rival and remote caravans dent from their health dropping: see update)
     v.loaded = true; v.dims = this.dims; v._wantVisible = true; v.root.visible = true;
     return v;
   }
@@ -54,7 +57,7 @@ export class CaravanView {
     this._dv = this._dv || new THREE.Vector3();
     this.root.updateWorldMatrix(true, false);
     this.root.worldToLocal(this._dv.set(e.x, e.y, e.z));
-    this.dents.add(this._dv.x, this._dv.y, this._dv.z, e.hp);
+    this.dents.add(this._dv.x, this._dv.y, this._dv.z, e.hp * DENT_BOOST);
   }
   /** Hand the wheels over to be thrown off (see wheelDebris.js); the same shape as CarVisual.detachWheels. */
   detachWheels() {
@@ -166,7 +169,7 @@ export class CaravanView {
     // dents: the body gets a material of its own, so the wheels and wheel-arch skirt (which share the model's one material) are not dented with it
     let body = null; model.traverse((o) => { if (o.isMesh && !/wheel|arch/i.test(o.name || '') && (!body || o.geometry.attributes.position.count > body.geometry.attributes.position.count)) body = o; });
     if (body && !Array.isArray(body.material)) body.material = body.material.clone();
-    this.dents = CarVisual.dentMax > 0 ? makeDentable(this.root, this.holder, 8) : null;
+    this.dents = makeDentable(this.root, this.holder, vanDentMax());
     const fb = new THREE.Box3().setFromObject(this.holder), fs = fb.getSize(new THREE.Vector3());
     // where the body ends and the A-frame drawbar starts: the furthest slice along the caravan that is still nearly as wide as the whole thing
     const bins = new Map(), pv = new THREE.Vector3();
@@ -197,7 +200,7 @@ export class CaravanView {
     h = Math.round(clampH(h) * 20) / 20;
     if (h === this._shaded) return;
     this._shaded = h;
-    const k = 0.42 + 0.58 * h;
+    const k = 0.3 + 0.7 * h;
     this.holder.traverse((o) => {
       if (!o.isMesh) return;
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (!m.userData.base) m.userData.base = m.color.clone(); m.color.copy(m.userData.base).multiplyScalar(k); }
@@ -212,6 +215,15 @@ export class CaravanView {
     this.root.position.set(l(p[0], c[0]), l(p[1], c[1]), l(p[2], c[2]));
     this._e.set(-l(p[4], c[4]), p[3] + wrap(c[3] - p[3]) * a, l(p[5], c[5]) + l(p[7], c[7]));      // (road lean + the body rocking on its springs)
     this._shade(c[8]);
+    if (this.isClone && this.dents) {                                                 // someone else's caravan: a dent wherever a knock cost it health (the spot is only a good guess)
+      const drop = this._h - c[8];
+      if (drop > 0.02 && this.dims) {
+        const n = (this._n = (this._n || 0) + 1), d = this.dims, side = n % 3 === 0 ? 0 : (n % 2 ? 1 : -1);
+        this.dents.add(side * d.width / 2, 0.9, side ? d.rear + (d.front - d.rear) * ((n * 0.37) % 1) : d.rear, drop * 220 * DENT_BOOST * 4);
+        this._h = c[8];
+      } else if (drop < 0) this._h = c[8];
+      if (c[8] >= 0.999 && this.dents.count) this.dents.clear();
+    }
     this.wrecked = c[8] <= 0;
     if (!this.wrecked && this._wheelsOff) this.restoreWheels();                       // repaired / a restart: wheels back on
     if (c[8] >= 0.999 && this.dents && this.dents.count) this.dents.clear();
