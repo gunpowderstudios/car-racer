@@ -20,7 +20,7 @@ export class Sound {
     await Promise.all([
       load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
-      load('explosion', 'sounds/explosion.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
+      load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
       load('music', 'sounds/background-music.mp3'), load('engineStart', 'sounds/engine-start.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -136,7 +136,11 @@ export class Sound {
     return { stop: (after = 0) => { if (done && after === 0) return; try { const n = c.currentTime + after; g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(0, n, 0.025); for (const o of oscs) o.stop(n + 0.2); done = true; } catch { /* already stopped */ } } };
   }
   /** Hold-to-honk for the player: starts a voice and returns it; call .stop() on the voice when the key comes up. */
-  hornStart() { if (!this.ready || !this.sfxOn) return null; const v = this._hornVoice(0.336, 1); v.stop(1.6); return v; }
+  hornStart(vehicleId) {
+    if (!this.ready || !this.sfxOn) return null;
+    if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, 0); return { stop() {} }; }      // the Rootmaster rings its bell instead of honking (once per press)
+    const v = this._hornVoice(0.336, 1); v.stop(1.6); return v;
+  }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1) {
     if (!this.ready || !this.sfxOn) return;

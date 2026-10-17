@@ -407,7 +407,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
-  if (raw.horn && !hornVoice) hornVoice = sound.hornStart() || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
+  if (raw.horn && !hornVoice) hornVoice = sound.hornStart(selectedVehicle().id) || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);

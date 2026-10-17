@@ -485,3 +485,11 @@ test('the whole game runs GAME_SPEED times faster than the wall clock, and the s
   assert.match(main, /simTime \+= DT \/ GAME_SPEED/);
   assert.match(readFileSync(new URL('../src/hud.js', import.meta.url), 'utf8'), /car\.speed \* GAME_SPEED/);
 });
+
+test('the Rootmaster rings bus-bell.mp3 instead of honking', () => {
+  const a = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(a, /load\('busBell', 'sounds\/bus-bell\.mp3'\)/);
+  assert.match(a, /vehicleId === 'bus' && this\.buf\.busBell/);
+  assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /sound\.hornStart\(selectedVehicle\(\)\.id\)/);
+  assert.ok(existsSync(new URL('../sounds/bus-bell.mp3', import.meta.url)));
+});
