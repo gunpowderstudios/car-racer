@@ -1,4 +1,5 @@
 // Car Racer - main entry. Wires physics, rendering, HUD, audio, menu and editor together.
+import { GAME_SPEED } from './gameSpeed.js';
 import * as THREE from 'three';
 import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
@@ -344,7 +345,7 @@ function sim(seconds, inp) {
     car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track);
     if (car.tow && !derby.enabled) { car.refreshFrame(); collideVanCar(car.tow, car, towHit); }   // (with rivals, derby.step does this)
     if (derby.enabled) derby.step(DT, props.barrels);
-    props.step(DT, derby.enabled ? derby.cars : car); simTime += DT; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
+    props.step(DT, derby.enabled ? derby.cars : car); simTime += DT / GAME_SPEED; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);
   }
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ); chase.snap(); acc = 0;
@@ -407,7 +408,7 @@ function stepPhysics(dt) {
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   if (raw.horn && !hornVoice) hornVoice = sound.hornStart() || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
-  acc += dt; let n = 0;
+  acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
     car.step(DT, inp, track);
@@ -421,7 +422,7 @@ function stepPhysics(dt) {
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
-    syncPose(); acc -= DT; n++; simTime += DT;
+    syncPose(); acc -= DT; n++; simTime += DT / GAME_SPEED;
     if (props.events.length) { propEvents(); }
     if (derby.events.length) { derbyEvents(); }
     if (car.events.length) {

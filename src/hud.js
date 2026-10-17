@@ -1,5 +1,6 @@
 // DOM heads-up display: speed, gear, RPM strip, lap timing, minimap, banner messages,
 // and the destruction-derby score, damage chart and game-over card.
+import { GAME_SPEED } from './gameSpeed.js';
 import { ZONES } from './damage.js';
 import { arenaInfo, arenaOutline } from './arena.js';
 
@@ -34,7 +35,7 @@ export class Hud {
   }
 
   update(car, info) {
-    const sp = car.speed * (this.kmh ? 3.6 : 2.23694);
+    const sp = car.speed * GAME_SPEED * (this.kmh ? 3.6 : 2.23694);
     const s = String(Math.round(sp));
     if (s !== this._last.speed) { this.el.speed.textContent = s; this._last.speed = s; }
     const g = car.gear < 0 ? 'R' : String(car.gear);
