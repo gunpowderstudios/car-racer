@@ -449,7 +449,7 @@ export class ChaseCamera {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
     this.boosting = false; this.kick = 0;
-    this.low = false;                            // a low tail camera just behind the car (set for tracks with roads stacked above each other: The Twister)
+    this.low = false;                            // set for tracks with roads stacked above each other (The Twister): the camera is kept out from behind the road above
     this.towLen = 0; this._tow = 0;              // metres of caravan behind the car: the camera drops back and up so it can see over it
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
@@ -487,12 +487,22 @@ export class ChaseCamera {
     this.yaw += wrapPi(target - this.yaw) * (1 - Math.exp(-4.2 * dt));
     this.y += (p.y - this.y) * (1 - Math.exp(-9 * dt));
     this.ly += (p.y - this.ly) * (1 - Math.exp(-14 * dt));
-    const far = this.mode === 1 && !this.low, low = this.low;
+    const far = this.mode === 1, stacked = this.low;                 // (stacked: a track with roads above each other - the camera must not end up behind the road above)
     this._tow += (this.towLen - this._tow) * (1 - Math.exp(-3 * dt));
-    const dist = low ? 5.6 + speed * 0.02 + this._tow * 0.95 : (far ? 12 : 7.2) + speed * 0.025 + this._tow * (far ? 0.7 : 1.0), h = low ? 1.4 + this._tow * 0.32 : (far ? 5.8 : 2.5) + this._tow * (far ? 0.4 : 0.85);
+    const dist = (far ? 12 : 7.2) + speed * 0.025 + this._tow * (far ? 0.7 : 1.0), h = (far ? 5.8 : 2.5) + this._tow * (far ? 0.4 : 0.85);
     const sx = Math.sin(this.yaw), cz = Math.cos(this.yaw);
-    this.pos.set(p.x - sx * dist, this.y + h, p.z - cz * dist);
-    const q = low ? track.query(this.pos.x, p.y + 1.6, this.pos.z, this._q, 1.1) : track.query(this.pos.x, this.pos.y + 3, this.pos.z, this._q, 3);      // (the low camera only looks for the road it is on, not the one stacked above it)
+    let reach = 1;
+    if (stacked) {
+      // Walk the line from the car out to where the camera wants to be. If any step of it would pass through the road above (a ceiling well over the car's own road), stop short of it.
+      const cy0 = p.y + 1.4, cy1 = this.y + h;
+      for (let k = 1; k <= 8; k++) {
+        const t = k / 8, x = p.x - sx * dist * t, z = p.z - cz * dist * t, y = cy0 + (cy1 - cy0) * t;
+        const c = track.query(x, y + 40, z, this._q, 40);
+        if (c.idx >= 0 && c.y > p.y + 3 && y > c.y - 1.3) { reach = Math.max(0.2, (k - 1) / 8); break; }
+      }
+    }
+    this.pos.set(p.x - sx * dist * reach, p.y + 1.4 + (this.y + h - p.y - 1.4) * reach, p.z - cz * dist * reach);
+    const q = stacked ? track.query(this.pos.x, p.y + 1.6, this.pos.z, this._q, 1.1) : track.query(this.pos.x, this.pos.y + 3, this.pos.z, this._q, 3);      // (on stacked roads only look for the road the car is on, not the one above)
     if (q.idx >= 0 || q.y === 0) this.pos.y = Math.max(this.pos.y, q.y + 0.9);
     this.shake = Math.max(this.shake * Math.exp(-6 * dt), this.kick * 0.12);
     const sh = this.shake * 0.35;
