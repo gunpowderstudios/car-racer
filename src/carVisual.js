@@ -68,8 +68,10 @@ export function wheelAxle(geo) {
     ox = uc + mx; oy = vc + my;
     R = pts.reduce((t, p) => t + Math.hypot(p.x - ox, p.y - oy), 0) / pts.length;
   }
-  if (!(R > R0 * 0.75) || !(R < R0 * 1.25)) { ox = cx0; oy = cy0; R = R0; }       // the fit went wrong (a sparse wheel, as on the Dodge): fall back to the middle of the box
-  c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2, r: R };
+  // A wheel whose fitted radius is nowhere near its box (the Dodge's: it locked on to the cream hub, not the black tyre) keeps the fitted centre - that is the hub, so it still spins true -
+  // but r = 0 tells trimWheel to leave the mesh alone, so no tyre is ever cut away.
+  const sane = R > R0 * 0.75 && R < R0 * 1.25;
+  c = { x: ox, y: oy, z: (bb.min.z + bb.max.z) / 2, r: sane ? R : 0 };
   axleCache.set(geo, c);
   return c;
 }
