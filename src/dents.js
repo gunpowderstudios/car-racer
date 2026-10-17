@@ -69,7 +69,7 @@ export function makeDentable(root, model, max, avoid = null) {
   let mesh = null, most = 0;
   model.traverse((o) => {
     const p = o.isMesh && o.geometry && o.geometry.attributes && o.geometry.attributes.position;
-    if (p && p.count > most && o.material && o.material !== avoid && !Array.isArray(o.material)) { mesh = o; most = p.count; }
+    if (p && p.count > most && o.material && o.material !== avoid && !(typeof avoid === 'function' && avoid(o)) && !Array.isArray(o.material)) { mesh = o; most = p.count; }
   });
   if (!mesh) return null;
   const mat = mesh.material;

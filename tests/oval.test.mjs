@@ -501,3 +501,9 @@ test('a wrecked caravan loses only its left wheel (the other stays on) and sags 
   assert.doesNotMatch(v, /for \(const w of this\.wheels\) \{ scene\.attach\(w\)/);
   assert.match(v, /this\._e\.z -= 0\.2 \* this\._sag/);
 });
+
+test('caravan dents skip wheel meshes even when a wheel has more vertices than the body', () => {
+  const src = readFileSync(new URL('../src/caravanView.js', import.meta.url), 'utf8');
+  assert.match(src, /isWheelish/);
+  assert.match(src, /makeDentable\(this\.root, this\.holder, vanDentMax\(\), isWheelish\)/);
+});

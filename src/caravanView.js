@@ -45,7 +45,7 @@ export class CaravanView {
     });
     v.wheels = []; v.holder.traverse((o) => { if (o.userData?.pivot) v.wheels.push(o); });
     v._markRest();
-    v.dents = makeDentable(v.root, v.holder, vanDentMax()); v.isClone = true; v._h = 1;      // (rival and remote caravans dent from their health dropping: see update)
+    v.dents = makeDentable(v.root, v.holder, vanDentMax(), (o) => { for (let p = o; p; p = p.parent) if (/wheel|arch/i.test(p.name || '')) return true; return false; }); v.isClone = true; v._h = 1;      // (rival and remote caravans dent from their health dropping: see update)
     v.loaded = true; v.dims = this.dims; v._wantVisible = true; v.root.visible = true;
     return v;
   }
@@ -176,9 +176,11 @@ export class CaravanView {
     });
     this._markRest();
     // dents: the body gets a material of its own, so the wheels and wheel-arch skirt (which share the model's one material) are not dented with it
-    let body = null; model.traverse((o) => { if (o.isMesh && !/wheel|arch/i.test(o.name || '') && (!body || o.geometry.attributes.position.count > body.geometry.attributes.position.count)) body = o; });
+    // (a wheel can hold more vertices than the body, and its mesh may be unnamed under a node called Wheel...: look up the tree too)
+    const isWheelish = (o) => { for (let p = o; p; p = p.parent) if (/wheel|arch/i.test(p.name || '')) return true; return false; };
+    let body = null; model.traverse((o) => { if (o.isMesh && !isWheelish(o) && (!body || o.geometry.attributes.position.count > body.geometry.attributes.position.count)) body = o; });
     if (body && !Array.isArray(body.material)) body.material = body.material.clone();
-    this.dents = makeDentable(this.root, this.holder, vanDentMax());
+    this.dents = makeDentable(this.root, this.holder, vanDentMax(), isWheelish);
     const fb = new THREE.Box3().setFromObject(this.holder), fs = fb.getSize(new THREE.Vector3());
     // where the body ends and the A-frame drawbar starts: the furthest slice along the caravan that is still nearly as wide as the whole thing
     const bins = new Map(), pv = new THREE.Vector3();
