@@ -207,7 +207,7 @@ function openSetup() {
       ov.hidden = true;
       const pick = ov.querySelector('#sp-track').value;
       window.__raceLaps?.set?.(+ov.querySelector('#sp-laps').value);
-      try { localStorage.setItem('cr.storyTrack', pick); } catch { /* storage unavailable */ }
+      try { localStorage.setItem('cr.storyTrack', pick); localStorage.setItem('cr.storyLaps', ov.querySelector('#sp-laps').value); } catch { /* storage unavailable */ }
       if (pick !== 'champ') { state.single = pick; startStory(0); return; }
       state.single = null;
       const c = store.get().champ;
@@ -218,7 +218,8 @@ function openSetup() {
   }
   let saved = 'champ'; try { saved = localStorage.getItem('cr.storyTrack') || 'champ'; } catch { /* storage unavailable */ }
   const sel = ov.querySelector('#sp-track'); sel.value = [...sel.options].some((o) => o.value === saved) ? saved : 'champ';
-  ov.querySelector('#sp-laps').value = String(window.__raceLaps?.get?.() || 1);
+  let dayLaps = '2'; try { dayLaps = localStorage.getItem('cr.storyLaps') || '2'; } catch { /* storage unavailable */ }      // Race Day starts on 2 laps (then remembers what you picked last)
+  ov.querySelector('#sp-laps').value = ['1', '2', '3'].includes(dayLaps) ? dayLaps : '2';
   ov.hidden = false;
 }
 

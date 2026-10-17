@@ -407,7 +407,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
-  if (raw.horn && !hornVoice) hornVoice = sound.hornStart() || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
+  if (raw.horn && !hornVoice) hornVoice = sound.hornStart(selectedVehicle().id) || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
@@ -803,7 +803,8 @@ const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
 let autoHighCam = false;
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
-  const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
+  const phone = matchMedia('(pointer: coarse)').matches;                                 // a touch screen (phone or tablet): always start on the High camera
+  const big = phone || HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
   if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
   else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle
 }

@@ -176,6 +176,29 @@ export function normalizePuddles(list) {
   return out;
 }
 
+/** Seconds for a boulder starting from rest to roll `dist` metres (it speeds up at 6 m/s² to 9.5 m/s, see stepRollers). */
+const rollTime = (dist) => (dist <= 7.52 ? Math.sqrt(2 * dist / 6) : 1.583 + (dist - 7.52) / 9.5);
+const shapeOf = new WeakMap();
+/** An irregular outline for a puddle, worked out from where it is (so every player sees and drives through the same one): stretched and turned a different way each, with lumpy edges.
+ *  `a`, `b` are the long and short half-widths, `rot` the turn, and `k` the lumps: the edge is at 1 + sum(amp * cos(n * angle + phase)) of the way out. */
+export function puddleShape(p) {
+  let sh = shapeOf.get(p);
+  if (sh) return sh;
+  let st = (Math.imul(Math.round(p.x) | 0, 73856093) ^ Math.imul(Math.round(p.z) | 0, 19349663)) >>> 0 || 1;
+  const rnd = () => { st = (Math.imul(st ^ (st >>> 15), 2246822519) + 0x9e3779b9) >>> 0; st ^= st >>> 13; return (st >>> 0) / 4294967296; };
+  const el = 1 + rnd() * 1.1, rot = rnd() * Math.PI;                       // long and thin or nearly round
+  const k = [[2, 0.10 + rnd() * 0.14], [3, 0.06 + rnd() * 0.10], [5, 0.03 + rnd() * 0.07], [7, 0.02 + rnd() * 0.04]].map(([n, amp]) => ({ n, amp, ph: rnd() * Math.PI * 2 }));
+  sh = { a: p.r * Math.sqrt(el), b: p.r / Math.sqrt(el), cos: Math.cos(rot), sin: Math.sin(rot), k, rot };
+  sh.bound = sh.a * (1 + k.reduce((t, l) => t + l.amp, 0)) + 0.1;
+  shapeOf.set(p, sh);
+  return sh;
+}
+/** How far out the edge is (as a share of the half-widths) at `angle` round the puddle. */
+export function puddleEdge(sh, angle) {
+  let e = 1; for (const l of sh.k) e += l.amp * Math.cos(l.n * angle + l.ph);
+  return e < 0.55 ? 0.55 : e;
+}
+
 // ---------------------------------------------------------------- definition
 
 /** Fill defaults, migrate legacy (v4, v5) editor data, and clamp values. */
@@ -282,7 +305,7 @@ export class Track {
     this.rollers = (this.def.rollers || []).map((b, i) => {
       const q = this.query(b.x, 40, b.z, undefined, 3);
       return { x: b.x, z: b.z, y: q.y, r: b.r, h: b.r * 1.9, roller: true, vx: 0, vz: 0, x0: b.x, z0: b.z, dx: b.dx, dz: b.dz, state: 'wait', speed: 0, ang: 0, rest: 0,
-        tArr: 2.5 + ((i * 37) % 11) * 0.1, travel: Math.abs(q.d) + q.hw + 8 };
+        tArr: 2.5 + ((i * 37) % 11) * 0.1, travel: Math.abs(q.d) + q.hw + 8, reach: Math.abs(q.d), tC: rollTime(Math.abs(q.d)) };
     });
     for (const r of this.rollers) this.rocks.push(r);
     if (!this.rollers.length) this.rollers = null;
@@ -296,10 +319,11 @@ export class Track {
     for (const b of this.rollers) {
       if (b.state === 'wait') {
         b.vx = b.vz = 0;
+        const px = b.x0 + b.dx * b.reach, pz = b.z0 + b.dz * b.reach;                      // where it will cross the middle of the road
         for (const c of cars) {
-          const rx = b.x0 - c.pos.x, rz = b.z0 - c.pos.z, d = Math.hypot(rx, rz);
+          const rx = px - c.pos.x, rz = pz - c.pos.z, d = Math.hypot(rx, rz);
           const closing = (c.vel.x * rx + c.vel.z * rz) / Math.max(d, 1);
-          if (d > 6 && closing > 8 && d / closing < b.tArr) { b.state = 'roll'; b.speed = 0; b.go = 0; break; }       // a car is coming this way at speed: it will be here in about 2.5-3.5 s
+          if (d > 6 && closing > 8 && d / closing < b.tC + (b.tArr - 3) * 0.4) { b.state = 'roll'; b.speed = 0; b.go = 0; break; }       // a car is coming this way at speed: the boulder is set off so it meets the road as the car does
         }
       } else if (b.state === 'roll') {
         b.speed = Math.min(9.5, b.speed + 6 * dt);
@@ -561,8 +585,11 @@ export class Track {
     if (!this.puddles) return 0;
     let w = 0;
     for (const p of this.puddles) {
-      const d = Math.hypot(x - p.x, z - p.z);
-      if (d < p.r) w = Math.max(w, Math.min(1, (1 - d / p.r) * 2.2));
+      const dx = x - p.x, dz = z - p.z, sh = puddleShape(p);
+      if (dx > sh.bound || dx < -sh.bound || dz > sh.bound || dz < -sh.bound) continue;
+      const u = (dx * sh.cos + dz * sh.sin) / sh.a, v = (-dx * sh.sin + dz * sh.cos) / sh.b, rho = Math.hypot(u, v);
+      const edge = puddleEdge(sh, Math.atan2(v, u));
+      if (rho < edge) w = Math.max(w, Math.min(1, (1 - rho / edge) * 2.2));
     }
     return w;
   }

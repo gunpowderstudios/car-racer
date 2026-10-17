@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
-import { Track } from './track.js';
+import { Track, puddleShape, puddleEdge } from './track.js';
 import { buildArena } from './arenaView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
@@ -150,7 +150,12 @@ export class Stage {
       const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
       for (const p of track.puddles) {
         track.query(p.x, 1e4, p.z, q, 1);
-        const m = new THREE.Mesh(new THREE.CircleGeometry(p.r, 28), wm);
+        const sh = puddleShape(p), pts = [];
+        for (let i = 0; i < 48; i++) {                                           // an irregular, lumpy, stretched outline (the same one the physics uses); local y is world -z once the mesh is laid on the ground
+          const th = i / 48 * Math.PI * 2, e = puddleEdge(sh, th), u = Math.cos(th) * sh.a * e, v = Math.sin(th) * sh.b * e;
+          pts.push(new THREE.Vector2(u * sh.cos - v * sh.sin, -(u * sh.sin + v * sh.cos)));
+        }
+        const m = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(pts)), wm);
         nrm.set(q.nx, q.ny, q.nz); m.quaternion.setFromUnitVectors(zAxis, nrm);
         m.position.set(p.x, q.y + 0.04, p.z); m.receiveShadow = false; m.frustumCulled = false; g.add(m);
       }

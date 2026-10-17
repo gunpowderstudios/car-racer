@@ -297,3 +297,33 @@ test('Arcade handling: harsh inputs that spin a car with raw tyre physics no lon
   assert.ok(drift > 0.45, 'Drift still slides the car: ' + drift.toFixed(2));
 });
 const DT_ = 1 / 120;
+
+test('puddles are irregular (stretched and lumpy), the same for everyone, and the water follows the outline', async () => {
+  const { puddleShape, puddleEdge } = await import('../src/track.js');
+  const { track } = makeSim('bluebell');
+  const ps = track.puddles;
+  assert.ok(ps.length >= 5);
+  const stretch = ps.map((p) => puddleShape(p).a / puddleShape(p).b);
+  assert.ok(Math.max(...stretch) > 1.6 && Math.min(...stretch) < 1.5, 'some long, some nearly round');
+  const again = puddleShape({ x: ps[0].x, z: ps[0].z, r: ps[0].r });
+  assert.equal(again.rot, puddleShape(ps[0]).rot, 'the same spot always gives the same shape');
+  for (const p of ps) {
+    const sh = puddleShape(p);
+    assert.ok(track.puddleAt(p.x, p.z) > 0.9, 'deep in the middle');
+    for (let k = 0; k < 24; k++) {                                                         // just inside and just outside the edge, all the way round
+      const th = k / 24 * Math.PI * 2, e = puddleEdge(sh, th), u = Math.cos(th) * sh.a * e, v = Math.sin(th) * sh.b * e;
+      const at = (f) => track.puddleAt(p.x + (u * sh.cos - v * sh.sin) * f, p.z + (u * sh.sin + v * sh.cos) * f);
+      assert.ok(at(0.9) > 0 && at(1.1) === 0 || at(1.1) > 0, 'edge at angle ' + k);
+    }
+  }
+});
+
+test('a rolling boulder is set off so that it crosses the middle of the road just as the car gets there', () => {
+  const { track } = makeSim('bluebell');
+  assert.ok(track.rollers.length >= 3);
+  for (const b of track.rollers) {
+    assert.ok(b.tC > 1.5 && b.tC < 4 && b.reach > 8, 'time to the road centre ' + b.tC);
+    const px = b.x0 + b.dx * b.reach, pz = b.z0 + b.dz * b.reach, q = track.query(px, 40, pz, undefined, 3);
+    assert.ok(Math.abs(q.d) < 2.5, 'it is aimed at the middle of the road: ' + q.d);
+  }
+});
