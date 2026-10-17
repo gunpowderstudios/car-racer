@@ -470,3 +470,9 @@ test('The Twister: the spiral has no barriers, coming back from it means startin
   const shared = new Track(normalizeTrack(JSON.parse(JSON.stringify(def))));            // as sent to a friend
   assert.equal(shared.openA, track.openA);
 });
+
+test('wheels saved from Shrink (extras.wheel) are used exactly as they are, never fitted or trimmed', () => {
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /userData\.wheel/);
+  assert.match(cv, /if \(!exact\) trimWheel/);
+});

@@ -302,7 +302,10 @@ export class CarVisual {
       const host = found[k], m = host.isMesh ? host : host.children.find((c) => c.isMesh);
       if (!m) return host;
       m.updateMatrix();
-      const ax = wheelAxle(m.geometry); trimWheel(m.geometry, ax);
+      // A wheel saved from Shrink says so (extras.wheel) and is already clean and centred on its axle (the node's origin): use it exactly as it is. Older models are guessed at.
+      const exact = !!((host.userData && host.userData.wheel) || (m.userData && m.userData.wheel));
+      const ax = exact ? { x: 0, y: 0, z: 0, r: 0 } : wheelAxle(m.geometry);
+      if (!exact) trimWheel(m.geometry, ax);
       const P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
       const pivot = new THREE.Group(); pivot.name = host.name + '_axle';
       const parent = m.parent;
