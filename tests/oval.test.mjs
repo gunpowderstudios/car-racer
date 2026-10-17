@@ -493,3 +493,11 @@ test('the Rootmaster rings bus-bell.mp3 instead of honking', () => {
   assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /sound\.hornStart\(selectedVehicle\(\)\.id\)/);
   assert.ok(existsSync(new URL('../sounds/bus-bell.mp3', import.meta.url)));
 });
+
+test('a wrecked caravan loses only its left wheel (the other stays on) and sags to that side', () => {
+  const v = readFileSync(new URL('../src/caravanView.js', import.meta.url), 'utf8');
+  assert.match(v, /_lostWheel/);
+  assert.match(v, /out\.push\(\{ node: left/);
+  assert.doesNotMatch(v, /for \(const w of this\.wheels\) \{ scene\.attach\(w\)/);
+  assert.match(v, /this\._e\.z -= 0\.2 \* this\._sag/);
+});

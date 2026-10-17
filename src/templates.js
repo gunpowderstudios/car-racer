@@ -221,10 +221,10 @@ function rallyScatter(def) {
   }
   // boulders that wait on the bank and roll across the road when a car comes near (always at the same places, but when they go depends on you)
   const rollers = [], rolled = [];
-  for (let guard = 0; guard < 6000 && rollers.length < 7; guard++) {
+  for (let guard = 0; guard < 20000 && rollers.length < 12; guard++) {
     const s = rnd() * track.length;
-    if (dist(s, 0) < 100 || beforeJump(s) || beforeJump(s + 40) || rolled.some((m) => dist(s, m) < 150) || rough.some((p) => s > p.s - 15 && s < p.s + p.len + 15)) continue;
-    if ([-20, 0, 20].some((o) => curvAt(s + o) > 0.005)) continue;
+    if (dist(s, 0) < 100 || beforeJump(s) || beforeJump(s + 40) || rolled.some((m) => dist(s, m) < 85) || rough.some((p) => s > p.s - 15 && s < p.s + p.len + 15)) continue;
+    if ([-14, 0, 14].some((o) => curvAt(s + o) > 0.0075)) continue;
     const f = track.frameAt(s), sg = rnd() < 0.5 ? 1 : -1, r = 1 + rnd() * 1.2;
     rollers.push({ x: f.x + f.lx * sg * (f.hw + 5.5), z: f.z + f.lz * sg * (f.hw + 5.5), r, dx: -sg * f.lx, dz: -sg * f.lz }); rolled.push(s);
   }

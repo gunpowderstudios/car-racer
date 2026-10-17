@@ -66,19 +66,21 @@ export class CaravanView {
     const n = (this._rn = (this._rn || 0) + 1), u = (n * 0.618034) % 1, v = (n * 0.381966 + 0.2) % 1;       // (spread about the roof without a random number)
     this.dents.add((u - 0.5) * d.width * 0.6, d.roof - 0.04, d.rear + (d.front - d.rear) * (0.1 + 0.8 * v), hp * 0.7);
   }
-  /** Hand the wheels over to be thrown off (see wheelDebris.js); the same shape as CarVisual.detachWheels. */
+  /** Hand the wheel that comes off to be thrown (see wheelDebris.js; the same shape as CarVisual.detachWheels). A wrecked caravan loses its LEFT wheel only, and the other stays on: it sags to that side and is dragged. */
   detachWheels() {
     if (!this.loaded || !this.wheels.length || this._wheelsOff || !this.root.parent) return null;
     this.root.updateWorldMatrix(true, true);
-    const scene = this.root.parent, out = [];
-    for (const w of this.wheels) { scene.attach(w); out.push({ node: w, radius: (this.dims?.wheelR || 0.3) }); }
-    this._wheelsOff = true;
+    const scene = this.root.parent, out = [], p = new THREE.Vector3();
+    let left = this.wheels[0], best = -Infinity;
+    for (const w of this.wheels) { w.getWorldPosition(p); this.root.worldToLocal(p); if (p.x > best) { best = p.x; left = w; } }      // (+x is the left, as on the cars)
+    scene.attach(left); out.push({ node: left, radius: (this.dims?.wheelR || 0.3) });
+    this._wheelsOff = true; this._lostWheel = left;
     return out;
   }
   restoreWheels() {
     if (!this._wheelsOff) return;
     for (const w of this.wheels) { const r = w.userData.rest; w.removeFromParent(); this.holder.add(w); if (r) { w.position.copy(r.pos); w.quaternion.copy(r.quat); w.scale.copy(r.scale); } w.visible = true; }
-    this._wheelsOff = false;
+    this._wheelsOff = false; this._lostWheel = null; this._sag = 0;
   }
   get visible() { return this.root.visible; }
   set visible(v) { this.root.visible = !!v && this.loaded; this._wantVisible = !!v; }
@@ -235,11 +237,13 @@ export class CaravanView {
     this.wrecked = c[8] <= 0;
     if (!this.wrecked && this._wheelsOff) this.restoreWheels();                       // repaired / a restart: wheels back on
     if (c[8] >= 0.999 && this.dents && this.dents.count) this.dents.clear();
-    if (this.wrecked) this.root.position.y -= 0.18;                                    // no wheels: it sits lower, on its belly
+    // wheel gone: it sags down on that side, easing over in about half a second, and sits a little lower
+    this._sag = (this._sag || 0) + ((this.wrecked && this._wheelsOff ? 1 : 0) - (this._sag || 0)) * 0.12;
+    if (this._sag > 0.001) { this.root.position.y -= 0.1 * this._sag; this._e.z -= 0.2 * this._sag; }
     this.root.quaternion.setFromEuler(this._e);
     const spin = l(p[6], c[6]) % (Math.PI * 2);
     // spin about the car's sideways axis (the holder is turned to face the car, so that axis is not the pivots' own x)
     this._spinAxis.set(1, 0, 0).applyQuaternion(this._hq.copy(this.holder.quaternion).invert());
-    if (!this._wheelsOff) for (const w of this.wheels) w.quaternion.setFromAxisAngle(this._spinAxis, spin);
+    for (const w of this.wheels) if (w !== this._lostWheel && !(this.wrecked && this._wheelsOff)) w.quaternion.setFromAxisAngle(this._spinAxis, spin);      // (the one wheel left on a wrecked caravan is dragged: it does not turn)
   }
 }
