@@ -14,7 +14,7 @@ import { TIER_NAMES, detectTier, probeDevice } from './quality.js';
 export const VEHICLES = [
   { id: 'car', name: 'Mr Muscle', url: 'cars/dodge-shrink.glb', fit: 'auto', targetLength: 4.89, damageMul: 0.95, physicsProfile: 'car' },
   { id: 'escort', name: '70s Saloon', url: 'cars/escort-shrink.glb', fit: 'auto', targetLength: 4.05, damageMul: 1.15, physicsProfile: 'escort' },
-  { id: 'bmw', name: 'German Beema', url: 'cars/bmw-shrink.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
+  { id: 'bmw', name: 'German Beema', url: 'cars/bmw-SHRINK.glb', fit: 'auto', targetLength: 4.33, damageMul: 1.0, physicsProfile: 'bmw' },
   {
     id: 'mini',
     name: 'Mini Roundabout',
