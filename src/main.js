@@ -803,7 +803,8 @@ const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
 let autoHighCam = false;
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
-  const big = HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
+  const phone = matchMedia('(pointer: coarse)').matches;                                 // a touch screen (phone or tablet): always start on the High camera
+  const big = phone || HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
   if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
   else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle
 }
