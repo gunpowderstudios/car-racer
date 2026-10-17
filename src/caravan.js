@@ -126,11 +126,12 @@ export class Caravan {
     // the caravan: joint pull, tyres (sideways grip and rolling), swing damping
     const m = s.mass, I = this._I = m * (s.length * s.length + s.width * s.width) / 12 * 0.6 + m * 0.1;
     const vLong = this.vel.x * fx + this.vel.z * fz, vLat = this.vel.x * lx + this.vel.z * lz;
+    // (a wrecked caravan's drag is capped by what the car can pull: the little cars could not move it at all)
     const wr = this.wrecked;                            // wheels gone: it is dragged along on its belly, scraping, and grips and drags a lot less smoothly
     const grip = (wr ? 0.6 : s.tyreMu) * m * G * (this.onGround ? 1 : 0);
     const vLatAxle = vLat - this.yawRate * s.cog;       // the tyres feel the sideways speed at the axle, which swings as the caravan turns
     const fLat = clamp(-m * s.tyreStiff * vLatAxle, -grip, grip);
-    const fLong = this.onGround ? -Math.sign(vLong) * Math.min(Math.abs(vLong) * m / dt * 0.5, (wr ? 0.55 : s.rolling) * m * G) : 0;
+    const fLong = this.onGround ? -Math.sign(vLong) * Math.min(Math.abs(vLong) * m / dt * 0.5, (wr ? Math.min(0.55 * m, 0.2 * car.mass) : s.rolling * m) * G) : 0;
     const ax = (jx + lx * fLat + fx * fLong) / m, az = (jz + lz * fLat + fz * fLong) / m;
     const torque = rz * jx - rx * jz - s.cog * fLat;     // the drawbar pulls the nose round; the tyres, behind the weight, pull it straight
     this.yawRate += (torque / I - this.yawRate * s.yawDamp) * dt;
