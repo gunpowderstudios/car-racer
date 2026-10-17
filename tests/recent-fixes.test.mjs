@@ -51,7 +51,7 @@ test('campervan rivals recolour only the original red body texture', () => {
 
 
 test('German Beema is available with its own size and handling profile', () => {
-  assert.match(vehicleChoice, /id: 'bmw', name: 'German Beema', url: 'cars\/bmw-shrink\.glb'/);
+  assert.match(vehicleChoice, /id: 'bmw', name: 'German Beema', url: 'cars\/bmw-SHRINK\.glb'/);
   assert.match(vehicleChoice, /targetLength: 4\.33/);
   assert.match(vehicleProfiles, /wheelbase: 2\.57/);
   assert.match(vehicleProfiles, /body: \{ width: 1\.72, length: 4\.33/);
