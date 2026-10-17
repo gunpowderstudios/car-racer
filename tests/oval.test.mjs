@@ -372,12 +372,11 @@ test('heavy car models have light copies for phones, and every listed light copy
   assert.match(readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8'), /out\.offset\.copy\(tex\.offset\)/, 'rival paint keeps the light models\' UV transform');
 });
 
-test('races in the bus or the motorhome start on the High camera', async () => {
+test('every race starts on the Chase camera on a computer and the High camera on a touch screen', async () => {
   const { readFileSync } = await import('node:fs');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.match(main, /HIGH_CAM_VEHICLES = \['bus', 'motor-home'\]/);
   assert.match(main, /function startDriving\(newDef\) \{\s*sound\.init\(\); pickStartCamera\(\);/);
-  assert.match(main, /chase\.mode = 1/, 'mode 1 is High (Chase, High, Bumper)');
+  assert.match(main, /chase\.mode = phone \? 1 : 0/, 'mode 0 is Chase, 1 is High');
 });
 
 test('Race Day stages start with the three-light Red, Red, Green sequence', async () => {
