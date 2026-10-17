@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.191';
-export const NOTE = 'Phone (lite) car models rebuilt from the new Racer files: 1024 textures, body 30k triangles, wheels 4k';
+export const VERSION = '17.192';
+export const NOTE = 'Phone (lite) copies of the Dodge, BMW, Escort, V8 Pilot and Motorhome';

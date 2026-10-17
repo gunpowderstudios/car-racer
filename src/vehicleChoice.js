@@ -114,7 +114,7 @@ export const VEHICLES = [
 // Lighter copies of the heavy models (cars/lite/, about 30-50k triangles instead of 100-320k, made with gltfpack) for phones and
 // other non-'high' devices. `url` stays the car's identity (multiplayer matches on it); only the file that gets fetched changes.
 // ?lite=1 / ?lite=0 forces it on or off for testing.
-export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/bus-SHRINK.glb', 'cars/mobility-car-SHRINK.glb', 'cars/saab-SHRINK.glb'];
+export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/bus-SHRINK.glb', 'cars/mobility-car-SHRINK.glb', 'cars/saab-SHRINK.glb', 'cars/dodge-shrink.glb', 'cars/bmw-SHRINK.glb', 'cars/escort-shrink.glb', 'cars/v8-pilot-SHRINK.glb', 'cars/motorhome-SHRINK.glb'];
 function wantLite() {
   try {
     const qs = new URLSearchParams(location.search), force = qs.get('lite');
