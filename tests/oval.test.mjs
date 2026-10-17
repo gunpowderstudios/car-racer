@@ -479,7 +479,7 @@ test('wheels saved from Shrink (extras.wheel) are used exactly as they are, neve
 
 test('the whole game runs GAME_SPEED times faster than the wall clock, and the speedometer and lap clock say so', () => {
   const gs = readFileSync(new URL('../src/gameSpeed.js', import.meta.url), 'utf8');
-  assert.match(gs, /export const GAME_SPEED = 1\.2;/);
+  assert.match(gs, /export const GAME_SPEED = 1\.1;/);
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /acc \+= dt \* GAME_SPEED/);
   assert.match(main, /simTime \+= DT \/ GAME_SPEED/);

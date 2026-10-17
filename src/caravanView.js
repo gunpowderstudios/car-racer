@@ -58,6 +58,13 @@ export class CaravanView {
     this.root.updateWorldMatrix(true, false);
     this.root.worldToLocal(this._dv.set(e.x, e.y, e.z));
     this.dents.add(this._dv.x, this._dv.y, this._dv.z, e.hp * DENT_BOOST);
+    this._roofDent(e.hp * DENT_BOOST);
+  }
+  /** Every knock a caravan takes also crumples a bit of its roof (a flat, thin roof flexes whatever hit the sides): a dent somewhere on top, away from the last one. */
+  _roofDent(hp) {
+    const d = this.dims; if (!this.dents || !d || !(d.roof > 0)) return;
+    const n = (this._rn = (this._rn || 0) + 1), u = (n * 0.618034) % 1, v = (n * 0.381966 + 0.2) % 1;       // (spread about the roof without a random number)
+    this.dents.add((u - 0.5) * d.width * 0.6, d.roof - 0.04, d.rear + (d.front - d.rear) * (0.1 + 0.8 * v), hp * 0.7);
   }
   /** Hand the wheels over to be thrown off (see wheelDebris.js); the same shape as CarVisual.detachWheels. */
   detachWheels() {
@@ -186,7 +193,7 @@ export class CaravanView {
     let bodyFront = 0;
     for (const [k, e] of bins) if (e[1] - e[0] > 0.6 * fs.x && k / 10 > bodyFront) bodyFront = k / 10;
     // The ball is put just ahead of the body, so the drawbar tucks under the back of the car and the caravan looks hitched on, not trailing behind with a gap.
-    this.dims = { dAxle: Math.min(fb.max.z, Math.max(1.5, bodyFront + 0.4)), tip: fb.max.z, front: bodyFront, rear: fb.min.z, wheelR, length: fs.z, width: fs.x, wheelsFound: wheelNodes.length };
+    this.dims = { dAxle: Math.min(fb.max.z, Math.max(1.5, bodyFront + 0.4)), tip: fb.max.z, front: bodyFront, rear: fb.min.z, wheelR, length: fs.z, width: fs.x, roof: fb.max.y, wheelsFound: wheelNodes.length };
   }
 
   /** Remember where the caravan is after a physics step (the picture blends between the last two). Call with null when there is no caravan. */
@@ -220,6 +227,7 @@ export class CaravanView {
       if (drop > 0.02 && this.dims) {
         const n = (this._n = (this._n || 0) + 1), d = this.dims, side = n % 3 === 0 ? 0 : (n % 2 ? 1 : -1);
         this.dents.add(side * d.width / 2, 0.9, side ? d.rear + (d.front - d.rear) * ((n * 0.37) % 1) : d.rear, drop * 60 * DENT_BOOST * 4);
+        this._roofDent(drop * 60 * DENT_BOOST * 2);
         this._h = c[8];
       } else if (drop < 0) this._h = c[8];
       if (c[8] >= 0.999 && this.dents.count) this.dents.clear();
