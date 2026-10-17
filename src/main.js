@@ -801,15 +801,11 @@ function setMode(m) {
   input.enabled = m === 'drive';
 }
 function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
-// The big vehicles (and anything towing a caravan) hide the road from the chase camera, so every race in one starts on the High camera (C still cycles as usual).
-const HIGH_CAM_VEHICLES = ['bus', 'motor-home'];
-let autoHighCam = false;
+// Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet) starts on the High camera.
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
-  const phone = matchMedia('(pointer: coarse)').matches;                                 // a touch screen (phone or tablet): always start on the High camera
-  const big = phone || HIGH_CAM_VEHICLES.includes(selectedVehicle().id) || caravanWanted();   // a towed caravan hides the road too
-  if (big) { chase.mode = 1; chase.ready = false; autoHighCam = true; }
-  else if (autoHighCam) { chase.mode = 0; chase.ready = false; autoHighCam = false; }      // back to the normal chase camera after a big vehicle
+  const phone = matchMedia('(pointer: coarse)').matches;
+  chase.mode = phone ? 1 : 0; chase.ready = false;
 }
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
