@@ -478,6 +478,12 @@ export class Vehicle {
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
     force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
+    // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can crawl up any hill, slowly:
+    // with the pedal down and the nose up, the pull is at least enough to cancel gravity along the slope, fading out above walking pace (the tyres' own grip still limits it, see _tyre)
+    if (this.onGround && drive > 0.1 && this.gear !== 0) {
+      const dir = this.gear === -1 ? -1 : 1, up = Math.max(0, this.az.y * dir);
+      if (up > 0.05) force = dir * Math.max(Math.abs(force), this.mass * 9.81 * up * 1.4 * drive * (1 - clamp(Math.abs(fwd) / 9, 0, 1)));
+    }
     // engine braking when off the throttle
     if (drive < 0.05 && this.gear > 0 && this.rpm > e.idle + 400) {
       force -= Math.sign(fwd) * e.engineBrake * Math.abs(ratio) / this.spec.wheelRadius * clamp(Math.abs(fwd) / 3, 0, 1);
@@ -508,7 +514,9 @@ export class Vehicle {
     const muBase = w.front ? ty.muFront : ty.muRear;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
-    const mu = muBase * surfMu * driftRearGrip * hurtGrip * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
+    const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
+    const mu = muBase * surfMu * driftRearGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.
