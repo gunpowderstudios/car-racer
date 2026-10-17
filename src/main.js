@@ -32,6 +32,7 @@ import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { remoteCarHitsVan, carHitsRemoteVan } from './mpVanContacts.js';
 import { CaravanView } from './caravanView.js';
+import { caravanBlocked, CARAVAN_DESKTOP_ONLY } from './caravanPhone.js';
 
 const $ = (id) => document.getElementById(id);
 let DT = 1 / 120;   // physics step; set from the quality tier below (60 Hz on low-end phones)
@@ -80,7 +81,9 @@ function vanHud(van) {
   const f = document.getElementById('van-dmg-fill'); f.style.width = pct + '%'; f.style.background = pct > 60 ? '#6fd36f' : pct > 25 ? '#ffb31f' : '#e8392c';
   document.getElementById('van-dmg-n').textContent = pct;
 }
-const caravanWanted = () => !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !caravanView.failed;
+if (caravanBlocked() && opts.caravan) { opts.caravan = false; store.set('cr.opts', opts); }       // a phone cannot tow (see caravanPhone.js): a saved 'on' from before is switched off
+window.addEventListener('caravan-desktop-only', () => toast(CARAVAN_DESKTOP_ONLY));
+const caravanWanted = () => !caravanBlocked() && !!opts.caravan && TOW_CARS.includes(selectedVehicle().id) && !caravanView.failed;
 function syncCaravan() {
   if (!caravanWanted()) { car.tow = null; caravanView.visible = false; caravanView.capture(null); return; }
   caravan.track = track; car.tow = caravan; caravan.reset(car);
@@ -1098,6 +1101,7 @@ function mpSyncVan(p, a0, a1, rt, k) {
   const v1 = a1.s.van;
   if (!v1 || !Array.isArray(v1) || v1.length < 9 || !v1.every(Number.isFinite)) { mpDropVan(p); return; }
   if (!p.vanView) {
+    if (caravanBlocked()) { mpDropVan(p); return; }                 // (a phone does not draw other players' caravans: it never loads the model)
     if (!caravanView.loaded) { caravanView.load(); return; }
     p.vanView = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[p.hue]);
   }

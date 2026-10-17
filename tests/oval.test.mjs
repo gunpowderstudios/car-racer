@@ -507,3 +507,16 @@ test('caravan dents skip wheel meshes even when a wheel has more vertices than t
   assert.match(src, /isWheelish/);
   assert.match(src, /makeDentable\(this\.root, this\.holder, vanDentMax\(\), isWheelish\)/);
 });
+
+test('a touch screen never loads the caravan: it is blocked in the game, the menu card and the preview', async () => {
+  const { caravanBlocked } = await import('../src/caravanPhone.js');
+  assert.equal(caravanBlocked(), false);                                // (node has no matchMedia: desktop)
+  globalThis.matchMedia = (q) => ({ matches: q.includes('coarse') });
+  assert.equal(caravanBlocked(), true);
+  delete globalThis.matchMedia;
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /const caravanWanted = \(\) => !caravanBlocked\(\)/);
+  assert.match(main, /if \(caravanBlocked\(\)\) \{ mpDropVan\(p\); return; \}/);
+  assert.match(readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8'), /caravan-desktop-only/);
+  assert.match(readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8'), /caravanBlocked\(\)\) return false/);
+});

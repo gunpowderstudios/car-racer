@@ -1,3 +1,4 @@
+import { caravanBlocked } from './caravanPhone.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -57,7 +58,7 @@ function installPreview({
 
     let model = null, rig = null, van = null;
     const caravanOn = () => {
-      if (!blurbEl) return false;      // the multiplayer pickers never tow
+      if (!blurbEl || caravanBlocked()) return false;      // the multiplayer pickers never tow, and neither does a phone
       const cb = document.getElementById('opt-caravan');
       if (cb) return cb.checked;
       try { return !!JSON.parse(localStorage.getItem('cr.opts') || '{}').caravan; } catch { return false; }

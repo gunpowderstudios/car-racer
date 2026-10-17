@@ -1,3 +1,4 @@
+import { caravanBlocked, CARAVAN_DESKTOP_ONLY } from './caravanPhone.js';
 import * as THREE from 'three';
 import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
 import { CAR } from './vehicle.js';
@@ -319,18 +320,19 @@ function addCaravanCard(gallery) {
   const name = document.createElement('span');
   name.textContent = CARAVAN_INFO.name;
   card.append(img, name);
-  const towable = TOW_CARS.includes(selectedVehicle().id);
+  const towable = TOW_CARS.includes(selectedVehicle().id), blocked = caravanBlocked();
   const checkbox = () => document.getElementById('opt-caravan');
   const sync = () => {
-    const on = towable && !!checkbox()?.checked;
-    card.classList.toggle('disabled', !towable);
+    const on = towable && !blocked && !!checkbox()?.checked;
+    card.classList.toggle('disabled', !towable || blocked);
     card.classList.toggle('on', on);
     card.setAttribute('aria-checked', String(on));
     card.setAttribute('aria-disabled', String(!towable));
-    card.title = towable ? `${CARAVAN_INFO.name} - ${CARAVAN_INFO.blurb}` : `${CARAVAN_INFO.name} - pick the 70s Saloon, Swedish Massage, WASAABI or German Beema to tow it`;
+    card.title = blocked ? `${CARAVAN_INFO.name} - ${CARAVAN_DESKTOP_ONLY}` : towable ? `${CARAVAN_INFO.name} - ${CARAVAN_INFO.blurb}` : `${CARAVAN_INFO.name} - pick the 70s Saloon, Swedish Massage, WASAABI or German Beema to tow it`;
   };
   card.addEventListener('click', () => {
     const cb = checkbox();
+    if (blocked) { window.dispatchEvent(new Event('caravan-desktop-only')); return; }
     if (!towable || !cb) return;
     cb.checked = !cb.checked;
     cb.dispatchEvent(new Event('change', { bubbles: true }));
