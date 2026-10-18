@@ -108,3 +108,20 @@ export class AdaptiveRes {
     return null;
   }
 }
+
+/** Spots a phone held at a steady ~30 fps (Low Power Mode / Battery Saver cap the screen at 30). Feed real frame times;
+ *  returns true once, after about eight seconds locked near 30 fps, so the game can suggest turning power saving off. */
+export class PowerSaveHint {
+  constructor({ windows = 8 } = {}) { this.windows = windows; this.t = 0; this.frames = 0; this.run = 0; this.done = false; }
+  feed(dt) {
+    if (this.done) return false;
+    if (!(dt > 0) || dt > 0.5) { this.t = 0; this.frames = 0; this.run = 0; return false; }
+    this.t += dt; this.frames++;
+    if (this.t < 1) return false;
+    const fps = this.frames / this.t;
+    this.t = 0; this.frames = 0;
+    this.run = fps >= 27 && fps <= 33.5 ? this.run + 1 : 0;
+    if (this.run >= this.windows) { this.done = true; return true; }
+    return false;
+  }
+}

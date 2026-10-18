@@ -81,3 +81,14 @@ test('smoke is thinned on weaker tiers: fewer puffs, fewer smoking cars, fewer s
   assert.ok(low.fxCars < medium.fxCars && medium.fxCars < high.fxCars);
   assert.ok(low.smokeCap < medium.smokeCap && medium.smokeCap <= high.smokeCap && high.smokeCap <= 180);
 });
+
+test('power-save hint fires once after a steady 30 fps and not for 60 fps or a wobbly rate', async () => {
+  const { PowerSaveHint } = await import('../src/quality.js');
+  const run = (dt, n) => { const h = new PowerSaveHint(); let fired = 0; for (let i = 0; i < n; i++) if (h.feed(dt)) fired++; return fired; };
+  assert.equal(run(1 / 30, 30 * 12), 1);
+  assert.equal(run(1 / 60, 60 * 20), 0);
+  assert.equal(run(1 / 20, 20 * 20), 0);
+  const h = new PowerSaveHint(); let fired = 0;
+  for (let i = 0; i < 400; i++) if (h.feed(i % 90 < 30 ? 1 / 60 : 1 / 30)) fired++;
+  assert.equal(fired, 0);
+});

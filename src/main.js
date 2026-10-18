@@ -24,7 +24,7 @@ import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
 import { packedFromHash, unpackTrack, trackLinkUrl } from './trackLink.js';
 import { Multiplayer } from './multiplayer.js';
-import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes } from './quality.js';
+import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes, PowerSaveHint } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
 import { selectedVehicle, multiplayerVehicleSpec, vehicleById } from './vehicleChoice.js';
@@ -164,7 +164,10 @@ const trouble = { flipped: 0, lost: 0 };
 // run raises it again. At the floor it turns off shadows, then the mirror, rather than stay choppy.
 const adapt = new AdaptiveRes({ min: tier.minScale });
 function applyResolution() { renderer.setPixelRatio(baseRatio * adapt.scale); }
+const powerHint = new PowerSaveHint();
+const isPhone = matchMedia('(pointer: coarse)').matches;
 function adaptFeed(rawDt) {
+  if (isPhone && powerHint.feed(rawDt)) toast('Running at 30 fps? Turn off Low Power Mode (iPhone) or Battery Saver (Android) for smoother play.');
   const r = adapt.feed(rawDt);
   if (!r) return;
   if (r === 'floor') {
