@@ -27,7 +27,7 @@ import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes, PowerSaveHint } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
-import { selectedVehicle, multiplayerVehicleSpec, vehicleById } from './vehicleChoice.js';
+import { selectedVehicle, multiplayerVehicleSpec, vehicleById, VEHICLES } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { remoteCarHitsVan, carHitsRemoteVan } from './mpVanContacts.js';
@@ -271,6 +271,7 @@ const controlActions = {
   camera: () => hud.banner(chase.cycle() + ' camera', 900),
   mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
+  share: () => shareRace(),
 };
 for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
@@ -1423,16 +1424,46 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   $('mp-code').value = params.get('room').toUpperCase();
 }
 
+// ----- share this race: the car, the caravan and the track exactly as it is now (edits included) as one link
+async function shareRace() {
+  if (net) { toast('In multiplayer, use the invite link from the lobby.'); return; }
+  if (!def) return;
+  const v = selectedVehicle(), van = caravanWanted();
+  try {
+    const url = await trackLinkUrl(def, `${location.origin}${location.pathname}?car=${encodeURIComponent(v.id)}${van ? '&van=1' : ''}`);
+    const what = `${v.name}${van ? ' + caravan' : ''} on ${def.name}`;
+    if (matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {
+      try { await navigator.share({ title: 'Bangers and Smash!', text: `Try my race: ${what}`, url }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); toast(`Link copied: ${what}. Send it to a friend!`); }
+    catch { window.prompt('Copy this link and send it to a friend:', url); }
+  } catch { toast('Could not make a link for this race.'); }
+}
+$('share-btn').addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
+$('share-btn').addEventListener('click', (e) => { if (mode === 'drive') shareRace(); e.currentTarget.blur(); });
+
 // ----- a track a friend sent as a link (see src/trackLink.js): offer to drive it, edit it or keep it
 async function openSharedTrack(packed) {
   const d = await unpackTrack(packed);
-  history.replaceState(null, '', location.pathname + location.search);            // so a reload does not ask again
+  const qs = new URLSearchParams(location.search), want = VEHICLES.find((v) => v.id === qs.get('car')), wantVan = qs.get('van') === '1';   // the sender's car and caravan (older links have neither)
+  history.replaceState(null, '', location.pathname);                              // so a reload does not ask again
   if (!d) { toast('That track link did not work. Ask your friend to send it again.'); return; }
   const box = $('shared-track'), close = () => { box.hidden = true; };
   const km = (new Track(d).length / 1000).toFixed(2);
-  $('shared-title').textContent = d.name; $('shared-info').textContent = `${km} km lap`;
+  $('shared-title').textContent = d.name; $('shared-info').textContent = `${km} km lap${want ? ` \u00b7 ${want.name}${wantVan && TOW_CARS.includes(want.id) && !caravanBlocked() ? ' + caravan' : ''}` : ''}`;
   $('shared-edit').hidden = matchMedia('(pointer: coarse)').matches;            // the editor needs a desktop computer
-  $('shared-drive').onclick = () => { close(); startDriving(d); };
+  $('shared-drive').onclick = () => {
+    close();
+    if (want) {
+      opts.caravan = wantVan && TOW_CARS.includes(want.id) && !caravanBlocked(); store.set('cr.opts', opts);
+      if (want.id !== selectedVehicle().id) {                                       // a new car needs a fresh start: remember the track and drive it straight away after the reload
+        try { sessionStorage.setItem('cr.shareDrive', packed); localStorage.setItem('cr.vehicle', want.id); location.reload(); return; } catch { /* storage unavailable: drive with the current car */ }
+      }
+      syncCaravan();
+    }
+    startDriving(d);
+  };
   $('shared-edit').onclick = () => { close(); openEditor(d); };
   $('shared-save').onclick = () => {
     const all = userTracks(); let name = d.name, n = 2;
@@ -1441,8 +1472,14 @@ async function openSharedTrack(packed) {
   };
   $('shared-close').onclick = close;
   box.hidden = false;
+  if (autoDrive) $('shared-drive').click();
 }
-{ const packed = packedFromHash(location.hash); if (packed) openSharedTrack(packed); }
+let autoDrive = false;
+{
+  let again = null; try { again = sessionStorage.getItem('cr.shareDrive'); sessionStorage.removeItem('cr.shareDrive'); } catch { /* storage unavailable */ }
+  const packed = again || packedFromHash(location.hash);
+  if (packed) { autoDrive = !!again; openSharedTrack(packed); }
+}
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

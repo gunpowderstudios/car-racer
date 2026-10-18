@@ -664,3 +664,15 @@ body.mode-drive #vignette { display: block; }
 
 /* touch screens: Reset view is in the cog menu, so the little round arrow button goes */
 @media (pointer: coarse) { #reset-view { display: none !important; } }
+
+/* ---------------------------------------------- share this race (car + caravan + track) with a friend
+   Desktop: a round icon beside the map. Touch screens: a "Share race" entry in the cog menu instead. */
+#share-btn { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 4px); right: 196px; width: 40px; height: 40px; padding: 9px; border-radius: 50%;
+  border: 2px solid rgba(246,217,176,.35); background: rgba(42,29,74,.82); color: var(--peach); cursor: pointer; pointer-events: auto; transition: border-color .2s, color .2s; }
+#share-btn svg { display: block; width: 100%; height: 100%; }
+#share-btn:hover { border-color: var(--amber); color: var(--amber); }
+#controls [data-act="share"] { display: none; }
+@media (pointer: coarse) {
+  #share-btn { display: none; }
+  #sound-ctl #controls [data-act="share"] { display: inline-flex; }
+}

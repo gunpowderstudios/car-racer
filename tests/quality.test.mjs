@@ -101,3 +101,29 @@ test('on touch screens the action buttons move into the cog menu, desktop keeps 
   assert.match(js, /if \(cogMenuOnly\) \$\('controls'\)\.hidden = !open/);
   assert.match(css, /@media \(pointer: coarse\) \{\s*#sound-ctl #controls \{ position: static/);
 });
+
+test('sharing a race puts the car and caravan in the link and the friend gets them back', async () => {
+  const { readFileSync } = await import('node:fs');
+  const js = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="share-btn"/);
+  assert.match(html, /data-act="share"/);
+  assert.match(js, /\?car=\$\{encodeURIComponent\(v\.id\)\}\$\{van \? '&van=1' : ''\}/);
+  assert.match(js, /qs\.get\('car'\)/);
+  assert.match(js, /qs\.get\('van'\) === '1'/);
+  const { VEHICLES } = await import('../src/vehicleChoice.js').catch(() => ({ VEHICLES: null }));
+  if (VEHICLES) assert.ok(VEHICLES.some((v) => v.id === 'car'));
+});
+
+test('a track link still round-trips with a query string in front of it', async () => {
+  const { trackLinkUrl, packedFromHash, unpackTrack } = await import('../src/trackLink.js');
+  const { makeTemplate } = await import('../src/templates.js');
+  const d = makeTemplate('speedway');
+  const url = await trackLinkUrl(d, 'https://x.test/car-racer/?car=car&van=1');
+  const u = new URL(url);
+  assert.equal(u.searchParams.get('car'), 'car');
+  assert.equal(u.searchParams.get('van'), '1');
+  const back = await unpackTrack(packedFromHash(u.hash));
+  assert.equal(back.name, d.name);
+  assert.equal(back.handles.length, d.handles.length);
+});

@@ -129,6 +129,9 @@ html.invite-loading #invite-loading {
     <div id="lap-best">No best lap yet</div>
   </div>
   <canvas id="minimap" width="220" height="220" aria-label="Track map"></canvas>
+  <button id="share-btn" type="button" aria-label="Share this race with a friend" title="Share this race (car, caravan and track) with a friend">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.8" fill="currentColor"/><circle cx="6" cy="12" r="2.8" fill="currentColor"/><circle cx="18" cy="19" r="2.8" fill="currentColor"/><path d="M8.4 10.7 15.6 6.3M8.4 13.3l7.2 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
   <div id="sound-ctl">
     <button id="cog" type="button" aria-label="Sound settings" aria-expanded="false" aria-controls="sound-pop" title="Sound">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="3.38 3.38"/><circle cx="12" cy="12" r="5.4" fill="none" stroke="currentColor" stroke-width="3.4"/></svg>
@@ -192,6 +195,7 @@ html.invite-loading #invite-loading {
     <button class="ctl" type="button" data-act="camera"><kbd>C</kbd> Camera</button>
     <button class="ctl" type="button" id="ctl-reset-view"><kbd>R</kbd> Reset view</button>
     <button class="ctl" type="button" data-act="mirror"><kbd>V</kbd> Mirror</button>
+    <button class="ctl" type="button" data-act="share">Share race</button>
     <button class="ctl" type="button" data-act="edit"><kbd>E</kbd> Edit</button>
     <button class="ctl" type="button" data-act="menu"><kbd>Esc</kbd> Menu</button>
   </nav>
