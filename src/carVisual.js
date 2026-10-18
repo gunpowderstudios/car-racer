@@ -6,6 +6,7 @@ import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
 import { Track } from './track.js';
 import { makeDentable } from './dents.js';
+import { findBonnet } from './bonnetCam.js';
 
 // Measurements of the current car model (model units). The model is a single mesh, 189 units long
 // with its nose towards -X. Wheel centres were measured from the silhouette.
@@ -275,6 +276,25 @@ export class CarVisual {
   // ---- separate wheels (models exported with nodes named Wheel_FL / Wheel_FR / Wheel_RL / Wheel_RR, in the physics' wheel order).
   // A model without them is left alone. The wheel pivots sit on the axles, nose towards -X, so a wheel is steered about its
   // Y axis and rolled about its Z axis. Positive steer turns left, as in vehicle.js.
+  /** Work out where the bonnet camera goes on this vehicle (null for a bus, van or motorhome with no bonnet): see bonnetCam.js. */
+  _scanBonnet() {
+    this.bonnetCam = null;
+    try {
+      this.root.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert(), m = new THREE.Matrix4(), v = new THREE.Vector3(), pts = [];
+      this.holder.traverse((o) => {
+        if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+        for (let p = o; p; p = p.parent) if (/wheel/i.test(p.name || '')) return;
+        m.multiplyMatrices(inv, o.matrixWorld);
+        const pos = o.geometry.attributes.position, step = pos.count > 60000 ? 2 : 1;
+        for (let i = 0; i < pos.count; i += step) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          if (Math.abs(v.x) < 1.6) pts.push(v.x, v.y, v.z);
+        }
+      });
+      this.bonnetCam = findBonnet(pts);
+    } catch { this.bonnetCam = null; }
+  }
   _findWheels() {
     this.wheelNodes = null; this.wheelRest = null; this._wheelsOff = false;
     if (!this.model) return;
@@ -436,6 +456,7 @@ export class CarVisual {
       this.model = model; this._lookKey = -1;
       this._findWheels();
       this._initDents();
+      this._scanBonnet();
       this.loaded = true;
       if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);
@@ -453,6 +474,7 @@ export class ChaseCamera {
     this.pos = new THREE.Vector3(); this.shake = 0; this.ready = false;
     this.boosting = false; this.kick = 0;
     this.low = false;                            // set for tracks with roads stacked above each other (The Twister): the camera is kept out from behind the road above
+    this.bonnet = null;                          // where the bonnet camera goes on this vehicle (CarVisual.bonnetCam); null = this vehicle has no bonnet camera
     this.towLen = 0; this._tow = 0;              // metres of caravan behind the car: the camera drops back and up so it can see over it
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
@@ -465,6 +487,9 @@ export class ChaseCamera {
     const speed = Math.hypot(vel.x, vel.z);
     const heading = Math.atan2(f.x, f.z);
     this.kick += ((this.boosting ? 1 : 0) - this.kick) * Math.min(1, (this.boosting ? 5 : 2.5) * dt);
+    if (this.mode === 3 && !this.bonnet) { this.mode = 0; this.ready = false; }        // (a vehicle with no bonnet: back to the chase view)
+    const near = this.mode === 3 ? 0.12 : 0.3;
+    if (this.cam.near !== near) { this.cam.near = near; this.cam.updateProjectionMatrix(); }
     if (this.mode === 2) {
       const off = this._v.set(0, 0.5, 2.6).applyQuaternion(quat);
       this.cam.position.copy(p).add(off);
@@ -474,9 +499,9 @@ export class ChaseCamera {
       return;
     }
     if (this.mode === 3) {
-      const off = this._v.set(0, 0.75, 1.3).applyQuaternion(quat);
+      const b = this.bonnet, off = this._v.set(0, b.y, b.z).applyQuaternion(quat);
       this.cam.position.copy(p).add(off);
-      this.cam.quaternion.copy(quat).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.02, Math.PI, 0)));
+      this.cam.quaternion.copy(quat).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(b.pitch, Math.PI, 0)));
       this.cam.fov += (64 + speed * 0.22 + this.kick * 10 - this.cam.fov) * Math.min(1, 4 * dt);
       this.cam.updateProjectionMatrix();
       return;

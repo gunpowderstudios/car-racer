@@ -742,6 +742,7 @@ function frame(now) {
     const a = acc / DT;
     drawPos.copy(prevPos).lerp(curPos, a); drawQ.copy(prevQ).slerp(curQ, a);
     velV.set(car.vel.x, car.vel.y, car.vel.z);
+    chase.bonnet = visual.loaded ? visual.bonnetCam : null;
     chase.boosting = car.boosting; chase.towLen = car.tow ? car.tow.spec.length : 0;
     chase.update(dt, drawPos, drawQ, velV, track);
     if (!paused) effects(dt);
