@@ -92,3 +92,12 @@ test('power-save hint fires once after a steady 30 fps and not for 60 fps or a w
   for (let i = 0; i < 400; i++) if (h.feed(i % 90 < 30 ? 1 / 60 : 1 / 30)) fired++;
   assert.equal(fired, 0);
 });
+
+test('on touch screens the action buttons move into the cog menu, desktop keeps its bar', async () => {
+  const { readFileSync } = await import('node:fs');
+  const js = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(js, /cogMenuOnly\) \{ \$\('sound-ctl'\)\.appendChild\(\$\('controls'\)\)/);
+  assert.match(js, /if \(cogMenuOnly\) \$\('controls'\)\.hidden = !open/);
+  assert.match(css, /@media \(pointer: coarse\) \{\s*#sound-ctl #controls \{ position: static/);
+});

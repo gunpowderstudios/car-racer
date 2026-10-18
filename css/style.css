@@ -650,3 +650,14 @@ body.track-chosen #menu-vehicle-preview { display: none; }
 /* a very light darkening at the screen edges while driving (cinematic) */
 #vignette { position: fixed; inset: 0; z-index: 5; pointer-events: none; display: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(14,6,22,.38) 100%); }
 body.mode-drive #vignette { display: block; }
+
+/* ---------------------------------------------- touch screens: the action buttons live inside the cog menu
+   The row of buttons (Restart, Back on road, Camera...) is moved under the cog by main.js and stays hidden until
+   the cog is tapped. Desktop keeps its bar along the bottom. */
+#controls[hidden] { display: none; }
+@media (pointer: coarse) {
+  #sound-ctl #controls { position: static; left: auto; right: auto; top: auto; bottom: auto; width: max-content; max-width: none; flex-direction: column; flex-wrap: nowrap;
+    gap: 4px; padding: 8px; background: rgba(42,29,74,.92); border-left: 4px solid var(--amber); opacity: 1; font-size: 16px; }
+  #sound-ctl #controls .ctl { flex: none; justify-content: flex-start; text-align: left; white-space: nowrap; padding: 9px 12px; font-size: 16px; line-height: 1.1; }
+  #sound-ctl #controls [data-act="edit"] { display: none; }   /* the track editor is desktop only */
+}

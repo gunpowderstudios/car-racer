@@ -254,7 +254,10 @@ function syncSoundUI() {
   $('opt-music').checked = $('hud-music').checked = sound.musicOn;
   $('cog').classList.toggle('off', !sound.sfxOn && !sound.musicOn);
 }
-function setSoundPop(open) { $('sound-pop').hidden = !open; $('cog').setAttribute('aria-expanded', String(open)); }
+// On touch screens the action buttons (restart, camera...) move under the cog and open with it; desktop keeps its bar.
+const cogMenuOnly = matchMedia('(pointer: coarse)').matches;
+if (cogMenuOnly) { $('sound-ctl').appendChild($('controls')); $('controls').hidden = true; $('cog').title = $('cog').ariaLabel = 'Menu and sound'; }
+function setSoundPop(open) { $('sound-pop').hidden = !open; if (cogMenuOnly) $('controls').hidden = !open; $('cog').setAttribute('aria-expanded', String(open)); }
 $('cog').addEventListener('click', (e) => { e.stopPropagation(); setSoundPop($('sound-pop').hidden); e.currentTarget.blur(); });
 for (const [id, kind] of [['hud-sfx', 'sfx'], ['hud-music', 'music']]) {
   $(id).addEventListener('change', (e) => { sound.setEnabled(kind, e.target.checked); syncSoundUI(); e.target.blur(); });   // blur so Space stays the handbrake
@@ -271,7 +274,7 @@ const controlActions = {
 };
 for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
-  b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); });
+  b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); if (cogMenuOnly) setSoundPop(false); });
 }
 
 // --------------------------------------------------------------------- track
