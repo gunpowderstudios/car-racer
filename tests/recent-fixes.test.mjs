@@ -300,10 +300,10 @@ test('oval template is displayed as The Oval', () => {
 });
 
 
-test('mobile menu orders vehicle preview then race options then tracks', () => {
+test('mobile menu orders vehicle preview, then the car grid, then race options, then tracks', () => {
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
-  assert.match(css, /#menu-vehicle-choice \{ order: 5; \}/);
-  assert.match(css, /#menu-vehicle-preview \{[\s\S]*order: 6;/);
+  assert.match(css, /#menu-vehicle-choice \{ order: 6;/);
+  assert.match(css, /#menu-vehicle-preview \{\s*order: 5;/);
   assert.match(css, /#menu \.options \{ order: 7; \}/);
   assert.match(css, /#track-list \{ order: 8; \}/);
   assert.match(css, /@media \(max-width: 980px\)/);
