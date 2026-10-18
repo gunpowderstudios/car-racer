@@ -34,8 +34,8 @@ const OLD_GPU = /adreno[^0-9]*[2-5]\d\d\b|mali-?(4\d\d|t\d+)|powervr\s*(sgx|ge8)
 
 /**
  * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Desktops start on high - the
- * adaptive resolution still protects weak laptops. Touch devices start on medium and drop to low when
- * something says the phone is old or data-saving. Phones that give no hints (iPhones) start on medium
+ * adaptive resolution still protects weak laptops. Touch devices start on high and drop to low when
+ * something says the phone is old or data-saving. Phones that give no hints (iPhones) start on high
  * and rely on the adaptive resolution.
  */
 export function detectTier({ forced, touch = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
@@ -43,9 +43,9 @@ export function detectTier({ forced, touch = false, memory = 0, cores = 0, saveD
   if (!touch) return 'high';
   if (saveData) return 'low';
   if (memory && memory <= 3) return 'low';
-  if (cores && cores <= 4) return 'low';
   if (gpu && OLD_GPU.test(gpu)) return 'low';
-  return 'medium';
+  if (cores && cores <= 4 && !/apple/i.test(gpu)) return 'low';     // (Safari reports few cores even on a fast iPhone, so an Apple GPU is not judged by that)
+  return 'high';                                                      // a phone from the last few years copes with everything: the adaptive resolution still protects slower ones
 }
 
 /** Read the device hints from the browser. Browser-only; kept out of detectTier so that stays testable. */

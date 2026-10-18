@@ -123,7 +123,8 @@ function wantLite() {
     const q = qs.get('q'); let saved = null;
     try { saved = JSON.parse(localStorage.getItem('cr.opts'))?.quality; } catch { /* no saved options */ }
     const forced = TIER_NAMES.includes(q) ? q : TIER_NAMES.includes(saved) ? saved : null;
-    return detectTier({ forced, ...probeDevice() }) !== 'high';
+    const dev = probeDevice();
+    return dev.touch || detectTier({ forced, ...dev }) !== 'high';      // a touch screen always gets the lighter car models, whatever its quality tier
   } catch { return false; }
 }
 const USE_LITE = wantLite();
