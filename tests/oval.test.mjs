@@ -507,6 +507,159 @@ test('caravan dents skip wheel meshes even when a wheel has more vertices than t
   assert.match(src, /makeDentable\(this\.root, this\.holder, vanDentMax\(\), isWheelish\)/);
 });
 
+test('a weak touch screen never loads the caravan; computers and capable phones can', async () => {
+  const { caravanBlocked } = await import('../src/caravanPhone.js');
+  assert.equal(caravanBlocked(), false);                                // (node has no matchMedia: a computer)
+  const nav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const as = (hints) => { globalThis.matchMedia = (q) => ({ matches: q.includes('coarse') }); Object.defineProperty(globalThis, 'navigator', { value: hints, configurable: true }); };
+  as({ hardwareConcurrency: 6, deviceMemory: 4 });
+  assert.equal(caravanBlocked(), false, 'a capable phone can tow');
+  as({ hardwareConcurrency: 8, deviceMemory: 2 });
+  assert.equal(caravanBlocked(), true, 'a phone with little memory cannot');
+  as({ hardwareConcurrency: 2, deviceMemory: 4 });
+  assert.equal(caravanBlocked(), true, 'a phone with few cores cannot');
+  globalThis.location = { search: '?caravan=1' };
+  assert.equal(caravanBlocked(), false, 'the test switch forces it on');
+  globalThis.location = { search: '?caravan=0' };
+  as({ hardwareConcurrency: 8, deviceMemory: 8 });
+  assert.equal(caravanBlocked(), true, 'and ?caravan=0 forces it off');
+  delete globalThis.location; delete globalThis.matchMedia;
+  if (nav) Object.defineProperty(globalThis, 'navigator', nav);
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /const caravanWanted = \(\) => !caravanBlocked\(\)/);
+  assert.match(main, /if \(caravanBlocked\(\)\) \{ mpDropVan\(p\); return; \}/);
+  assert.match(readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8'), /caravan-desktop-only/);
+  assert.match(readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8'), /caravanBlocked\(\)\) return false/);
+});
+
+test('Race Day stages start with the three-light Red, Red, Green sequence', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  assert.ok(existsSync(new URL('../src/raceLights.js', import.meta.url)));
+  const rl = readFileSync(new URL('../src/raceLights.js', import.meta.url), 'utf8');
+  assert.match(rl, /'<div class="rl-col">.*\.repeat\(3\)/, 'three lights');
+  const sm = readFileSync(new URL('../src/storyMode.js', import.meta.url), 'utf8');
+  assert.match(sm, /startRaceLights\(\(\) => app\.freeze\(false\)/, 'the race is held until the lights go out');
+  assert.match(sm, /cancelRaceLights\(\)/);
+});
+
+test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and can throw them off', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\|F\)/);
+  assert.match(cv, /setWheels\(car\)/); assert.match(cv, /detachWheels\(\)/); assert.match(cv, /restoreWheels\(\)/);
+  assert.ok(existsSync(new URL('../src/wheelDebris.js', import.meta.url)));
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /visual\.setWheels\(car\)/); assert.match(main, /wheelFlyers\.launch/);
+  // the light copy of the Mini keeps its named wheels
+  const buf = readFileSync(new URL('../cars/lite/mini-SHRINK.glb', import.meta.url));
+  const json = JSON.parse(buf.slice(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+  const names = json.nodes.map((n) => n.name).filter(Boolean);
+  for (const n of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) assert.ok(names.includes(n), n);
+});
+
+test('wheels turn about their real axle, not the bounding-box centre (no up-and-down wobble)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /export function wheelAxle\(geo\)/);
+  assert.match(cv, /_axle/, 'each wheel gets a pivot group on its axle');
+});
+
+test('Mobile Chariot (the three-wheeled mobility car) is listed, has its own profile, and a single front wheel is handled', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'mobility-car',\s*name: 'Mobile Chariot',\s*description: 'A fiberglass deathtrap which rolled with the times\.\.\. literally!'/);
+  assert.match(src, /url: 'cars\/mobility-car-SHRINK\.glb'/);
+  assert.ok(existsSync(new URL('../cars/mobility-car-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/lite/mobility-car-SHRINK.glb', import.meta.url)));
+  assert.ok(existsSync(new URL('../cars/thumbs/mobility-car.webp', import.meta.url)));
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const m = vehiclePhysicsProfile('mobility-car');
+  assert.ok(m && m.mass < 500 && m.body.length < 3.2);
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /Wheel_\(FL\|FR\|RL\|RR\|F\)/, 'a three-wheeler names its one front wheel Wheel_F');
+});
+
+test('WASAABI (the Saab turbo) is a listed vehicle with its own profile, model, phone copy and menu picture', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
+  assert.match(src, /id: 'saab',\s*name: 'WASAABI',\s*description: 'I used to be a JET you know!'/);
+  for (const f of ['cars/saab-SHRINK.glb', 'cars/lite/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
+  const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
+  const sa = vehiclePhysicsProfile('saab');
+  assert.ok(sa && sa.mass > 1100 && sa.mass < 1400 && sa.boost.accel > 5);
+});
+
+test('wheels: bits of body cut out with a wheel are trimmed off it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /export function trimWheel\(geo, ax\)/);
+  assert.match(cv, /trimWheel\(m\.geometry, ax\)/, 'applied to every wheel as it is re-pivoted');
+});
+
+test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>A random race<\/small>/);
+  assert.match(html, /Race Day <small>What do points mean\?<\/small>/);
+  assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
+  assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);
+  assert.doesNotMatch(html, />Play Now</);
+  assert.match(html, /id="btn-multiplayer-top"/);
+  assert.match(html, /id="btn-multiplayer"/, 'the lower Multiplayer button stays');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /btn-multiplayer-top'\)\.onclick = \(\) => \$\('btn-multiplayer'\)\.click\(\)/);
+});
+
+test('The Twister: the spiral has no barriers, coming back from it means starting at its foot, and the open flag survives sharing', async () => {
+  const { Track, normalizeTrack } = await import('../src/track.js');
+  const def = makeTemplate('twister'), track = new Track(def);
+  assert.ok(track.openA > 0 && track.openB > track.openA + 500, 'there is an open spiral stretch');
+  const mid = (track.openA + track.openB) / 2;
+  assert.ok(track.inOpen(mid) && !track.inOpen(track.openA - 40) && !track.inOpen(track.openB + 40));
+  assert.ok(Math.abs(track.restartS(mid) - (track.openA - 14)) < 1e-6);                                  // a car brought back from up the spiral starts at its foot
+  assert.equal(track.restartS(track.openB + 40), track.openB + 40);                     // anywhere else it is put back where it was
+  assert.equal(track.wallOff[Math.floor(mid / track.ds)], 1);
+  const shared = new Track(normalizeTrack(JSON.parse(JSON.stringify(def))));            // as sent to a friend
+  assert.equal(shared.openA, track.openA);
+});
+
+test('wheels saved from Shrink (extras.wheel) are used exactly as they are, never fitted or trimmed', () => {
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  assert.match(cv, /userData\.wheel/);
+  assert.match(cv, /if \(!exact\) trimWheel/);
+});
+
+test('the whole game runs GAME_SPEED times faster than the wall clock, and the speedometer and lap clock say so', () => {
+  const gs = readFileSync(new URL('../src/gameSpeed.js', import.meta.url), 'utf8');
+  assert.match(gs, /export const GAME_SPEED = 1\.1;/);
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /acc \+= dt \* GAME_SPEED/);
+  assert.match(main, /simTime \+= DT \/ GAME_SPEED/);
+  assert.match(readFileSync(new URL('../src/hud.js', import.meta.url), 'utf8'), /car\.speed \* GAME_SPEED/);
+});
+
+test('the Rootmaster rings bus-bell.mp3 instead of honking', () => {
+  const a = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(a, /load\('busBell', 'sounds\/bus-bell\.mp3'\)/);
+  assert.match(a, /vehicleId === 'bus' && this\.buf\.busBell/);
+  assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /sound\.hornStart\(selectedVehicle\(\)\.id\)/);
+  assert.ok(existsSync(new URL('../sounds/bus-bell.mp3', import.meta.url)));
+});
+
+test('a wrecked caravan loses only its left wheel (the other stays on) and sags to that side', () => {
+  const v = readFileSync(new URL('../src/caravanView.js', import.meta.url), 'utf8');
+  assert.match(v, /_lostWheel/);
+  assert.match(v, /out\.push\(\{ node: left/);
+  assert.doesNotMatch(v, /for \(const w of this\.wheels\) \{ scene\.attach\(w\)/);
+  assert.match(v, /this\._e\.z -= 0\.2 \* this\._sag/);
+});
+
+test('caravan dents skip wheel meshes even when a wheel has more vertices than the body', () => {
+  const src = readFileSync(new URL('../src/caravanView.js', import.meta.url), 'utf8');
+  assert.match(src, /isWheelish/);
+  assert.match(src, /makeDentable\(this\.root, this\.holder, vanDentMax\(\), isWheelish\)/);
+});
+
 test('a touch screen never loads the caravan: it is blocked in the game, the menu card and the preview', async () => {
   const { caravanBlocked } = await import('../src/caravanPhone.js');
   assert.equal(caravanBlocked(), false);                                // (node has no matchMedia: desktop)
