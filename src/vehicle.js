@@ -20,6 +20,8 @@ const G = 9.81;
 /** Every vehicle's tyres grip this much more than its profile says (one place to turn all the grip up or down). */
 export const GRIP_BOOST = 1.15;
 export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
+/** While a drift is held, the slide bends the car's path into the corner by this much (m/s², about 0.6 g at full effect) and gives back this share of the speed the slide would scrub off. */
+export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 export const CAR = {
@@ -310,6 +312,16 @@ export class Vehicle {
     // Think of this as a soft spring/damper around the chosen drift angle, not an angle lock.
     const yawAccel = clamp(-error * 9.5 - yawRate * 2.5, -6.2, 6.2) * this.driftBlend;
     this.T.addScaled(this.ay, yawAccel * this.spec.inertia.y);
+    // the tuck: a drift is how you take a corner faster than the grip line, so the path bends in with the slide
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 6 && Math.abs(this.sideSlip) > 0.15) {
+      const turn = -Math.sign(this.driftTarget), ramp = clamp(sp / 15, 0, 1) * clamp((Math.abs(this.sideSlip) - 0.15) / 0.2, 0, 1) * this.driftBlend;
+      this.F.x += turn * (this.vel.z / sp) * this.mass * DRIFT_PULL * ramp;
+      this.F.z -= turn * (this.vel.x / sp) * this.mass * DRIFT_PULL * ramp;
+      // keep the speed: the tuck pulls sideways on a moving car, which would otherwise shed speed; hold that share of it
+      this.F.x += (this.vel.x / sp) * this.mass * DRIFT_PULL * DRIFT_KEEP * 0.25 * ramp;
+      this.F.z += (this.vel.z / sp) * this.mass * DRIFT_PULL * DRIFT_KEEP * 0.25 * ramp;
+    }
   }
 
   /**
