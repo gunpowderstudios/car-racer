@@ -470,7 +470,7 @@ test('The Twister: the spiral has no barriers, coming back from it means startin
   assert.equal(shared.openA, track.openA);
 });
 
-test('wheels saved from Shrink (extras.wheel) are used exactly as they are, never fitted or trimmed', () => {
+test('wheels saved from Shrink (extras.wheel) are never trimmed, only re-pivoted on the fitted hub', () => {
   const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
   assert.match(cv, /userData\.wheel/);
   assert.match(cv, /if \(!exact\) trimWheel/);
@@ -623,7 +623,7 @@ test('The Twister: the spiral has no barriers, coming back from it means startin
   assert.equal(shared.openA, track.openA);
 });
 
-test('wheels saved from Shrink (extras.wheel) are used exactly as they are, never fitted or trimmed', () => {
+test('wheels saved from Shrink (extras.wheel) are never trimmed, only re-pivoted on the fitted hub', () => {
   const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
   assert.match(cv, /userData\.wheel/);
   assert.match(cv, /if \(!exact\) trimWheel/);

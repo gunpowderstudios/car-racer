@@ -676,3 +676,13 @@ body.mode-drive #vignette { display: block; }
   #share-btn { display: none; }
   #sound-ctl #controls [data-act="share"] { display: inline-flex; }
 }
+
+/* ---------------------------------------------- pause (P, single player only) */
+#pause-card { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); display: grid; gap: 4px; justify-items: center; padding: 14px 34px 16px;
+  background: rgba(27,18,51,.88); border-top: 5px solid var(--amber); border-bottom: 5px solid var(--amber); font-family: var(--cond); color: var(--peach); text-shadow: none; pointer-events: none; }
+#pause-card[hidden] { display: none; }
+#pause-card b { font-family: var(--display); font-weight: 900; font-size: 46px; line-height: 1; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); }
+#pause-card span { font-size: 18px; }
+#pause-card kbd { padding: 0 6px; background: var(--peach); color: var(--violet-deep); border-radius: 3px; font-weight: 700; }
+html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !important; }
+@media (pointer: coarse) { #pause-card { pointer-events: auto; } #pause-card span { display: none; } #pause-card b { font-size: 36px; } }

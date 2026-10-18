@@ -199,6 +199,8 @@ const input = new Input({
   onRestart: () => mode === 'drive' && restartRace(),
   onPadConnect: () => mode === 'drive' && hud.banner('Controller connected', 1600),
   onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
+  onPause: () => togglePause(),
+  onBoom: () => selfDestruct(),
   onMenu: () => (mode === 'drive' ? showMenu() : null),
   onEditor: () => mode === 'drive' && openEditor(def),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
@@ -271,7 +273,7 @@ const controlActions = {
   camera: () => hud.banner(chase.cycle() + ' camera', 900),
   mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
-  share: () => shareRace(),
+  share: () => shareRace(), pause: () => togglePause(), boom: () => selfDestruct(),
 };
 for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
@@ -331,6 +333,7 @@ function placeCarInArena() {
 
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
+  setPaused(false);
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
   skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
   placeCar(track.startS(12), 0, 0);
@@ -413,7 +416,7 @@ function updateRace(dt) {
 
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
-  if (frozen) return;                                            // the story-mode results panel is up: hold the race still
+  if (frozen || paused) return;                                            // the story-mode results panel is up: hold the race still
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
@@ -741,20 +744,20 @@ function frame(now) {
     velV.set(car.vel.x, car.vel.y, car.vel.z);
     chase.boosting = car.boosting; chase.towLen = car.tow ? car.tow.spec.length : 0;
     chase.update(dt, drawPos, drawQ, velV, track);
-    effects(dt);
+    if (!paused) effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
     if (derby.damageEnabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setDamage(derby.player.health);
-      derbyFx(dt);
+      if (!paused) derbyFx(dt);
       visual.setLook(derby.player.wrecked ? 0.3 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
       mapDots.length = 0;
       for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
       if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
     }
     hud.drawMap(car, derby.enabled ? mapDots : null);
-    sound.update(car, throttleNow, !derby.over && !car.engineOff);
+    sound.update(car, paused ? 0 : throttleNow, !paused && !derby.over && !car.engineOff);
     if (!$('debug').hidden) debugText();
     if (net) {
       if (life.respawnDue(simTime)) { respawn(); mpClearDents(); hud.banner('Respawned - back in the race!', 1600); }   // same lap, on the road, protected for a moment
@@ -800,7 +803,23 @@ function debugText() {
 }
 
 // --------------------------------------------------------------------- modes
+/** P: hold the whole race still (single player only; in multiplayer everyone else keeps going). */
+function setPaused(v) {
+  paused = !!v; $('pause-card').hidden = !paused;
+  const pb = document.querySelector('#controls [data-act="pause"]'); if (pb) pb.lastChild.textContent = paused ? ' Resume' : ' Pause';
+  if (paused) { hornVoice?.stop?.(); hornVoice = null; sound.update(car, 0, false); }
+}
+$('pause-card').addEventListener('click', () => setPaused(false));   // (on a phone: tap the card to carry on)
+/** X: stuck? Blow your car up. With rivals it is a proper wreck (the race puts you back on the road); alone, a fireball and then back on the road. */
+function selfDestruct() {
+  if (mode !== 'drive' || net || paused) return;
+  if (derby.enabled && derby.selfDestruct()) return;
+  mpExplodeAt(car.pos.x, car.pos.y + 0.4, car.pos.z); wheelFlyers.launch(visual, car.vel); chase.impact(18);
+  setTimeout(() => { if (mode === 'drive' && !net) respawn(); }, 900);
+}
+function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
+  setPaused(false);
   if (m !== 'drive') setSoundPop(false);
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '');
   $('hud').hidden = m !== 'drive';

@@ -601,6 +601,16 @@ export class Derby {
     if (f.health.wrecked) this._wreck(f, f.health.wrecked);
   }
 
+  /** X: blow your own car up (stuck, wedged, or just for fun). Goes through the normal wreck, so a race puts you back on the road. */
+  selfDestruct() {
+    const f = this.player;
+    if (!f || !this.damageEnabled || f.wrecked || this.over) return false;
+    f.health.hit('front', f.health.max.front * 10);
+    this.events.push({ type: 'damage', id: f.id, isPlayer: true, zone: 'front', hp: 0 });
+    if (f.health.wrecked) this._wreck(f, f.health.wrecked);
+    return true;
+  }
+
   _wreck(f, zone) {
     const c = f.car, rnd = this.rng;
     f.wrecked = true; f.wreckT = 0;

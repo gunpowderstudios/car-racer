@@ -127,3 +127,25 @@ test('a track link still round-trips with a query string in front of it', async 
   assert.equal(back.name, d.name);
   assert.equal(back.handles.length, d.handles.length);
 });
+
+test('pause: P key, single player only, holds the physics; wheels are re-pivoted on the fitted hub', async () => {
+  const { readFileSync } = await import('node:fs');
+  const js = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const inp = readFileSync(new URL('../src/input.js', import.meta.url), 'utf8');
+  const cv = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
+  const van = readFileSync(new URL('../src/caravanView.js', import.meta.url), 'utf8');
+  assert.match(inp, /KeyP: onPause/);
+  assert.match(js, /function togglePause\(\) \{ if \(mode === 'drive' && !net\)/);
+  assert.match(js, /if \(frozen \|\| paused\) return;/);
+  assert.match(cv, /if \(exact\) ax = ax\.r > 0/);
+  assert.match(van, /const f = wheelAxle\(wm\.geometry\)/);
+});
+
+test('X blows up your own car in single player, through the normal wreck', async () => {
+  const { readFileSync } = await import('node:fs');
+  const js = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const dj = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
+  assert.match(readFileSync(new URL('../src/input.js', import.meta.url), 'utf8'), /KeyX: onBoom/);
+  assert.match(js, /function selfDestruct\(\) \{\s*if \(mode !== 'drive' \|\| net \|\| paused\) return;/);
+  assert.match(dj, /selfDestruct\(\) \{[\s\S]*?this\._wreck\(f, f\.health\.wrecked\)/);
+});

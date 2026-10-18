@@ -2,14 +2,14 @@
 import { clamp } from './math.js';
 
 export class Input {
-  constructor({ onReset, onRestart, onPadConnect, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror } = {}) {
+  constructor({ onReset, onRestart, onPadConnect, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror, onPause, onBoom } = {}) {
     this.keys = new Set();
     this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
     this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false, horn: false };
     this._prevPad = {};
     this.enabled = true;
     // R (reset camera view) lives in cameraOrbit.js; B puts the car back on the road; Backspace / Delete restart the race.
-    const map = { KeyB: onReset, Backspace: onRestart, Delete: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror };
+    const map = { KeyB: onReset, Backspace: onRestart, Delete: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror, KeyP: onPause, KeyX: onBoom };
     addEventListener('keydown', (e) => {
       if (!this.enabled) return;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();

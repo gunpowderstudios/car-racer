@@ -304,7 +304,10 @@ export class CarVisual {
       m.updateMatrix();
       // A wheel saved from Shrink says so (extras.wheel) and is already clean and centred on its axle (the node's origin): use it exactly as it is. Older models are guessed at.
       const exact = !!((host.userData && host.userData.wheel) || (m.userData && m.userData.wheel));
-      const ax = exact ? { x: 0, y: 0, z: 0, r: 0 } : wheelAxle(m.geometry);
+      // Even a Shrink wheel can have its origin a few percent of the radius off the real hub, which makes it wobble as it turns: move the pivot onto the fitted hub
+      // (only when the fit is believable and close; the mesh is never trimmed or changed).
+      let ax = wheelAxle(m.geometry);
+      if (exact) ax = ax.r > 0 && Math.hypot(ax.x, ax.y) < ax.r * 0.15 ? { x: ax.x, y: ax.y, z: 0, r: 0 } : { x: 0, y: 0, z: 0, r: 0 };
       if (!exact) trimWheel(m.geometry, ax);
       const P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
       const pivot = new THREE.Group(); pivot.name = host.name + '_axle';

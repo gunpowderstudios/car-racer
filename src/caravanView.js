@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { assetUrl } from './assetVersion.js';
-import { recolour, CarVisual } from './carVisual.js';
+import { recolour, CarVisual, wheelAxle } from './carVisual.js';
 import { splitWheelTriangles } from './wheelSplit.js';
 import { makeDentable } from './dents.js';
 
@@ -171,6 +171,13 @@ export class CaravanView {
     this.wheels = [];
     wheelNodes.forEach((w) => {
       const c = new THREE.Box3().setFromObject(w).getCenter(new THREE.Vector3());
+      // a wheel turns about its real hub, not its box centre: fit the tyre's rim and use that when it is believable and close (else the box centre stays)
+      const wm = w.isMesh ? w : w.children.find((k) => k.isMesh);
+      if (wm && wm.geometry && wm.geometry.attributes.position) {
+        const f = wheelAxle(wm.geometry), hub = new THREE.Vector3(f.x, f.y, f.z).applyMatrix4(wm.matrixWorld);
+        const half = (new THREE.Box3().setFromObject(w).getSize(new THREE.Vector3()).y) / 2;
+        if (f.r > 0 && hub.distanceTo(c) < half * 0.15) c.copy(hub);
+      }
       const pivot = new THREE.Group(); pivot.userData.pivot = true; this.holder.add(pivot); pivot.position.copy(this.holder.worldToLocal(c.clone()));
       pivot.updateMatrixWorld(true); pivot.attach(w); this.wheels.push(pivot);
     });
