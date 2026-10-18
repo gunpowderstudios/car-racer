@@ -25,6 +25,10 @@ The project is written as a browser game using JavaScript, Three.js and WebGL. T
 
 A formal licence file is not currently included in the repository, so redistribution or publishing modified versions should wait until licence terms are added.
 
+## Workshop Notes
+
+The settings, numbers and tricks behind the game (graphics tiers, phones, damage, the caravan, cameras, making models) are written up at https://gunpowderstudios.github.io/car-racer/workshop.html and live in [`workshop.html`](workshop.html).
+
 ## Gunpowder Studios
 
 https://www.gunpowderstudios.co.uk/

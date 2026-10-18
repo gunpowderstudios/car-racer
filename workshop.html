@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workshop Notes - Bangers and Smash!</title>
+<meta name="description" content="How Bangers and Smash! is built and tuned: the settings, numbers, models and tricks behind the game, for anyone who wants to download it from GitHub and adapt it.">
+<link rel="canonical" href="https://gunpowderstudios.github.io/car-racer/workshop.html">
+<link rel="icon" href="src/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root { --violet: #2a1d4a; --violet-deep: #1b1233; --amber: #ffb31f; --red: #e8392c; --peach: #f6d9b0; --ink-dim: #b9a9d6; --line: rgba(246,217,176,.18);
+  --display: "Big Shoulders Display", Impact, "Arial Narrow", sans-serif; --body: Barlow, "Helvetica Neue", Arial, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", sans-serif; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--violet-deep); color: var(--peach); font: 17px/1.6 var(--body); }
+a { color: var(--amber); }
+header { padding: 40px 16px 24px; max-width: 980px; margin: 0 auto; }
+header .back { font-family: var(--cond); font-size: 18px; text-decoration: none; letter-spacing: .04em; }
+h1 { margin: 10px 0 6px; font: 900 clamp(44px, 9vw, 84px)/.95 var(--display); text-transform: uppercase; letter-spacing: .01em; color: var(--amber); }
+header p { margin: 0; max-width: 62ch; color: var(--ink-dim); font-size: 19px; }
+nav { position: sticky; top: 0; z-index: 5; background: rgba(27,18,51,.94); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+nav div { max-width: 980px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--cond); font-size: 17px; }
+nav a { text-decoration: none; color: var(--peach); }
+nav a:hover { color: var(--amber); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 80px; }
+section { padding-top: 36px; scroll-margin-top: 48px; }
+h2 { margin: 0 0 8px; font: 900 38px/1 var(--display); text-transform: uppercase; color: var(--amber); }
+h3 { margin: 26px 0 6px; font: 600 22px/1.1 var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--peach); }
+p { margin: 8px 0; max-width: 72ch; }
+ul { margin: 8px 0; padding-left: 22px; max-width: 76ch; }
+li { margin: 4px 0; }
+code, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86em; background: rgba(246,217,176,.1); border-radius: 4px; padding: 1px 5px; }
+pre { background: #120b24; border-left: 4px solid var(--amber); padding: 12px 14px; overflow-x: auto; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; border-radius: 0 6px 6px 0; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.wrap { overflow-x: auto; margin: 10px 0; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 15px var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); background: rgba(246,217,176,.05); }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.note { background: rgba(255,179,31,.1); border-left: 4px solid var(--amber); padding: 10px 14px; margin: 14px 0; max-width: 76ch; border-radius: 0 6px 6px 0; }
+.warn { background: rgba(232,57,44,.12); border-left-color: var(--red); }
+.small { color: var(--ink-dim); font-size: 15px; }
+footer { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; color: var(--ink-dim); border-top: 1px solid var(--line); font-size: 15px; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="./">&larr; Back to the game</a>
+  <h1>Workshop Notes</h1>
+  <p>How Bangers and Smash! is put together, and the numbers we have tuned along the way. Written for anyone who wants to download the game from GitHub, poke at it and make it their own.</p>
+</header>
+<nav><div>
+  <a href="#start">Start here</a><a href="#clock">The clock</a><a href="#graphics">Graphics tiers</a><a href="#phones">Phones</a><a href="#vehicles">Vehicles</a><a href="#damage">Damage</a><a href="#caravan">Caravan</a><a href="#cameras">Cameras &amp; controls</a><a href="#links">Links &amp; switches</a><a href="#models">Making models</a><a href="#rules">House rules</a><a href="#map">Source map</a>
+</div></nav>
+<main>
+
+<section id="start">
+  <h2>Start here</h2>
+  <p>It is a plain browser game: JavaScript modules and <a href="https://threejs.org/">Three.js</a> (r180, loaded from a CDN). There is no build step and no bundler. Edit a file, refresh the page.</p>
+<pre><code>git clone https://github.com/gunpowderstudios/car-racer.git
+cd car-racer
+python3 -m http.server 8080     # or: npm start
+# open http://localhost:8080/
+npm test                        # node --test tests/*.test.mjs  (Node 20 or newer)</code></pre>
+  <div class="note">The tests run in plain Node with no browser. The game logic (physics, damage, AI, multiplayer, track links) has no DOM in it, so it can be tested; the drawing code cannot, so changes to looks have to be checked by eye in a real browser.</div>
+  <div class="note warn"><b>Licence.</b> The source is public so people can read it, learn from it and experiment. A formal licence file has not been added yet (see the README), so please check the repository before you publish a modified copy.</div>
+  <p class="small">Every number on this page comes from the source and is the value at version 17.203. Where a value lives in code, its file is named so you can change it.</p>
+</section>
+
+<section id="clock">
+  <h2>The clock</h2>
+  <p>The whole game runs a little faster than real time. Handling, jumps and tracks are unchanged; races just finish quicker. The speedometer and lap clock convert back to real mph and seconds.</p>
+  <div class="wrap"><table>
+    <tr><th>Setting</th><th class="n">Value</th><th>Where</th></tr>
+    <tr><td>Game speed</td><td class="n">1.1</td><td><code>GAME_SPEED</code> in <code>src/gameSpeed.js</code></td></tr>
+    <tr><td>Longest frame the game will believe</td><td class="n">0.05 s</td><td><code>Math.min(0.05, rawDt)</code> in <code>src/main.js</code></td></tr>
+    <tr><td>Physics steps per frame, at most</td><td class="n">6</td><td><code>stepPhysics</code> in <code>src/main.js</code></td></tr>
+    <tr><td>Physics step</td><td class="n">1/120 s (1/60 on Low)</td><td><code>physicsHz</code> in <code>src/quality.js</code></td></tr>
+  </table></div>
+  <p>The clock is the same on every device. A phone at 60 fps plays at exactly the speed of a desktop. At 30 fps (Low Power Mode) it plays at the same speed but looks choppier, and only below about 20 fps does the game actually slow down, because of the 0.05 s frame cap and the 6-step limit.</p>
+  <p>Frame time is smoothed by interpolating the drawn car between the last two physics steps, so a 120 Hz physics step on a 60 fps screen still looks smooth.</p>
+</section>
+
+<section id="graphics">
+  <h2>Graphics tiers</h2>
+  <p>Three tiers live in one table, <code>TIERS</code> in <code>src/quality.js</code>. Pick one in the menu (Graphics), force one with <code>?q=low</code>, <code>?q=medium</code> or <code>?q=high</code>, or leave it on Auto.</p>
+  <div class="wrap"><table>
+    <tr><th>Setting</th><th class="n">Low</th><th class="n">Medium</th><th class="n">High</th></tr>
+    <tr><td>Pixel ratio cap</td><td class="n">1</td><td class="n">1.5</td><td class="n">2</td></tr>
+    <tr><td>Anti-aliasing (MSAA)</td><td class="n">off</td><td class="n">off</td><td class="n">on</td></tr>
+    <tr><td>Shadows</td><td class="n">off</td><td class="n">1024 map</td><td class="n">2048 map, soft</td></tr>
+    <tr><td>Physics rate</td><td class="n">60 Hz</td><td class="n">120 Hz</td><td class="n">120 Hz</td></tr>
+    <tr><td>Rivals by default</td><td class="n">3</td><td class="n">5</td><td class="n">6</td></tr>
+    <tr><td>Dents a car can show</td><td class="n">0</td><td class="n">6</td><td class="n">8</td></tr>
+    <tr><td>Flying debris pieces</td><td class="n">0</td><td class="n">48</td><td class="n">96</td></tr>
+    <tr><td>Smoke sprites at once</td><td class="n">60</td><td class="n">110</td><td class="n">180</td></tr>
+    <tr><td>Mirror redraw</td><td class="n">every 3rd frame</td><td class="n">every 2nd</td><td class="n">every frame</td></tr>
+    <tr><td>Ground texture sharpness (anisotropy)</td><td class="n">2</td><td class="n">4</td><td class="n">8</td></tr>
+    <tr><td>Lowest adaptive resolution</td><td class="n">0.55</td><td class="n">0.60</td><td class="n">0.75</td></tr>
+  </table></div>
+
+  <h3>Adaptive resolution</h3>
+  <p>While you drive, the game watches the frame rate in one-second windows (<code>AdaptiveRes</code> in <code>src/quality.js</code>):</p>
+  <ul>
+    <li>Two slow windows in a row (under <b>45 fps</b>) lower the render resolution by 0.15.</li>
+    <li>A run of smooth windows (<b>57 fps</b> or more) raises it by 0.1. It waits 5 windows the first time and doubles the wait after every drop (up to 60), so it settles instead of flapping.</li>
+    <li>At the floor and still slow it gives things up in order: thin the smoke, then turn shadows off, then turn the mirror off.</li>
+    <li>Pausing the game or leaving driving resets it.</li>
+  </ul>
+  <p>Add <code>?perf</code> to the address for a live overlay: tier, fps, resolution scale, physics Hz, draw calls, triangles, geometries and textures.</p>
+</section>
+
+<section id="phones">
+  <h2>Phones</h2>
+  <h3>Which tier a device starts on</h3>
+  <p><code>detectTier</code> in <code>src/quality.js</code>, in this order. A forced tier (<code>?q=</code> or the menu) always wins.</p>
+  <ul>
+    <li>Not a touch screen (desktop): <b>High</b>.</li>
+    <li>Data-saver on: <b>Low</b>.</li>
+    <li>Reports 3 GB of memory or less: <b>Low</b>.</li>
+    <li>An old graphics chip (Adreno 2xx&ndash;5xx, Mali-4xx and T-series, PowerVR SGX/GE8xxx): <b>Low</b>.</li>
+    <li>4 cores or fewer, and not an Apple chip: <b>Low</b>. (Safari reports few cores even on a fast iPhone, so Apple chips are not judged by that.)</li>
+    <li>Anything else, which means a phone from the last few years: <b>High</b>. The adaptive resolution protects the slower ones.</li>
+  </ul>
+  <h3>What we measured</h3>
+  <div class="wrap"><table>
+    <tr><th>Device</th><th>Result</th></tr>
+    <tr><td>Desktop (Mac, Chrome), High</td><td>60 fps, about 680k triangles and 109 draw calls</td></tr>
+    <tr><td>iPhone 13, plugged in, High</td><td>60 fps, 150&ndash;165k triangles solo, 330&ndash;410k with a caravan</td></tr>
+    <tr><td>iPhone 13, Low Power Mode</td><td>30 fps: iOS caps the screen at 30. Same game speed, choppier look.</td></tr>
+  </table></div>
+  <p class="small">Nothing here has been measured on Android phones yet. If you have one, open <code>?perf</code> and tell us what it says.</p>
+  <h3>The tricks that made phones work</h3>
+  <ul>
+    <li><b>Lighter model copies.</b> Every touch screen (and any device not on High) loads <code>cars/lite/</code> copies of the vehicles: about 30k triangles for the body and 4k per wheel, under 1.1 MB each. <code>LITE_MODELS</code> in <code>src/vehicleChoice.js</code> lists them. <code>?lite=1</code> or <code>?lite=0</code> forces it.</li>
+    <li><b>Textures are the big memory cost.</b> A vehicle exported with the Shrink Racer preset is 1024 / 1024 / 512 pixel WebP in one material, about 13 MB of graphics memory. The old four-image 2048 exports were about 92 MB with a caravan, which made Chrome on a phone quit.</li>
+    <li><b>The caravan on phones.</b> Allowed except on Low-tier devices. <code>?caravan=1</code> forces it on and <code>?caravan=0</code> off, for testing (<code>src/caravanPhone.js</code>).</li>
+    <li><b>Phone menu.</b> On touch screens the action buttons (Restart, Back on road, Camera, Reset view, Mirror, Pause, Explode, Share, Menu) sit inside the cog menu, so the screen stays clear.</li>
+    <li><b>Low Power Mode hint.</b> A phone held at a steady 30 fps for about 8 seconds gets a one-off toast suggesting it.</li>
+  </ul>
+</section>
+
+<section id="vehicles">
+  <h2>Vehicles</h2>
+  <p>The catalogue is <code>VEHICLES</code> in <code>src/vehicleChoice.js</code> (look, size, toughness). The handling for each is in <code>src/vehiclePhysicsProfiles.js</code>, kept apart on purpose so desktop, phone, solo and multiplayer all share one set of numbers.</p>
+  <div class="wrap"><table>
+    <tr><th>Name</th><th>Id</th><th>Model file</th><th class="n">Length m</th><th class="n">Mass kg</th><th class="n">Toughness &times;</th><th>Caravan</th><th>Bonnet cam</th></tr>
+    <tr><td>Mr Muscle</td><td><code>car</code></td><td>dodge-shrink.glb</td><td class="n">4.89</td><td class="n">1450</td><td class="n">0.95</td><td>yes</td><td>yes</td></tr>
+    <tr><td>70s Saloon</td><td><code>escort</code></td><td>escort-shrink.glb</td><td class="n">4.05</td><td class="n">920</td><td class="n">1.15</td><td>yes</td><td>yes</td></tr>
+    <tr><td>German Beema</td><td><code>bmw</code></td><td>bmw-SHRINK.glb</td><td class="n">4.33</td><td class="n">1080</td><td class="n">1.00</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Mini Roundabout</td><td><code>mini</code></td><td>mini-SHRINK.glb</td><td class="n">3.05</td><td class="n">700</td><td class="n">1.20</td><td>yes</td><td>yes</td></tr>
+    <tr><td>French Cheese</td><td><code>french-cheese</code></td><td>french-cheese-SHRINK.glb</td><td class="n">3.83</td><td class="n">640</td><td class="n">1.25</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Cuddly Panda</td><td><code>panda</code></td><td>panda-SHRINK.glb</td><td class="n">3.54</td><td class="n">860</td><td class="n">1.15</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Mobile Chariot</td><td><code>mobility-car</code></td><td>mobility-car-SHRINK.glb</td><td class="n">2.90</td><td class="n">380</td><td class="n">1.40</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Swedish Massage</td><td><code>volvo</code></td><td>volvo-SHRINK.glb</td><td class="n">4.79</td><td class="n">1420</td><td class="n">0.90</td><td>yes</td><td>yes</td></tr>
+    <tr><td>WASAABI</td><td><code>saab</code></td><td>saab-SHRINK.glb</td><td class="n">4.66</td><td class="n">1250</td><td class="n">0.95</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Classic Oil Burner</td><td><code>v8-pilot</code></td><td>v8-pilot-SHRINK.glb</td><td class="n">4.44</td><td class="n">1510</td><td class="n">0.85</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Happy Camper</td><td><code>campervan</code></td><td>campervan-shrink.glb</td><td class="n">4.50</td><td class="n">1280</td><td class="n">1.10</td><td>no</td><td>no</td></tr>
+    <tr><td>Rootmaster</td><td><code>bus</code></td><td>bus-SHRINK.glb</td><td class="n">6.40</td><td class="n">4300</td><td class="n">0.70</td><td>no</td><td>no</td></tr>
+    <tr><td>Motorhome</td><td><code>motor-home</code></td><td>motorhome-SHRINK.glb</td><td class="n">4.85</td><td class="n">2800</td><td class="n">0.80</td><td>no</td><td>no</td></tr>
+  </table></div>
+  <p><b>Toughness</b> is a multiplier on the damage a vehicle takes, so below 1 is tougher and above 1 is weaker. A tuk-tuk has a physics profile (520 kg) and a tow ball ready, but no model yet.</p>
+  <h3>Adding a vehicle</h3>
+  <ol>
+    <li>Make the model (see <a href="#models">Making models</a>) and put it in <code>cars/</code>.</li>
+    <li>Add a physics profile in <code>src/vehiclePhysicsProfiles.js</code>.</li>
+    <li>Add an entry in <code>VEHICLES</code> that points at the profile and the file, with its length and toughness.</li>
+    <li>For a phone copy, add the lite file in <code>cars/lite/</code> and list it in <code>LITE_MODELS</code>.</li>
+    <li>To let it tow, add a tow-ball position in <code>HITCH</code> in <code>src/caravan.js</code>.</li>
+  </ol>
+</section>
+
+<section id="damage">
+  <h2>Damage</h2>
+  <p>Every car has five zones: front, back, left, right and roof. A hit lands on the zone nearest the contact. When <b>any</b> zone reaches zero the car is wrecked and explodes, so where you are hit matters as much as how hard. The numbers are in <code>src/damage.js</code> and the game rules in <code>src/derby.js</code>.</p>
+  <div class="wrap"><table>
+    <tr><th>Hit points</th><th class="n">Front</th><th class="n">Back</th><th class="n">Left</th><th class="n">Right</th><th class="n">Roof</th></tr>
+    <tr><td>Your car</td><td class="n">256</td><td class="n">128</td><td class="n">144</td><td class="n">144</td><td class="n">120</td></tr>
+    <tr><td>A rival</td><td class="n">76</td><td class="n">68</td><td class="n">68</td><td class="n">68</td><td class="n">60</td></tr>
+  </table></div>
+  <p class="small">These are the base figures times <code>TOUGHNESS</code> (0.8; the table above is already scaled), and then each vehicle's own toughness multiplier. Your front end takes half of every hit (the plate welded on).</p>
+  <ul>
+    <li>Crash damage grows with the energy of the closing speed: <code>0.65</code> hit points per kilojoule above a 3 m/s shrug-off. One crash can never take more than <b>110</b> from one zone, so a single hit from full health never kills you.</li>
+    <li>A quarter of every hit also crumples the two neighbouring zones.</li>
+    <li>Walls hurt far less than cars (&times;0.12); the ground even less (&times;0.04).</li>
+    <li>Barrel blast: 90 at point blank, reaching 10 m. A wrecked car going up: 60, reaching 8 m. You take 0.4 of a blast.</li>
+    <li>A big single hit (14% of a zone for you, 28% for a rival) stalls the engine for a couple of seconds.</li>
+    <li>Race mode: a wrecked player smoulders for 3 s and is put back on the road with 3 s of protection. Demolition: last one standing wins.</li>
+    <li>A car on its roof burns at 16 hit points a second. At most 4 wrecks stay on the track before the oldest fades.</li>
+  </ul>
+  <h3>Visible dents</h3>
+  <p>Dents are done in the vertex shader (<code>src/dents.js</code>): the body mesh is pushed in around the hit, so there is no extra geometry. The wheels are left out. A body needs enough triangles to dent smoothly (about 20&ndash;35k is good; a 7k body looks lumpy). How many dents show at once is the tier setting above; the caravan always shows at least 6.</p>
+</section>
+
+<section id="caravan">
+  <h2>Caravan</h2>
+  <p>The Hastings 2000 is a separate body on a drawbar joint, with its own tyres, weight, damage and sway. Numbers are in <code>CARAVAN</code> in <code>src/caravan.js</code>; the look is in <code>src/caravanView.js</code>.</p>
+  <div class="wrap"><table>
+    <tr><th>Setting</th><th class="n">Value</th><th>What it does</th></tr>
+    <tr><td><code>mass</code></td><td class="n">450 kg</td><td>about half an Escort</td></tr>
+    <tr><td><code>hp</code></td><td class="n">100</td><td>battering it takes before it is wrecked (was 220, then 60)</td></tr>
+    <tr><td><code>wallMul</code> / <code>carMul</code></td><td class="n">14 / 5</td><td>its thin skin takes more from the same knock than a car does</td></tr>
+    <tr><td><code>cog</code></td><td class="n">0.5 m</td><td>weight sits ahead of the axle, so the tail does not wag the car</td></tr>
+    <tr><td><code>tyreMu</code> / <code>tyreStiff</code></td><td class="n">0.85 / 25</td><td>sideways grip</td></tr>
+    <tr><td><code>jointK</code> / <code>jointC</code> / <code>jointMax</code></td><td class="n">380000 / 11000 / 38000</td><td>drawbar spring, damping and the most force it can pull</td></tr>
+    <tr><td><code>yawDamp</code></td><td class="n">0.9</td><td>extra damping of the swing</td></tr>
+  </table></div>
+  <p>When the caravan is wrecked its wheels fly off and the car drags it along, scraping, with the drag capped at what the towing car can pull. Dents go on the body only.</p>
+  <h3>Hills</h3>
+  <p>Cars have a hill assist so they do not slide backwards on steep slopes: on a climb with the throttle down, the drive force is raised to at least <code>mass &times; g &times; slope &times; 1.4</code> (fading out above about 9 m/s), and driven tyres get extra grip in proportion to the slope (up to about double on a very steep climb). This holds a car up to about 33&deg;; steeper than about 38&deg; it still slides back.</p>
+</section>
+
+<section id="cameras">
+  <h2>Cameras and controls</h2>
+  <p>Press <kbd>C</kbd> to cycle: <b>Chase</b> (desktop default), <b>High</b> (phone default), <b>Bumper</b>, <b>Bonnet</b>. The chase camera drops back and up when you tow. <kbd>R</kbd> (or <kbd>0</kbd>) resets the view.</p>
+  <h3>The bonnet camera</h3>
+  <p><code>src/bonnetCam.js</code> works out where to put it from the model itself, so it needs no per-car setting. It lines up the highest surface along the middle of the car and walks back from the nose: a bonnet is a low stretch followed by the windscreen climbing at least 0.28 m. The camera sits 0.1 m in front of that step and 0.3 m above the bonnet, tilted so the nose of the bonnet fills about an eighth of the screen. A bus, campervan or motorhome has a flat or steeply sloped nose, so it is skipped and <kbd>C</kbd> goes straight on.</p>
+  <h3>Keys</h3>
+  <div class="wrap"><table>
+    <tr><th>Key</th><th>Does</th><th>Key</th><th>Does</th></tr>
+    <tr><td><kbd>W</kbd> <kbd>S</kbd></td><td>Throttle, brake (and reverse)</td><td><kbd>B</kbd></td><td>Back on the road</td></tr>
+    <tr><td><kbd>A</kbd> <kbd>D</kbd></td><td>Steer</td><td><kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Restart the race</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Boost</td><td><kbd>C</kbd></td><td>Camera</td></tr>
+    <tr><td><kbd>Shift</kbd></td><td>Drift (handbrake)</td><td><kbd>V</kbd></td><td>Rear-view mirror</td></tr>
+    <tr><td><kbd>H</kbd></td><td>Horn</td><td><kbd>P</kbd></td><td>Pause (single player)</td></tr>
+    <tr><td><kbd>X</kbd></td><td>Blow up your own car (single player). Handy when you are stuck.</td><td><kbd>M</kbd></td><td>Music</td></tr>
+    <tr><td><kbd>E</kbd></td><td>Edit this track (desktop)</td><td><kbd>Esc</kbd></td><td>Menu</td></tr>
+  </table></div>
+  <p>Gamepad and touch controls work too; the key handling is in <code>src/input.js</code>.</p>
+</section>
+
+<section id="links">
+  <h2>Links and switches</h2>
+  <h3>Address options</h3>
+  <div class="wrap"><table>
+    <tr><th>Add to the address</th><th>Does</th></tr>
+    <tr><td><code>?perf</code></td><td>Live frame-rate and memory overlay</td></tr>
+    <tr><td><code>?q=low</code> / <code>medium</code> / <code>high</code></td><td>Force a graphics tier</td></tr>
+    <tr><td><code>?lite=1</code> / <code>?lite=0</code></td><td>Force the light phone models on or off</td></tr>
+    <tr><td><code>?caravan=1</code> / <code>?caravan=0</code></td><td>Force caravan towing allowed or blocked on a phone</td></tr>
+    <tr><td><code>?room=CODE</code></td><td>Join a multiplayer room</td></tr>
+    <tr><td><code>?track=NAME</code> (with <code>&amp;edit=1</code> or <code>&amp;drive=0</code>)</td><td>Open or drive a built-in track</td></tr>
+  </table></div>
+  <h3>Sharing a race</h3>
+  <p>The share button (top of the screen on desktop, in the cog menu on a phone) makes one link holding the car, whether the caravan is hitched, and the whole track as it is now, edits included:</p>
+<pre><code>https://gunpowderstudios.github.io/car-racer/?car=car&amp;van=1#t=~&lt;packed track&gt;</code></pre>
+  <p>The track is packed into the address itself: a compact binary form, deflate-compressed, then base64, so there is no server and no account (<code>src/trackLink.js</code>). A link is never trusted: the packed text and the unpacked size are both capped. Your friend sees a box with the car and track, and Drive it! switches them to your car (a reload) and starts straight away.</p>
+  <h3>What the game remembers (localStorage)</h3>
+  <p><code>cr.opts</code> (all menu options, including the saved graphics choice), <code>cr.vehicle</code> (chosen car), <code>cr.tracks</code> (your saved tracks), <code>cr.draft</code> (the track in the editor), <code>cr.best</code> (best laps), <code>cr.mpname</code>, <code>cr.mptrack</code>, <code>cr.sfx</code>, <code>cr.music</code>, <code>cr.story</code>.</p>
+</section>
+
+<section id="models">
+  <h2>Making models</h2>
+  <p>Every vehicle is a <code>.glb</code> exported from <a href="https://gunpowderstudios.github.io/shrink/">Shrink</a>, our own browser tool, using its <b>Racer</b> preset. The recipe:</p>
+  <ul>
+    <li><b>Textures:</b> WebP at 1024 / 1024 / 512 pixels, one material. About 13 MB of graphics memory per vehicle.</li>
+    <li><b>Wheels:</b> separate nodes named <code>Wheel_FL</code>, <code>Wheel_FR</code>, <code>Wheel_RL</code>, <code>Wheel_RR</code> (a three-wheeler uses <code>Wheel_F</code>, <code>Wheel_RL</code>, <code>Wheel_RR</code>; the caravan has left and right). Each node's origin is the hub, and carries <code>extras</code> of <code>{ wheel: true, axle: 'z', radius, width }</code>.</li>
+    <li><b>Mesh compression:</b> meshopt with quantization. Do not let a later tool re-quantize it, which shifts node transforms and moves the hub off-centre.</li>
+    <li><b>Wheel centring:</b> even a Shrink wheel can have its pivot a few percent of the radius off the real hub, so the game fits a circle to the tyre rim and re-pivots on it when the model loads. A wheel that is not round will still wobble, so keep tyres round and left and right wheels the same size.</li>
+    <li><b>Lite copy for phones:</b> about 30k triangles for the body and 4k per wheel, put in <code>cars/lite/</code> under the same name.</li>
+    <li><b>Dentable body:</b> aim for 20&ndash;35k triangles; very low-poly bodies dent lumpily.</li>
+  </ul>
+  <p><code>tools/optimize-car.mjs</code> is an older command-line way to shrink a textured glTF; <code>tools/make-vehicle-thumbs.py</code> makes the menu thumbnails.</p>
+  <div class="note warn"><b>File names are case sensitive on GitHub Pages.</b> <code>bmw-SHRINK.glb</code> and <code>bmw-shrink.glb</code> are different files. The name in <code>VEHICLES</code> must match the file exactly, including the capitals. We keep <code>SHRINK</code> in capitals for new files.</div>
+</section>
+
+<section id="rules">
+  <h2>House rules and gotchas</h2>
+  <h3>Every change</h3>
+  <ul>
+    <li>Bump the version in <code>src/version.js</code> (<code>VERSION</code> and a one-line <code>NOTE</code>) <b>and</b> <code>src/assetVersion.js</code>. A test checks they match. The asset version is added to model URLs so a replaced model is not served from an old cache.</li>
+    <li>Run <code>npm test</code> and read the summary line. Do not chain it into a command that hides a failure.</li>
+    <li>Commit, then pull with rebase and push.</li>
+  </ul>
+  <h3>Gotchas</h3>
+  <ul>
+    <li><b>The service worker</b> (<code>sw.js</code>) is network-first for code and <code>.glb</code> files, so an update shows on the next reload. Sounds and images come from cache first. Three.js is pinned to an exact version, so it is cached for good.</li>
+    <li><b>Saved settings beat Auto.</b> If a phone reads Medium when you expected High, it is probably a saved Graphics choice in the menu. Set it back to Auto.</li>
+    <li><b>The body mesh for dents</b> is the one with the most vertices that is not a wheel. If a wheel has more vertices than the body, it must be excluded by name or the wheel gets dented.</li>
+    <li><b>One multiplayer test is occasionally flaky</b> (a dent-relay timing test). If it fails alone, run the whole suite again before assuming a real fault.</li>
+    <li><b>You cannot test drawing without a browser.</b> Physics and logic can be checked headless; anything visual needs a real device.</li>
+  </ul>
+</section>
+
+<section id="map">
+  <h2>Source map</h2>
+  <div class="wrap"><table>
+    <tr><th>File</th><th>What is in it</th></tr>
+    <tr><td><code>src/main.js</code></td><td>The game loop, menus, modes, glue between everything</td></tr>
+    <tr><td><code>src/vehicle.js</code>, <code>vehiclePhysicsProfiles.js</code></td><td>Car physics and each vehicle's handling numbers</td></tr>
+    <tr><td><code>src/vehicleChoice.js</code></td><td>Vehicle catalogue, gallery, lite models, multiplayer vehicle sync</td></tr>
+    <tr><td><code>src/carVisual.js</code>, <code>dents.js</code>, <code>wheelDebris.js</code></td><td>Drawing a car, wheel pivots, cameras, dents, flying wheels</td></tr>
+    <tr><td><code>src/damage.js</code>, <code>derby.js</code>, <code>ai.js</code></td><td>Zones and hit points, the race and demolition rules, rival drivers</td></tr>
+    <tr><td><code>src/caravan.js</code>, <code>caravanView.js</code>, <code>caravanPhone.js</code></td><td>Towing physics, look, phone rule</td></tr>
+    <tr><td><code>src/quality.js</code></td><td>Tiers, device detection, adaptive resolution, 30 fps hint</td></tr>
+    <tr><td><code>src/bonnetCam.js</code>, <code>cameraChoice.js</code>, <code>cameraOrbit.js</code></td><td>Bonnet camera, camera cycle, drag-to-orbit</td></tr>
+    <tr><td><code>src/track.js</code>, <code>trackGeometry.js</code>, <code>templates.js</code>, <code>editor.js</code></td><td>Tracks, built-in tracks, the editor</td></tr>
+    <tr><td><code>src/trackLink.js</code></td><td>Tracks as links</td></tr>
+    <tr><td><code>src/multiplayer.js</code> and <code>mp*.js</code></td><td>Peer-to-peer multiplayer, chat, rejoining, caravan contacts</td></tr>
+    <tr><td><code>src/input.js</code>, <code>hud.js</code>, <code>audio.js</code></td><td>Keys, pad and touch; the on-screen display; sound</td></tr>
+    <tr><td><code>tests/</code></td><td>Headless tests (<code>npm test</code>)</td></tr>
+  </table></div>
+</section>
+
+</main>
+<footer>
+  Bangers and Smash! is made by <a href="https://www.gunpowderstudios.co.uk/">Gunpowder Studios</a>. Source on <a href="https://github.com/gunpowderstudios/car-racer">GitHub</a>. &middot; <a href="./">Play the game</a>
+</footer>
+</body>
+</html>
