@@ -44,6 +44,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .note { background: rgba(255,179,31,.1); border-left: 4px solid var(--amber); padding: 10px 14px; margin: 14px 0; max-width: 76ch; border-radius: 0 6px 6px 0; }
 .warn { background: rgba(232,57,44,.12); border-left-color: var(--red); }
 .small { color: var(--ink-dim); font-size: 15px; }
+@media (max-width: 700px) { nav div { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; } h2 { font-size: 32px; } }
 footer { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; color: var(--ink-dim); border-top: 1px solid var(--line); font-size: 15px; }
 </style>
 </head>
@@ -68,7 +69,7 @@ python3 -m http.server 8080     # or: npm start
 npm test                        # node --test tests/*.test.mjs  (Node 20 or newer)</code></pre>
   <div class="note">The tests run in plain Node with no browser. The game logic (physics, damage, AI, multiplayer, track links) has no DOM in it, so it can be tested; the drawing code cannot, so changes to looks have to be checked by eye in a real browser.</div>
   <div class="note warn"><b>Licence.</b> The source is public so people can read it, learn from it and experiment. A formal licence file has not been added yet (see the README), so please check the repository before you publish a modified copy.</div>
-  <p class="small">Every number on this page comes from the source and is the value at version 17.203. Where a value lives in code, its file is named so you can change it.</p>
+  <p class="small">Every number on this page comes from the source and is the value at version 17.204. Where a value lives in code, its file is named so you can change it.</p>
 </section>
 
 <section id="clock">
