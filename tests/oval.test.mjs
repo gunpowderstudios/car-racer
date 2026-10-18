@@ -512,7 +512,9 @@ test('a touch screen never loads the caravan: it is blocked in the game, the men
   assert.equal(caravanBlocked(), false);                                // (node has no matchMedia: desktop)
   globalThis.matchMedia = (q) => ({ matches: q.includes('coarse') });
   assert.equal(caravanBlocked(), true);
-  delete globalThis.matchMedia;
+  globalThis.location = { search: '?perf&caravan=1' };                  // the test switch: a phone can try the caravan
+  assert.equal(caravanBlocked(), false);
+  delete globalThis.location; delete globalThis.matchMedia;
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /const caravanWanted = \(\) => !caravanBlocked\(\)/);
   assert.match(main, /if \(caravanBlocked\(\)\) \{ mpDropVan\(p\); return; \}/);
