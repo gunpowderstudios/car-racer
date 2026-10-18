@@ -22,7 +22,7 @@ export const CARAVAN = {
   wheelR: 0.294,          // m (the model's wheels)
   width: 2.03, length: 4.4,
   hitchH: 0.14,           // m: ball height above the axle centre line (a car's tow ball is only ~0.45 m off the road, so the caravan sits nearly level)
-  tyreMu: 0.85,           // sideways grip
+  tyreMu: 1.02,           // sideways grip
   tyreStiff: 25,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
   rolling: 0.016,         // rolling resistance
   jointK: 380000,         // N/m the drawbar joint
