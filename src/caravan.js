@@ -10,6 +10,7 @@ import { V3, clamp } from './math.js';
 import { wallDamage } from './damage.js';
 
 const G = 9.81;
+export const BROADSIDE = 2.5;     // extra damage multiplier for a hit square on the caravan's side (see Caravan.broadside)
 
 export const CARAVAN = {
   mass: 450,              // kg: a small 1960s caravan, about half the Escort's weight
@@ -176,6 +177,13 @@ export class Caravan {
     car.T.x += cr.y * -jz; car.T.y += cr.z * -jx - cr.x * -jz; car.T.z += cr.y * jx;
   }
   // ------------------------------------------------------------ knocks
+  /** How much worse a knock is when it lands on the caravan's side rather than its ends: (nx, nz) is the way the knock pushes (from the caravan towards what hit it).
+   *  A caravan's flank is thin panel with no crumple zone, so a car driven square into the side does up to 3.5x the damage and wrecks it outright at speed. */
+  broadside(nx, nz) {
+    const l = Math.hypot(nx, nz); if (!(l > 1e-6)) return 1;
+    const side = Math.min(1, (1 - Math.abs((nx * Math.sin(this.yaw) + nz * Math.cos(this.yaw)) / l)) / 0.8);      // (the flank is built from round bumpers, so even a square hit is a little off true: 0.8 off the end line counts as fully broadside)
+    return 1 + BROADSIDE * side * side;
+  }
   /** The caravan takes `hp` of damage. When it runs out the hitch gives way. */
   hurt(hp) {
     if (!(hp > 0) || this.health <= 0) return;

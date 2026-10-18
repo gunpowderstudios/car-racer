@@ -1090,7 +1090,7 @@ function mpVanContacts() {
     const c = p.cur; if (!c || c.alive === false) continue;
     const theirs = multiplayerVehicleSpec(net.players.get(id)?.vehicleId);
     mpFwd.set(0, 0, 1).applyQuaternion(mpQ.set(c.qx, c.qy, c.qz, c.qw));
-    if (van) { const hit = remoteCarHitsVan(van, c, mpFwd.x, mpFwd.z, theirs); if (hit && hit.closing > 1.5) van.struck('car', hit.closing, hit.x, van.pos.y + 0.5, hit.z, crashDamage(hit.mu, hit.closing) * van.spec.carMul); }
+    if (van) { const hit = remoteCarHitsVan(van, c, mpFwd.x, mpFwd.z, theirs); if (hit && hit.closing > 1.5) van.struck('car', hit.closing, hit.x, van.pos.y + 0.5, hit.z, crashDamage(hit.mu, hit.closing) * van.spec.carMul * van.broadside(hit.nx, hit.nz)); }
     carHitsRemoteVan(car, c.van, caravan.spec, mine);
   }
 }

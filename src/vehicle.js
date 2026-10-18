@@ -17,6 +17,10 @@ import { V3, Q, clamp, lerp, wrapPi } from './math.js';
 import { Track, SURF } from './track.js';
 
 const G = 9.81;
+/** Every vehicle's tyres grip this much more than its profile says (one place to turn all the grip up or down). */
+export const GRIP_BOOST = 1.15;
+export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
+export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 export const CAR = {
   mass: 1450,
@@ -323,7 +327,7 @@ export class Vehicle {
     // What the front wheels are asking for (a bicycle model with a little built-in understeer), never more than the tyres can give
     const v = this.fwdSpeed;
     const ref = v * Math.tan(this.steerAngle) / sp.wheelbase / (1 + (v / 32) ** 2);
-    const lim = 1.05 * sp.tyre.muRear * 9.81 / Math.max(v, 4);
+    const lim = 1.05 * sp.tyre.muRear * GRIP_BOOST_REAR * 9.81 / Math.max(v, 4);
     const want = clamp(ref, -lim, lim);
     // how much faster than wanted it is turning, in the direction it is already turning (turning the wrong way counts in full)
     const over = Math.sign(yaw) === Math.sign(want) || Math.abs(want) < 0.05 ? Math.abs(yaw) - Math.abs(want) : Math.abs(yaw) + Math.abs(want);
@@ -478,11 +482,15 @@ export class Vehicle {
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
     force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
-    // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can crawl up any hill, slowly:
-    // with the pedal down and the nose up, the pull is at least enough to cancel gravity along the slope, fading out above walking pace (the tyres' own grip still limits it, see _tyre)
+    // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can climb any hill, and keep moving:
+    // with the pedal down and the nose up, the pull is enough to beat gravity along the slope (for the car AND the caravan it tows) until it is doing HILL_CRAWL, about
+    // 20 mph on the speedometer, then it fades out so the engine takes over (the tyres' own grip still limits it, see _tyre). Rival cars drive on this same code.
     if (this.onGround && drive > 0.1 && this.gear !== 0) {
       const dir = this.gear === -1 ? -1 : 1, up = Math.max(0, this.az.y * dir);
-      if (up > 0.05) force = dir * Math.max(Math.abs(force), this.mass * 9.81 * up * 1.4 * drive * (1 - clamp(Math.abs(fwd) / 9, 0, 1)));
+      if (up > 0.05) {
+        const m = this.mass + (this.tow && !this.tow.wrecked ? this.tow.spec.mass : 0), room = 1 - clamp((Math.abs(fwd) - HILL_CRAWL) / 1.6, 0, 1);
+        force = dir * Math.max(Math.abs(force), m * 9.81 * up * 1.25 * drive * room);
+      }
     }
     // engine braking when off the throttle
     if (drive < 0.05 && this.gear > 0 && this.rpm > e.idle + 400) {
@@ -511,7 +519,7 @@ export class Vehicle {
     const mEffLong = 1 / this._kAt(rL, fL), mEffLat = 1 / this._kAt(rL, lL);
 
     const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
-    const muBase = w.front ? ty.muFront : ty.muRear;
+    const muBase = w.front ? ty.muFront * GRIP_BOOST : ty.muRear * GRIP_BOOST_REAR;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back

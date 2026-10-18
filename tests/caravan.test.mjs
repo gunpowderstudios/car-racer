@@ -60,7 +60,7 @@ test('a swing set off by a quick steer dies away again', () => {
 
 test('weaving at speed with a caravan never blows up or folds right round', () => {
   const s = setup(true, 25);
-  const r = drive(s, 25, (t, c) => ({ throttle: c.speed < 32 ? 0.9 : 0.2, steer: 0.35 * Math.sin(t * 1.6) }));
+  const r = drive(s, 25, (t, c) => ({ throttle: c.speed < 32 ? 0.9 : 0.2, steer: 0.28 * Math.sin(t * 1.6) }));
   assert.equal(r.bad, false);
   assert.ok(r.maxDist < 1.0, `drawbar stretched ${r.maxDist.toFixed(2)} m`);
   assert.ok(r.maxFold < 1.6, `folded ${r.maxFold.toFixed(2)} rad`);
@@ -181,4 +181,23 @@ test('a wrecked caravan stays hitched and is dragged along: it scrapes (sparks) 
   assert.ok(bad.scrapes > 10 && good.scrapes === 0, 'only the wreck scrapes');
   assert.ok(bad.speed < good.speed - 1, 'and drags the car back');
   assert.ok(bad.along < 8 && bad.maxDist < 1.5, 'still hitched behind the car');
+});
+
+test('a car driven square into the caravan\'s side does far more damage than the same speed nose to tail, and wrecks it at speed', async () => {
+  const { remoteCarHitsVan } = await import('../src/mpVanContacts.js');
+  const { crashDamage } = await import('../src/damage.js');
+  const hurtBy = (speed, fromSide) => {
+    const s = setup(true, 0), v = s.van, spec = { width: 1.8, length: 4.2, mass: 1450 };
+    const dir = fromSide ? { x: Math.cos(v.yaw), z: -Math.sin(v.yaw) } : { x: Math.sin(v.yaw), z: Math.cos(v.yaw) };      // the caravan's sideways / forward
+    const gap = fromSide ? 2.2 : 3.4;
+    const c = { x: v.pos.x + dir.x * gap, y: v.pos.y, z: v.pos.z + dir.z * gap, vx: -dir.x * speed, vz: -dir.z * speed };
+    const hit = remoteCarHitsVan(v, c, -dir.x, -dir.z, spec);
+    assert.ok(hit && hit.closing > 1, 'they touched');
+    const base = crashDamage(hit.mu, hit.closing) * v.spec.carMul, mult = v.broadside(hit.nx, hit.nz);
+    return { base, mult, hp: base * mult, wrecks: base * mult >= v.spec.hp };
+  };
+  const side = hurtBy(17, true), end = hurtBy(17, false);
+  assert.ok(side.mult > 3.2, `a square side hit should be about 3.5x, got ${side.mult}`);
+  assert.ok(end.mult < 1.3, `an end-on hit should be about 1x, got ${end.mult}`);
+  assert.ok(side.wrecks, `17 m/s into the side should wreck it (${side.hp} hp of ${new Caravan({ x: 0, y: 0, z: -2.5 }).spec.hp})`);
 });

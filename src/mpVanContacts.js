@@ -1,6 +1,6 @@
 // Caravans and other players' cars in multiplayer. Everyone simulates only their own car and caravan, and sees the others from their reports,
 // so each side does its half: a remote car shoves and hurts MY caravan, and MY car is stopped by THEIR caravan (their screen does the mirror image).
-const mpA = [0, 0, 0, 0, 0, 0], mpB = [0, 0, 0, 0, 0, 0], vel = { x: 0, z: 0 }, out = { closing: 0, mu: 0, x: 0, z: 0 };
+const mpA = [0, 0, 0, 0, 0, 0], mpB = [0, 0, 0, 0, 0, 0], vel = { x: 0, z: 0 }, out = { closing: 0, mu: 0, x: 0, z: 0, nx: 0, nz: 0 };
 
 /** A car as a row of three round bumpers along its heading ([x, z] pairs into `o`), and their radius. */
 export function carBalls(cx, cz, fx, fz, spec, o) {
@@ -15,7 +15,7 @@ export function remoteCarHitsVan(van, c, fx, fz, theirs) {
   if (Math.abs(c.y - van.pos.y) > 2 || (c.x - van.pos.x) ** 2 + (c.z - van.pos.z) ** 2 > 100) return null;
   const rc = carBalls(c.x, c.z, fx, fz, theirs, mpA), rv = van.bumpers(mpB), D = rv + rc;
   let deepest = 0, dnx = 0, dnz = 0;
-  out.closing = 0; out.mu = 0; out.x = out.z = 0;
+  out.closing = 0; out.mu = 0; out.x = out.z = 0; out.nx = out.nz = 0;
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
     const ex = mpA[j * 2] - mpB[i * 2], ez = mpA[j * 2 + 1] - mpB[i * 2 + 1], d2 = ex * ex + ez * ez;
     if (d2 >= D * D) continue;
@@ -26,6 +26,7 @@ export function remoteCarHitsVan(van, c, fx, fz, theirs) {
     if (vn >= 0) continue;
     const mu = 1 / (van.invMassAt(nx, nz, px, pz) + 1 / theirs.mass);
     van.impulse(nx, nz, (1 + (-vn > 2 ? 0.2 : 0)) * vn * mu, px, pz);           // (vn is negative: this pushes the caravan along the way they are going)
+    out.nx += nx * -vn; out.nz += nz * -vn;                                       // (every contact's push, weighted by its closing speed: the overall direction of the knock)
     if (-vn > out.closing) { out.closing = -vn; out.mu = mu; out.x = px; out.z = pz; }
   }
   if (deepest > 0.005) { const k = Math.min(deepest, 0.35); van.pos.x -= dnx * k; van.pos.z -= dnz * k; }

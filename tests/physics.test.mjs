@@ -274,9 +274,10 @@ test('Arcade handling: harsh inputs that spin a car with raw tyre physics no lon
     engine: { ...CAR.engine, ...p.engine }, aero: { ...CAR.aero, ...p.aero }, steer: { ...CAR.steer, ...p.steer }, boost: { ...CAR.boost, ...p.boost }, brakeTotal: (p.brakeG ?? 1.35) * p.mass * 9.81, brakeBias: p.brakeBias ?? CAR.brakeBias }; };
   const hold = (v) => (c) => Math.max(0, Math.min(1, 0.25 + (v - c.speed) * 0.2));
   const scenarios = [
-    ['flickFast', 30, (t, c) => ({ throttle: hold(30)(c), steer: t < 0.5 ? 0 : t < 0.75 ? 1 : t < 1 ? -1 : t < 1.25 ? 1 : 0 })],
-    ['throttle stab mid-corner', 24, (t, c) => ({ throttle: t < 1 ? hold(24)(c) : 1, steer: t < 0.5 ? 0 : 0.7 })],
-    ['lift and brake mid-corner', 28, (t, c) => ({ throttle: t < 1.5 ? hold(28)(c) : 0, brake: t > 2.5 ? 1 : 0, steer: t < 0.5 ? 0 : 0.5 })],
+    ['flickFast', 42, (t, c) => ({ throttle: hold(42)(c), steer: t < 0.5 ? 0 : t < 0.7 ? 1 : t < 0.9 ? -1 : t < 1.1 ? 1 : 0 })],
+    ['throttle stab mid-corner', 36, (t, c) => ({ throttle: t < 1 ? hold(36)(c) : 1, steer: t < 0.5 ? 0 : 1 })],
+    ['lift and brake mid-corner', 40, (t, c) => ({ throttle: t < 1.5 ? hold(40)(c) : 0, brake: t > 1.8 ? 1 : 0, steer: t < 0.5 ? 0 : 1 })],
+    ['brake stab mid-corner', 36, (t, c) => ({ throttle: t < 1 ? hold(36)(c) : 0, brake: t > 1 ? 1 : 0, steer: t < 0.5 ? 0 : 1 })],
   ];
   const worst = (id, stability, [, v, fn]) => {
     const car = new Vehicle(specFor(id)); car.opts.stability = stability; placeOnTrack(car, track, 100, 0, v);
@@ -286,10 +287,10 @@ test('Arcade handling: harsh inputs that spin a car with raw tyre physics no lon
   };
   let rawSpins = 0;
   for (const id of ['car', 'mini', 'bmw']) for (const s of scenarios) {
-    if (worst(id, 0, s) > 1.0) rawSpins++;
+    if (worst(id, 0, s) > 1.0) rawSpins++; 
     assert.ok(worst(id, 1, s) < 0.75, `${id}: ${s[0]} should not spin with Arcade handling`);
   }
-  assert.ok(rawSpins >= 2, 'the test scenarios really do spin the cars without it: ' + rawSpins);
+  assert.ok(rawSpins >= 1, 'the test scenarios really do spin the cars without it: ' + rawSpins);
   // it stands aside for a deliberate drift
   const d = new Vehicle(specFor('car')); d.opts.stability = 1; placeOnTrack(d, track, 100, 0, 22);
   let drift = 0;

@@ -124,7 +124,7 @@ const vbA = new Float64Array(6), vbB = new Float64Array(6), vVan = { x: 0, z: 0 
  * flat of the road. Applies the impulses and pushes them apart; `out` gets the closing speed and effective mass. True if they struck.
  */
 export function collideVanCar(van, car, out) {
-  out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0;
+  out.closing = 0; out.mu = 0; out.x = out.y = out.z = 0; out.nx = out.nz = 0;
   const dx = car.pos.x - van.pos.x, dz = car.pos.z - van.pos.z;
   if (dx * dx + dz * dz > 64) return false;
   const rv = van.bumpers(vbA), rc = layoutBalls(car, ballsB);
@@ -148,6 +148,7 @@ export function collideVanCar(van, car, out) {
         const mu = 1 / (van.invMassAt(nx, nz, px, pz) + car.invMassAt(vN, vP));
         const j2 = -(1 + (-vn > 2 ? 0.2 : 0)) * vn * mu;
         van.impulse(nx, nz, -j2, px, pz); car.impulseAt(vN, j2, vP);
+        if (pass === 0) { out.nx += nx * -vn; out.nz += nz * -vn; }      // (every contact's push, weighted by its closing speed: the overall direction of the knock, for Caravan.broadside)
         if (pass === 0 && -vn > out.closing) { out.closing = -vn; out.mu = mu; out.x = px; out.y = wb[j].y; out.z = pz; }
       }
     }
@@ -454,7 +455,7 @@ export class Derby {
         if (b === a) { collideVanCar(va, a.car, H); continue; }       // the car and the caravan it tows keep out of each other's way, but do no damage
         if (collideVanCar(va, b.car, H) && H.closing > 1.2) {
           if (H.closing > 2.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
-          va.struck('car', H.closing, H.x, H.y, H.z, crashDamage(H.mu, H.closing) * va.spec.carMul);
+          va.struck('car', H.closing, H.x, H.y, H.z, crashDamage(H.mu, H.closing) * va.spec.carMul * va.broadside(H.nx, H.nz));      // (square on its side is far worse than nose to tail)
         }
         const vb = b.car.tow;
         if (vb && b.id > a.id && collideVanVan(va, vb, H) && H.closing > 1.2) {
