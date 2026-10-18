@@ -488,8 +488,8 @@ body:not(.mode-drive) .mp-label { display: none; }
   #mirror { top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 62vw; }
   #feed { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
   .feed-item { font-size: 20px; }
-  #dmg-card { left: auto; right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 146px); width: 88px; padding: 4px 6px 5px;
-    border-left: 0; border-right: 4px solid var(--red); }
+  #dmg-card { left: 10px; right: auto; top: calc(max(14px, env(safe-area-inset-top)) + 124px); width: 88px; padding: 4px 6px 5px;
+    border-right: 0; border-left: 4px solid var(--red); }   /* left side: the cog menu opens down the right */
   .dmg-title { font-size: 10px; letter-spacing: .11em; }
 
   #speed-plate { left: 10px; right: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 94px); min-width: 0; width: 136px;
@@ -661,3 +661,6 @@ body.mode-drive #vignette { display: block; }
   #sound-ctl #controls .ctl { flex: none; justify-content: flex-start; text-align: left; white-space: nowrap; padding: 9px 12px; font-size: 16px; line-height: 1.1; }
   #sound-ctl #controls [data-act="edit"] { display: none; }   /* the track editor is desktop only */
 }
+
+/* touch screens: Reset view is in the cog menu, so the little round arrow button goes */
+@media (pointer: coarse) { #reset-view { display: none !important; } }
