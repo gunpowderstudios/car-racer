@@ -739,3 +739,11 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #repairs.low span { color: #ff8a7a; }
 @keyframes repPulse { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { #rep-pips svg.low { animation: none; } }
+
+/* "Loading cars": the home screen holds the race until every car has arrived */
+#race-wait { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 14px; padding: 9px 20px; background: rgba(27,18,51,.94); border-bottom: 3px solid var(--amber); font-family: var(--cond); font-weight: 700; font-size: 17px; letter-spacing: .08em; text-transform: uppercase; color: var(--peach); pointer-events: none; }
+#race-wait[hidden] { display: none; }
+#race-wait span b { color: var(--amber); margin-left: 6px; }
+#race-wait i { display: block; width: 180px; height: 8px; background: rgba(255,255,255,.18); border-radius: 4px; overflow: hidden; }
+#race-wait i b { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s ease-out; }
+body.waiting .menu-inner { pointer-events: none; opacity: .55; }

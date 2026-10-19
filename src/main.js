@@ -862,6 +862,7 @@ function startReplay() {
 // -------------------------------------------------------------------- frame
 function frame(now) {
   requestAnimationFrame(frame);
+  pollWait(now);
   const rawDt = (now - last) / 1000;
   const dt = Math.min(0.05, rawDt); last = now;
   fps += (1 / Math.max(dt, 1e-4) - fps) * 0.05;
@@ -988,10 +989,38 @@ function pickStartCamera() {
   const phone = matchMedia('(pointer: coarse)').matches;
   chase.mode = phone ? 1 : 0; chase.ready = false;
 }
+// ----- the race waits for its cars: pressing Play (or opening the game) holds on the home screen, with a bar, until every car has loaded,
+// so nobody drives off among the plain grey boxes that stand in for a car that is still downloading.
+let pendingStart = false, waitInit = true, waitSince = performance.now();
+function loadProgress() {
+  let done = visual.loaded ? 1 : 0, total = 1;
+  if (!net && derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; total++; if (views.get(f.id)?.loaded) done++; }
+  if (!net && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
+  return { done, total };
+}
+function pollWait(now) {
+  if (!pendingStart && !waitInit) return;
+  const { done, total } = loadProgress(), el = $('race-wait');
+  const ready = done >= total || now - waitSince > 30000;            // (a car that never arrives must not hold the game for ever)
+  if (ready) {
+    waitInit = false; el.hidden = true; document.body.classList.remove('waiting');
+    if (pendingStart) { pendingStart = false; beginDriving(); }
+    return;
+  }
+  $('rw-fill').style.width = Math.round(done / total * 100) + '%';
+  $('rw-n').textContent = `${done}/${total}`;
+  if (now - waitSince > 250) { el.hidden = false; document.body.classList.add('waiting'); }      // (a cached game is ready in a blink: no flash of a bar)
+}
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
+  if (pendingStart) return;
   if (newDef) loadTrack(newDef);
   else if (!hasPlayed && derby.enabled && opts.mode === 'jamboree' && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
+  const { done, total } = loadProgress();
+  if (done < total && !net) { pendingStart = true; waitSince = performance.now(); return; }          // the cars are still arriving: pollWait() starts the race when they are in
+  beginDriving();
+}
+function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
 }

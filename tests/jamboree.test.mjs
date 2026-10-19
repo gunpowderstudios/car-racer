@@ -92,3 +92,11 @@ test('jamboree: some rivals tow a caravan (when the player does), never the kind
   }
   assert.ok(towed > 3 && plain > 3, `a mix: ${towed} towing, ${plain} not`);
 });
+
+test('the game holds on the home screen, with a bar, until every car has loaded', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('id="race-wait"') && html.includes('id="rw-fill"'));
+  assert.ok(main.includes('pendingStart = true') && main.includes('function beginDriving()') && main.includes('pollWait(now);'));
+  assert.ok(main.includes('now - waitSince > 30000'), 'a car that never arrives cannot hold the game for ever');
+});
