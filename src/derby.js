@@ -72,6 +72,14 @@ export function layoutBalls(car, balls) {
   return r;
 }
 
+/** A Jamboree rival's damage spec: the usual rival one, scaled by how tough (or tinny) that vehicle is. */
+const kindSpecs = new Map();
+function kindSpec(kind) {
+  let sp = kindSpecs.get(kind.id);
+  if (!sp) { const m = kind.damageMul || 1; sp = { ...SPECS.rival, mul: { front: m, back: m, left: m, right: m, roof: m } }; kindSpecs.set(kind.id, sp); }
+  return sp;
+}
+
 /**
  * Collide two cars (their frames must be current). Applies the impulses and pushes them apart, and
  * fills `out` with what the worst contact was: closing speed, effective mass and where. Returns
@@ -211,6 +219,7 @@ export class Derby {
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
+    this.pool = null;                     // Jamboree: the kinds of vehicle the rivals are drawn from (see _kind); null = every rival is the player's own kind
     this._replacementS = [];              // {s, raceSlot}: wreck position + persistent race identity awaiting a replacement
     this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
     this._ctx = { player: null, cars: [], barrels: null };
@@ -234,7 +243,7 @@ export class Derby {
     // DEMOLITION: wrecked means out, nobody is replaced, and the last car running wins. The Oval is always demolition.
     this.mode = mode === 'demolition' || this.lastStanding ? 'demolition' : 'race'; this.demolition = this.mode === 'demolition';
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
-    this._replacementS.length = 0;
+    this._replacementS.length = 0; this._bag = null;
     const p = this.player = {
       id: 0, isPlayer: true, car: playerCar, health: new Health(SPECS.player.hp), spec: SPECS.player,
       wrecked: false, wreckT: 0, respawnAt: Infinity, graceUntil: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
@@ -249,10 +258,10 @@ export class Derby {
 
   /** Rival `k` of `of` in The Oval: standing still on a ring inside the floor, facing the middle, spoiling for a fight. */
   _spawnArena(k, of) {
-    const A = arenaInfo(this.track), p = arenaSpawn(A, k, of), car = new Vehicle();
+    const A = arenaInfo(this.track), p = arenaSpawn(A, k, of), kind = this._kind(), car = new Vehicle(kind?.spec);
     car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
     car.opts.assist = 0.7;
-    return this.add(car, new ArenaDriver(this.rng), k + 1);
+    return this.add(car, new ArenaDriver(this.rng), k + 1, kind);
   }
 
   /** Place rival `k` of `of` in a starting grid ahead of the player: a couple of cars per
@@ -270,11 +279,11 @@ export class Derby {
     const fr = T.frameAt(s);
     const lane = Math.max(2, fr.hw - 3);
     const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : (rnd() - 0.5) * lane * 0.3;
-    const car = new Vehicle();
+    const kind = this._kind(), car = new Vehicle(kind?.spec);
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
     car.opts.assist = 0.7;
-    return this.add(car, driver, k + 1);
+    return this.add(car, driver, k + 1, kind);
   }
 
   /** Switch the derby off (plain racing). */
@@ -317,19 +326,31 @@ export class Derby {
     }
     if (!ok) return null;
     if (replacementS != null) this._replacementS.shift();
-    const car = new Vehicle();
+    const kind = this._kind(), car = new Vehicle(kind?.spec);
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, driver.cruise * 0.85);
     car.opts.assist = 0.7;
-    return this.add(car, driver, replacementSlot);
+    return this.add(car, driver, replacementSlot, kind);
+  }
+
+  /** Jamboree: the next kind of vehicle for a rival (`pool` is a list of { id, spec, damageMul }). They come out of a shuffled bag,
+   *  so no kind turns up twice until all of them have; none when the pool is empty (every rival is the same as the player's car). */
+  _kind() {
+    const pool = this.pool;
+    if (!pool || !pool.length) return null;
+    if (!this._bag || !this._bag.length) {
+      this._bag = pool.slice();
+      for (let i = this._bag.length - 1; i > 0; i--) { const j = Math.floor(this.rng() * (i + 1)); [this._bag[i], this._bag[j]] = [this._bag[j], this._bag[i]]; }
+    }
+    return this._bag.pop();
   }
 
   /** Add a rival that `driver` (see ai.js) pedals, or that just coasts if there is none. Used by _spawn and the tests.
    *  `raceSlot` is the persistent grid identity; replacement cars inherit the slot of the wreck they replace. */
-  add(car, driver = null, raceSlot = null) {
+  add(car, driver = null, raceSlot = null, kind = null) {
     const f = {
       id: this._id++, raceSlot: Number.isInteger(raceSlot) ? raceSlot : null,
-      isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: SPECS.rival,
+      isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: kind ? kindSpec(kind) : SPECS.rival, vehicleId: kind ? kind.id : null,
       wrecked: false, wreckT: 0, gone: false, age: 0, lastHit: null, flash: 0, flashZone: 'front', flipT: 0, idleT: 0, offT: 0,
       expire: false, expireT: 0,
       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,

@@ -30,7 +30,7 @@ import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes, PowerSaveHint } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
-import { selectedVehicle, multiplayerVehicleSpec, vehicleById, VEHICLES } from './vehicleChoice.js';
+import { selectedVehicle, multiplayerVehicleSpec, vehicleById, VEHICLES, specForVehicle, jamboreePool } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { remoteCarHitsVan, carHitsRemoteVan } from './mpVanContacts.js';
@@ -145,6 +145,9 @@ const derby = new Derby();
 const views = new Map();            // rival id -> CarVisual
 const towHit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
 const towViews = new Map();         // rivals' caravan pictures, by rival id
+const rivalKind = new Map();     // rival id -> vehicle id (kept after it is gone, so the replay can still show it)
+const kindSrc = new Map();       // vehicle id -> hidden CarVisual
+const jamLooks = new Map();
 const viewPool = [];                // visuals of rivals that have gone, ready to be reused
 const derbyBest = () => store.get('cr.derby', {});
 let overAt = 0, overInfo = null;    // when to pop up the game-over card, and what it says
@@ -517,14 +520,16 @@ function derbyStart() {
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  derby.towing = derby.enabled && caravanWanted();                                      // everyone tows a caravan, so the field is smaller: 4 at most
+  const jamboree = derby.enabled && opts.mode === 'jamboree';
+  derby.pool = jamboree ? jamboreePoolForRace() : null;                                 // Jamboree: every rival is a different vehicle
+  derby.towing = derby.enabled && !jamboree && caravanWanted();                                      // everyone tows a caravan, so the field is smaller: 4 at most
   const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
-  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, opts.mode); else derby.stop();
+  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
-  clearViews(); overAt = 0; overInfo = null;
+  clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
   replayRec.reset();                                                                     // a new race: a new replay
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
@@ -580,16 +585,43 @@ function derbyEvents() {
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 const MP_DELAY = 110;      // ms: how far behind the latest report the other players' cars are drawn
 function makeView(f) {
-  let v = (viewPool[f.hue] || (viewPool[f.hue] = [])).pop();
-  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; }
+  const key = f.vehicleId ? f.hue + ':' + f.vehicleId : f.hue;
+  let v = (viewPool[key] || (viewPool[key] = [])).pop();
+  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[f.hue].tint); v.hue = f.hue; v.poolKey = key; }
+  if (f.vehicleId) rivalKind.set(f.id, f.vehicleId);
   v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   views.set(f.id, v);
   return v;
 }
+// Jamboree: every rival is a different vehicle. Each kind is loaded once into a hidden "source" car that the rivals of that kind clone.
+function kindSource(vid) {
+  let t = kindSrc.get(vid);
+  if (!t) {
+    const cfg = vehicleById(vid);
+    t = new CarVisual(stage.scene, car.restHeight); t.root.visible = false;
+    t.load(cfg.url, cfg);
+    kindSrc.set(vid, t);
+  }
+  return t;
+}
+/** Give a rival's view its model (a clone of the player's, or of its own kind in Jamboree). False until the model has loaded. */
+function adoptView(v, hue, vid) {
+  if (!vid || vid === selectedVehicle().id) return visual.loaded && v.adopt(visual, RIVAL_LOOKS[hue]);
+  const src = kindSource(vid);
+  if (!src.loaded) return false;
+  const k = hue + ':' + vid;
+  let look = jamLooks.get(k); if (!look) jamLooks.set(k, look = { ...RIVAL_LOOKS[hue], vehicleId: vid });
+  return v.adopt(src, look);
+}
+function jamboreePoolForRace() {                                  // (a phone or tablet gets four kinds only, so it never holds a dozen models)
+  let list = jamboreePool().filter((v) => v.id !== selectedVehicle().id);
+  if (device.touch) { for (let i = list.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; } list = list.slice(0, 4); }
+  return list.map((v) => ({ id: v.id, spec: specForVehicle(v), damageMul: v.damageMul }));
+}
 function releaseView(id) {
   const v = views.get(id); if (!v) return;
   const bar = rivalBars.get(id); if (bar) { bar.el.remove(); rivalBars.delete(id); }
-  v.restoreWheels(); v.root.visible = false; (viewPool[v.hue] || (viewPool[v.hue] = [])).push(v); views.delete(id);
+  v.restoreWheels(); v.root.visible = false; (viewPool[v.poolKey ?? v.hue] || (viewPool[v.poolKey ?? v.hue] = [])).push(v); views.delete(id);
 }
 function clearViews() { for (const id of [...views.keys()]) releaseView(id); for (const id of [...towViews.keys()]) dropTowView(id); }
 
@@ -643,7 +675,7 @@ function syncViews(a) {
     let v = views.get(f.id);
     if (f.gone) { if (v) releaseView(f.id); continue; }
     if (!v) { if (made >= 2) continue; v = makeView(f); made++; }
-    if (!v.loaded && visual.loaded && adopted < 2 && v.adopt(visual, RIVAL_LOOKS[f.hue])) adopted++;      // a couple a frame, so the game never freezes
+    if (!v.loaded && adopted < 2 && adoptView(v, f.hue, f.vehicleId)) adopted++;      // a couple a frame, so the game never freezes
     const p = f.prev, c = f.cur;
     v.root.position.set(lerp(p.x, c.x, a), lerp(p.y, c.y, a), lerp(p.z, c.z, a));
     qa.set(p.qx, p.qy, p.qz, p.qw); qb.set(c.qx, c.qy, c.qz, c.qw);
@@ -766,9 +798,9 @@ const replay = () => replayMode || (replayMode = createReplayMode({
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
     let v = views.get(ent.id);
-    if (!v) v = makeView({ id: ent.id, hue: ent.hue });
+    if (!v) v = makeView({ id: ent.id, hue: ent.hue, vehicleId: rivalKind.get(ent.id) });
     if (rpFrame !== frameNo) { rpFrame = frameNo; rpAdopt = 0; }
-    if (!v.loaded && visual.loaded && rpAdopt < 2 && v.adopt(visual, RIVAL_LOOKS[ent.hue])) rpAdopt++;
+    if (!v.loaded && rpAdopt < 2 && adoptView(v, ent.hue, rivalKind.get(ent.id))) rpAdopt++;
     return v;
   },
   towFor(ent) { let tv = towViews.get(ent.id); if (!tv && caravanView.loaded) { tv = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[ent.hue]); towViews.set(ent.id, tv); } return tv || null; },
@@ -1021,8 +1053,8 @@ function bindMenu() {
   const skillOf = (v) => (v in SKILL ? v : 'hard');
   const sk = $('opt-skill'); sk.value = skillOf(opts.skill); derby.skill = SKILL[sk.value];
   sk.onchange = () => { opts.skill = skillOf(sk.value); derby.skill = SKILL[opts.skill]; store.set('cr.opts', opts); toast('Rivals: ' + sk.options[sk.selectedIndex].text.split(' - ')[0]); sk.blur(); };
-  const md = $('opt-mode'); md.value = opts.mode === 'demolition' ? 'demolition' : 'race';
-  md.onchange = () => { opts.mode = md.value === 'demolition' ? 'demolition' : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
+  const md = $('opt-mode'); md.value = ['demolition', 'jamboree'].includes(opts.mode) ? opts.mode : 'race';
+  md.onchange = () => { opts.mode = ['demolition', 'jamboree'].includes(md.value) ? md.value : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };

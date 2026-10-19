@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.220';
-export const NOTE = 'Saved MP4 replays now include the sound (the audio codec is named)';
+export const VERSION = '17.221';
+export const NOTE = 'Jamboree game mode: every rival is a different vehicle with its own handling, size and toughness';

@@ -217,29 +217,34 @@ function makeHull(b) {
   return p;
 }
 
+const CAR_DEFAULTS = { ...CAR };       // (before any profile is applied)
+const specCache = new Map();
+/** The full Vehicle spec for one catalogue vehicle (a copy of CAR with that vehicle's physics): what a rival of that kind drives with. */
+export function specForVehicle(cfg) {
+  if (specCache.has(cfg.id)) return specCache.get(cfg.id);
+  const p = physicsForVehicle(cfg);
+  const s = {
+    ...CAR_DEFAULTS,
+    mass: p.mass, frontWeight: p.frontWeight, wheelbase: p.wheelbase, track: p.track, wheelRadius: p.wheelRadius, mountY: p.mountY,
+    inertia: { ...p.inertia }, susp: { ...p.susp }, tyre: { ...p.tyre }, engine: { ...p.engine },
+    brakeTotal: (p.brakeG ?? 1.35) * p.mass * 9.81, brakeBias: p.brakeBias, wallBounce: p.wallBounce,
+    aero: { ...p.aero }, steer: { ...p.steer }, boost: { ...p.boost },
+    profileName: p.reference || cfg.name,
+  };
+  if (p.body) { s.hull = makeHull(p.body); s.body = { width: p.body.width, length: p.body.length }; }
+  specCache.set(cfg.id, s);
+  return s;
+}
+
+/** Jamboree: the vehicles a rival can be (cars only - the bus and the motor homes would make the race unfair). */
+export const JAMBOREE_EXCLUDE = ['bus', 'campervan', 'motor-home'];
+export const jamboreePool = () => VEHICLES.filter((v) => !JAMBOREE_EXCLUDE.includes(v.id));
+
 // Apply the selected profile BEFORE main.js creates its Vehicle. Physics and damage toughness
 // now live in the same vehicle definition instead of a separate side-effect module.
 function applySelectedProfile() {
   const cfg = selectedVehicle();
-  const p = physicsForVehicle(cfg);
-  CAR.mass = p.mass;
-  CAR.frontWeight = p.frontWeight;
-  CAR.wheelbase = p.wheelbase;
-  CAR.track = p.track;
-  CAR.wheelRadius = p.wheelRadius;
-  CAR.mountY = p.mountY;
-  CAR.inertia = { ...p.inertia };
-  CAR.susp = { ...p.susp };
-  CAR.tyre = { ...p.tyre };
-  CAR.engine = { ...p.engine };
-  CAR.brakeTotal = (p.brakeG ?? 1.35) * p.mass * 9.81;
-  CAR.brakeBias = p.brakeBias;
-  CAR.wallBounce = p.wallBounce;
-  CAR.aero = { ...p.aero };
-  CAR.steer = { ...p.steer };
-  CAR.boost = { ...p.boost };
-  CAR.profileName = p.reference || cfg.name;
-  if (p.body) { CAR.hull = makeHull(p.body); CAR.body = { width: p.body.width, length: p.body.length }; }   // the size cars-against-cars collision uses (derby.js)
+  Object.assign(CAR, specForVehicle(cfg));
 
   if (cfg.damageMul && cfg.damageMul !== 1) {
     const base = SPECS.player.mul || {};
