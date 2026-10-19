@@ -146,14 +146,14 @@ export class Sound {
   }
   /** Hold-to-honk for the player: starts a voice and returns it; call .stop() on the voice when the key comes up. */
   hornStart(vehicleId) {
-    if (!this.ready || !this.sfxOn) return null;
+    if (!this.ready || !this.sfxOn || this.hornOn === false) return null;
     if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, 0); return { stop() {} }; }      // the Rootmaster rings its bell instead of honking (once per press)
-    const v = this._hornVoice(0.336, 1); v.stop(1.6); return v;
+    const v = this._hornVoice(0.269, 1); v.stop(1.6); return v;
   }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1) {
-    if (!this.ready || !this.sfxOn) return;
-    const gain = 0.4 * clamp01(1 - dist / 70); if (gain < 0.03) return;
+    if (!this.ready || !this.sfxOn || this.hornOn === false) return;
+    const gain = 0.32 * clamp01(1 - dist / 70); if (gain < 0.03) return;
     const a = this._hornVoice(gain, pitch); a.stop(0.16);
     setTimeout(() => { if (this.ctx) { const b = this._hornVoice(gain, pitch); b.stop(0.2); } }, 230);
   }

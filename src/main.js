@@ -57,7 +57,7 @@ const device = probeDevice();
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', handling: 'arcade', skill: 'hard', caravan: false, repairs: 5, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', handling: 'arcade', skill: 'hard', caravan: false, repairs: 5, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // 5 repairs per race is the new default
 if (!opts.jamDefault) { opts.jamDefault = true; if (opts.mode === 'race') opts.mode = 'jamboree'; }      // Jamboree became the default race: people who had never picked another mode move across once
 DT = 1 / tier.physicsHz;
@@ -169,6 +169,7 @@ const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new T
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
 let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
 let hornVoice = null, frozen = false;
+const hornOn = () => opts.horn !== false;      // the cog's Horn option
 let throttleNow = 0, wallSpot = null;
 const race = { unwrapped: 0, max: 0, lastS: null, index: -1, lapStart: null, laps: 0, best: null, reverseT: 0, lastTime: null };
 const safe = { s: 0, off: 0, t: 0 };
@@ -437,7 +438,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
-  if (raw.horn && !hornVoice) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
+  if (raw.horn && !hornVoice && hornOn()) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
@@ -616,9 +617,7 @@ function adoptView(v, hue, vid) {
   if (!vid || vid === selectedVehicle().id) return visual.loaded && v.adopt(visual, RIVAL_LOOKS[hue]);
   const src = kindSource(vid);
   if (!src.loaded) return false;
-  const k = hue + ':' + vid;
-  let look = jamLooks.get(k); if (!look) jamLooks.set(k, look = { ...RIVAL_LOOKS[hue], vehicleId: vid });
-  return v.adopt(src, look);
+  return v.adopt(src, null);                                      // Jamboree rivals keep each vehicle's original colours
 }
 function jamboreePoolForRace() {                                  // (a phone or tablet gets four kinds only, so it never holds a dozen models)
   let list = jamboreePool().filter((v) => v.id !== selectedVehicle().id);
@@ -1119,6 +1118,8 @@ function bindMenu() {
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };
   $('go-menu').onclick = () => showMenu();
   $('go-replay').onclick = () => startReplay();
+  sound.hornOn = opts.horn !== false;
+  bindOpt('opt-horn', 'horn', (v) => { opts.horn = v; sound.hornOn = v; if (!v) { hornVoice?.stop?.(); hornVoice = null; } });
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
   // Graphics quality: antialiasing, shadow type/size and texture filtering are fixed when the page loads, so a change reloads it.

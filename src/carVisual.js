@@ -237,10 +237,12 @@ export class CarVisual {
       if (!o.isMesh) return;
       const m = o.material.clone(), kept = pristine.get(o.material);
       if (kept) { m.map = kept.map; m.color.copy(kept.color); }
-      if (m.map) {
-        const t = recolour(m.map, look);
-        if (t) m.map = t; else m.color.set(look.tint);
-      } else m.color.set(look.tint);
+      if (look) {                                           // (no look = the vehicle keeps its own original colours)
+        if (m.map) {
+          const t = recolour(m.map, look);
+          if (t) m.map = t; else m.color.set(look.tint);
+        } else m.color.set(look.tint);
+      }
       m.userData.base = m.color.clone();
       o.material = m; o.castShadow = false; o.receiveShadow = false;
       this.mats.push(m);
