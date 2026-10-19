@@ -69,6 +69,7 @@ export class Caravan {
     this.sway = 0; this.swayRate = 0;   // top-heavy rocking from side to side, radians (just for looks)
     this._wq = null; this._I = 600;
     this.dist = 0;            // m: how far the ball is from the drawbar (should be about zero)
+    this.hangY = 0.35;        // m: how far the ball sits above the axle on the ground (the caravan keeps this gap when it is in the air)
   }
 
   /** The axle's position, where the wheels are. */
@@ -88,7 +89,7 @@ export class Caravan {
     this.pos.set(b.x - Math.sin(this.yaw) * dc, 0, b.z - Math.cos(this.yaw) * dc);
     this.vel.set(car.vel.x, 0, car.vel.z);
     this.pos.y = this._groundY(this.pos.x, b.y, this.pos.z) + s.wheelR;
-    this.onGround = true; this.pitch = 0; this.roll = 0; this.jackknife = 0;
+    this.onGround = true; this.pitch = 0; this.roll = 0; this.jackknife = 0; this.hangY = clamp(b.y - this.pos.y, -0.5, 1.5);
   }
 
   _groundY(x, y, z) {
@@ -156,11 +157,12 @@ export class Caravan {
     const ax0 = this.pos.x - fx * s.cog, az0 = this.pos.z - fz * s.cog;
     const gy = this._groundY(ax0, Math.max(this.pos.y, ball.y), az0) + s.wheelR;
     // (it only counts as flying when the car is, or when it has really left the ground: running down a hill or over a crest it clings to the road)
-    const flying = car.airTime > 0.12 || this.pos.y - gy > 0.7;
+    const flying = car.airTime > 0.04 || this.pos.y - gy > 0.7;
     if (flying) {
-      this.vel.y -= G * dt; this.pos.y += this.vel.y * dt; this.onGround = false;
-      if (this.pos.y <= gy) { this.pos.y = gy; this.vel.y = 0; this.onGround = true; }
-    } else { this.pos.y += (gy - this.pos.y) * Math.min(1, dt * 30); this.vel.y = 0; this.onGround = true; }
+      // locked to the car: in the air the drawbar stays on the ball, so the caravan rides up and down with the car's tail (it used to fly free of it)
+      this.pos.y = Math.max(this.pos.y + (ball.y - this.hangY - this.pos.y) * Math.min(1, dt * 40), gy); this.vel.y = car.vel.y;
+      this.onGround = this.pos.y <= gy + 0.02;
+    } else { this.pos.y += (gy - this.pos.y) * Math.min(1, dt * 30); this.vel.y = 0; this.onGround = true; if (!(car.airTime > 0)) this.hangY = clamp(ball.y - this.pos.y, -0.5, 1.5); }
     // the ball holds the nose: pitch so that the drawbar meets it
     const want = clamp((ball.y - (this.pos.y + s.hitchH)) / s.dAxle, -0.6, 0.6);
     this.pitch += (Math.asin(want) - this.pitch) * Math.min(1, dt * 14);
