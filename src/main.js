@@ -516,14 +516,14 @@ function caravanEvent(e) {
 }
 
 // ------------------------------------------------------- destruction derby
-let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is not a Jamboree: it would load a dozen models before anyone has pressed start
+let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is a Jamboree on a computer; a phone or tablet keeps it plain, so it does not load a dozen models before anyone has pressed start
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const jamboree = derby.enabled && opts.mode === 'jamboree' && !menuBackdrop; jamBuilt = jamboree;
+  const jamboree = derby.enabled && opts.mode === 'jamboree' && !(menuBackdrop && device.touch); jamBuilt = jamboree;
   derby.pool = jamboree ? jamboreePoolForRace() : null;                                 // Jamboree: every rival is a different vehicle
   derby.towing = derby.enabled && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
   const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !jamboree ? 4 : 99);
