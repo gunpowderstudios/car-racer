@@ -723,3 +723,9 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #menu-tv p { margin: 6px 0 0; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: 15px; letter-spacing: .04em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
 @media (max-width: 700px) { #menu-tv { width: 150px; right: 8px; } #menu-tv p { font-size: 11px; } }
 @media (max-height: 420px) { #menu-tv { display: none; } }
+
+#rp-note { margin: 0 0 8px; text-align: center; font-family: var(--display), Impact, sans-serif; font-weight: 900; letter-spacing: .03em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.8); font-size: 16px; }
+#rp-note[hidden] { display: none; }
+
+#rp-note { margin: 0 0 6px; text-align: center; font-weight: 700; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.8); font-size: 14px; pointer-events: none; }
+#rp-note[hidden] { display: none; }
