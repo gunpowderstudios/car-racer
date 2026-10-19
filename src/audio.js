@@ -20,13 +20,7 @@ export class Sound {
     // (a url can be a list: the first one this browser can decode wins - older Safari cannot play Ogg, so the engine loop also comes as an MP3)
     const load = async (name, url) => { for (const u of [].concat(url)) { try { const r = await fetch(u); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); return; } catch { /* try the next, or go without */ } } };
     await Promise.all([
-      /** A second output of the mix as a MediaStream, for recording a video with sound (made on first use). */
-  tap() {
-    if (!this.ctx || !this.ctx.createMediaStreamDestination) return null;
-    if (!this.tapNode) { this.tapNode = this.ctx.createMediaStreamDestination(); this.master.connect(this.tapNode); }
-    return this.tapNode.stream;
-  }
-  load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
+      load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
       load('music', 'sounds/background-music.mp3'), load('engineStart', 'sounds/engine-start.mp3'),
@@ -40,6 +34,12 @@ export class Sound {
     this.ready = true;
   }
 
+  /** A second output of the mix as a MediaStream, for recording a video with sound (made on first use). */
+  tap() {
+    if (!this.ctx || !this.ctx.createMediaStreamDestination) return null;
+    if (!this.tapNode) { this.tapNode = this.ctx.createMediaStreamDestination(); this.master.connect(this.tapNode); }
+    return this.tapNode.stream;
+  }
   _loop(name, dest, gain, pitched = true) {
     const b = this.buf[name]; if (!b) return null;
     const s = this.ctx.createBufferSource(); s.buffer = b; s.loop = true;

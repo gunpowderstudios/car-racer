@@ -10,6 +10,7 @@ import { DENT } from './dentMath.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { ReplayRecorder } from './replay.js';
 import { createReplayMode } from './replayMode.js';
+import { ReplayDof } from './replayDof.js';
 import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
@@ -753,6 +754,7 @@ function recordReplay() {
   rpEnts.length = n;
   replayRec.record(simTime, rpEnts);
 }
+const replayDof = new ReplayDof(renderer);
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
   $, canvas, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
@@ -814,10 +816,15 @@ function frame(now) {
     propsView.update(props);
     if (f) drawPos.set(f.x, f.y, f.z);
     stage.update(drawPos, camera.position); stage.updateRollers();
-    renderer.render(stage.scene, camera);
+    // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
+    if (tierName === 'high' && !device.touch && adapt.scale >= 0.8) {
+      if (!replayDof.on) replayDof.enable();
+      replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
+    } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
     perfUpdate(now);
     return;
   }
+  if (replayDof.on) replayDof.disable();
   if (mode === 'drive') {
     stepPhysics(dt);
     recordReplay();

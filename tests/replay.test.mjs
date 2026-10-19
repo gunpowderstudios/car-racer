@@ -148,3 +148,16 @@ test('replay: Save video button is wired, and airborne wheels keep spinning', as
   assert.ok(mode.includes('captureStream') && mode.includes('MediaRecorder'));
   assert.ok(/!w\.contact\) \{[^}]*w\.spin \+=/.test(veh));
 });
+
+test('replay: depth of field is High-tier desktop only and freed outside the replay', async () => {
+  const fs = await import('node:fs');
+  const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.ok(/tierName === 'high' && !device\.touch/.test(main));
+  assert.ok(main.includes('if (replayDof.on) replayDof.disable();'));
+});
+
+test('every source file parses (a broken file only shows up in a real browser)', async () => {
+  const fs = await import('node:fs'), { execFileSync } = await import('node:child_process');
+  const dir = new URL('../src/', import.meta.url);
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js'))) execFileSync(process.execPath, ['--check', new URL(f, dir).pathname]);
+});
