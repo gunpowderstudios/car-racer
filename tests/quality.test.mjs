@@ -149,3 +149,15 @@ test('X blows up your own car in single player, through the normal wreck', async
   assert.match(js, /function selfDestruct\(\) \{\s*if \(mode !== 'drive' \|\| net \|\| paused\) return;/);
   assert.match(dj, /selfDestruct\(\) \{[\s\S]*?this\._wreck\(f, f\.health\.wrecked\)/);
 });
+
+test('the engine loop comes as Ogg then MP3 (older Safari cannot play Ogg), and a big tablet screen is held to a pixel budget', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(audio, /\['sounds\/engine-loop-loud\.ogg', 'sounds\/engine-loop-loud\.mp3'\]/);
+  assert.ok(existsSync(new URL('../sounds/engine-loop-loud.mp3', import.meta.url)) && existsSync(new URL('../sounds/engine-loop-loud.ogg', import.meta.url)));
+  assert.match(main, /device\.touch \? Math\.sqrt\(TOUCH_PIXEL_BUDGET/);          // touch only: desktops are never capped
+  // 12.9in iPad Pro: 1366x1024 css px at 2x is 5.6M; the budget gives ~1.73x. A phone (393x852) and an 11in iPad (834x1194) stay at the full 2x
+  const ratio = (w, h) => Math.min(2, Math.sqrt(4.2e6 / (w * h)));
+  assert.ok(ratio(1366, 1024) < 1.8 && ratio(1366, 1024) > 1.6);
+  assert.equal(ratio(393, 852), 2); assert.equal(ratio(834, 1194), 2);
+});

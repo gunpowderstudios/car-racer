@@ -408,6 +408,7 @@ export class CarVisual {
   get textured() { return this.hasTexture === true; }
 
   async load(url = MODEL.url) {
+    const t0 = performance.now();
     try {
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url, (e) => this.onProgress?.(e.loaded, e.total));
       const model = gltf.scene;
@@ -457,7 +458,7 @@ export class CarVisual {
       this._findWheels();
       this._initDents();
       this._scanBonnet();
-      this.loaded = true;
+      this.loaded = true; this.loadMs = Math.round(performance.now() - t0);      // (shown by ?perf, to see where a slow device spends its time)
       if (this._ownLook) this._applyOwnLook();
       this.onLoad?.(this);
     } catch (e) {

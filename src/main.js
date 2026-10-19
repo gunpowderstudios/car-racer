@@ -46,7 +46,8 @@ const store = {
 const savedOpts = store.get('cr.opts', {});
 const qParam = new URLSearchParams(location.search).get('q');
 const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes(savedOpts.quality) ? savedOpts.quality : null;   // ?q=low|medium|high beats the saved choice
-const tierName = detectTier({ forced: forcedQuality, ...probeDevice() });
+const device = probeDevice();
+const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
 const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', handling: 'arcade', skill: 'hard', caravan: false, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
@@ -60,7 +61,10 @@ const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
 // ------------------------------------------------------------------- set-up
 const canvas = $('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier.aa, powerPreference: 'high-performance' });
-const baseRatio = Math.min(devicePixelRatio || 1, tier.pixelRatio);
+// A big tablet screen (a 12.9" iPad Pro is 5.6 million pixels at 2x) is held to about 4.2 million: 25% fewer pixels there, no change on any phone,
+// any smaller tablet or any desktop (the adaptive resolution still steps down from this on a slow one).
+const TOUCH_PIXEL_BUDGET = 4.2e6;
+const baseRatio = Math.min(devicePixelRatio || 1, tier.pixelRatio, device.touch ? Math.sqrt(TOUCH_PIXEL_BUDGET / Math.max(1, innerWidth * innerHeight)) : Infinity);
 renderer.setPixelRatio(baseRatio);
 renderer.shadowMap.enabled = opts.shadow; renderer.shadowMap.type = tier.shadowType === 'pcfsoft' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
@@ -190,7 +194,7 @@ function perfUpdate(now) {
   }
   const i = renderer.info;
   perf.el.textContent = `${tierName}  ${fps.toFixed(0)} fps  res ${(baseRatio * adapt.scale).toFixed(2)}x  ${physicsLabel}\n` +
-    `calls ${i.render.calls}  tris ${(i.render.triangles / 1000).toFixed(0)}k  geo ${i.memory.geometries}  tex ${i.memory.textures}`;
+    `car load ${visual.loadMs ?? '-'} ms  ` + `calls ${i.render.calls}  tris ${(i.render.triangles / 1000).toFixed(0)}k  geo ${i.memory.geometries}  tex ${i.memory.textures}`;
 }
 const physicsLabel = `${tier.physicsHz}Hz`;
 

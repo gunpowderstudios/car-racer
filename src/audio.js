@@ -16,9 +16,10 @@ export class Sound {
     this.master = c.createGain(); this.master.gain.value = 0.9; this.master.connect(c.destination);
     this.sfx = c.createGain(); this.sfx.gain.value = this.sfxOn ? 1 : 0; this.sfx.connect(this.master);
     this.music = c.createGain(); this.music.gain.value = this.musicOn ? 0.22 : 0; this.music.connect(this.master);
-    const load = async (name, url) => { try { const r = await fetch(url); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); } catch { /* optional */ } };
+    // (a url can be a list: the first one this browser can decode wins - older Safari cannot play Ogg, so the engine loop also comes as an MP3)
+    const load = async (name, url) => { for (const u of [].concat(url)) { try { const r = await fetch(u); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); return; } catch { /* try the next, or go without */ } } };
     await Promise.all([
-      load('engine', 'sounds/engine-loop-loud.ogg'), load('screech', 'sounds/tyre-screech.mp3'),
+      load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
       load('music', 'sounds/background-music.mp3'), load('engineStart', 'sounds/engine-start.mp3'),
