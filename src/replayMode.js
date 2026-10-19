@@ -125,13 +125,29 @@ export function createReplayMode(d) {
   }
   // ---- save as video: the replay plays through once at normal speed while the canvas (and the sound) is recorded
   const REC_TYPES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  function makeLogo() {                                                // the menu's TV logo as a picture (a still: fonts and animation do not come along inside an image)
+    const img = new Image(), svg = document.getElementById('menu-tv-svg') || document.getElementById('rp-logo');
+    if (!svg) return img;
+    const css = 'text{font-family:Impact,"Arial Narrow",sans-serif;font-weight:900;letter-spacing:.02em}.rpl-big{font-size:33px}.rpl-small{font-size:15px}.rpl-tv{font-size:38px}.rpl-live{font-size:9px;letter-spacing:.1em}.rpl-burst{fill:#e8392c;stroke:#ffb31f;stroke-width:2;stroke-linejoin:round}';
+    const src = svg.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg" width="540" height="204"').replace(/>/, '><style>' + css + '</style>');
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+    return img;
+  }
   function saveVideo() {
     if (R.saving) { stopSave(false); return; }
     const cv = d.canvas, MR = globalThis.MediaRecorder;
     if (!cv || !cv.captureStream || !MR) { d.toast('This browser cannot save video'); return; }
     const type = REC_TYPES.find((t) => MR.isTypeSupported(t));
     if (!type) { d.toast('This browser cannot save video'); return; }
-    const stream = cv.captureStream(30), audio = d.sound.tap && d.sound.tap();
+    // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
+    const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height;
+    const octx = out.getContext('2d'), logo = makeLogo();
+    R.stamp = () => {
+      if (out.width !== cv.width || out.height !== cv.height) { out.width = cv.width; out.height = cv.height; }
+      octx.drawImage(cv, 0, 0, out.width, out.height);
+      if (logo.complete && logo.naturalWidth) { const w = Math.max(150, out.width * 0.17), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
+    };
+    const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
     if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
     let rec;
     try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: 6e6 }); } catch { d.toast('This browser cannot save video'); return; }
@@ -158,6 +174,7 @@ export function createReplayMode(d) {
   }
   function stopSave(finished) {
     const s = R.saving; if (!s) return;
+    R.stamp = null;
     s.cancel = !finished;
     if (s.rec.state !== 'inactive') s.rec.stop();
   }
@@ -246,5 +263,7 @@ export function createReplayMode(d) {
     return f;
   }
 
-  return { enter, exit, frame, togglePlay, get active() { return R.active; }, state: R };
+  /** Called by main.js right after the picture is drawn, while a video is being saved. */
+  function afterRender() { if (R.saving && R.stamp) R.stamp(); }
+  return { enter, exit, frame, afterRender, togglePlay, get active() { return R.active; }, state: R };
 }

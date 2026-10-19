@@ -825,6 +825,7 @@ function frame(now) {
       if (!replayDof.on) replayDof.enable();
       replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
     } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
+    replay().afterRender();
     perfUpdate(now);
     return;
   }
