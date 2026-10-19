@@ -75,3 +75,20 @@ test('jamboree: the grid behind the home screen is a plain one (no extra models 
   assert.ok(main.includes("opts.mode === 'jamboree' && !menuBackdrop"));
   assert.ok(main.includes("menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false;"));
 });
+
+test('jamboree: some rivals tow a caravan (when the player does), never the kinds with no hitch', () => {
+  const track = new Track(makeTemplate('speedway')), player = new Vehicle();
+  placeOnTrack(player, track, 0, 0, 0);
+  let towed = 0, plain = 0;
+  for (let seed = 1; seed <= 12; seed++) {
+    const derby = new Derby(); derby.enabled = true; derby.towing = true;
+    const hitch = { x: 0, y: -0.02, z: -2.3 };
+    derby.pool = [{ id: 'bmw', spec: specOf('bmw'), damageMul: 1, hitch }, { id: 'escort', spec: specOf('escort'), damageMul: 1, hitch }, { id: 'bus', spec: specOf('bus'), damageMul: 1, hitch: null }, { id: 'motor-home', spec: specOf('motor-home'), damageMul: 1, hitch: null }];
+    derby.start(track, player, 4, seed, 'race');
+    for (const f of derby.fighters) {
+      if (f.isPlayer) continue;
+      if (f.car.tow) { towed++; assert.ok(f.vehicleId === 'bmw' || f.vehicleId === 'escort', f.vehicleId + ' must not tow'); } else plain++;
+    }
+  }
+  assert.ok(towed > 3 && plain > 3, `a mix: ${towed} towing, ${plain} not`);
+});

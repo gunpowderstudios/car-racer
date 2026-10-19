@@ -356,8 +356,10 @@ export class Derby {
       expire: false, expireT: 0,
       inp: IDLE, think: 0, prev: pose(), cur: pose(), hue: this._hue++ % HUES,
     };
-    if (this.towing && this.track) {                      // a rival with a caravan on the back (slower and gentler through the bends, see Driver.towing)
-      const van = new Caravan(RIVAL_HITCH, { yawDamp: 2.0 }); van.auto = true; van.track = this.track; car.tow = van; van.reset(car);
+    // a rival with a caravan on the back (slower and gentler through the bends, see Driver.towing). In Jamboree only some do, and only
+    // the kinds that can tow at all (kind.hitch is their hitch point: the bus, campervan and motorhome have none).
+    if (this.towing && this.track && (!kind || (kind.hitch && this.rng() < 0.5))) {
+      const van = new Caravan(kind?.hitch || RIVAL_HITCH, { yawDamp: 2.0 }); van.auto = true; van.track = this.track; car.tow = van; van.reset(car);
       if (driver) driver.towing = true;
     }
     this._pose(f, f.cur); this._pose(f, f.prev);

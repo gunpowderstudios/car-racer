@@ -524,8 +524,8 @@ function derbyStart() {
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const jamboree = derby.enabled && opts.mode === 'jamboree' && !menuBackdrop; jamBuilt = jamboree;
   derby.pool = jamboree ? jamboreePoolForRace() : null;                                 // Jamboree: every rival is a different vehicle
-  derby.towing = derby.enabled && !jamboree && caravanWanted();                                      // everyone tows a caravan, so the field is smaller: 4 at most
-  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing ? 4 : 99);
+  derby.towing = derby.enabled && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
+  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !jamboree ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
   derby.repairsMax = derby.enabled && opts.mode !== 'demolition' && !arena && !window.__story?.active && opts.repairs > 0 ? opts.repairs : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
@@ -621,7 +621,7 @@ function adoptView(v, hue, vid) {
 function jamboreePoolForRace() {                                  // (a phone or tablet gets four kinds only, so it never holds a dozen models)
   let list = jamboreePool().filter((v) => v.id !== selectedVehicle().id);
   if (device.touch) { for (let i = list.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; } list = list.slice(0, 4); }
-  return list.map((v) => ({ id: v.id, spec: specForVehicle(v), damageMul: v.damageMul }));
+  return list.map((v) => ({ id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null }));
 }
 function releaseView(id) {
   const v = views.get(id); if (!v) return;
