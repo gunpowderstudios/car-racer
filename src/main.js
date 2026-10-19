@@ -50,6 +50,10 @@ const savedOpts = store.get('cr.opts', {});
 const qParam = new URLSearchParams(location.search).get('q');
 const forcedQuality = TIER_NAMES.includes(qParam) ? qParam : TIER_NAMES.includes(savedOpts.quality) ? savedOpts.quality : null;   // ?q=low|medium|high beats the saved choice
 const device = probeDevice();
+{ // the replay's TV logo again, on the menu (its own copy, with its own gradient ids: the original sits in a hidden bar)
+  const src = document.getElementById('rp-logo'), slot = document.getElementById('menu-tv-logo');
+  if (src && slot) slot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="menu-tv-svg"').replace(/rpl-(amber|red)/g, 'rplm-$1');
+}
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
