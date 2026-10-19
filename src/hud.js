@@ -66,7 +66,21 @@ export class Hud {
   derbyMode(on) {
     this.d.score.hidden = !on; this.d.card.hidden = !on;
     if (!on) { this.d.feed.textContent = ''; this.hideGameOver(); }
-    this._last.ds = this._last.dmg = null;
+    this._last.ds = this._last.dmg = this._last.rep = null;
+  }
+
+  /** The repair budget: one pip per repair, spent from the right. Hidden when there is no limit (or no race). */
+  setRepairs(left, max) {
+    const el = $('repairs'); if (!el) return;
+    const k = left + '/' + max;
+    if (k === this._last.rep) return;
+    this._last.rep = k;
+    el.hidden = !Number.isFinite(max);
+    if (el.hidden) return;
+    const box = $('rep-pips');
+    if (box.children.length !== max) { box.textContent = ''; for (let i = 0; i < max; i++) box.appendChild(document.createElement('i')); }
+    for (let i = 0; i < max; i++) box.children[i].className = i < left ? (left <= 2 ? 'low' : 'on') : '';
+    el.classList.toggle('low', left <= 2);
   }
 
   /** Score, credited takedowns and how many rivals are still running. */

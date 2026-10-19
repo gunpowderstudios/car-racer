@@ -219,6 +219,7 @@ export class Derby {
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
     this.count = DERBY.rivals; this.rng = mulberry(7);
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = 0;
+    this.repairsMax = Infinity; this.repairs = Infinity;   // Race: how many wrecks you can be repaired from before the car is scrap (set before start())
     this.pool = null;                     // Jamboree: the kinds of vehicle the rivals are drawn from (see _kind); null = every rival is the player's own kind
     this._replacementS = [];              // {s, raceSlot}: wreck position + persistent race identity awaiting a replacement
     this._hit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
@@ -243,7 +244,7 @@ export class Derby {
     // DEMOLITION: wrecked means out, nobody is replaced, and the last car running wins. The Oval is always demolition.
     this.mode = mode === 'demolition' || this.lastStanding ? 'demolition' : 'race'; this.demolition = this.mode === 'demolition';
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
-    this._replacementS.length = 0; this._bag = null;
+    this._replacementS.length = 0; this._bag = null; this.repairs = this.repairsMax;
     const p = this.player = {
       id: 0, isPlayer: true, car: playerCar, health: new Health(SPECS.player.hp), spec: SPECS.player,
       wrecked: false, wreckT: 0, respawnAt: Infinity, graceUntil: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
@@ -663,6 +664,9 @@ export class Derby {
       if (this.demolition) {
         this.over = true;
         this.events.push({ type: 'over', zone, score: this.score, takedowns: this.takedowns });
+      } else if (Number.isFinite(this.repairsMax) && --this.repairs <= 0) {
+        this.repairs = 0; this.over = true;                           // Race with a repair budget: that was the last repair - the car is scrap
+        this.events.push({ type: 'over', scrap: true, zone, score: this.score, takedowns: this.takedowns });
       } else f.respawnAt = this.time + DERBY.respawnDelay;           // Race: back on the road shortly
     } else {
       const h = f.lastHit;

@@ -700,3 +700,33 @@ test('engine-start sound is shipped, loaded and played on restart', async () => 
   assert.match(readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8'), /load\('engineStart', 'sounds\/engine-start\.mp3'\)/);
   assert.match(readFileSync(new URL('../src/engineOff.js', import.meta.url), 'utf8'), /engineStart/);
 });
+
+test('repairs: every wreck uses one, you come back until the last, then the car is scrap (game over)', () => {
+  const a = arena(-300, 0, 'race'); a.derby.repairsMax = 3; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
+  const P = a.derby.player, overs = [];
+  assert.equal(a.derby.repairs, 3);
+  for (let n = 1; n <= 3; n++) {
+    a.derby._damage(P, 'front', 5000, null);
+    assert.equal(P.wrecked, true);
+    assert.equal(a.derby.repairs, 3 - n);
+    for (const e of a.derby.events) if (e.type === 'over') overs.push(e);
+    a.derby.events.length = 0;
+    if (n < 3) {
+      assert.equal(a.derby.over, false, 'not over yet');
+      a.derby.time = P.respawnAt + 0.01; a.derby.step(DT);                      // the repair comes through
+      assert.equal(P.wrecked, false, 'repaired and back on the road');
+      a.derby.time += DERBY.respawnGrace + 1;
+    }
+  }
+  assert.equal(a.derby.over, true);
+  assert.equal(overs.length, 1);
+  assert.equal(overs[0].scrap, true);
+});
+
+test('repairs: no budget (or Demolition) behaves as before', () => {
+  const a = arena(-300, 0, 'race');
+  assert.equal(a.derby.repairsMax, Infinity);
+  a.derby._damage(a.derby.player, 'front', 5000, null);
+  assert.equal(a.derby.over, false);
+  assert.ok(Number.isFinite(a.derby.player.respawnAt));
+});
