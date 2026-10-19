@@ -515,13 +515,14 @@ function caravanEvent(e) {
 }
 
 // ------------------------------------------------------- destruction derby
+let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is not a Jamboree: it would load a dozen models before anyone has pressed start
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const jamboree = derby.enabled && opts.mode === 'jamboree';
+  const jamboree = derby.enabled && opts.mode === 'jamboree' && !menuBackdrop; jamBuilt = jamboree;
   derby.pool = jamboree ? jamboreePoolForRace() : null;                                 // Jamboree: every rival is a different vehicle
   derby.towing = derby.enabled && !jamboree && caravanWanted();                                      // everyone tows a caravan, so the field is smaller: 4 at most
   const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing ? 4 : 99);
@@ -968,6 +969,7 @@ function pickStartCamera() {
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
   if (newDef) loadTrack(newDef);
+  else if (!hasPlayed && derby.enabled && opts.mode === 'jamboree' && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
   hasPlayed = true; setMode('drive'); last = performance.now();
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
 }
@@ -1559,7 +1561,7 @@ bindMenu();
 bindMultiplayer();
 // Cache the heavy files (car models, sounds, three.js) so repeat visits - especially on mobile data - load fast.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-loadTrack(makeTemplate('speedway'));
+menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false;
 renderMenu();
 setMode('menu');
 requestAnimationFrame(frame);
