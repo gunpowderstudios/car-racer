@@ -46,3 +46,6 @@ test('home screen has the TV set with the logo on its screen', () => {
   assert.match(f('index.html'), /<img src="tv\/tv-set\.webp"/);
   assert.match(f('css/style.css'), /#menu-tv-logo \{ position: absolute; left: 40\.7%/);
 });
+test('with the Campervan selected, Jamboree rivals (no look given) are not turned into campervans', () => {
+  assert.match(f('src/campervanVehicle.js'), /selectedId\(\) === ID && !!look && \(!look\.vehicleId/);
+});

@@ -117,7 +117,7 @@ const previousAdopt = CarVisual.prototype.adopt;
 CarVisual.prototype.adopt = function campervanAdopt(src, look) {
   // In solo the rival look has no vehicleId. In multiplayer, respect another player's explicitly
   // selected vehicle instead of forcing every remote player to be a Campervan just because we are.
-  if (selectedId() === ID && (!look?.vehicleId || look.vehicleId === ID)) {
+  if (selectedId() === ID && !!look && (!look.vehicleId || look.vehicleId === ID)) {
     if (this.loaded && this.vehicleId === ID) return true;
     if (!this._campervanSoloLoading) {
       this._campervanSoloLoading = true;
