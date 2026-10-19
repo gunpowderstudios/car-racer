@@ -154,6 +154,9 @@ function beginPlayerReset(derby, f) {
     s = (s - 8 + L) % L;
   }
   const oldOver = f._playerOffTrackGuard ? f._playerOffTrackGuard.oldOver : derby.over;
+  // Flying off the track costs a repair (a spanner), like any other wreck; the last one makes the car scrap.
+  const scrap = Number.isFinite(derby.repairsMax) && !derby.demolition && !oldOver && --derby.repairs <= 0;
+  if (scrap) derby.repairs = 0;
   f._playerOffTrackReset = { t: RESET_DELAY, s, shown: 3, oldOver };
   f._playerOffTrackGuard = null;
   f._playerOffT = 0;
@@ -171,6 +174,11 @@ function beginPlayerReset(derby, f) {
     x: c.pos.x, y: c.pos.y, z: c.pos.z,
     dist: 0, offTrack: true,
   });
+  if (scrap) {                                                       // no repairs left: no 3-2-1 and no way back - the car is scrap
+    f._playerOffTrackReset = null; f._playerOffTrackGuard = null; derby.over = true; f.wrecked = true;
+    derby.events.push({ type: 'over', scrap: true, zone: 'front', score: derby.score, takedowns: derby.takedowns });
+    return;
+  }
   showPlayerCountdown(3);
 }
 

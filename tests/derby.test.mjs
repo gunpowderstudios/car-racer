@@ -11,6 +11,7 @@ import { Derby, DERBY, POINTS, collideCars, placeOnRoad } from '../src/derby.js'
 import { Driver } from '../src/ai.js';
 import { ZONES, ARMOUR, DAMAGE, Health, zoneAt, crashDamage, wallDamage, blastDamage, blastFraction } from '../src/damage.js';
 import { DRAG_DEF, placeOnTrack, bot, DT } from './harness.mjs';
+import '../src/derbyOffTrackRecovery.js';
 
 const dragTrack = () => new Track(DRAG_DEF);
 const IN = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
@@ -729,4 +730,22 @@ test('repairs: no budget (or Demolition) behaves as before', () => {
   a.derby._damage(a.derby.player, 'front', 5000, null);
   assert.equal(a.derby.over, false);
   assert.ok(Number.isFinite(a.derby.player.respawnAt));
+});
+
+test('repairs: flying off the track costs a spanner, and the last one scraps the car', () => {
+  const a = arena(-300, 0, 'race'); a.derby.repairsMax = 2; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
+  const P = a.derby.player, overs = [];
+  assert.equal(a.derby.repairs, 2);
+  a.car.pos.y = -20; a.derby.step(DT);                                          // fell off the world
+  assert.equal(a.derby.repairs, 1, 'one repair used');
+  assert.equal(a.derby.over, true, 'the 3-2-1 reset holds the game guard');
+  for (let i = 0; i < 4 / DT; i++) a.derby.step(DT);                            // 3-2-1 and back on the road
+  assert.equal(P.wrecked, false);
+  assert.equal(a.derby.over, false);
+  a.car.pos.y = -20; a.derby.events.length = 0; a.derby.step(DT);               // off again: the last repair
+  for (const e of a.derby.events) if (e.type === 'over') overs.push(e);
+  assert.equal(a.derby.repairs, 0);
+  assert.equal(overs.length, 1); assert.equal(overs[0].scrap, true);
+  for (let i = 0; i < 4 / DT; i++) a.derby.step(DT);
+  assert.equal(a.derby.over, true, 'scrap stays scrap: no way back');
 });
