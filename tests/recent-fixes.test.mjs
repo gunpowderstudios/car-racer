@@ -315,7 +315,7 @@ test('keys: R resets the camera view, B is back on road, Backspace/Delete restar
   assert.match(input, /Backspace: onRestart, Delete: onRestart/);
   assert.doesNotMatch(input, /KeyR: onReset/);
   assert.match(input, /buttons\[14\]/);
-  assert.match(input, /edge\(11/);
+  assert.match(input, /edge\('view', 11/);
   assert.match(input, /gamepadconnected/);
   assert.match(cameraOrbit, /ctl-reset-view/);
 });

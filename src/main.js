@@ -20,7 +20,7 @@ import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { PropsView } from './propsView.js';
-import { Input } from './input.js';
+import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound } from './audio.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
@@ -1120,6 +1120,23 @@ function bindMenu() {
   $('go-replay').onclick = () => startReplay();
   sound.hornOn = opts.horn !== false;
   { const det = $('pad-test'), idl = $('pad-id'), last = $('pad-last'), NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right'];
+    const mapEl = $('pad-map'), defaults = Object.fromEntries(PAD_ACTIONS.map((a) => [a[0], a[2]]));
+    const drawMap = () => {                                                  // one row per action: tap it, then press the button you want
+      mapEl.textContent = '';
+      for (const [id, label] of PAD_ACTIONS) {
+        const l = document.createElement('span'), b = document.createElement('button'); l.textContent = label; b.type = 'button';
+        const own = input.bindingFor(id); b.textContent = own ? describeBinding(own, input.padInfo.standard) : defaults[id] + ' (default)';
+        b.onclick = () => {
+          if (!input.padInfo.connected) { toast('Plug in a controller first'); return; }
+          b.classList.add('waiting'); b.textContent = 'Press a button...';
+          input.startLearn(id, () => drawMap());
+        };
+        mapEl.append(l, b);
+      }
+    };
+    det.addEventListener('toggle', () => { if (det.open) drawMap(); else input.cancelLearn(); });
+    $('pad-map-reset').onclick = () => { input.clearMap(); drawMap(); toast('Controller buttons reset'); };
+    setInterval(() => { if (det.open && mode !== 'drive') input.poll(); }, 40);      // (on the menu nothing else reads the pad; fast enough to catch a short tap)
     setInterval(() => {
       if (!det.open) return;
       const i = input.padInfo;

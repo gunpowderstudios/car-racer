@@ -756,3 +756,6 @@ body.has-pad #controls .key-legend { display: none; }
 #pad-test { margin: 6px 0; font-size: 13px; }
 #pad-test summary { cursor: pointer; font-weight: 700; }
 #pad-last { font-weight: 700; }
+#pad-map { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; margin: 6px 0; }
+#pad-map button { min-width: 120px; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.25); color: inherit; font: inherit; cursor: pointer; }
+#pad-map button.waiting { background: var(--amber); color: #2a1a00; font-weight: 700; }
