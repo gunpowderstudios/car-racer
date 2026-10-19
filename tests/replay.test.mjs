@@ -161,3 +161,9 @@ test('every source file parses (a broken file only shows up in a real browser)',
   const dir = new URL('../src/', import.meta.url);
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js'))) execFileSync(process.execPath, ['--check', new URL(f, dir).pathname]);
 });
+
+test('replay: MP4 recording names an audio codec, so the file has sound', async () => {
+  const fs = await import('node:fs');
+  const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.ok(/video\/mp4;codecs=avc1,mp4a\.40\.2/.test(mode));
+});

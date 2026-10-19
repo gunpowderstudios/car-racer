@@ -123,8 +123,8 @@ export function createReplayMode(d) {
     else R.playing = !R.playing;
     syncUi();
   }
-  // ---- save as video: the replay plays through once at normal speed while the canvas (and the sound) is recorded
-  const REC_TYPES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  // ---- save as video (the MP4 types NAME the audio codec: with only a video codec listed, Chrome saves a silent file): the replay plays through once at normal speed while the canvas (and the sound) is recorded
+  const REC_TYPES = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
   function makeLogo() {                                                // the menu's TV logo as a picture (a still: fonts and animation do not come along inside an image)
     const img = new Image(), svg = document.getElementById('menu-tv-svg') || document.getElementById('rp-logo');
     if (!svg) return img;
