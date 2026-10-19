@@ -188,10 +188,18 @@ html.invite-loading #invite-loading {
     <div id="hand-flag">Drift</div>
   </div>
   <nav id="controls" aria-label="Controls">
-    <span class="ctl legend"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</span>
-    <span class="ctl legend" id="ctl-boost"><kbd class="wide">Space</kbd> Boost</span>
-    <span class="ctl legend" id="ctl-hand"><kbd class="wide">Shift</kbd> Drift</span>
-    <span class="ctl legend" id="ctl-horn"><kbd>H</kbd> Horn</span>
+    <span class="ctl legend pad-legend"><kbd class="wide">D-pad</kbd> Steer</span>
+    <span class="ctl legend pad-legend"><kbd>RT</kbd> Gas</span>
+    <span class="ctl legend pad-legend"><kbd>LT</kbd> Brake</span>
+    <span class="ctl legend pad-legend"><kbd>A</kbd> Boost</span>
+    <span class="ctl legend pad-legend"><kbd>B</kbd> Drift</span>
+    <span class="ctl legend pad-legend"><kbd>Y</kbd> Back on road</span>
+    <span class="ctl legend pad-legend"><kbd>LB</kbd> Camera</span>
+    <span class="ctl legend pad-legend"><kbd>L3</kbd> Horn</span>
+    <span class="ctl legend key-legend"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</span>
+    <span class="ctl legend key-legend" id="ctl-boost"><kbd class="wide">Space</kbd> Boost</span>
+    <span class="ctl legend key-legend" id="ctl-hand"><kbd class="wide">Shift</kbd> Drift</span>
+    <span class="ctl legend key-legend" id="ctl-horn"><kbd>H</kbd> Horn</span>
     <button class="ctl" type="button" data-act="restart"><kbd>&#9003;</kbd> Restart</button>
     <button class="ctl" type="button" data-act="reset"><kbd>B</kbd> Back on road</button>
     <button class="ctl" type="button" data-act="camera"><kbd>C</kbd> Camera</button>
@@ -292,6 +300,11 @@ html.invite-loading #invite-loading {
         <label class="sel">AI rival cars <select id="opt-rivals" aria-label="Number of AI rival cars"><option value="0">0 — Lap time only</option><option>3</option><option>4</option><option>5</option><option selected>6</option><option>8</option><option>10</option></select></label>
         <label class="sel">Repairs <select id="opt-repairs" aria-label="How many wrecks before the car is scrap"><option value="10">10 - then it is scrap</option><option value="5" selected>5 - then it is scrap</option><option value="3">3 - then it is scrap</option><option value="0">Unlimited</option></select></label>
         <label><input id="opt-kmh" type="checkbox"> Show km/h</label>
+        <details id="pad-test"><summary>Controller buttons</summary>
+          <p id="pad-id" class="fine">No controller found. Plug one in and press a button.</p>
+          <p id="pad-last" class="fine"></p>
+          <p class="fine">A (0) boost &middot; B (1) drift &middot; X (2) boost &middot; Y (3) back on road &middot; LB (4) camera &middot; RB (5) drift &middot; LT (6) brake &middot; RT (7) gas &middot; Select (8) restart &middot; Start (9) menu &middot; L3 (10) horn &middot; R3 (11) reset view &middot; D-pad (12-15) steer</p>
+        </details>
         <label><input id="opt-horn" type="checkbox"> Horns</label>
         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
         <label><input id="opt-music" type="checkbox"> Music</label>

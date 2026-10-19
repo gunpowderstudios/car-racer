@@ -34,3 +34,11 @@ test('the mp4 writer is the first choice and MediaRecorder the fallback', () => 
   assert.match(r, /createMp4Saver\(/);
   assert.match(r, /new MR\(stream/);
 });
+test('controller hints and the button check exist', () => {
+  const h = f('index.html'), c = f('css/style.css');
+  assert.match(h, /id="pad-test"/);
+  assert.ok((h.match(/pad-legend/g) || []).length >= 8);
+  assert.match(c, /body\.has-pad #controls \.key-legend \{ display: none/);
+  assert.match(f('src/input.js'), /classList\.add\('has-pad'\)/);
+  assert.match(f('src/input.js'), /gp\.axes\[9\]/);
+});

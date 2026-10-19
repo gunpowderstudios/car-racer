@@ -7,6 +7,7 @@ export class Input {
     this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
     this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false, horn: false };
     this._prevPad = {};
+    this.padInfo = { connected: false, id: '', standard: false, last: -1, down: [], axes: [] };      // what the Controller panel in the cog shows
     this.enabled = true;
     // R (reset camera view) lives in cameraOrbit.js; B puts the car back on the road; Backspace / Delete restart the race.
     const map = { KeyB: onReset, Backspace: onRestart, Delete: onRestart, KeyC: onCamera, Escape: onMenu, KeyE: onEditor, F3: onDebug, KeyM: onMusic, KeyV: onMirror, KeyP: onPause, KeyX: onBoom, KeyT: onReplay };
@@ -35,11 +36,21 @@ export class Input {
 
   _poll() {
     const gp = (navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g && g.connected) : null);
-    if (!gp) { this.pad.throttle = this.pad.brake = this.pad.steer = 0; this.pad.hand = this.pad.boost = this.pad.horn = false; return; }
+    const info = this.padInfo;
+    if (!gp) { this.pad.throttle = this.pad.brake = this.pad.steer = 0; this.pad.hand = this.pad.boost = this.pad.horn = false; if (info.connected) { info.connected = false; info.down = []; document.body.classList.remove('has-pad'); } return; }
+    info.connected = true; if (!document.body.classList.contains('has-pad')) document.body.classList.add('has-pad');      // (a mode change rewrites the body's classes, so it is re-checked every poll)
+    info.id = gp.id; info.standard = gp.mapping === 'standard'; info.axes = [...gp.axes];
+    info.down = gp.buttons.map((b) => !!b.pressed);
+    info.down.forEach((on, i) => { if (on) info.last = i; });
     // Standard gamepad layout (Xbox / PlayStation / Switch Pro in a browser): left stick or D-pad steers, RT gas, LT brake,
     // A or X boost, B or RB drift, Y back on road, LB camera, right-stick click reset view, Start menu, Back/Select restart.
     const dz = (v) => { const a = Math.abs(v); return a < 0.12 ? 0 : Math.sign(v) * Math.pow((a - 0.12) / 0.88, 1.4); };   // dead zone, then gentle curve for fine control
-    const dpad = (gp.buttons[14]?.pressed ? 1 : 0) - (gp.buttons[15]?.pressed ? 1 : 0);
+    let dpad = (gp.buttons[14]?.pressed ? 1 : 0) - (gp.buttons[15]?.pressed ? 1 : 0);
+    if (gp.mapping !== 'standard' && !dpad) {                                  // cheap USB pads often report the D-pad as axes instead of buttons
+      const hat = gp.axes[9];                                                  // a "hat" axis: -1 up, then clockwise in steps of 2/7; about 3.3 = centred
+      if (hat != null && hat <= 1.05) dpad = hat > 0.3 ? 1 : hat < -0.1 && hat > -0.8 ? -1 : 0;      // left = down-left, left, up-left; right = up-right, right, down-right
+      else if (gp.axes[6] != null && Math.abs(gp.axes[6]) > 0.5) dpad = -Math.sign(gp.axes[6]);
+    }
     this.pad.steer = clamp(-dz(gp.axes[0] || 0) + dpad, -1, 1);
     this.pad.throttle = gp.buttons[7]?.value || 0;
     this.pad.brake = gp.buttons[6]?.value || 0;

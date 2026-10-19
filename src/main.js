@@ -1119,6 +1119,15 @@ function bindMenu() {
   $('go-menu').onclick = () => showMenu();
   $('go-replay').onclick = () => startReplay();
   sound.hornOn = opts.horn !== false;
+  { const det = $('pad-test'), idl = $('pad-id'), last = $('pad-last'), NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right'];
+    setInterval(() => {
+      if (!det.open) return;
+      const i = input.padInfo;
+      idl.textContent = i.connected ? `${i.id} - ${i.standard ? 'standard layout' : 'non-standard layout (buttons may differ)'}` : 'No controller found. Plug one in and press a button.';
+      const on = i.down.map((v, n) => (v ? n : -1)).filter((n) => n >= 0);
+      last.textContent = i.connected ? (on.length ? 'Pressed now: ' + on.map((n) => `button ${n} (${NAMES[n] || '?'})`).join(', ') : i.last >= 0 ? `Last pressed: button ${i.last} (${NAMES[i.last] || '?'})` : 'Press a button...') + (i.axes.length ? ' | axes: ' + i.axes.map((a) => a.toFixed(1)).join(' ') : '') : '';
+    }, 120);
+  }
   bindOpt('opt-horn', 'horn', (v) => { opts.horn = v; sound.hornOn = v; if (!v) { hornVoice?.stop?.(); hornVoice = null; } });
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });

@@ -747,3 +747,12 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #race-wait i { display: block; width: 180px; height: 8px; background: rgba(255,255,255,.18); border-radius: 4px; overflow: hidden; }
 #race-wait i b { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s ease-out; }
 body.waiting .menu-inner { pointer-events: none; opacity: .55; }
+
+/* controller hints: keyboard hints give way to the pad's buttons while a controller is plugged in */
+#controls .pad-legend { display: none; }
+body.has-pad #controls .pad-legend { display: inline-flex; }
+body.has-pad #controls .key-legend { display: none; }
+@media (max-width: 760px) { body.has-pad #controls .pad-legend { display: none; } }
+#pad-test { margin: 6px 0; font-size: 13px; }
+#pad-test summary { cursor: pointer; font-weight: 700; }
+#pad-last { font-weight: 700; }
