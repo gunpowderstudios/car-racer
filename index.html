@@ -208,6 +208,29 @@ html.invite-loading #invite-loading {
 
 
 <div id="replay-bar" hidden>
+  <svg id="rp-logo" viewBox="0 -10 270 102" role="img" aria-label="Bangers and Smash TV">
+    <defs>
+      <linearGradient id="rpl-amber" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="0.55" stop-color="#ffb31f"/><stop offset="1" stop-color="#f07f10"/></linearGradient>
+      <linearGradient id="rpl-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a48"/><stop offset="1" stop-color="#b8231a"/></linearGradient>
+    </defs>
+    <!-- the smash: a ragged starburst bursting out of the top left of the plate -->
+    <polygon class="rpl-burst" points="2,34 20,28 14,10 34,20 42,-6 54,14 72,0 72,18 94,10 86,28 106,32 88,40 98,54 78,50 82,66 62,56 54,76 44,58 26,66 28,50 8,52 22,42"/>
+    <g transform="skewX(-10)">
+      <!-- the plate -->
+      <rect x="30" y="14" width="170" height="60" rx="5" fill="#1b1233" stroke="#ffb31f" stroke-width="3"/>
+      <rect x="30" y="14" width="170" height="10" rx="3" fill="url(#rpl-amber)"/>
+      <path d="M36 70 H194" stroke="#ffb31f" stroke-width="2" stroke-dasharray="6 5" opacity=".55"/>
+      <!-- chequered flag corner -->
+      <g fill="#f6d9b0" opacity=".9"><rect x="36" y="29" width="5" height="5"/><rect x="46" y="29" width="5" height="5"/><rect x="41" y="34" width="5" height="5"/><rect x="51" y="34" width="5" height="5"/></g>
+      <text x="62" y="52" class="rpl-big" textLength="130" lengthAdjust="spacingAndGlyphs" fill="url(#rpl-amber)">BANGERS</text>
+      <text x="62" y="67" class="rpl-small" textLength="130" lengthAdjust="spacingAndGlyphs" fill="#f6d9b0">AND SMASH!</text>
+      <!-- the TV block -->
+      <rect x="204" y="10" width="62" height="68" rx="5" fill="url(#rpl-red)" stroke="#fff3df" stroke-width="2.5"/>
+      <circle class="rpl-dot" cx="217" cy="23" r="3.2" fill="#fff"/>
+      <text x="224" y="26.5" class="rpl-live" fill="#fff">LIVE</text>
+      <text x="235" y="65" text-anchor="middle" class="rpl-tv" fill="#fff">TV</text>
+    </g>
+  </svg>
   <div class="rp-top"><b>REPLAY</b><span id="rp-label">You</span></div>
   <div class="rp-row">
     <button id="rp-play" type="button" aria-label="Play or pause">&#10074;&#10074;</button>

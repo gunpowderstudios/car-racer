@@ -128,3 +128,13 @@ test('a replay hears the car it follows: quieter far off, pitch shifted by the D
   assert.match(rm, /343 \/ \(343 \+ away\)/);
   assert.match(rm, /d\.sound\.update\(hear, 0, false\);/);
 });
+
+test('the replay screen carries the Bangers and Smash TV logo, top right, and a car that is not wrecked always has its wheels on', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), rm = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(html, /<svg id="rp-logo"[^>]*aria-label="Bangers and Smash TV"/);
+  assert.match(html, /BANGERS<\/text>/); assert.match(html, /AND SMASH!<\/text>/);
+  assert.ok(html.indexOf('id="rp-logo"') > html.indexOf('id="replay-bar"'), 'the logo is part of the replay screen, so it only shows there');
+  assert.match(css, /#rp-logo \{[^}]*position: fixed;[^}]*top:[^}]*right:/);
+  assert.match(rm, /v\._wheelsOff && !ent\.wrecked/);
+});

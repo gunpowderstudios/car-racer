@@ -38,7 +38,7 @@ export function createReplayMode(d) {
     const v = viewById(e.id);
     if (e.type === 'dent') { if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.hp); }
     else if (e.type === 'clear') { if (v) v.clearDents(); }
-    else if (e.type === 'wreck') { if (v) d.wheelFlyers.launch(v, { x: fx ? e.vx || 0 : 0, z: fx ? e.vz || 0 : 0 }, fx ? 1 : 0.04); if (fx) d.fx.wreck(e); }
+    else if (e.type === 'wreck') { if (v) v._rpWreckT = e.t; if (v) d.wheelFlyers.launch(v, { x: fx ? e.vx || 0 : 0, z: fx ? e.vz || 0 : 0 }, fx ? 1 : 0.04); if (fx) d.fx.wreck(e); }
     else if (e.type === 'hit') { if (fx) d.fx.hit(e); }
   }
   /** Put every car's dents and wheels as they were at time t (after a jump), without any noise or smoke. */
@@ -58,6 +58,7 @@ export function createReplayMode(d) {
   function place(ent) {
     const v = d.viewFor(ent);
     if (!v) return null;
+    if (v._wheelsOff && !ent.wrecked && R.t - (v._rpWreckT ?? -1e9) > 0.5) v.restoreWheels();      // (as in the live game: only a wreck goes without wheels)
     if (v.loaded && !v._rpReady) { v._rpReady = true; R.fresh = true; }          // a car that has only just been built (or finished loading): it needs its dents so far
     v.root.visible = true; v.root.position.set(ent.x, ent.y, ent.z); v.root.quaternion.set(ent.qx, ent.qy, ent.qz, ent.qw); v.root.scale.setScalar(1);
     fakeCar.steerAngle = ent.steer; for (let i = 0; i < 4; i++) fakeCar.wheels[i].spin = ent.spin[i];
