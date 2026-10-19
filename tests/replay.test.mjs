@@ -138,3 +138,13 @@ test('the replay screen carries the Bangers and Smash TV logo, top right, and a 
   assert.match(css, /#rp-logo \{[^}]*position: fixed;[^}]*top:[^}]*right:/);
   assert.match(rm, /v\._wheelsOff && !ent\.wrecked/);
 });
+
+test('replay: Save video button is wired, and airborne wheels keep spinning', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  const veh = fs.readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
+  assert.ok(html.includes('id="rp-save"'));
+  assert.ok(mode.includes('captureStream') && mode.includes('MediaRecorder'));
+  assert.ok(/!w\.contact\) \{[^}]*w\.spin \+=/.test(veh));
+});

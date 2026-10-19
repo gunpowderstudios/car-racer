@@ -218,7 +218,7 @@ export class Vehicle {
     // --- tyres
     this.scraping = false;
     for (const w of this.wheels) {
-      if (!w.contact) { w.skid = 0; w.slipAngle = 0; continue; }
+      if (!w.contact) { w.skid = 0; w.slipAngle = 0; w.spin += this.fwdSpeed / this.spec.wheelRadius * dt; continue; }   // in the air a wheel keeps turning (it used to freeze)
       this._tyre(w, drv, dt);
     }
     this._applyDriftYawAssist();

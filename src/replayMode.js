@@ -10,7 +10,7 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createReplayMode(d) {
   const $ = d.$;
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -110,14 +110,54 @@ export function createReplayMode(d) {
   function syncUi() {
     el.play.textContent = R.playing ? '❚❚' : (R.t >= R.player.t1 - 1e-3 ? '↺' : '▶');
     el.speed.textContent = SPEEDS[R.speed] + '×';
+    el.save.textContent = R.saving ? 'Saving… (tap to cancel)' : 'Save video';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
   }
   function togglePlay() {
+    if (R.saving) return;
     if (R.t >= R.player.t1 - 1e-3) { seek(R.player.t0); R.playing = true; }
     else R.playing = !R.playing;
     syncUi();
+  }
+  // ---- save as video: the replay plays through once at normal speed while the canvas (and the sound) is recorded
+  const REC_TYPES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  function saveVideo() {
+    if (R.saving) { stopSave(false); return; }
+    const cv = d.canvas, MR = globalThis.MediaRecorder;
+    if (!cv || !cv.captureStream || !MR) { d.toast('This browser cannot save video'); return; }
+    const type = REC_TYPES.find((t) => MR.isTypeSupported(t));
+    if (!type) { d.toast('This browser cannot save video'); return; }
+    const stream = cv.captureStream(30), audio = d.sound.tap && d.sound.tap();
+    if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
+    let rec;
+    try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: 6e6 }); } catch { d.toast('This browser cannot save video'); return; }
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      for (const tr of stream.getTracks()) tr.stop();
+      if (!R.saving || R.saving.cancel || !chunks.length) { R.saving = null; syncUi(); return; }
+      const ext = type.startsWith('video/mp4') ? 'mp4' : 'webm', blob = new Blob(chunks, { type: type.split(';')[0] });
+      R.saving = null; syncUi();
+      const file = new File([blob], 'bangers-and-smash-replay.' + ext, { type: blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+        navigator.share({ files: [file], title: 'Bangers and Smash! replay' }).catch(() => {});
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      }
+      d.toast('Video saved');
+    };
+    R.saving = { rec, cancel: false };
+    seek(R.player.t0); R.speed = 2; R.playing = true;
+    rec.start(1000);
+    syncUi();
+  }
+  function stopSave(finished) {
+    const s = R.saving; if (!s) return;
+    s.cancel = !finished;
+    if (s.rec.state !== 'inactive') s.rec.stop();
   }
   function cycleView() { R.view = (R.view + 1) % VIEWS.length; R.cams.reset(); d.chase.snap(); syncUi(); }
   function nextCar(ents) {
@@ -126,8 +166,9 @@ export function createReplayMode(d) {
     R.focusId = list[(list.indexOf(R.focusId) + 1) % list.length]; R.cams.reset(); R.lastFocus = null; d.chase.snap(); syncUi();
   }
 
-  el.play.onclick = () => togglePlay();
-  el.speed.onclick = () => { R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
+  el.play.onclick = () => { if (!R.saving) togglePlay(); };
+  el.save.onclick = () => saveVideo();
+  el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();
   el.exit.onclick = () => exit();
@@ -168,6 +209,7 @@ export function createReplayMode(d) {
 
   function exit() {
     if (!R.active) return;
+    if (R.saving) stopSave(false);
     R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
@@ -184,7 +226,7 @@ export function createReplayMode(d) {
     const p = R.player;
     if (R.playing) {
       R.t += dt * SPEEDS[R.speed];
-      if (R.t >= p.t1) { R.t = p.t1; R.playing = false; syncUi(); }
+      if (R.t >= p.t1) { R.t = p.t1; R.playing = false; if (R.saving) setTimeout(() => stopSave(true), 400); syncUi(); }
     }
     const ents = p.sample(R.t);
     for (const e of ents) R.seen.add(e.id);

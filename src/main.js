@@ -755,7 +755,7 @@ function recordReplay() {
 }
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
-  $, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
+  $, canvas, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
   getTrack: () => track, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;

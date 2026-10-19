@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.214';
-export const NOTE = 'Bangers and Smash TV logo on the replay screen; replay cars that are not wrecked always have their wheels on';
+export const VERSION = '17.215';
+export const NOTE = 'Replay: Save video button (MP4 or WebM with sound); wheels keep turning in the air';
