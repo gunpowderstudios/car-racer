@@ -167,3 +167,18 @@ test('replay: MP4 recording names an audio codec, so the file has sound', async 
   const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.ok(/video\/mp4;codecs=avc1,mp4a\.40\.2/.test(mode));
 });
+
+test('replay sounds: knocks, props and honks are recorded and played; scraping and braking squeal are kept in the samples', async () => {
+  const fs = await import('node:fs');
+  const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('recHit(e.x, e.y, e.z, e.speed, e.type)'), 'the player\'s own wall and ground knocks');
+  assert.ok(main.includes("type: 'prop', kind: 'blast'") && main.includes("type: 'prop', kind: 'clang'") && main.includes("type: 'prop', kind: 'splat'"));
+  assert.ok(main.includes("type: 'honk'"));
+  assert.ok(mode.includes("e.type === 'prop'") && mode.includes("e.type === 'honk'"));
+  const rec = new ReplayRecorder({ maxSeconds: 10 });
+  const ent = { id: 'p', hue: 0, isPlayer: true, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, rpm: 3000, thr: 1, skid: 0.4, boost: 3 };
+  rec.record(0, [ent]); rec.record(0.05, [ent]);
+  const f = new ReplayPlayer(rec).sample(0.02)[0];
+  assert.equal(f.boost, true); assert.equal(f.scrape, true);
+});

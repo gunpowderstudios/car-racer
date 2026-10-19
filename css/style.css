@@ -707,7 +707,7 @@ html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !imp
 body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !important; }
 @media (max-width: 560px) { #replay-bar .rp-top b { font-size: 22px; } #replay-bar button { padding: 0 10px; } #replay-bar #rp-time { min-width: 78px; font-size: 16px; } }
 
-#rp-logo { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 210px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+#rp-logo { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 273px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
 :is(#rp-logo, #menu-tv-svg) text { font-family: var(--display), Impact, "Arial Narrow", sans-serif; font-weight: 900; letter-spacing: .02em; }
 :is(#rp-logo, #menu-tv-svg) .rpl-big { font-size: 33px; } :is(#rp-logo, #menu-tv-svg) .rpl-small { font-size: 15px; } :is(#rp-logo, #menu-tv-svg) .rpl-tv { font-size: 38px; } :is(#rp-logo, #menu-tv-svg) .rpl-live { font-size: 9px; letter-spacing: .1em; }
 :is(#rp-logo, #menu-tv-svg) .rpl-burst { fill: #e8392c; stroke: #ffb31f; stroke-width: 2; stroke-linejoin: round; transform-origin: 50px 30px; animation: rplBurst 1.6s ease-in-out infinite; }
@@ -715,7 +715,7 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 @keyframes rplBurst { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.12) rotate(6deg); } }
 @keyframes rplBlink { 50% { opacity: .15; } }
 @media (prefers-reduced-motion: reduce) { :is(#rp-logo, #menu-tv-svg) .rpl-burst, :is(#rp-logo, #menu-tv-svg) .rpl-dot { animation: none; } }
-@media (max-width: 560px) { #rp-logo { width: 150px; right: 6px; } }
+@media (max-width: 560px) { #rp-logo { width: 195px; right: 6px; } }
 
 /* the TV logo on the menu (a copy of the replay logo, filled in by main.js) */
 #menu-tv { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 14px; width: 230px; text-align: center; pointer-events: none; }

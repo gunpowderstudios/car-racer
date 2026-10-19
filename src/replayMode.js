@@ -22,7 +22,7 @@ export function createReplayMode(d) {
   function listen(f, vx, vz, dt) {
     const cam = d.camera.position;
     const dx = f.x - cam.x, dy = f.y - cam.y, dz = f.z - cam.z, dist = Math.hypot(dx, dy, dz) || 1;
-    hear.rpm = f.rpm; hear.speed = Math.hypot(vx, vz); hear.skidLevel = f.skid; hear.boosting = f.boost;
+    hear.rpm = f.rpm; hear.speed = Math.hypot(vx, vz); hear.skidLevel = f.skid; hear.boosting = f.boost; hear.scraping = !!f.scrape;
     const away = (vx * dx + vz * dz) / dist;                                    // m/s the car is moving away from the camera
     const slow = SPEEDS[R.speed] < 1 ? Math.sqrt(SPEEDS[R.speed]) : 1;          // slow motion drops the pitch
     const want = Math.max(0.8, Math.min(1.25, 343 / (343 + away))) * slow;
@@ -40,6 +40,8 @@ export function createReplayMode(d) {
     else if (e.type === 'clear') { if (v) v.clearDents(); }
     else if (e.type === 'wreck') { if (v) v._rpWreckT = e.t; if (v) d.wheelFlyers.launch(v, { x: fx ? e.vx || 0 : 0, z: fx ? e.vz || 0 : 0 }, fx ? 1 : 0.04); if (fx) d.fx.wreck(e); }
     else if (e.type === 'hit') { if (fx) d.fx.hit(e); }
+    else if (e.type === 'prop') { if (fx) d.fx.prop(e); }
+    else if (e.type === 'honk') { if (fx) d.fx.honk(e); }
   }
   /** Put every car's dents and wheels as they were at time t (after a jump), without any noise or smoke. */
   function rebuildTo(t) {
@@ -145,7 +147,7 @@ export function createReplayMode(d) {
     R.stamp = () => {
       if (out.width !== cv.width || out.height !== cv.height) { out.width = cv.width; out.height = cv.height; }
       octx.drawImage(cv, 0, 0, out.width, out.height);
-      if (logo.complete && logo.naturalWidth) { const w = Math.max(150, out.width * 0.17), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
+      if (logo.complete && logo.naturalWidth) { const w = Math.max(195, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
     };
     const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
     if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);

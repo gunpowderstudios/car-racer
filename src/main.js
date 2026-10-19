@@ -437,7 +437,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
-  if (raw.horn && !hornVoice) hornVoice = sound.hornStart(selectedVehicle().id) || {}; else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
+  if (raw.horn && !hornVoice) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
@@ -457,7 +457,7 @@ function stepPhysics(dt) {
     if (derby.events.length) { derbyEvents(); }
     if (car.events.length) {
       for (const e of car.events) {
-        sound.hit(e.speed, e.type); chase.impact(e.speed);
+        sound.hit(e.speed, e.type); chase.impact(e.speed); recHit(e.x, e.y, e.z, e.speed, e.type);
         if (net) {                                          // multiplayer has no derby, so it dents the car itself: walls, and the roof when rolling
           if (e.type === 'wall') mpDentAt(e.x, e.y, e.z, wallDamage(car.mass, e.speed));
           else if (e.type === 'ground') { car.refreshFrame(); if (zoneAt(car, e.x, e.y, e.z) === 'roof') mpDentAt(e.x, e.y, e.z, roofDentHp(e.speed)); }
@@ -477,18 +477,18 @@ function propEvents() {
     if (e.type === 'blast') {
       particles.blast(e.x, e.y, e.z);
       if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
-      sound.explode(e.dist);
+      sound.explode(e.dist); replayRec.event(simTime, { type: 'prop', kind: 'blast', x: e.x, y: e.y, z: e.z });
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
       if (derby.damageEnabled) derby.blast(e.x, e.y, e.z);
       if (net) mpBarrelBlast(e);
-    } else if (e.type === 'clang') sound.clang(e.speed, e.dist);
+    } else if (e.type === 'clang') { sound.clang(e.speed, e.dist); replayRec.event(simTime, { type: 'prop', kind: 'clang', x: e.x, y: e.y, z: e.z, speed: e.speed }); }
     else if (e.type === 'splat') {
       for (let k = 0; k < 7; k++) {
         const a = Math.random() * Math.PI * 2, h = 0.6 + Math.random() * 1.6;
         particles.puff(e.x + Math.cos(a) * 0.15, e.y + 0.2 + Math.random() * 0.2, e.z + Math.sin(a) * 0.15, Math.cos(a) * h, Math.sin(a) * h, 0.7 + Math.random() * 0.5, 0.7 + Math.random() * 0.5, 0xf2ede0);
       }
       splats.add(e.x, e.y, e.z, e.nx, e.ny, e.nz, 0.9 + Math.random() * 0.3);
-      sound.splat(e.dist);
+      sound.splat(e.dist); replayRec.event(simTime, { type: 'prop', kind: 'splat', x: e.x, y: e.y, z: e.z });
       if (derby.damageEnabled && e.dist < DERBY.creditNear) derby.award('chicken', 1, 'Splat!');
     }
   }
@@ -510,7 +510,7 @@ function caravanEvent(e) {
   }
   if (e.type !== 'van') return;
   caravanView.dent(e);
-  sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car'); chase.impact(e.speed * 0.6);
+  sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car'); chase.impact(e.speed * 0.6); recHit(e.x, e.y, e.z, e.speed, e.kind === 'wall' ? 'wall' : 'car');
   const n = Math.min(8, 2 + e.speed * 0.4);
   for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5);
 }
@@ -545,7 +545,7 @@ const groundQ = Track.newQuery();
 function derbyEvents() {
   for (const e of derby.events) {
     if (e.type === 'hit') {
-      if (e.speed > 4) replayRec.event(simTime, { type: 'hit', x: e.x, y: e.y, z: e.z, speed: e.speed, kind: e.kind });
+      recHit(e.x, e.y, e.z, e.speed, e.kind);
       sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car', e.dist);
       if (e.player) chase.impact(e.speed);
       const n = Math.min(10, 2 + e.speed * 0.5);
@@ -569,6 +569,7 @@ function derbyEvents() {
       hud.feed(`+${e.points} ${e.label}`);
     } else if (e.type === 'honk') {
       sound.honk(e.dist, e.pitch);
+      { const hf = derby.fighters.find((x) => x.id === e.id); if (hf) replayRec.event(simTime, { type: 'honk', x: hf.car.pos.x, y: hf.car.pos.y, z: hf.car.pos.z, pitch: e.pitch }); }
     } else if (e.type === 'respawn') {
       respawn(); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
@@ -781,7 +782,9 @@ const replayRec = new ReplayRecorder({ maxSeconds: tierName === 'low' ? 90 : 240
 const rpEnts = [];                                                 // reused every note, so recording makes no garbage
 function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, rpm: 0, thr: 0, skid: 0, boost: false, _van: new Array(9).fill(0) }); }
 function rpFill(e, id, hue, isPlayer, c, health, wrecked) {
-  e.rpm = c.rpm; e.thr = c.thr; e.skid = c.skidLevel || 0; e.boost = !!c.boosting;
+  e.rpm = c.rpm; e.thr = c.thr; e.boost = (c.boosting ? 1 : 0) + (c.scraping ? 2 : 0);          // (bit 2: scraping along a wall)
+  const brakeSkid = c.gear > 0 && c.onGround && c.speed > 4 ? (c.brk || 0) * Math.min(1, Math.max(0, (c.speed - 4) / 12)) : 0;     // the same braking squeal the live sound makes
+  e.skid = Math.max(Math.min(1, c.skidLevel || 0), brakeSkid * 0.72);
   e.id = id; e.hue = hue; e.isPlayer = isPlayer; e.x = c.pos.x; e.y = c.pos.y; e.z = c.pos.z;
   e.qx = c.rot.x; e.qy = c.rot.y; e.qz = c.rot.z; e.qw = c.rot.w; e.steer = c.steerAngle || 0;
   for (let i = 0; i < 4; i++) e.spin[i] = c.wheels[i].spin; e.health = health; e.wrecked = wrecked;
@@ -797,6 +800,14 @@ function recordReplay() {
   replayRec.record(simTime, rpEnts);
 }
 const replayDof = new ReplayDof(renderer);
+// Sounds in the replay: knocks and landings, the van's knocks, barrels, honks. A knock the live game reports twice (derby and car) is logged once.
+let rpHitT = -9, rpHitX = 0, rpHitZ = 0;
+function recHit(x, y, z, speed, kind) {
+  if (speed <= 4) return;
+  if (simTime - rpHitT < 0.15 && Math.hypot(x - rpHitX, z - rpHitZ) < 4) return;
+  rpHitT = simTime; rpHitX = x; rpHitZ = z;
+  replayRec.event(simTime, { type: 'hit', x, y, z, speed, kind });
+}
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
   $, canvas, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
@@ -812,18 +823,28 @@ const replay = () => replayMode || (replayMode = createReplayMode({
   towFor(ent) { let tv = towViews.get(ent.id); if (!tv && caravanView.loaded) { tv = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[ent.hue]); towViews.set(ent.id, tv); } return tv || null; },
   dropTow: (id) => dropTowView(id),
   releaseView,
-  fx: {
+  fx: {                                                            // (a TV mix: a knock is heard at a third of its real distance, so far-off crashes are not lost)
     hit(e) {
-      const dist = Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
-      sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car', dist);
+      const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      sound.hit(e.speed, e.kind === 'wall' ? 'wall' : e.kind === 'ground' ? 'ground' : 'car', dist);
       const n = Math.min(10, 2 + e.speed * 0.5);
       for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
     },
     wreck(e) {
-      const dist = Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
       sound.explode(dist);
+    },
+    prop(e) {                                                       // barrels going off, drums clanging, chickens
+      const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      if (e.kind === 'blast') { particles.blast(e.x, e.y, e.z); sound.explode(dist); }
+      else if (e.kind === 'clang') sound.clang(e.speed || 6, dist);
+      else if (e.kind === 'splat') sound.splat(dist);
+    },
+    honk(e) {
+      const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      sound.honk(dist, e.pitch || 1);
     },
   },
   resyncLive() {                                                    // back to the real race: the pictures jump straight to where the cars really are
