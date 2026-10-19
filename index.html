@@ -174,7 +174,7 @@ html.invite-loading #invite-loading {
       <div class="go-head"><div class="go-title">Wrecked</div><div id="go-why" class="go-why"></div></div>
       <div class="go-score"><span id="go-score">0</span><small>points</small></div>
       <div class="go-line"><b id="go-kills">0</b> wrecked<br><span id="go-best"></span></div>
-      <div class="go-btns"><button id="go-again" type="button" class="btn">Go again</button><button id="go-menu" type="button" class="btn ghost">Menu</button></div>
+      <div class="go-btns"><button id="go-again" type="button" class="btn">Go again</button><button id="go-replay" type="button" class="btn ghost">Watch replay</button><button id="go-menu" type="button" class="btn ghost">Menu</button></div>
     </div>
   </div>
   <div id="speed-plate">
@@ -198,11 +198,28 @@ html.invite-loading #invite-loading {
     <button class="ctl" type="button" data-act="mirror"><kbd>V</kbd> Mirror</button>
     <button class="ctl" type="button" data-act="pause"><kbd>P</kbd> Pause</button>
     <button class="ctl" type="button" data-act="boom"><kbd>X</kbd> Explode</button>
+    <button class="ctl" type="button" data-act="replay"><kbd>T</kbd> Replay</button>
     <button class="ctl" type="button" data-act="share">Share race</button>
     <button class="ctl" type="button" data-act="edit"><kbd>E</kbd> Edit</button>
     <button class="ctl" type="button" data-act="menu"><kbd>Esc</kbd> Menu</button>
   </nav>
   <pre id="debug" hidden></pre>
+</div>
+
+
+<div id="replay-bar" hidden>
+  <div class="rp-top"><b>REPLAY</b><span id="rp-label">You</span></div>
+  <div class="rp-row">
+    <button id="rp-play" type="button" aria-label="Play or pause">&#10074;&#10074;</button>
+    <input id="rp-seek" type="range" min="0" max="1000" value="0" aria-label="Replay position">
+    <span id="rp-time">0:00 / 0:00</span>
+  </div>
+  <div class="rp-row rp-btns">
+    <button id="rp-speed" type="button" aria-label="Speed">1&times;</button>
+    <button id="rp-view-btn" type="button" aria-label="Camera view">TV</button>
+    <button id="rp-next" type="button">Next car</button>
+    <button id="rp-exit" type="button" class="rp-exit">Back to game</button>
+  </div>
 </div>
 
 <div id="touch" hidden>

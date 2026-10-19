@@ -8,6 +8,8 @@ import { IDLE } from './ai.js';
 import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
 import { DENT } from './dentMath.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
+import { ReplayRecorder } from './replay.js';
+import { createReplayMode } from './replayMode.js';
 import { Life, LIFE } from './mplife.js';
 import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
@@ -205,6 +207,7 @@ const input = new Input({
   onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
   onPause: () => togglePause(),
   onBoom: () => selfDestruct(),
+  onReplay: () => startReplay(),
   onMenu: () => (mode === 'drive' ? showMenu() : null),
   onEditor: () => mode === 'drive' && openEditor(def),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
@@ -277,7 +280,7 @@ const controlActions = {
   camera: () => hud.banner(chase.cycle() + ' camera', 900),
   mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
-  share: () => shareRace(), pause: () => togglePause(), boom: () => selfDestruct(),
+  share: () => shareRace(), pause: () => togglePause(), boom: () => selfDestruct(), replay: () => startReplay(),
 };
 for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
@@ -517,6 +520,7 @@ function derbyStart() {
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
   clearViews(); overAt = 0; overInfo = null;
+  replayRec.reset();                                                                     // a new race: a new replay
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
@@ -527,6 +531,7 @@ const groundQ = Track.newQuery();
 function derbyEvents() {
   for (const e of derby.events) {
     if (e.type === 'hit') {
+      if (e.speed > 4) replayRec.event(simTime, { type: 'hit', x: e.x, y: e.y, z: e.z, speed: e.speed, kind: e.kind });
       sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car', e.dist);
       if (e.player) chase.impact(e.speed);
       const n = Math.min(10, 2 + e.speed * 0.5);
@@ -534,7 +539,7 @@ function derbyEvents() {
       if (e.dist < 70 && !(e.player && e.kind === 'wall')) crashDebris(e.x, e.y, e.z, e.speed, e.player ? PAINTS[opts.paint][1] : rivalPaint());   // (the player's own wall hits are done above)
     } else if (e.type === 'damage') {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
-      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); }   // a visible dent where it hit
+      if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); replayRec.event(simTime, { type: 'dent', id: e.isPlayer ? 'p' : e.id, lx: e.lx, ly: e.ly, lz: e.lz, hp: e.dentHp ?? e.hp }); }   // a visible dent where it hit
     } else if (e.type === 'wreck') {
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
@@ -542,7 +547,8 @@ function derbyEvents() {
       if (e.y - g.y < 2.5) scorch.add(e.x, g.y, e.z, g.nx, g.ny, g.nz, 3.4);
       sound.explode(e.dist);
       if (e.dist < 45) chase.impact(Math.max(0, 1 - e.dist / 45) * 22);
-      { const wf = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id), wv = e.isPlayer ? visual : views.get(e.id); if (wv) wheelFlyers.launch(wv, wf && wf.car.vel); }   // the wheels fly off
+      { const wf = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id), wv = e.isPlayer ? visual : views.get(e.id); if (wv) wheelFlyers.launch(wv, wf && wf.car.vel);   // the wheels fly off
+        replayRec.event(simTime, { type: 'wreck', id: e.isPlayer ? 'p' : e.id, x: e.x, y: e.y, z: e.z, isPlayer: !!e.isPlayer, vx: wf ? wf.car.vel.x : 0, vz: wf ? wf.car.vel.z : 0 }); }
       props.shock(e.x, e.y, e.z, 8);                  // a burning car sets off drums beside it
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
     } else if (e.type === 'award') {
@@ -550,7 +556,7 @@ function derbyEvents() {
     } else if (e.type === 'honk') {
       sound.honk(e.dist, e.pitch);
     } else if (e.type === 'respawn') {
-      respawn(); visual.clearDents(); visual.setLook(1, 0); hud.setDamage(derby.player.health);
+      respawn(); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner('Respawned - back in the race!', 1600);
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
@@ -726,6 +732,67 @@ function effects(dt) {
   particles.update(dt); debris.update(dt, debrisGround); wheelFlyers.update(dt, debrisGround);
 }
 
+// ------------------------------------------------------------------- replay
+// While you drive, a quiet recorder notes where every car is about 20 times a second (see replay.js); "Replay" plays it back from TV cameras.
+const replayRec = new ReplayRecorder({ maxSeconds: tierName === 'low' ? 90 : 240 });
+const rpEnts = [];                                                 // reused every note, so recording makes no garbage
+function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, _van: new Array(9).fill(0) }); }
+function rpFill(e, id, hue, isPlayer, c, health, wrecked) {
+  e.id = id; e.hue = hue; e.isPlayer = isPlayer; e.x = c.pos.x; e.y = c.pos.y; e.z = c.pos.z;
+  e.qx = c.rot.x; e.qy = c.rot.y; e.qz = c.rot.z; e.qw = c.rot.w; e.steer = c.steerAngle || 0;
+  for (let i = 0; i < 4; i++) e.spin[i] = c.wheels[i].spin; e.health = health; e.wrecked = wrecked;
+  const v = c.tow;
+  if (v) { const a = e._van; a[0] = v.axle.x; a[1] = v.axle.y; a[2] = v.axle.z; a[3] = v.yaw; a[4] = v.pitch; a[5] = v.roll; a[6] = v.spin; a[7] = v.sway; a[8] = v.health / v.spec.hp; e.van = a; } else e.van = null;
+}
+function recordReplay() {
+  if (net || paused || frozen || simTime - replayRec.lastT < 0.049) return;
+  let n = 0;
+  rpFill(rpEnt(n++), 'p', 0, true, car, derby.damageEnabled ? derby.player.health.worst : 1, !!(derby.enabled && derby.player.wrecked));
+  if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; rpFill(rpEnt(n++), f.id, f.hue, false, f.car, f.health.worst, !!f.wrecked); }
+  rpEnts.length = n;
+  replayRec.record(simTime, rpEnts);
+}
+let rpAdopt = 0, rpFrame = -1, replayMode = null;
+const replay = () => replayMode || (replayMode = createReplayMode({
+  $, rec: replayRec, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
+  getTrack: () => track, setMode, setPaused, toast, debrisGround,
+  viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
+    if (ent.isPlayer) return visual;
+    let v = views.get(ent.id);
+    if (!v) v = makeView({ id: ent.id, hue: ent.hue });
+    if (rpFrame !== frameNo) { rpFrame = frameNo; rpAdopt = 0; }
+    if (!v.loaded && visual.loaded && rpAdopt < 2 && v.adopt(visual, RIVAL_LOOKS[ent.hue])) rpAdopt++;
+    return v;
+  },
+  towFor(ent) { let tv = towViews.get(ent.id); if (!tv && caravanView.loaded) { tv = caravanView.cloneFor(stage.scene, RIVAL_LOOKS[ent.hue]); towViews.set(ent.id, tv); } return tv || null; },
+  dropTow: (id) => dropTowView(id),
+  releaseView,
+  fx: {
+    hit(e) {
+      const dist = Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      sound.hit(e.speed, e.kind === 'wall' ? 'wall' : 'car', dist);
+      const n = Math.min(10, 2 + e.speed * 0.5);
+      for (let i = 0; i < n; i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6);
+    },
+    wreck(e) {
+      const dist = Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
+      particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
+      crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
+      sound.explode(dist);
+    },
+  },
+  resyncLive() {                                                    // back to the real race: the pictures jump straight to where the cars really are
+    if (car.tow) { caravanView.visible = true; caravanView.snap(car.tow); } else { caravanView.visible = false; caravanView.capture(null); }
+    for (const f of derby.fighters) { if (f.isPlayer || !f.car.tow) continue; towViews.get(f.id)?.snap(f.car.tow); }
+    chase.snap();
+  },
+}));
+function startReplay() {
+  if (mode !== 'drive' || net) return;
+  hornVoice?.stop?.(); hornVoice = null;
+  if (!replay().enter()) toast('Nothing to replay yet - drive for a few seconds first.');
+}
+
 // -------------------------------------------------------------------- frame
 function frame(now) {
   requestAnimationFrame(frame);
@@ -741,8 +808,19 @@ function frame(now) {
   }
   if (!track) { renderer.render(stage.scene, camera); return; }
 
+  if (mode === 'replay') {
+    const f = replay().frame(dt);
+    sound.update(car, 0, false);
+    propsView.update(props);
+    if (f) drawPos.set(f.x, f.y, f.z);
+    stage.update(drawPos, camera.position); stage.updateRollers();
+    renderer.render(stage.scene, camera);
+    perfUpdate(now);
+    return;
+  }
   if (mode === 'drive') {
     stepPhysics(dt);
+    recordReplay();
     const a = acc / DT;
     drawPos.copy(prevPos).lerp(curPos, a); drawQ.copy(prevQ).slerp(curQ, a);
     velV.set(car.vel.x, car.vel.y, car.vel.z);
@@ -937,6 +1015,7 @@ function bindMenu() {
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };
   $('go-menu').onclick = () => showMenu();
+  $('go-replay').onclick = () => startReplay();
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });
   // Graphics quality: antialiasing, shadow type/size and texture filtering are fixed when the page loads, so a change reloads it.
@@ -1506,4 +1585,4 @@ let autoDrive = false;
 }
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
-window.__app = { sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+window.__app = { replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

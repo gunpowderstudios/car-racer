@@ -686,3 +686,23 @@ body.mode-drive #vignette { display: block; }
 #pause-card kbd { padding: 0 6px; background: var(--peach); color: var(--violet-deep); border-radius: 3px; font-weight: 700; }
 html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !important; }
 @media (pointer: coarse) { #pause-card { pointer-events: auto; } #pause-card span { display: none; } #pause-card b { font-size: 36px; } }
+
+/* ------------------------------------------------------------------- replay */
+#replay-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; gap: 8px; justify-items: center;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(27,18,51,.92), rgba(27,18,51,0)); color: var(--peach); }
+#replay-bar[hidden] { display: none; }
+#replay-bar .rp-top { position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: baseline; gap: 12px;
+  font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
+#replay-bar .rp-top b { font-size: 28px; font-weight: 900; color: var(--red); background: rgba(27,18,51,.8); padding: 2px 10px; border-left: 4px solid var(--red); }
+#replay-bar .rp-top span { font-size: 20px; color: var(--amber); }
+#replay-bar .rp-row { display: flex; align-items: center; gap: 10px; width: min(900px, 100%); }
+#replay-bar .rp-btns { justify-content: center; flex-wrap: wrap; }
+#replay-bar button { min-width: 48px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 4px; background: rgba(42,29,74,.92); color: var(--peach);
+  font-family: var(--cond); font-weight: 700; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; border-bottom: 3px solid var(--amber); cursor: pointer; }
+#replay-bar button:hover { background: rgba(74,52,128,.95); }
+#replay-bar button.rp-exit { background: var(--red); border-bottom-color: #8e1f16; color: #fff; }
+#replay-bar #rp-play { font-size: 20px; padding: 0; width: 52px; }
+#replay-bar input[type=range] { flex: 1; min-width: 0; height: 44px; accent-color: var(--amber); cursor: pointer; }
+#replay-bar #rp-time { min-width: 92px; text-align: right; font-family: var(--cond); font-size: 18px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !important; }
+@media (max-width: 560px) { #replay-bar .rp-top b { font-size: 22px; } #replay-bar button { padding: 0 10px; } #replay-bar #rp-time { min-width: 78px; font-size: 16px; } }
