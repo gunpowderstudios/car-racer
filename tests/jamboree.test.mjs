@@ -60,11 +60,12 @@ test('jamboree: every vehicle profile can be a rival - it drives a lap section u
   }
 });
 
-test('jamboree: menu option, cars-only pool and phone cap are wired', () => {
+test('jamboree: menu option, everything-pool and phone cap are wired', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const choice = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
   assert.ok(html.includes('<option value="jamboree">'));
-  assert.ok(/JAMBOREE_EXCLUDE = \['bus', 'campervan', 'motor-home'\]/.test(choice));
+  assert.ok(/JAMBOREE_EXCLUDE = \[\]/.test(choice), 'the buses are in');
+  assert.ok(/mode: 'jamboree'/.test(main), 'Jamboree is the default mode');
   assert.ok(main.includes('list.slice(0, 4)') && main.includes("opts.mode === 'jamboree'"));
 });

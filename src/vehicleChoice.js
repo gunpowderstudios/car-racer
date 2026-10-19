@@ -236,8 +236,8 @@ export function specForVehicle(cfg) {
   return s;
 }
 
-/** Jamboree: the vehicles a rival can be (cars only - the bus and the motor homes would make the race unfair). */
-export const JAMBOREE_EXCLUDE = ['bus', 'campervan', 'motor-home'];
+/** Jamboree: the vehicles a rival can be - everything, the bus, campervan and motorhome too. (List a vehicle id here to keep it out.) */
+export const JAMBOREE_EXCLUDE = [];
 export const jamboreePool = () => VEHICLES.filter((v) => !JAMBOREE_EXCLUDE.includes(v.id));
 
 // Apply the selected profile BEFORE main.js creates its Vehicle. Physics and damage toughness

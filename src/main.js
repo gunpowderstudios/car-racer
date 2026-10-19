@@ -57,7 +57,8 @@ const device = probeDevice();
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'race', handling: 'arcade', skill: 'hard', caravan: false, repairs: 10, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', handling: 'arcade', skill: 'hard', caravan: false, repairs: 10, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+if (!opts.jamDefault) { opts.jamDefault = true; if (opts.mode === 'race') opts.mode = 'jamboree'; }      // Jamboree became the default race: people who had never picked another mode move across once
 DT = 1 / tier.physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
