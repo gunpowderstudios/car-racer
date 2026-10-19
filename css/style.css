@@ -718,10 +718,13 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 @media (max-width: 560px) { #rp-logo { width: 195px; right: 6px; } }
 
 /* the TV logo on the menu (a copy of the replay logo, filled in by main.js) */
-#menu-tv { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 14px; width: 230px; text-align: center; pointer-events: none; }
-#menu-tv svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+#menu-tv { position: absolute; top: calc(6px + env(safe-area-inset-top)); right: 10px; width: 280px; z-index: 6; text-align: center; pointer-events: none; }
+#menu-tv .tv-set { position: relative; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
+#menu-tv .tv-set img { display: block; width: 100%; height: auto; }
+#menu-tv-logo { position: absolute; left: 40.7%; top: 44.8%; width: 41%; transform: translate(-50%, -50%); }      /* centred on the TV's screen */
+#menu-tv svg { display: block; width: 100%; height: auto; overflow: visible; }
 #menu-tv p { margin: 6px 0 0; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: 15px; letter-spacing: .04em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
-@media (max-width: 700px) { #menu-tv { width: 150px; right: 8px; } #menu-tv p { font-size: 11px; } }
+@media (max-width: 700px) { #menu-tv { width: 128px; right: 6px; } #menu-tv p { display: none; } }
 @media (max-height: 420px) { #menu-tv { display: none; } }
 
 #rp-note { margin: 0 0 8px; text-align: center; font-family: var(--display), Impact, sans-serif; font-weight: 900; letter-spacing: .03em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.8); font-size: 16px; }

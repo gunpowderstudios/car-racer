@@ -42,3 +42,7 @@ test('controller hints and the button check exist', () => {
   assert.match(f('src/input.js'), /classList\.add\('has-pad'\)/);
   assert.match(f('src/input.js'), /gp\.axes\[9\]/);
 });
+test('home screen has the TV set with the logo on its screen', () => {
+  assert.match(f('index.html'), /<img src="tv\/tv-set\.webp"/);
+  assert.match(f('css/style.css'), /#menu-tv-logo \{ position: absolute; left: 40\.7%/);
+});
