@@ -15,3 +15,8 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
   assert.match(m, /v\.adopt\(src, null\)/);
   assert.match(f('src/carVisual.js'), /if \(look\) \{/);
 });
+test('TV video is sized and compressed for social media', () => {
+  const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(r, /videoBitsPerSecond: tv \? 3\.5e6 : 5e6/);
+  assert.match(r, /small \? 960 : 1280; out\.height = small \? 640 : 854/);
+});

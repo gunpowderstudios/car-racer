@@ -158,7 +158,8 @@ export function createReplayMode(d) {
     if (!type) { d.toast('This browser cannot save video'); return; }
     // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
     const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
-    if (tv) { out.width = small ? 1152 : TV.w; out.height = small ? 768 : TV.h; } else { out.width = cv.width; out.height = cv.height; }
+    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (3:2 with even sizes: social sites re-encode these least)
+      out.width = cv.width; out.height = cv.height; }
     const octx = out.getContext('2d'), logo = makeLogo();
     R.stamp = () => {
       if (tv) {
@@ -177,7 +178,8 @@ export function createReplayMode(d) {
     const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
     if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
     let rec;
-    try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: 6e6 }); } catch { d.toast('This browser cannot save video'); return; }
+    // H.264 + AAC at 30 fps plays on Instagram, TikTok, Facebook, X and WhatsApp; the TV set is a still picture, so it needs few bits
+    try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: tv ? 3.5e6 : 5e6, audioBitsPerSecond: 128000 }); } catch { d.toast('This browser cannot save video'); return; }
     const chunks = [];
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
