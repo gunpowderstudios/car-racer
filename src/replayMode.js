@@ -2,6 +2,7 @@
 // main.js hands in the pieces of the game this needs (`d`); nothing here knows how a race works.
 import * as THREE from 'three';
 import { ReplayPlayer, ReplayCams, VIEWS } from './replay.js';
+import { createMp4Saver, videoBitrate } from './mp4Save.js';
 
 const SPEEDS = [0.25, 0.5, 1, 2];
 const fmt = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -158,9 +159,10 @@ export function createReplayMode(d) {
     if (!type) { d.toast('This browser cannot save video'); return; }
     // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
     const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
-    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (3:2 with even sizes: social sites re-encode these least)
-      out.width = cv.width; out.height = cv.height; }
+    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (even sizes, 1920 at most: what the video encoders and social sites like)
+      const k = Math.min(1, 1920 / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
     const octx = out.getContext('2d'), logo = makeLogo();
+    let saver = null;
     R.stamp = () => {
       if (tv) {
         const k = out.width / TV.w, x = TV.sx * k, y = TV.sy * k, w = TV.sw * k, h = TV.sh * k, ca = cv.width / cv.height, ta = w / h;
@@ -169,23 +171,13 @@ export function createReplayMode(d) {
         octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
         octx.drawImage(tv, 0, 0, out.width, out.height);
         if (logo.complete && logo.naturalWidth) { const lw = w * 0.221, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
-        return;
+      } else {
+        octx.drawImage(cv, 0, 0, out.width, out.height);
+        if (logo.complete && logo.naturalWidth) { const w = Math.max(195 * out.width / cv.width, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
       }
-      if (out.width !== cv.width || out.height !== cv.height) { out.width = cv.width; out.height = cv.height; }
-      octx.drawImage(cv, 0, 0, out.width, out.height);
-      if (logo.complete && logo.naturalWidth) { const w = Math.max(195, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
+      if (saver) saver.addFrame(out);
     };
-    const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
-    if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
-    let rec;
-    // H.264 + AAC at 30 fps plays on Instagram, TikTok, Facebook, X and WhatsApp; the TV set is a still picture, so it needs few bits
-    try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: tv ? 3.5e6 : 5e6, audioBitsPerSecond: 128000 }); } catch { d.toast('This browser cannot save video'); return; }
-    const chunks = [];
-    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-    rec.onstop = () => {
-      for (const tr of stream.getTracks()) tr.stop();
-      if (!R.saving || R.saving.cancel || !chunks.length) { R.saving = null; syncUi(); return; }
-      const ext = type.startsWith('video/mp4') ? 'mp4' : 'webm', blob = new Blob(chunks, { type: type.split(';')[0] });
+    const finishWith = (blob, ext) => {
       R.saving = null; syncUi();
       const file = new File([blob], 'bangers-and-smash-replay.' + ext, { type: blob.type });
       if (navigator.canShare && navigator.canShare({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
@@ -196,10 +188,44 @@ export function createReplayMode(d) {
       }
       d.toast('Video saved');
     };
-    R.saving = { rec, cancel: false };
-    seek(R.player.t0); R.speed = 2; R.playing = true;
-    rec.start(1000);
-    syncUi();
+    // First choice: the browser's video encoder writes a plain steady-30-fps H.264 + AAC .mp4 sized to fit WhatsApp (about 14 MB at most).
+    // Fallback: MediaRecorder (its mp4 is fragmented, which WhatsApp can choke on).
+    const pend = { state: 'recording', stop() { this.state = 'inactive'; } };
+    R.saving = { rec: pend, cancel: false }; syncUi();
+    seek(R.player.t0); R.speed = 2;
+    createMp4Saver({ width: out.width, height: out.height, seconds: R.player.duration, sound: d.sound, prefs: globalThis.__bsEncoderPrefs }).catch(() => null).then((sv) => {
+      const me = R.saving;
+      if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
+      if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
+      if (sv) {
+        saver = sv;
+        const rec = {
+          state: 'recording',
+          async stop() {
+            if (this.state === 'inactive') return; this.state = 'inactive'; saver = null;
+            if (me.cancel) { sv.cancel(); R.saving = null; syncUi(); return; }
+            let blob = null; try { blob = await sv.finish(); } catch { blob = null; }
+            if (R.saving !== me) return;
+            if (!blob) { R.saving = null; syncUi(); d.toast('Could not save the video'); return; }
+            finishWith(blob, 'mp4');
+          },
+        };
+        me.rec = rec; sv.start(); R.playing = true; syncUi();
+        return;
+      }
+      const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
+      if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
+      let rec;
+      try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: videoBitrate(R.player.duration, tv ? 3.5e6 : 5e6), audioBitsPerSecond: 128000 }); } catch { R.saving = null; R.stamp = null; syncUi(); d.toast('This browser cannot save video'); return; }
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        for (const tr of stream.getTracks()) tr.stop();
+        if (!R.saving || R.saving.cancel || !chunks.length) { R.saving = null; syncUi(); return; }
+        finishWith(new Blob(chunks, { type: type.split(';')[0] }), type.startsWith('video/mp4') ? 'mp4' : 'webm');
+      };
+      me.rec = rec; rec.start(1000); R.playing = true; syncUi();
+    });
   }
   function stopSave(finished) {
     const s = R.saving; if (!s) return;

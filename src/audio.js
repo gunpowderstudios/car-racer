@@ -40,6 +40,14 @@ export class Sound {
     if (!this.tapNode) { this.tapNode = this.ctx.createMediaStreamDestination(); this.master.connect(this.tapNode); }
     return this.tapNode.stream;
   }
+  /** Hands the mixed sound out as raw samples (left, right) for the video encoder; returns a function that stops it. */
+  capture(cb) {
+    if (!this.ctx || !this.ctx.createScriptProcessor) return null;
+    const c = this.ctx, sp = c.createScriptProcessor(4096, 2, 2), mute = c.createGain(); mute.gain.value = 0;
+    sp.onaudioprocess = (e) => cb(e.inputBuffer.getChannelData(0).slice(), e.inputBuffer.getChannelData(Math.min(1, e.inputBuffer.numberOfChannels - 1)).slice());
+    this.master.connect(sp); sp.connect(mute); mute.connect(c.destination);
+    return () => { try { this.master.disconnect(sp); } catch { /* gone */ } sp.onaudioprocess = null; sp.disconnect(); mute.disconnect(); };
+  }
   _loop(name, dest, gain, pitched = true) {
     const b = this.buf[name]; if (!b) return null;
     const s = this.ctx.createBufferSource(); s.buffer = b; s.loop = true;

@@ -17,6 +17,20 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
 });
 test('TV video is sized and compressed for social media', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.match(r, /videoBitsPerSecond: tv \? 3\.5e6 : 5e6/);
+  assert.match(r, /videoBitrate\(R\.player\.duration, tv \? 3\.5e6 : 5e6\)/);
   assert.match(r, /small \? 960 : 1280; out\.height = small \? 640 : 854/);
+});
+import { videoBitrate, WHATSAPP_BYTES } from '../src/mp4Save.js';
+test('video bitrate keeps a replay under the WhatsApp size', () => {
+  for (const sec of [10, 38, 60, 120]) {
+    const bytes = (videoBitrate(sec) + 128000) * sec / 8;
+    assert.ok(bytes <= WHATSAPP_BYTES * 1.001 || videoBitrate(sec) === 1e6, `${sec}s -> ${bytes}`);
+  }
+  assert.equal(videoBitrate(5), 3.5e6);
+  assert.ok(videoBitrate(60) < 2e6);
+});
+test('the mp4 writer is the first choice and MediaRecorder the fallback', () => {
+  const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(r, /createMp4Saver\(/);
+  assert.match(r, /new MR\(stream/);
 });
