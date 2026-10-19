@@ -159,8 +159,8 @@ export function createReplayMode(d) {
     if (!type) { d.toast('This browser cannot save video'); return; }
     // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
     const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
-    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (even sizes, 1920 at most: what the video encoders and social sites like)
-      const k = Math.min(1, 1920 / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
+    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (even sizes, 1280 at most: what the video encoders and social sites like)
+      const k = Math.min(1, 1280 / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
     R.stamp = () => {
@@ -175,7 +175,7 @@ export function createReplayMode(d) {
         octx.drawImage(cv, 0, 0, out.width, out.height);
         if (logo.complete && logo.naturalWidth) { const w = Math.max(195 * out.width / cv.width, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
       }
-      if (saver) saver.addFrame(out);
+      if (saver && !R.held) saver.addFrame(out, R.t - R.player.t0);
     };
     const finishWith = (blob, ext) => {
       R.saving = null; syncUi();
@@ -198,11 +198,11 @@ export function createReplayMode(d) {
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
       if (sv) {
-        saver = sv;
+        saver = sv; R.saver = sv;
         const rec = {
           state: 'recording',
           async stop() {
-            if (this.state === 'inactive') return; this.state = 'inactive'; saver = null;
+            if (this.state === 'inactive') return; this.state = 'inactive'; saver = null; R.saver = null;
             if (me.cancel) { sv.cancel(); R.saving = null; syncUi(); return; }
             let blob = null; try { blob = await sv.finish(); } catch { blob = null; }
             if (R.saving !== me) return;
@@ -299,7 +299,9 @@ export function createReplayMode(d) {
   /** Called every frame while the replay is on. Returns the position the sun and shadows should follow. */
   function frame(dt) {
     const p = R.player;
-    if (R.playing) {
+    R.held = !!(R.saving && R.saver && R.saver.busy());        // saving a video and the encoder is behind: hold the replay still until it catches up
+    if (R.saver) R.saver.setClock(R.t - R.player.t0 + (R.playing ? dt : 0) + 0.1, R.held);
+    if (R.playing && !R.held) {
       R.t += dt * SPEEDS[R.speed];
       if (R.t >= p.t1) { R.t = p.t1; R.playing = false; if (R.saving) setTimeout(() => stopSave(true), 400); syncUi(); }
     }

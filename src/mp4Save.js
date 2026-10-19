@@ -33,34 +33,35 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
   const aenc = new G.AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: () => { failed = true; } });
   venc.configure(vcfg); aenc.configure(acfg);
 
-  let t0 = 0, last = null, idx = -1, stopCapture = null, samples = 0, aOffset = null, closed = false;
+  // The video clock is the REPLAY's own clock (not the wall clock): a frame is stamped with how far through the replay it is, so the picture can
+  // never run fast or jump, even on a slow machine. If the encoder falls behind, the replay is simply held (see busy()) and the sound pauses with it.
+  let last = null, idx = -1, stopCapture = null, samples = 0, closed = false, hold = false, clock = 0;
   return {
     bitrate, width, height,
+    busy() { return venc.encodeQueueSize > 4 || aenc.encodeQueueSize > 30; },
+    setClock(seconds, h) { clock = seconds; hold = !!h; },                 // how far through the replay it is: sound is only kept up to this point, so it can never run longer than the picture
     start() {
-      t0 = performance.now();
-      stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix
-        if (closed || failed) return;
-        if (aOffset == null) aOffset = 0;                              // (the muxer wants every track to start at 0)
+      stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix (skipped while the replay is held)
+        if (closed || failed || hold || samples / rate > clock + 0.15) return;
         const data = new Float32Array(l.length * 2); data.set(l, 0); data.set(r, l.length);
-        const ts = Math.round((aOffset + samples / rate) * 1e6); samples += l.length;
+        const ts = Math.round((samples / rate) * 1e6); samples += l.length;
         const ad = new G.AudioData({ format: 'f32-planar', sampleRate: rate, numberOfFrames: l.length, numberOfChannels: 2, timestamp: ts, data });
         aenc.encode(ad); ad.close();
       });
     },
-    /** Call once per rendered picture: it is written at a steady 30 fps (a slow frame is repeated, a spare one dropped). */
-    addFrame(canvas, force = false) {
+    /** Call once per rendered picture with how many seconds into the replay it is: written at a steady 30 fps (a slow frame is held, a spare one dropped). */
+    addFrame(canvas, seconds, force = false) {
       if (closed || failed) return;
       last = canvas;
-      const n = Math.floor(((performance.now() - t0) / 1000) * FPS);
-      for (let i = idx < 0 ? 0 : idx + 1; i <= (idx < 0 ? 0 : n); i++) {           // (the first picture is frame 0; a slow frame is held until the next one, so the speed stays steady)
-        if (venc.encodeQueueSize > (force ? 1e9 : 120)) return;
+      const n = idx < 0 ? 0 : Math.floor(Math.max(0, seconds) * FPS + 0.5);
+      for (let i = idx + 1; i <= n; i++) {
+        if (!force && i > idx + 1 && venc.encodeQueueSize > 12) return;
         const f = new G.VideoFrame(canvas, { timestamp: Math.round((i / FPS) * 1e6), duration: Math.round(1e6 / FPS) });
         venc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close(); idx = i;
       }
     },
     cancel() { closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ } try { venc.close(); aenc.close(); } catch { /* closed */ } },
     async finish() {
-      if (last) this.addFrame(last, true);                              // the last picture is held to the end
       closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ }
       if (failed) { try { venc.close(); aenc.close(); } catch { /* closed */ } return null; }
       await venc.flush(); await aenc.flush(); muxer.finalize(); venc.close(); aenc.close();

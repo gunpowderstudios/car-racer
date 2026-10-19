@@ -49,3 +49,10 @@ test('home screen has the TV set with the logo on its screen', () => {
 test('with the Campervan selected, Jamboree rivals (no look given) are not turned into campervans', () => {
   assert.match(f('src/campervanVehicle.js'), /selectedId\(\) === ID && !!look && \(!look\.vehicleId/);
 });
+test('video is stamped with the replay clock, with the replay held when the encoder falls behind', () => {
+  const m = f('src/mp4Save.js'), r = f('src/replayMode.js');
+  assert.match(m, /busy\(\)/); assert.match(m, /setClock\(/);
+  assert.match(r, /saver\.addFrame\(out, R\.t - R\.player\.t0\)/);
+  assert.match(r, /R\.held = !!\(R\.saving && R\.saver && R\.saver\.busy\(\)\)/);
+  assert.match(r, /1280 \/ Math\.max\(cv\.width, cv\.height\)/);
+});
