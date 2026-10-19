@@ -733,9 +733,9 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 /* the repair budget: one pip per repair left */
 #repairs { margin: 2px 0 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #f6d9b0; }
 #repairs[hidden] { display: none; }
-#rep-pips { display: flex; gap: 2px; margin-top: 2px; }
-#rep-pips i { flex: 1; height: 7px; border-radius: 2px; background: rgba(255,255,255,.14); transform: skewX(-12deg); }
-#rep-pips i.on { background: #5fcf6f; } #rep-pips i.low { background: #ff5a48; animation: repPulse 1s ease-in-out infinite; }
+#rep-pips { display: flex; gap: 1px; margin-top: 2px; }
+#rep-pips svg { flex: 1; min-width: 0; height: 15px; fill: rgba(255,255,255,.18); transition: fill .2s; }
+#rep-pips svg.on { fill: #5fcf6f; filter: drop-shadow(0 0 2px rgba(95,207,111,.6)); } #rep-pips svg.low { fill: #ff5a48; animation: repPulse 1s ease-in-out infinite; }
 #repairs.low span { color: #ff8a7a; }
 @keyframes repPulse { 50% { opacity: .45; } }
-@media (prefers-reduced-motion: reduce) { #rep-pips i.low { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #rep-pips svg.low { animation: none; } }

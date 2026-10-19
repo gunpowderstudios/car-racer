@@ -22,6 +22,7 @@ export const GRIP_BOOST = 1.15;
 export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
 /** While a drift is held, the slide bends the car's path into the corner by this much (m/s², about 0.6 g at full effect) and gives back this share of the speed the slide would scrub off. */
 export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
+export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 export const CAR = {
@@ -222,6 +223,7 @@ export class Vehicle {
       this._tyre(w, drv, dt);
     }
     this._applyDriftYawAssist();
+    this._rollGuard(dt);
     this._stability(dt);
 
     // --- aerodynamics
@@ -302,6 +304,22 @@ export class Vehicle {
     }
 
     this._handPrev = handNow;
+  }
+
+  /**
+   * A drift never rolls the car: while it is on, a strong spring-and-damper about the car's long axis holds it from tipping over (a drift is a
+   * controlled slide, and a tip-over in the middle of one only ever felt like a bug). It fades out over most of a second after the drift ends, so
+   * the car is not dropped into a roll the moment you let go. Towing a caravan gets a lighter version: the van yanks the tail sideways and the
+   * grip then tips the car over far more easily than it would roll on its own.
+   */
+  _rollGuard(dt) {
+    this.rollGuard = this.driftActive || this.driftBlend > 0.05 ? 1 : (this.rollGuard || 0) * Math.exp(-dt / 0.7);
+    const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0);
+    if (g <= 0 || !this.onGround) return;
+    const roll = -this.ay.z * this.az.x + this.ay.x * this.az.z;                       // (ay x up) along the car's long axis: the sine of how far it has rolled, signed so a torque of +roll rights it
+    const rate = this.angVel.dot(this.az);
+    const acc = (ROLL_K * roll - ROLL_C * rate) * g;
+    this.T.addScaled(this.az, acc * this.spec.inertia.z);
   }
 
   _applyDriftYawAssist() {

@@ -12,6 +12,9 @@ export const fmtTime = (t) => {
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 };
 
+// one spanner (a repair), drawn once per repair in the Damage card
+const SPANNER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>';
+
 export class Hud {
   constructor() {
     this.el = { speed: $('speed'), unit: $('unit'), gear: $('gear'), rpm: $('rpm'), lapNum: $('lap-num'), lapTime: $('lap-time'), lapBest: $('lap-best'),
@@ -78,9 +81,9 @@ export class Hud {
     el.hidden = !Number.isFinite(max);
     if (el.hidden) return;
     const box = $('rep-pips');
-    if (box.children.length !== max) { box.textContent = ''; for (let i = 0; i < max; i++) box.appendChild(document.createElement('i')); }
-    for (let i = 0; i < max; i++) box.children[i].className = i < left ? (left <= 2 ? 'low' : 'on') : '';
-    el.classList.toggle('low', left <= 2);
+    if (box.children.length !== max) { box.textContent = ''; for (let i = 0; i < max; i++) box.insertAdjacentHTML('beforeend', SPANNER); }
+    for (let i = 0; i < max; i++) box.children[i].setAttribute('class', i < left ? (left <= 1 ? 'low' : 'on') : '');
+    el.classList.toggle('low', left <= 1);
   }
 
   /** Score, credited takedowns and how many rivals are still running. */
