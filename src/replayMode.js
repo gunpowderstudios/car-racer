@@ -10,7 +10,7 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createReplayMode(d) {
   const $ = d.$;
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), note: $('rp-note'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), frame: $('rp-frame'), note: $('rp-note'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -135,16 +135,41 @@ export function createReplayMode(d) {
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
     return img;
   }
+  // ---- optional 1970s TV set around the video: the game picture is cropped to fill the screen cut-out of tv/tv-frame.webp
+  const TV = { w: 1536, h: 1024, sx: 172, sy: 122, sw: 908, sh: 674 };   // the screen opening in the 1536x1024 picture (a little oversize, so the frame covers the edge)
+  let tvImg = null;
+  const frameOn = () => { try { return localStorage.getItem('bs-tvframe') === '1'; } catch { return false; } };
+  function setFrame(on) { try { localStorage.setItem('bs-tvframe', on ? '1' : '0'); } catch { /* private mode */ } syncFrameBtn(); }
+  function syncFrameBtn() { if (el.frame) { el.frame.textContent = 'TV set: ' + (frameOn() ? 'on' : 'off'); el.frame.classList.toggle('on', frameOn()); } }
   function saveVideo() {
     if (R.saving) { stopSave(false); return; }
+    if (!frameOn()) { startSave(null); return; }
+    if (tvImg && tvImg.complete && tvImg.naturalWidth) { startSave(tvImg); return; }
+    tvImg = new Image();
+    tvImg.onload = () => startSave(tvImg);
+    tvImg.onerror = () => { tvImg = null; d.toast('Could not load the TV set, saving without it'); startSave(null); };
+    tvImg.src = 'tv/tv-frame.webp';
+  }
+  function startSave(tv) {
+    if (R.saving) return;
     const cv = d.canvas, MR = globalThis.MediaRecorder;
     if (!cv || !cv.captureStream || !MR) { d.toast('This browser cannot save video'); return; }
     const type = REC_TYPES.find((t) => MR.isTypeSupported(t));
     if (!type) { d.toast('This browser cannot save video'); return; }
     // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
-    const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height;
+    const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
+    if (tv) { out.width = small ? 1152 : TV.w; out.height = small ? 768 : TV.h; } else { out.width = cv.width; out.height = cv.height; }
     const octx = out.getContext('2d'), logo = makeLogo();
     R.stamp = () => {
+      if (tv) {
+        const k = out.width / TV.w, x = TV.sx * k, y = TV.sy * k, w = TV.sw * k, h = TV.sh * k, ca = cv.width / cv.height, ta = w / h;
+        const cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;   // cover-crop the picture to the screen shape
+        octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height);
+        octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
+        octx.drawImage(tv, 0, 0, out.width, out.height);
+        if (logo.complete && logo.naturalWidth) { const lw = w * 0.221, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
+        return;
+      }
       if (out.width !== cv.width || out.height !== cv.height) { out.width = cv.width; out.height = cv.height; }
       octx.drawImage(cv, 0, 0, out.width, out.height);
       if (logo.complete && logo.naturalWidth) { const w = Math.max(195, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
@@ -189,6 +214,7 @@ export function createReplayMode(d) {
 
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
   el.save.onclick = () => saveVideo();
+  if (el.frame) { el.frame.onclick = () => { if (!R.saving) setFrame(!frameOn()); }; syncFrameBtn(); }
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();

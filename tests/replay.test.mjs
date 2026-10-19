@@ -182,3 +182,12 @@ test('replay sounds: knocks, props and honks are recorded and played; scraping a
   const f = new ReplayPlayer(rec).sample(0.02)[0];
   assert.equal(f.boost, true); assert.equal(f.scrape, true);
 });
+
+test('TV set option: asset ships, button exists, save uses the frame', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  assert.ok(existsSync(new URL('../tv/tv-frame.webp', import.meta.url)), 'tv/tv-frame.webp missing');
+  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="rp-frame"/);
+  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(src, /tv\/tv-frame\.webp/);
+  assert.match(src, /startSave\(tvImg\)/);
+});
