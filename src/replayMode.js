@@ -6,14 +6,30 @@ import { ReplayPlayer, ReplayCams, VIEWS } from './replay.js';
 const SPEEDS = [0.25, 0.5, 1, 2];
 const fmt = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const qTmp = new THREE.Quaternion(), vTmp = new THREE.Vector3();
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createReplayMode(d) {
   const $ = d.$;
   const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), exit: $('rp-exit'), label: $('rp-label') };
-  const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false };
+  const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
   const setVan = (v) => { const a = v.van; fakeVan.axle.x = a[0]; fakeVan.axle.y = a[1]; fakeVan.axle.z = a[2]; fakeVan.yaw = a[3]; fakeVan.pitch = a[4]; fakeVan.roll = a[5]; fakeVan.spin = a[6]; fakeVan.sway = a[7]; fakeVan.health = a[8]; return fakeVan; };
+
+  // what the focus car sounds like from the camera: quieter with distance, and its pitch drops as it goes past (the Doppler effect)
+  const hear = { rpm: 0, speed: 0, gear: 1, onGround: true, brk: 0, skidLevel: 0, boosting: false, scraping: false };
+  let pitchNow = 1;
+  function listen(f, vx, vz, dt) {
+    const cam = d.camera.position;
+    const dx = f.x - cam.x, dy = f.y - cam.y, dz = f.z - cam.z, dist = Math.hypot(dx, dy, dz) || 1;
+    hear.rpm = f.rpm; hear.speed = Math.hypot(vx, vz); hear.skidLevel = f.skid; hear.boosting = f.boost;
+    const away = (vx * dx + vz * dz) / dist;                                    // m/s the car is moving away from the camera
+    const slow = SPEEDS[R.speed] < 1 ? Math.sqrt(SPEEDS[R.speed]) : 1;          // slow motion drops the pitch
+    const want = Math.max(0.8, Math.min(1.25, 343 / (343 + away))) * slow;
+    pitchNow += (want - pitchNow) * Math.min(1, 6 * dt);
+    const level = 0.22 + 0.78 * Math.pow(clamp01(1 - dist / 120), 1.6);
+    d.sound.update(hear, f.wrecked ? 0 : Math.max(f.thr, 0.15), R.playing && !f.wrecked, level, pitchNow);
+  }
 
   const viewById = (id) => (id === 'p' ? d.visual : d.views.get(id) || null);
 
@@ -72,6 +88,7 @@ export function createReplayMode(d) {
     let vx = 0, vz = 0;
     if (R.lastFocus && dt > 0 && dt < 0.2) { vx = (f.x - R.lastFocus.x) / dt; vz = (f.z - R.lastFocus.z) / dt; }
     R.lastFocus = R.lastFocus || { x: 0, z: 0 }; R.lastFocus.x = f.x; R.lastFocus.z = f.z;
+    R.lastV.x = vx; R.lastV.z = vz;
     qTmp.set(f.qx, f.qy, f.qz, f.qw); vTmp.set(0, 0, 1).applyQuaternion(qTmp);
     const mode = VIEWS[R.view];
     if (mode === 'Chase') {
@@ -150,7 +167,7 @@ export function createReplayMode(d) {
 
   function exit() {
     if (!R.active) return;
-    R.active = false; el.bar.hidden = true;
+    R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
     rebuildTo(Infinity);
@@ -171,6 +188,7 @@ export function createReplayMode(d) {
     const ents = p.sample(R.t);
     for (const e of ents) R.seen.add(e.id);
     const f = aim(ents, dt);
+    if (f) listen(f, R.lastV.x, R.lastV.z, dt); else d.sound.update(hear, 0, false);
     R.fresh = false;
     for (const e of ents) place(e);
     if (R.fresh) rebuildTo(R.t);

@@ -4,7 +4,7 @@ import { ReplayRecorder, ReplayPlayer, ReplayCams, HZ, STRIDE } from '../src/rep
 import { Track } from '../src/track.js';
 import { DRAG_DEF } from './harness.mjs';
 
-const car = (id, x, extra = {}) => ({ id, hue: 1, isPlayer: id === 'p', x, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, ...extra });
+const car = (id, x, extra = {}) => ({ rpm: 3000, thr: 0.5, skid: 0.2, boost: false, id, hue: 1, isPlayer: id === 'p', x, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, ...extra });
 
 test('the recorder keeps about HZ notes a second and ignores the ones that come too soon', () => {
   const r = new ReplayRecorder();
@@ -92,7 +92,7 @@ test('the Top view follows from above and behind', () => {
   assert.ok(o.py > 25 && o.pz < 150 - 10, `above and behind: y ${o.py} z ${o.pz}`);
 });
 
-test('STRIDE matches the layout the player reads', () => { assert.equal(STRIDE, 25); });
+test('STRIDE matches the layout the player reads', () => { assert.equal(STRIDE, 29); });
 
 test('replay is wired into the game: a button, the T key, the game-over card, the recorder reset on a new race, and the replay frame', async () => {
   const { readFileSync } = await import('node:fs');
@@ -110,4 +110,21 @@ test('replay is wired into the game: a button, the T key, the game-over card, th
   // single player only: multiplayer has no replay
   assert.match(main, /function startReplay\(\) \{\s*if \(mode !== 'drive' \|\| net\) return;/);
   assert.match(main, /if \(net \|\| paused \|\| frozen/);
+});
+
+test('the engine sound data is recorded and blended: rpm, throttle, tyre skid and boost', () => {
+  const r = new ReplayRecorder();
+  r.record(0, [car('p', 0, { rpm: 2000, thr: 0, skid: 0, boost: false })]);
+  r.record(0.05, [car('p', 1, { rpm: 4000, thr: 1, skid: 0.8, boost: true })]);
+  const e = new ReplayPlayer(r).sample(0.025)[0];
+  assert.ok(Math.abs(e.rpm - 3000) < 1e-9 && Math.abs(e.thr - 0.5) < 1e-9 && Math.abs(e.skid - 0.4) < 1e-9);
+  assert.equal(new ReplayPlayer(r).sample(0.05)[0].boost, true);
+});
+
+test('a replay hears the car it follows: quieter far off, pitch shifted by the Doppler effect, and silent when it exits', async () => {
+  const { readFileSync } = await import('node:fs');
+  const rm = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(audio, /update\(car, throttle, active, level = 1, pitch = 1\)/);
+  assert.match(rm, /343 \/ \(343 \+ away\)/);
+  assert.match(rm, /d\.sound\.update\(hear, 0, false\);/);
 });

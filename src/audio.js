@@ -67,18 +67,19 @@ export class Sound {
     else { this.sfxOn = on; if (this.sfx) this.sfx.gain.value = on ? 1 : 0; }
   }
 
-  update(car, throttle, active) {
+  /** `level` (0..1) and `pitch` (1 = normal) let a replay hear a car from the camera: quieter far off, and shifted as it passes. */
+  update(car, throttle, active, level = 1, pitch = 1) {
     if (!this.ready) return;
-    const t = this.ctx.currentTime, on = active ? 1 : 0;
+    const t = this.ctx.currentTime, on = active ? level : 0;
     const rpm = car.rpm, e = this.engine;
     if (e) {
       const gain = on * (0.18 + 0.5 * Math.max(throttle, 0.15) * (rpm / 7000));
       if (e.synth) {
-        const f = 28 + rpm / 60 * 2.1;
+        const f = (28 + rpm / 60 * 2.1) * pitch;
         e.synth[0].frequency.setTargetAtTime(f, t, 0.03); e.synth[1].frequency.setTargetAtTime(f * 0.5, t, 0.03);
-        e.synth[2].frequency.setTargetAtTime(400 + rpm * 0.35, t, 0.05); e.gain.gain.setTargetAtTime(gain * 0.25, t, 0.05);
+        e.synth[2].frequency.setTargetAtTime((400 + rpm * 0.35) * pitch, t, 0.05); e.gain.gain.setTargetAtTime(gain * 0.25, t, 0.05);
       } else {
-        e.src.playbackRate.setTargetAtTime(0.45 + (rpm / 7000) * 1.55, t, 0.04);
+        e.src.playbackRate.setTargetAtTime((0.45 + (rpm / 7000) * 1.55) * pitch, t, 0.04);
         e.gain.gain.setTargetAtTime(gain, t, 0.05);
       }
     }

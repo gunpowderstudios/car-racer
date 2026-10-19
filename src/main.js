@@ -736,8 +736,9 @@ function effects(dt) {
 // While you drive, a quiet recorder notes where every car is about 20 times a second (see replay.js); "Replay" plays it back from TV cameras.
 const replayRec = new ReplayRecorder({ maxSeconds: tierName === 'low' ? 90 : 240 });
 const rpEnts = [];                                                 // reused every note, so recording makes no garbage
-function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, _van: new Array(9).fill(0) }); }
+function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, rpm: 0, thr: 0, skid: 0, boost: false, _van: new Array(9).fill(0) }); }
 function rpFill(e, id, hue, isPlayer, c, health, wrecked) {
+  e.rpm = c.rpm; e.thr = c.thr; e.skid = c.skidLevel || 0; e.boost = !!c.boosting;
   e.id = id; e.hue = hue; e.isPlayer = isPlayer; e.x = c.pos.x; e.y = c.pos.y; e.z = c.pos.z;
   e.qx = c.rot.x; e.qy = c.rot.y; e.qz = c.rot.z; e.qw = c.rot.w; e.steer = c.steerAngle || 0;
   for (let i = 0; i < 4; i++) e.spin[i] = c.wheels[i].spin; e.health = health; e.wrecked = wrecked;
@@ -754,7 +755,7 @@ function recordReplay() {
 }
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
-  $, rec: replayRec, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
+  $, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
   getTrack: () => track, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
@@ -810,7 +811,6 @@ function frame(now) {
 
   if (mode === 'replay') {
     const f = replay().frame(dt);
-    sound.update(car, 0, false);
     propsView.update(props);
     if (f) drawPos.set(f.x, f.y, f.z);
     stage.update(drawPos, camera.position); stage.updateRollers();

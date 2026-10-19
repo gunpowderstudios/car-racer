@@ -7,7 +7,7 @@
 //  * ReplayCams     - trackside camera shots that cut as the car goes past, a high follow view, a chase offset
 
 export const HZ = 20;
-export const STRIDE = 25;     // numbers per car per sample: present, x y z, qx qy qz qw, steer, 4 wheel spins, health, wrecked, has van, 9 van numbers
+export const STRIDE = 29;     // numbers per car per sample: present, x y z, qx qy qz qw, steer, 4 wheel spins, health, wrecked, has van, 9 van numbers, rpm, throttle, tyre skid, boost
 const MAX_EVENTS = 6000;
 
 const wrapPi = (a) => { a %= Math.PI * 2; if (a > Math.PI) a -= Math.PI * 2; else if (a < -Math.PI) a += Math.PI * 2; return a; };
@@ -42,6 +42,7 @@ export class ReplayRecorder {
       for (let i = 0; i < 4; i++) a[o + 9 + i] = e.spin ? e.spin[i] || 0 : 0;
       a[o + 13] = e.health ?? 1; a[o + 14] = e.wrecked ? 1 : 0;
       if (e.van) { a[o + 15] = 1; for (let i = 0; i < 9; i++) a[o + 16 + i] = e.van[i]; }
+      a[o + 25] = e.rpm || 0; a[o + 26] = e.thr || 0; a[o + 27] = e.skid || 0; a[o + 28] = e.boost ? 1 : 0;
     }
     this.frames.push({ t, a });
     // keep a rolling window: forget what is older than maxSeconds
@@ -103,6 +104,7 @@ export class ReplayPlayer {
       e.steer = m(8);
       for (let w = 0; w < 4; w++) e.spin[w] = m(9 + w);
       e.health = m(13); e.wrecked = a[o + 14] === 1;
+      e.rpm = m(25); e.thr = m(26); e.skid = m(27); e.boost = a[o + 28] === 1;
       if (a[o + 15] === 1) {
         const v = e.van || (e.van = new Array(9).fill(0)), hv = hasB && b[o + 15] === 1, bv = hv ? b : a, kv = hv ? kk : 0;
         for (let j = 0; j < 9; j++) v[j] = a[o + 16 + j] + (bv[o + 16 + j] - a[o + 16 + j]) * kv;
