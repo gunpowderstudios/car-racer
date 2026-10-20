@@ -175,7 +175,7 @@ export function createReplayMode(d) {
   }
   function startSave(tv, hl, clip, realtime = false) {
     if (R.saving) return;
-    R.realtime = realtime;
+    R.realtime = realtime; R.wallPrev = null;
     R.saveStart = hl.start; R.saveEnd = hl.end; R.cuts = hl.cuts; R.quick = true;
     const filmLen = Math.max(1, R.saveEnd - R.saveStart), cv = d.canvas;
     // each video frame is made on a second canvas: the 3D picture is cropped into the TV screen, the TV set goes over it and the TV logo is stamped on
@@ -222,7 +222,7 @@ export function createReplayMode(d) {
           finishWith(blob);
         },
       };
-      sv.start(); R.saveWall0 = performance.now(); holdAwake(true); R.playing = true; syncUi();
+      sv.start(); R.wallPrev = null; R.saveWall0 = performance.now(); holdAwake(true); R.playing = true; syncUi();
     });
   }
   // ---- a film that is being made: keep the screen awake, show how far on in the tab title, and a card when it is done (so you can walk away)
@@ -325,6 +325,9 @@ export function createReplayMode(d) {
       if (R.realtime && !R.held && now < R.nextT - 4) { R.skip = true; return R.lastF || null; }      // the whole-race film runs at real speed so the game sound lines up
       if (R.held) { R.skip = true; R.saver.setClock(R.t - R.saveStart + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
       R.nextT += 1000 / 30; dt = 1 / 30;
+      if (R.realtime) {                                                    // a film with sound follows the clock on the wall, so a slow computer repeats pictures but never lets the sound drift away from them
+        dt = Math.max(1 / 60, Math.min(0.25, (now - (R.wallPrev == null ? now - 1000 / 30 : R.wallPrev)) / 1000)); R.wallPrev = now;
+      }
       R.saver.setClock(R.t - R.saveStart + (R.playing ? dt : 0) + 0.1, false);
     }
     if (R.playing && !R.held) {

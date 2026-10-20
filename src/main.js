@@ -5,7 +5,7 @@ import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
 import { Vehicle } from './vehicle.js';
 import { Derby, DERBY, collideVanCar } from './derby.js';
 import { IDLE } from './ai.js';
-import { ZONE_LABEL, DAMAGE, TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
+import { ZONE_LABEL, DAMAGE, TOUGHNESS, PLAYER_TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
 import { DENT } from './dentMath.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { ReplayRecorder } from './replay.js';
@@ -1220,7 +1220,7 @@ function bindMenu() {
 
 // -------------------------------------------------------------- multiplayer
 const mpLabelV = new THREE.Vector3();
-const MP_DAMAGE_HP_SCALE = 140 * TOUGHNESS; // derby crash HP converted onto multiplayer's single 0..1 health bar
+const MP_DAMAGE_HP_SCALE = 140 * TOUGHNESS * PLAYER_TOUGHNESS; // derby crash HP converted onto multiplayer's single 0..1 health bar
 const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
 const MP_WRECKED_INPUT = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false });   // a wrecked car just sits there
 const MP_MAX_HIT_DAMAGE = 0.4;        // even the hardest single hit can't wreck you outright
