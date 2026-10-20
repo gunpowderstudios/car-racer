@@ -53,6 +53,8 @@ const device = probeDevice();
 { // the replay's TV logo again, on the menu (its own copy, with its own gradient ids: the original sits in a hidden bar)
   const src = document.getElementById('rp-logo'), slot = document.getElementById('menu-tv-logo');
   if (src && slot) slot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="menu-tv-svg"').replace(/rpl-(amber|red)/g, 'rplm-$1');
+  const hudSlot = document.getElementById('hud-logo');            // and above the speedometer while you race (a computer only: a phone keeps its screen clear)
+  if (src && hudSlot) hudSlot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="hud-tv-svg"').replace(/rpl-(amber|red)/g, 'rplh-$1');
 }
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];

@@ -796,3 +796,13 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #rp-ready h2 { margin: 0 0 8px; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: clamp(30px, 7vw, 46px); color: #ffd36a; }
 #rp-ready p { margin: 0 0 18px; opacity: .85; }
 #rp-ready .btn { margin: 4px; }
+
+/* the Bangers and Smash TV logo above the speedometer (a computer only), the same width as the speed plate */
+#speed-stack { display: contents; }
+#hud-logo { display: none; }
+@media (pointer: fine) and (min-width: 761px) {
+  #speed-stack { display: flex; flex-direction: column; align-items: stretch; gap: 6px; position: absolute; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); }
+  #speed-stack #speed-plate { position: static; }
+  #hud-logo { display: block; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
+  #hud-logo svg { display: block; width: 100%; height: auto; }
+}
