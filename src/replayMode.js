@@ -173,7 +173,7 @@ export function createReplayMode(d) {
       octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height);
       octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
       octx.drawImage(tv, 0, 0, out.width, out.height);
-      if (logo.complete && logo.naturalWidth) { const lw = w * 0.221, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
+      if (logo.complete && logo.naturalWidth) { const lw = w * 0.287, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
       if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
     };
     const finishWith = (blob) => {

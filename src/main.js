@@ -875,25 +875,26 @@ function frame(now) {
   if (!track) { renderer.render(stage.scene, camera); return; }
 
   if (mode === 'replay') {
-    const f = replay().frame(dt);
-    propsView.update(props);
-    if (f) drawPos.set(f.x, f.y, f.z);
-    stage.update(drawPos, camera.position); stage.updateRollers();
-    // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
-    if (tierName === 'high' && !device.touch && adapt.scale >= 0.8) {
-      if (!replayDof.on) replayDof.enable();
-      replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
-    } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
-    replay().afterRender();
-    // Quick save: no need to wait for real time, so wind on several extra frames each tick (silent film, nothing to hear)
+    // one picture of the replay (the same way every time: the extra frames of a quick film must be drawn exactly like the first, or the sky flickers)
+    const drawReplayFrame = (dtStep) => {
+      const f = replay().frame(dtStep);
+      propsView.update(props);
+      if (f) drawPos.set(f.x, f.y, f.z);
+      stage.update(drawPos, camera.position); stage.updateRollers();
+      // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
+      if (tierName === 'high' && !device.touch && adapt.scale >= 0.8) {
+        if (!replayDof.on) replayDof.enable();
+        replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
+      } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
+      replay().afterRender();
+    };
+    drawReplayFrame(dt);
+    // Quick film: no need to wait for real time, so wind on several extra frames each tick
     if (replay().turbo()) {
       const t0 = performance.now();
       while (replay().turbo() && performance.now() - t0 < 12) {
-        const g = replay().frame(1 / 30);
+        drawReplayFrame(1 / 30);
         if (replay().state.held || replay().state.skip) break;      // the encoder is behind: let it catch up before drawing more
-        propsView.update(props); if (g) drawPos.set(g.x, g.y, g.z);
-        stage.update(drawPos, camera.position); stage.updateRollers();
-        renderer.render(stage.scene, camera); replay().afterRender();
       }
     }
     perfUpdate(now);
