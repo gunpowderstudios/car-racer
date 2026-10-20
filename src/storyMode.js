@@ -219,7 +219,7 @@ function openSetup() {
   let saved = 'champ'; try { saved = localStorage.getItem('cr.storyTrack') || 'champ'; } catch { /* storage unavailable */ }
   const sel = ov.querySelector('#sp-track'); sel.value = [...sel.options].some((o) => o.value === saved) ? saved : 'champ';
   let dayLaps = '2'; try { dayLaps = localStorage.getItem('cr.storyLaps') || '2'; } catch { /* storage unavailable */ }      // Race Day starts on 2 laps (then remembers what you picked last)
-  ov.querySelector('#sp-laps').value = ['1', '2', '3'].includes(dayLaps) ? dayLaps : '2';
+  ov.querySelector('#sp-laps').value = ['1', '2', '3'].includes(dayLaps) ? dayLaps : '1';
   ov.hidden = false;
 }
 
