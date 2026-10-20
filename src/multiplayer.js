@@ -83,6 +83,7 @@ export class Multiplayer {
    *   onStart(trackDef) - host said go, and picked this track (a normalizeTrack()-shaped object)
    *   onState(id, state) - a remote player's latest pose
    *   onBoom(fromId, i) - their copy of barrel number i just went off
+   *   onRoll(fromId, i) - their copy of rolling boulder number i has been set off
    *   onHit(fromId, data) - fromId rammed you; data is whatever they sent (an impulse to apply)
    *   onDent(fromId, dent) - a dent appeared on fromId's car (see cleanDent), or the car was repaired
    *   onPlayerLeft(id)
@@ -262,6 +263,10 @@ export class Multiplayer {
       if (!Number.isInteger(msg.i)) return;
       this.h.onBoom(id, msg.i);
       this._sendAll({ t: 'boom', from: id, i: msg.i }, id);
+    } else if (msg.t === 'roll') {
+      if (!Number.isInteger(msg.i) || msg.i < 0 || msg.i > 64) return;
+      this.h.onRoll?.(id, msg.i);
+      this._sendAll({ t: 'roll', from: id, i: msg.i }, id);
     } else if (msg.t === 'dent') {
       const d = cleanDent(msg.d), now = performance.now();
       if (!d || now - (this._dentLast.get(id) || 0) < 60) return;     // nonsense, or a flood: dropped, not relayed
@@ -393,6 +398,8 @@ export class Multiplayer {
       if (p && msg.id !== this.selfId) showLeaveNotice(p.name);
     } else if (msg.t === 'boom') {
       if (Number.isInteger(msg.i)) this.h.onBoom(msg.from, msg.i);
+    } else if (msg.t === 'roll') {
+      if (Number.isInteger(msg.i) && msg.i >= 0 && msg.i <= 64) this.h.onRoll?.(msg.from, msg.i);
     } else if (msg.t === 'dent') {
       const d = cleanDent(msg.d);
       if (d && msg.from !== this.selfId) this.h.onDent?.(String(msg.from), d);
@@ -504,6 +511,11 @@ export class Multiplayer {
 
   /** A barrel on this player's copy of the track has just gone off: tell everyone else (`i` is the barrel's
    *  index in the track's prop list, the same on every machine) so it goes off for them too. */
+  /** A rolling boulder on this player's copy of the track has just been set off: tell everyone else (`i` is its index in the track's boulder list, the same on every machine). */
+  sendRoll(i) {
+    if (this.isHost) this._sendAll({ t: 'roll', from: this.selfId, i });
+    else if (this.hostConn && this.hostConn.open) this.hostConn.send({ t: 'roll', i });
+  }
   sendBoom(i) {
     if (this.isHost) this._sendAll({ t: 'boom', from: this.selfId, i });
     else if (this.hostConn && this.hostConn.open) this.hostConn.send({ t: 'boom', i });

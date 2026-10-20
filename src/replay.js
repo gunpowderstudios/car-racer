@@ -53,6 +53,7 @@ export class ReplayRecorder {
 
   /** Log something that happened: { type: 'dent'|'clear'|'wreck'|'hit', id, ...}. Events must come in time order. */
   event(t, e) {
+    if (this.off) return;                                                       // (multiplayer: nothing is recorded at all)
     this.events.push({ ...e, t });
     if (this.events.length > MAX_EVENTS) this.events.splice(0, this.events.length - MAX_EVENTS);
   }

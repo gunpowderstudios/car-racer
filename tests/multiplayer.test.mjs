@@ -210,3 +210,18 @@ test('sendDent: the host tells every guest directly; a guest tells the host; a g
   guest._onGuestMessage({ t: 'dent', from: 'guestB', d: { x: 99, y: 0, z: 0, hp: 15 } });
   assert.deepEqual(seen, [['guestB', { x: 1, y: 0, z: 0, hp: 15 }]]);
 });
+
+test('host relays a rolling boulder being set off to everyone else, and ignores nonsense', () => {
+  const got = [];
+  const mp = new Multiplayer(noopHandlers({ onRoll: (from, i) => got.push([from, i]) }));
+  mp.isHost = true; mp.selfId = 'host';
+  const connA = mockConn('guestA'), connB = mockConn('guestB');
+  mp.conns.set('guestA', connA); mp.conns.set('guestB', connB);
+  mp._onHostMessage('guestA', { t: 'roll', i: 3 });
+  for (const bad of ['3', -1, 1.5, 999, null]) mp._onHostMessage('guestA', { t: 'roll', i: bad });
+  assert.deepEqual(got, [['guestA', 3]]);
+  assert.equal(connA._sent.length, 0);
+  assert.deepEqual(connB._sent, [{ t: 'roll', from: 'guestA', i: 3 }]);
+  const guest = new Multiplayer(noopHandlers({ onRoll: (from, i) => got.push([from, i]) }));
+  guest._onGuestMessage?.({ t: 'roll', from: 'host', i: 5 });
+});

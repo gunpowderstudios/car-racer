@@ -313,17 +313,25 @@ export class Track {
     this._rq = Track.newQuery(); this._rollN = 0;
   }
 
-  /** Run the rolling boulders one step. `cars` are the things that set them off (anything with .pos and .vel). */
-  stepRollers(dt, cars) {
+  /** Another player's boulder has been set off (multiplayer): ours rolls too, if it is still waiting. */
+  rollerGo(i) {
+    const b = this.rollers && this.rollers[i];
+    if (b && b.state === 'wait') { b.state = 'roll'; b.speed = 0; b.go = 0; }
+  }
+
+  /** Run the rolling boulders one step. `cars` are the things that set them off (anything with .pos and .vel); `onGo(i)` hears of each one set off here;
+   *  `others` are other players' positions ({x, z}), who only count as watching. */
+  stepRollers(dt, cars, onGo = null, others = null) {
     if (!this.rollers) return;
-    for (const b of this.rollers) {
+    for (let bi = 0; bi < this.rollers.length; bi++) {
+      const b = this.rollers[bi];
       if (b.state === 'wait') {
         b.vx = b.vz = 0;
         const px = b.x0 + b.dx * b.reach, pz = b.z0 + b.dz * b.reach;                      // where it will cross the middle of the road
         for (const c of cars) {
           const rx = px - c.pos.x, rz = pz - c.pos.z, d = Math.hypot(rx, rz);
           const closing = (c.vel.x * rx + c.vel.z * rz) / Math.max(d, 1);
-          if (d > 6 && closing > 8 && d / closing < b.tC + (b.tArr - 3) * 0.4) { b.state = 'roll'; b.speed = 0; b.go = 0; break; }       // a car is coming this way at speed: the boulder is set off so it meets the road as the car does
+          if (d > 6 && closing > 8 && d / closing < b.tC + (b.tArr - 3) * 0.4) { b.state = 'roll'; b.speed = 0; b.go = 0; if (onGo) onGo(bi); break; }       // a car is coming this way at speed: the boulder is set off so it meets the road as the car does
         }
       } else if (b.state === 'roll') {
         b.speed = Math.min(9.5, b.speed + 6 * dt);
@@ -337,6 +345,7 @@ export class Track {
         if (b.rest > 25) {                                         // go back to the start, but only when nobody can see it happen
           let seen = false;
           for (const c of cars) if (Math.hypot(c.pos.x - b.x, c.pos.z - b.z) < 80 || Math.hypot(c.pos.x - b.x0, c.pos.z - b.z0) < 80) seen = true;
+          if (others) for (const c of others) if (Math.hypot(c.x - b.x, c.z - b.z) < 80 || Math.hypot(c.x - b.x0, c.z - b.z0) < 80) seen = true;      // (other players count as watching too)
           if (!seen) { b.x = b.x0; b.z = b.z0; b.state = 'wait'; b.ang = 0; const q = this.query(b.x, b.y + 3, b.z, this._rq, 3); if (q.idx >= 0) b.y = q.y; }
         }
       }

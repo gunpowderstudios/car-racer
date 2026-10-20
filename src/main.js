@@ -453,7 +453,7 @@ function stepPhysics(dt) {
       car.tow.events.length = 0;
     }
     if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
-    if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car]);                  // boulders waiting by the road roll out when a car comes near
+    if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car], net ? (i) => net.sendRoll(i) : null, net ? mpWatchers() : null);                  // boulders waiting by the road roll out when a car comes near
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -540,7 +540,7 @@ function derbyStart() {
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
-  replayRec.reset();                                                                     // a new race: a new replay
+  replayRec.reset(); replayRec.off = !!net;                                              // a new race: a new replay (and none at all in multiplayer)
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
@@ -1278,6 +1278,8 @@ function mpExplodeAt(x, y, z, dist = 0) {
 /** Push the local car out of any remote car it's overlapping, and kill the closing speed - then, if we hit
  *  them hard enough, tell them about it so their end applies a matching shove. Still not real physics (we
  *  only ever see their last reported position), but both sides now actually react. */
+/** Where the other players are (they count as watching a boulder, so it is not put back while they can see it). */
+function mpWatchers() { const out = []; for (const p of remotePlayers.values()) if (p.cur) out.push(p.cur); return out; }
 function mpCollideLocal() {
   const now = performance.now();
   const mine = multiplayerVehicleSpec(selectedVehicle().id);
@@ -1567,6 +1569,7 @@ const mpHandlers = {
       remotePlayers.delete(id);
     }
   },
+  onRoll: (fromId, i) => track && track.rollerGo(i),
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
     const speed = Math.min(30, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
