@@ -673,6 +673,9 @@ body.mode-drive #vignette { display: block; }
     gap: 4px; padding: 8px; background: rgba(42,29,74,.92); border-left: 4px solid var(--amber); opacity: 1; font-size: 16px; }
   #sound-ctl #controls .ctl { flex: none; justify-content: flex-start; text-align: left; white-space: nowrap; padding: 9px 12px; font-size: 16px; line-height: 1.1; }
   #sound-ctl #controls [data-act="edit"] { display: none; }   /* the track editor is desktop only */
+  /* the open cog menu sits over the driving buttons (it used to hide behind them and clash) */
+  #hud:has(#cog[aria-expanded="true"]) { z-index: 14; }
+  #sound-ctl #controls { background: rgba(27,18,51,.97); pointer-events: auto; }
 }
 
 /* touch screens: Reset view is in the cog menu, so the little round arrow button goes */
