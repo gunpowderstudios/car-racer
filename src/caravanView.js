@@ -232,6 +232,8 @@ export class CaravanView {
     const p = this._prev || this._cur, c = this._cur, l = (x, y) => x + (y - x) * a;
     this.root.position.set(l(p[0], c[0]), l(p[1], c[1]), l(p[2], c[2]));
     this._e.set(-l(p[4], c[4]), p[3] + wrap(c[3] - p[3]) * a, l(p[5], c[5]) + l(p[7], c[7]));      // (road lean + the body rocking on its springs)
+    // the body rocks about the axle: the low side's wheel would sink into the road, so the whole caravan rides up by about what that side drops (a hint of weight on the tyre is all that is left)
+    this.root.position.y += Math.abs(Math.sin(l(p[7], c[7]))) * (this.dims ? this.dims.width * 0.42 : 0.85);
     this._shade(c[8]);
     if (this.isClone && this.dents) {                                                 // someone else's caravan: a dent wherever a knock cost it health (the spot is only a good guess)
       const drop = this._h - c[8];

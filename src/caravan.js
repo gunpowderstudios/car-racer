@@ -22,13 +22,13 @@ export const CARAVAN = {
   wheelR: 0.294,          // m (the model's wheels)
   width: 2.03, length: 4.4,
   hitchH: 0.14,           // m: ball height above the axle centre line (a car's tow ball is only ~0.45 m off the road, so the caravan sits nearly level)
-  tyreMu: 1.02,           // sideways grip
-  tyreStiff: 25,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
+  tyreMu: 1.5,            // sideways grip (a caravan that slides out is no fun: it grips well)
+  tyreStiff: 38,          // 1/s: how hard the tyres resist sliding sideways (force = mass * this * sideways speed, up to the grip limit)
   rolling: 0.016,         // rolling resistance
   jointK: 380000,         // N/m the drawbar joint
   jointC: 11000,          // N.s/m its damping
   jointMax: 38000,        // N: the most it can pull (stops a glitch becoming an explosion)
-  yawDamp: 0.9,           // 1/s extra damping of the swing (air drag and tyre scrub)
+  yawDamp: 1.5,           // 1/s extra damping of the swing (air drag and tyre scrub)
 };
 
 /** Where the tow ball sits on each car, in the car's own space (x left, y up, z forward, metres from its centre of mass). */
@@ -146,9 +146,9 @@ export class Caravan {
     this.yaw += this.yawRate * dt;
     // top-heavy: the body rocks out the way the sideways push does, and rolls back and forth on its springs
     const aLat = ax * lx + az * lz;
-    const swayT = clamp(aLat / G * 0.1, -0.1, 0.1);
+    const swayT = clamp(aLat / G * 0.07, -0.07, 0.07);
     this.swayRate += (38 * (swayT - this.sway) - 4 * this.swayRate) * dt;
-    this.sway = clamp(this.sway + this.swayRate * dt, -0.14, 0.14);
+    this.sway = clamp(this.sway + this.swayRate * dt, -0.08, 0.08);
     this._walls();
     this.spin += this.wrecked ? 0 : (this.vel.x * fx + this.vel.z * fz) * dt / s.wheelR;
     if (this.wrecked && this.onGround) { this.scrapeT -= dt; const sp = Math.hypot(this.vel.x, this.vel.z); if (this.scrapeT <= 0 && sp > 3) { this.scrapeT = 0.06; if (this.events.length < 12) this.events.push({ type: 'van-scrape', speed: sp, x: this.pos.x - fx * 0.8, y: this.pos.y - s.wheelR * 0.6, z: this.pos.z - fz * 0.8 }); } }

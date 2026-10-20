@@ -55,7 +55,7 @@ footer { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; color: var(-
   <p>How Bangers and Smash! is put together, and the numbers we have tuned along the way. Written for anyone who wants to download the game from GitHub, poke at it and make it their own.</p>
 </header>
 <nav><div>
-  <a href="#start">Start here</a><a href="#clock">The clock</a><a href="#graphics">Graphics tiers</a><a href="#phones">Phones</a><a href="#vehicles">Vehicles</a><a href="#damage">Damage</a><a href="#caravan">Caravan</a><a href="#cameras">Cameras &amp; controls</a><a href="#links">Links &amp; switches</a><a href="#models">Making models</a><a href="#rules">House rules</a><a href="#map">Source map</a>
+  <a href="#start">Start here</a><a href="#clock">The clock</a><a href="#graphics">Graphics tiers</a><a href="#phones">Phones</a><a href="#vehicles">Vehicles</a><a href="#damage">Damage</a><a href="#caravan">Caravan</a><a href="#tracks">Tracks &amp; modes</a><a href="#movie">Replay &amp; movie</a><a href="#cameras">Cameras &amp; controls</a><a href="#links">Links &amp; switches</a><a href="#models">Making models</a><a href="#rules">House rules</a><a href="#map">Source map</a>
 </div></nav>
 <main>
 
@@ -69,7 +69,7 @@ python3 -m http.server 8080     # or: npm start
 npm test                        # node --test tests/*.test.mjs  (Node 20 or newer)</code></pre>
   <div class="note">The tests run in plain Node with no browser. The game logic (physics, damage, AI, multiplayer, track links) has no DOM in it, so it can be tested; the drawing code cannot, so changes to looks have to be checked by eye in a real browser.</div>
   <div class="note warn"><b>Licence.</b> The source is public so people can read it, learn from it and experiment. A formal licence file has not been added yet (see the README), so please check the repository before you publish a modified copy.</div>
-  <p class="small">Every number on this page comes from the source and is the value at version 17.256. Where a value lives in code, its file is named so you can change it.</p>
+  <p class="small">Every number on this page comes from the source and is the value at version 17.258. Where a value lives in code, its file is named so you can change it.</p>
 </section>
 
 <section id="clock">
@@ -206,10 +206,11 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <tr><td><code>hp</code></td><td class="n">100</td><td>battering it takes before it is wrecked (was 220, then 60)</td></tr>
     <tr><td><code>wallMul</code> / <code>carMul</code></td><td class="n">14 / 5</td><td>its thin skin takes more from the same knock than a car does</td></tr>
     <tr><td><code>cog</code></td><td class="n">0.5 m</td><td>weight sits ahead of the axle, so the tail does not wag the car</td></tr>
-    <tr><td><code>tyreMu</code> / <code>tyreStiff</code></td><td class="n">0.85 / 25</td><td>sideways grip</td></tr>
+    <tr><td><code>tyreMu</code> / <code>tyreStiff</code></td><td class="n">1.5 / 38</td><td>sideways grip (raised so the caravan stays behind the car instead of sliding out)</td></tr>
     <tr><td><code>jointK</code> / <code>jointC</code> / <code>jointMax</code></td><td class="n">380000 / 11000 / 38000</td><td>drawbar spring, damping and the most force it can pull</td></tr>
-    <tr><td><code>yawDamp</code></td><td class="n">0.9</td><td>extra damping of the swing</td></tr>
+    <tr><td><code>yawDamp</code></td><td class="n">1.5</td><td>extra damping of the swing</td></tr>
   </table></div>
+  <p>The body also rocks a little on its springs when cornering (<code>sway</code>, looks only, at most about 4.5&deg;). The picture lifts the caravan by about what the low side drops, so the wheels never sink into the road (<code>src/caravanView.js</code>, <code>update</code>).</p>
   <p>When the caravan is wrecked its wheels fly off and the car drags it along, scraping, with the drag capped at what the towing car can pull. Dents go on the body only.</p>
   <h3>Hills</h3>
   <p>Cars have a hill assist so they do not slide backwards on steep slopes: on a climb with the throttle down, the drive force is raised to at least <code>mass &times; g &times; slope &times; 1.4</code> (fading out above about 9 m/s), and driven tyres get extra grip in proportion to the slope (up to about double on a very steep climb). This holds a car up to about 33&deg;; steeper than about 38&deg; it still slides back.</p>
@@ -287,6 +288,30 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
   </ul>
 </section>
 
+<section id="tracks">
+  <h2>Tracks and game modes</h2>
+  <p>The home page lists the built-in tracks under three headings that open and close (<code>renderMenu</code> in <code>src/main.js</code>; the tracks themselves are in <code>RAW</code> in <code>src/templates.js</code>).</p>
+  <div class="wrap"><table>
+    <tr><th>Heading</th><th>Tracks</th></tr>
+    <tr><td>Wacky Racing</td><td>Speedway, Technical, Croydon Overpass, Random circuit</td></tr>
+    <tr><td>Stunt and Shunts</td><td>The Oval (Demolition Derby), The hills have highs, The Twister, Bluebell Woods, Thin and Crispy</td></tr>
+    <tr><td>Sunday Driving</td><td>Coming soon</td></tr>
+  </table></div>
+  <p><b>Thin and Crispy</b> is a 12 m wide road with no walls, up to about 32 m in the air, with two jumps, banked bends, barrels and one huge dip to a flooded valley floor (pools of water across the whole road) and back up. The heights are <code>TC_Y</code> in <code>templates.js</code>. Pools of water can now be put on any track, not only dirt stages.</p>
+  <p>Game mode names in the cog menu: <b>Wacky Racing</b> (every rival a different vehicle), <b>Send in the clones</b> (same vehicle, different colours) and <b>Demolition</b> (last one standing). Laps default to 1 everywhere.</p>
+</section>
+
+<section id="movie">
+  <h2>Replay and Make my movie</h2>
+  <p>The game quietly records where every car is about 20 times a second (<code>src/replay.js</code>); <i>Replay</i> plays that back from TV-style cameras (<code>src/replayMode.js</code>). Replay and the movie button are for computers: a phone is for quick racing, so the movie button is hidden when the pointer is coarse.</p>
+  <ul>
+    <li><b>One tap:</b> <i>Make my movie</i> picks the liveliest 18 seconds (wrecks and big hits score most, <code>src/bestBit.js</code>), cuts between the TV, Chase and Top cameras every few seconds, and puts it in the 1970s TV set (<code>tv/tv-frame.webp</code>) with the TV logo.</li>
+    <li><b>Fast:</b> frames are drawn as fast as the computer can manage and written with the browser's own video encoder as a proper 30 fps H.264 mp4 under about 14 MB, so WhatsApp takes it (<code>src/mp4Save.js</code>, using the vendored <code>mp4-muxer</code>). The picture is stamped with the replay's own clock, so it can never run fast or jolt.</li>
+    <li><b>Sound:</b> the game music is laid on afterwards and only if the music is switched on; engine and crash sounds are not recorded (that is what keeps it fast).</li>
+    <li>Needs a browser with WebCodecs (recent Chrome, Edge or Safari).</li>
+  </ul>
+</section>
+
 <section id="map">
   <h2>Source map</h2>
   <div class="wrap"><table>
@@ -296,6 +321,7 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <tr><td><code>src/vehicleChoice.js</code></td><td>Vehicle catalogue, gallery, lite models, multiplayer vehicle sync</td></tr>
     <tr><td><code>src/carVisual.js</code>, <code>dents.js</code>, <code>wheelDebris.js</code></td><td>Drawing a car, wheel pivots, cameras, dents, flying wheels</td></tr>
     <tr><td><code>src/damage.js</code>, <code>derby.js</code>, <code>ai.js</code></td><td>Zones and hit points, the race and demolition rules, rival drivers</td></tr>
+    <tr><td><code>src/replay.js</code>, <code>replayMode.js</code>, <code>bestBit.js</code>, <code>mp4Save.js</code></td><td>Recording and playing back a race, picking the best bit, writing the movie</td></tr>
     <tr><td><code>src/caravan.js</code>, <code>caravanView.js</code>, <code>caravanPhone.js</code></td><td>Towing physics, look, phone rule</td></tr>
     <tr><td><code>src/quality.js</code></td><td>Tiers, device detection, adaptive resolution, 30 fps hint</td></tr>
     <tr><td><code>src/bonnetCam.js</code>, <code>cameraChoice.js</code>, <code>cameraOrbit.js</code></td><td>Bonnet camera, camera cycle, drag-to-orbit</td></tr>
