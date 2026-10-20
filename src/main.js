@@ -526,10 +526,11 @@ function derbyStart() {
   // off the same AI cars simply race and recover instead of taking damage.
   derby.enabled = !net && opts.rivals > 0;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const jamboree = derby.enabled && opts.mode === 'jamboree' && !(menuBackdrop && device.touch); jamBuilt = jamboree;
-  derby.pool = jamboree ? jamboreePoolForRace() : null;                                 // Jamboree: every rival is a different vehicle
+  const mixedKinds = derby.enabled && (opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
+  const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
+  derby.pool = mixedKinds ? jamboreePoolForRace() : null;                               // Wacky Racing and Demolition: every rival is a different vehicle
   derby.towing = derby.enabled && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
-  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !jamboree ? 4 : 99);
+  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
   derby.repairsMax = derby.enabled && opts.mode !== 'demolition' && !arena && !window.__story?.active && opts.repairs > 0 ? opts.repairs : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
@@ -1028,7 +1029,7 @@ function startDriving(newDef) {
   sound.init(); pickStartCamera();
   if (pendingStart) return;
   if (newDef) loadTrack(newDef);
-  else if (!hasPlayed && derby.enabled && opts.mode === 'jamboree' && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
+  else if (!hasPlayed && derby.enabled && (opts.mode === 'jamboree' || opts.mode === 'demolition') && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
   const { done, total } = loadProgress();
   if (done < total && !net) { pendingStart = true; waitSince = performance.now(); return; }          // the cars are still arriving: pollWait() starts the race when they are in
   beginDriving();

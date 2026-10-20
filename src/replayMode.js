@@ -72,7 +72,7 @@ export function createReplayMode(d) {
     v.setWheels(fakeCar);
     if (v.loaded) {
       const dx = ent.x - d.camera.position.x, dz = ent.z - d.camera.position.z, d2 = dx * dx + dz * dz;
-      if (!ent.isPlayer) { v.root.visible = d2 < 300 * 300; const lod = d.derby.lastStanding ? d.tier.arenaLod : d.tier.lodDist; if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2); }
+      if (!ent.isPlayer) { v.root.visible = d2 < 300 * 300; const lod = (d.derby.lastStanding ? d.tier.arenaLod : d.tier.lodDist) * 2.5; if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2); }
       v.setLook(ent.wrecked ? (ent.isPlayer ? 0.3 : 0.1) : 1 - (ent.isPlayer ? 0.5 : 0.55) * (1 - ent.health), 0);
     }
     // a caravan behind it
