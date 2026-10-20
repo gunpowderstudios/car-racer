@@ -54,6 +54,8 @@ const device = probeDevice();
   const src = document.getElementById('rp-logo'), slot = document.getElementById('menu-tv-logo');
   if (src && slot) slot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="menu-tv-svg"').replace(/rpl-(amber|red)/g, 'rplm-$1');
   const hudSlot = document.getElementById('hud-logo');            // and above the speedometer while you race (a computer only: a phone keeps its screen clear)
+  const reSlot = document.getElementById('re-logo-slot');
+  if (src && reSlot) reSlot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="re-tv-svg"').replace(/rpl-(amber|red)/g, 'rple-$1');
   if (src && hudSlot) hudSlot.innerHTML = src.outerHTML.replace('id="rp-logo"', 'id="hud-tv-svg"').replace(/rpl-(amber|red)/g, 'rplh-$1');
 }
 const tierName = detectTier({ forced: forcedQuality, ...device });

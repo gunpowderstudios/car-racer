@@ -725,14 +725,15 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 @media (max-width: 560px) { #replay-bar .rp-top b { font-size: 22px; } #replay-bar button { padding: 0 10px; } #replay-bar #rp-time { min-width: 78px; font-size: 16px; } }
 
 #rp-logo { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 273px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
-:is(#rp-logo, #menu-tv-svg, #hud-tv-svg) text { font-family: var(--display), Impact, "Arial Narrow", sans-serif; font-weight: 900; letter-spacing: .02em; }
-:is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-big { font-size: 33px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-small { font-size: 15px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-tv { font-size: 38px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-live { font-size: 9px; letter-spacing: .1em; }
-:is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-burst { fill: #e8392c; stroke: #ffb31f; stroke-width: 2; stroke-linejoin: round; transform-origin: 50px 30px; animation: rplBurst 1.6s ease-in-out infinite; }
-:is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-dot { animation: rplBlink 1.1s steps(2, jump-none) infinite; }
+:is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) text { font-family: var(--display), Impact, "Arial Narrow", sans-serif; font-weight: 900; letter-spacing: .02em; }
+:is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-big { font-size: 33px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-small { font-size: 15px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-tv { font-size: 38px; } :is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-live { font-size: 9px; letter-spacing: .1em; }
+:is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-burst { fill: #e8392c; stroke: #ffb31f; stroke-width: 2; stroke-linejoin: round; transform-origin: 50px 30px; animation: rplBurst 1.6s ease-in-out infinite; }
+:is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-dot { animation: rplBlink 1.1s steps(2, jump-none) infinite; }
 @keyframes rplBurst { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.12) rotate(6deg); } }
 @keyframes rplBlink { 50% { opacity: .15; } }
-@media (prefers-reduced-motion: reduce) { :is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-burst, :is(#rp-logo, #menu-tv-svg, #hud-tv-svg) .rpl-dot { animation: none; } }
-@media (max-width: 560px) { #rp-logo { width: 195px; right: 6px; } }
+@media (prefers-reduced-motion: reduce) { :is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-burst, :is(#rp-logo, #menu-tv-svg, #hud-tv-svg, #re-tv-svg) .rpl-dot { animation: none; } }
+@media (max-width: 560px) { #rp-logo { width: 195px; right: 6px; } #re-tv-svg { width: 195px; right: 6px; } }
+#re-tv-svg { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 273px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
 
 /* the TV logo on the menu (a copy of the replay logo, filled in by main.js) */
 #menu-tv { position: absolute; top: calc(6px + env(safe-area-inset-top)); right: 10px; width: 280px; z-index: 6; text-align: center; pointer-events: none; }
@@ -818,3 +819,4 @@ body.rp-saving #replay-bar { visibility: hidden; }
   #hud-logo svg { display: block; width: 100%; height: auto; }
 }
 @media (max-height: 560px) { #rp-editing .re-vhs { width: 130px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
+#re-logo-slot { display: contents; }
