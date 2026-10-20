@@ -12,7 +12,8 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createReplayMode(d) {
   const $ = d.$;
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), rec: $('rp-rec'), recPct: $('rp-rec-pct'), recCancel: $('rp-rec-cancel'), note: $('rp-note'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  let wake = null, title0 = null;
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), rec: $('rp-rec'), recPct: $('rp-rec-pct'), recCancel: $('rp-rec-cancel'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -52,6 +53,7 @@ export function createReplayMode(d) {
     R.evT = t;
   }
 
+  if (el.ready) { el.readySave.onclick = () => R.ready && R.ready(); el.readyClose.onclick = () => { el.ready.hidden = true; R.ready = null; tabTitle(null); }; }
   function seek(t) {
     R.t = Math.max(R.player.t0, Math.min(R.player.t1, t));
     if (R.t < R.evT || R.t - R.evT > 1.5) rebuildTo(R.t);          // went back, or skipped ahead: rebuild rather than replay every knock
@@ -119,6 +121,7 @@ export function createReplayMode(d) {
     if (el.edit) el.edit.hidden = !quick;                     // Quick save: the dark "editing room" screen while the film is made
     if (el.rec) el.rec.hidden = !(R.saving && !R.quick);      // otherwise the player watches (and hears) the film being made, with a REC badge
     document.body.classList.toggle('rp-saving', !!R.saving);
+    if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
     d.sound.speakers?.(!quick);                               // (a quick film has no sound: nothing to hear)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make a movie';
     el.view.textContent = VIEWS[R.view];
@@ -151,6 +154,7 @@ export function createReplayMode(d) {
   async function makeFilm(kind) {
     if (R.saving || R.making) return;
     R.making = true;
+    if (kind === 'auto') { film.autoCut(); kind = 'live'; }      // "Make it for me": the best bit, cuts and music chosen, then made while you watch
     try {
       const clip = kind === 'live' ? await film.musicClip() : null;
       if (clip && clip.error) d.toast('Could not read that music file, making the film without it');
@@ -175,8 +179,9 @@ export function createReplayMode(d) {
     if (!type) { d.toast('This browser cannot save video'); return; }
     // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
     const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
-    if (tv) { out.width = small ? 960 : 1280; out.height = small ? 640 : 854; } else {   // (even sizes, 1280 at most: what the video encoders and social sites like)
-      const k = Math.min(1, 1280 / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
+    const cap = film.size() === 'small' ? 854 : 1280;                                        // longest side: Small is quicker to make and a smaller file
+    if (tv) { out.width = Math.min(cap, small ? 960 : 1280); out.height = Math.round(out.width * 2 / 3 / 2) * 2; } else {   // (even sizes, 1280 at most: what the video encoders and social sites like)
+      const k = Math.min(1, cap / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
     const fcss = 'filter' in octx ? film.filterCss() : '';          // (Safari cannot filter a canvas: the film is then made without the look)
@@ -200,15 +205,19 @@ export function createReplayMode(d) {
       if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
     };
     const finishWith = (blob, ext) => {
+      const wall = (performance.now() - (R.saveWall0 || performance.now())) / 1000;
+      if (R.quick) film.learn(filmLen, wall);
       R.saving = null; syncUi();
       const file = new File([blob], 'bangers-and-smash-replay.' + ext, { type: blob.type });
-      if (navigator.canShare && navigator.canShare({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
-        navigator.share({ files: [file], title: 'Bangers and Smash! replay' }).catch(() => {});
-      } else {
+      const touch = matchMedia('(pointer: coarse)').matches, canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }) && touch);
+      const give = () => {
+        if (canShare) { navigator.share({ files: [file], title: 'Bangers and Smash! replay' }).catch(() => {}); return; }
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      }
-      d.toast('Video saved');
+      };
+      R.ready = give;
+      if (!touch) give();                              // (a phone needs a tap to share: the card below has the button)
+      showReady(`${(blob.size / 1048576).toFixed(1)} MB, ${Math.round(filmLen)} seconds. ${canShare ? 'Tap Save film to share it.' : 'It has gone to your downloads: Save film saves it again.'}`);
     };
     // First choice: the browser's video encoder writes a plain steady-30-fps H.264 + AAC .mp4 sized to fit WhatsApp (about 14 MB at most).
     // Fallback: MediaRecorder (its mp4 is fragmented, which WhatsApp can choke on).
@@ -234,7 +243,7 @@ export function createReplayMode(d) {
             finishWith(blob, 'mp4');
           },
         };
-        me.rec = rec; sv.start(); startMusic(); R.playing = true; syncUi();
+        me.rec = rec; sv.start(); R.saveWall0 = performance.now(); holdAwake(true); startMusic(); R.playing = true; syncUi();
         return;
       }
       const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
@@ -248,8 +257,24 @@ export function createReplayMode(d) {
         if (!R.saving || R.saving.cancel || !chunks.length) { R.saving = null; syncUi(); return; }
         finishWith(new Blob(chunks, { type: type.split(';')[0] }), type.startsWith('video/mp4') ? 'mp4' : 'webm');
       };
-      me.rec = rec; rec.start(1000); startMusic(); R.playing = true; syncUi();
+      me.rec = rec; rec.start(1000); R.saveWall0 = performance.now(); holdAwake(true); startMusic(); R.playing = true; syncUi();
     });
+  }
+  // ---- a film that is being made: keep the screen awake, show how far on in the tab title, and a card when it is done (so you can walk away)
+  function holdAwake(on) {
+    try {
+      if (on) { navigator.wakeLock && navigator.wakeLock.request('screen').then((w) => { if (R.saving) wake = w; else w.release(); }).catch(() => {}); }
+      else if (wake) { wake.release().catch(() => {}); wake = null; }
+    } catch { /* not supported */ }
+  }
+  function tabTitle(pct) {
+    if (title0 == null) { if (pct == null) return; title0 = document.title; }
+    document.title = pct == null ? title0 : (pct === 'ready' ? 'Film ready - ' : `Film ${pct}% - `) + title0.replace(/^Film[^-]*- /, '');
+    if (pct == null) title0 = null;
+  }
+  function showReady(info) {
+    if (el.ready) { el.readyInfo.textContent = info; el.ready.hidden = false; }
+    tabTitle('ready'); d.toast('Your film is ready');
   }
   function stopSave(finished) {
     const s = R.saving; if (!s) return;
@@ -316,6 +341,7 @@ export function createReplayMode(d) {
   function exit() {
     if (!R.active) return;
     if (R.saving) stopSave(false);
+    if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null); film.close();
     R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
@@ -364,6 +390,12 @@ export function createReplayMode(d) {
     if (!R.dragging) el.seek.value = String(Math.round((R.t - p.t0) / Math.max(0.001, p.duration) * 1000));
     el.time.textContent = `${fmt(R.t - p.t0)} / ${fmt(p.duration)}`;
     R.lastF = f;
+    if (R.saving && R.saveWall0) {
+      const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100)));
+      if (pc !== R.lastPc) { R.lastPc = pc; tabTitle(pc); if (el.recPct) el.recPct.textContent = pc + '%'; }
+      const wall = (performance.now() - R.saveWall0) / 1000;
+      if (el.eta) el.eta.textContent = pc >= 4 ? `About ${Math.max(1, Math.round(wall * (100 - pc) / pc))} seconds to go` : 'Working out how long it will take…';
+    }
     if (R.saving && R.quick && el.editFill) { const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100))); el.editFill.style.width = pc + '%'; el.editPct.textContent = pc + '%'; }
     return f;
   }

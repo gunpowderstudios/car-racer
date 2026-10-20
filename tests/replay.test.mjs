@@ -201,3 +201,13 @@ test('film editor: wired into the replay, Quick save is silent and fast', async 
   assert.match(main, /replay\(\)\.turbo\(\)/);
   for (const id of ['film', 'fi-make', 'fi-quick', 'fi-preview', 'rp-rec']) assert.ok(html.includes('id="' + id + '"'), id);
 });
+
+test('film editor: Make it for me, Small size, estimates, ready card, screen kept awake', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  const fe = readFileSync(new URL('../src/filmEditor.js', import.meta.url), 'utf8');
+  for (const id of ['fi-auto', 'fi-size', 'fi-est', 're-eta', 'rp-ready', 'rr-save']) assert.ok(html.includes('id="' + id + '"'), id);
+  assert.match(src, /kind === 'auto'/); assert.match(src, /wakeLock/); assert.match(src, /showReady\(/); assert.match(src, /film\.learn\(/);
+  assert.match(fe, /autoCut\(/); assert.match(fe, /rateOf/);
+});

@@ -18,7 +18,7 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
 test('TV video is sized and compressed for social media', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(r, /videoBitrate\(filmLen, tv \? 3\.5e6 : 5e6\)/);
-  assert.match(r, /small \? 960 : 1280; out\.height = small \? 640 : 854/);
+  assert.match(r, /Math\.min\(cap, small \? 960 : 1280\); out\.height = Math\.round\(out\.width \* 2 \/ 3 \/ 2\) \* 2/);
 });
 import { videoBitrate, WHATSAPP_BYTES } from '../src/mp4Save.js';
 test('video bitrate keeps a replay under the WhatsApp size', () => {
@@ -54,7 +54,7 @@ test('video is stamped with the replay clock, with the replay held when the enco
   assert.match(m, /busy\(\)/); assert.match(m, /setClock\(/);
   assert.match(r, /saver\.addFrame\(out, R\.t - R\.saveStart\)/);
   assert.match(r, /R\.held = !!\(R\.saving && R\.saver && R\.saver\.busy\(\)\)/);
-  assert.match(r, /1280 \/ Math\.max\(cv\.width, cv\.height\)/);
+  assert.match(r, /cap \/ Math\.max\(cv\.width, cv\.height\)/);
 });
 test('the site is ready for bangersandsmash.co.uk', () => {
   const h = f('index.html');

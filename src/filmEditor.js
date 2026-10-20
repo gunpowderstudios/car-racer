@@ -10,18 +10,22 @@ export const FILTERS = {
   seventies: { css: 'sepia(0.35) saturate(1.35) contrast(1.08)', label: '1970s TV', vignette: true },
 };
 
+const RATE_KEY = 'cr.filmrate';
+const store = { get() { try { return JSON.parse(localStorage.getItem(RATE_KEY)) || {}; } catch { return {}; } }, set(v) { try { localStorage.setItem(RATE_KEY, JSON.stringify(v)); } catch { /* private window */ } } };
+const secs = (n) => { n = Math.max(1, Math.round(n)); return n < 90 ? `${n} s` : `${Math.round(n / 6) / 10} min`; };
+
 export function createFilmEditor({ $, getPlayer, getT, seek, sound, frameOn, setFrame, onMake, onPreview, onClose }) {
   const el = {
     root: $('film'), start: $('fi-start'), end: $('fi-end'), trim: $('fi-trim'), cam: $('fi-cam'), cutView: $('fi-cut-view'), cutAdd: $('fi-cut-add'), cuts: $('fi-cuts'),
     music: $('fi-music'), file: $('fi-file'), vol: $('fi-vol'), title: $('fi-title'), credit: $('fi-credit'), filter: $('fi-filter'), tv: $('fi-tv'),
-    make: $('fi-make'), quick: $('fi-quick'), preview: $('fi-preview'), close: $('fi-close'),
+    make: $('fi-make'), auto: $('fi-auto'), size: $('fi-size'), est: $('fi-est'), quick: $('fi-quick'), preview: $('fi-preview'), close: $('fi-close'),
   };
-  const S = { start: 0, end: 0, baseView: -1, cuts: [], music: 'none', file: null, vol: 0.7, title: '', credit: '', filter: 'none' };
+  const S = { start: 0, end: 0, baseView: -1, cuts: [], music: 'none', file: null, vol: 0.7, title: '', credit: '', filter: 'none', size: 'standard' };
   let open = false;
 
   const dur = () => { const p = getPlayer(); return Math.max(0.001, p.duration); };
   const toT = (v) => getPlayer().t0 + (v / 1000) * dur();
-  const drawTrim = () => { el.trim.textContent = `From ${fmt(S.start - getPlayer().t0)} to ${fmt(S.end - getPlayer().t0)} - a film of ${fmt(S.end - S.start)}`; };
+  const drawTrim = () => { drawEst(); el.trim.textContent = `From ${fmt(S.start - getPlayer().t0)} to ${fmt(S.end - getPlayer().t0)} - a film of ${fmt(S.end - S.start)}`; };
   const drawCuts = () => {
     el.cuts.textContent = '';
     S.cuts.sort((a, b) => a.t - b.t);
@@ -33,7 +37,14 @@ export function createFilmEditor({ $, getPlayer, getT, seek, sound, frameOn, set
       row.append(x); el.cuts.append(row);
     }
   };
+  /** How fast the film is made on this device: film seconds made per second of waiting, learnt from earlier quick saves (a guess until then). */
+  const rateOf = (size) => store.get()[size] || (size === 'small' ? 2.2 : 1.4);
+  const drawEst = () => {
+    const len = Math.max(1, S.end - S.start);
+    el.est.textContent = `Watching it being made takes about ${secs(len + 2)}. Quick save (no sound) should take about ${secs(len / rateOf(S.size) + 2)}${store.get()[S.size] ? '' : ' (a guess until you have tried it once)'}.`;
+  };
   const sync = () => {
+    el.size.value = S.size; drawEst();
     el.title.value = S.title; el.credit.value = S.credit; el.filter.value = S.filter; el.vol.value = String(Math.round(S.vol * 100));
     el.music.value = S.music; el.cam.value = String(S.baseView); el.tv.checked = frameOn();
     const p = getPlayer(); el.start.value = String(Math.round((S.start - p.t0) / dur() * 1000)); el.end.value = String(Math.round((S.end - p.t0) / dur() * 1000));
@@ -50,6 +61,8 @@ export function createFilmEditor({ $, getPlayer, getT, seek, sound, frameOn, set
   el.title.oninput = () => { S.title = el.title.value.slice(0, 40); };
   el.credit.oninput = () => { S.credit = el.credit.value.slice(0, 40); };
   el.filter.onchange = () => { S.filter = FILTERS[el.filter.value] ? el.filter.value : 'none'; };
+  el.size.onchange = () => { S.size = el.size.value === 'small' ? 'small' : 'standard'; drawEst(); };
+  el.auto.onclick = () => onMake('auto');
   el.tv.onchange = () => setFrame(el.tv.checked);
   el.preview.onclick = () => onPreview(S.start, S.end);
   el.make.onclick = () => onMake('live');
@@ -69,6 +82,28 @@ export function createFilmEditor({ $, getPlayer, getT, seek, sound, frameOn, set
       let v = S.baseView;
       for (const c of S.cuts) if (c.t <= t) v = c.view;
       return v;
+    },
+    size() { return S.size; },
+    /** Remember how fast a quick save went (film seconds per second spent), so the next estimate is about right. */
+    learn(filmSeconds, wallSeconds) {
+      if (!(filmSeconds > 2 && wallSeconds > 0.5)) return;
+      const all = store.get(), r = filmSeconds / wallSeconds; all[S.size] = Math.round((all[S.size] ? all[S.size] * 0.5 + r * 0.5 : r) * 100) / 100; store.set(all);
+    },
+    /** "Make it for me": find the liveliest stretch of the replay (wrecks and big hits count most), cut between the cameras, add the game theme and a title. */
+    autoCut(len = 18) {
+      const p = getPlayer(), W = { wreck: 6, hit: 3, prop: 1.2, dent: 0.6 };
+      const t0 = p.t0, t1 = p.t1, L = Math.min(len, t1 - t0);
+      let best = t0, top = -1;
+      for (let a = t0; a + L <= t1 + 0.001; a += 0.5) {
+        let sc = 0; for (const e of p.between(a - 0.001, a + L)) sc += W[e.type] || 0;
+        sc -= Math.abs(a - (t1 - L)) * 0.002;            // (a tiny nudge towards the end, where the race is decided, when it is a tie)
+        if (sc > top) { top = sc; best = a; }
+      }
+      S.start = best; S.end = Math.min(t1, best + L); S.cuts = []; S.baseView = 0;
+      const order = [1, 2, 0, 1];
+      for (let k = 1, t = S.start + 4.5; t < S.end - 2; k++, t += 4.5) S.cuts.push({ t, view: order[(k - 1) % order.length] });
+      S.music = 'theme'; S.vol = 0.7; S.filter = 'none'; if (!S.title) S.title = 'Highlights';
+      sync();
     },
     trim() { return { start: S.start, end: S.end }; },
     /** The picture filter as CSS (for canvas ctx.filter), '' for none. */

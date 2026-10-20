@@ -221,6 +221,7 @@ html.invite-loading #invite-loading {
 <section id="film" hidden aria-label="Film editor">
   <h2>Film editor</h2>
   <p class="fi-sub">Cut your replay into a movie. Everything is optional.</p>
+  <button id="fi-auto" type="button" class="btn fi-auto">Make it for me <small>Picks the best bits, adds cuts and music</small></button>
   <div class="fi-sec"><h3>Trim</h3>
     <label>Start <input id="fi-start" type="range" min="0" max="1000" value="0"></label>
     <label>End <input id="fi-end" type="range" min="0" max="1000" value="1000"></label>
@@ -239,7 +240,9 @@ html.invite-loading #invite-loading {
     <label>End credit <input id="fi-credit" type="text" maxlength="40" placeholder="e.g. Directed by Tim"></label></div>
   <div class="fi-sec"><h3>Look</h3>
     <label>Filter <select id="fi-filter"><option value="none">Normal</option><option value="sepia">Sepia</option><option value="bw">Black and white</option><option value="seventies">1970s TV</option></select></label>
-    <label class="fi-check"><input id="fi-tv" type="checkbox"> Put it inside a 1970s TV set</label></div>
+    <label class="fi-check"><input id="fi-tv" type="checkbox"> Put it inside a 1970s TV set</label>
+    <label>Size <select id="fi-size"><option value="standard">Standard (looks best)</option><option value="small">Small (quicker to make, smaller file)</option></select></label></div>
+  <p id="fi-est" class="fi-est"></p>
   <div class="fi-btns">
     <button id="fi-make" type="button" class="btn">Make my film</button>
     <button id="fi-quick" type="button" class="btn ghost" title="Much quicker, but with no sound and no music">Quick save (no sound)</button>
@@ -248,12 +251,22 @@ html.invite-loading #invite-loading {
   </div>
 </section>
 <div id="rp-rec" hidden role="status"><b>&#9679; REC</b> <span id="rp-rec-pct">0%</span> <button id="rp-rec-cancel" type="button">Cancel</button></div>
+<div id="rp-ready" hidden role="status" aria-live="polite">
+  <div class="re-card">
+    <h2>Your film is ready!</h2>
+    <p id="rr-info"></p>
+    <button id="rr-save" type="button" class="btn">Save film</button>
+    <button id="rr-close" type="button" class="btn ghost">Done</button>
+  </div>
+</div>
 <div id="rp-editing" hidden role="status" aria-live="polite">
   <div class="re-card">
     <h2>Now in the editing room&hellip;</h2>
     <p>Your movie is being cut. Please keep this page open.</p>
     <div class="re-bar"><i id="re-fill"></i></div>
     <p id="re-pct" class="re-pct">0%</p>
+    <p id="re-eta" class="re-eta"></p>
+    <p class="re-hint">Keep this tab open and in view, or the film will pause.</p>
     <button id="re-cancel" type="button" class="btn ghost">Cancel</button>
   </div>
 </div>
@@ -379,7 +392,7 @@ html.invite-loading #invite-loading {
     </aside>
 
     <p class="fine">Controls: W/S throttle and brake, A/D steer, Space boost, Shift drift, B back on the road, Backspace/Delete restart, C camera, R (or 0) reset camera view, V rear-view mirror, H horn. You can also double-click the game view to centre the camera. Gamepad: left stick or D-pad steers, RT gas, LT brake, A boost, B drift, Y back on road, LB camera, right-stick click reset view, left-stick click horn, Start menu, Select restart. Touch controls work too.</p>
-    <p class="fine" style="margin-top:18px">A FREE-to-play classic car racing game, made by old-school gamers... just for fun!<br><a href="https://www.gunpowderstudios.co.uk/apps/" target="_blank" rel="noopener" style="color:#ffb31f">See our other games at gunpowderstudios.co.uk</a><br><a href="workshop.html" style="color:#ffb31f">Workshop Notes</a> <span style="opacity:.7">- how it is built and tuned, for anyone who wants to adapt it</span></p>
+    <p class="fine" style="margin-top:18px">A FREE-to-play classic car racing game, made by old-school gamers... just for fun!<br>All vehicles in this game are owned, or have been owned, by the developers and their friends, and are mainly old British or European classics.<br><a href="https://www.gunpowderstudios.co.uk/apps/" target="_blank" rel="noopener" style="color:#ffb31f">See our other games at gunpowderstudios.co.uk</a><br><a href="workshop.html" style="color:#ffb31f">Workshop Notes</a> <span style="opacity:.7">- how it is built and tuned, for anyone who wants to adapt it</span></p>
   </div>
 </section>
 

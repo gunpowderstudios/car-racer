@@ -338,7 +338,7 @@ const RAW = {
     autoBank: true, bankMax: 14, lowCam: true, walls: false, sky: true,
   },
   overpass: {
-    name: 'Overpass', width: 22,
+    name: 'Croydon Overpass', width: 22,
     handles: figureEight(),
     autoBank: false,
   },
