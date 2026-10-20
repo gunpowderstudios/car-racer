@@ -271,7 +271,7 @@ const RAW = {
     autoBank: true,
   },
   hills: {
-    name: 'Hills and a jump', width: 22,
+    name: 'The hills have highs', width: 22,
     handles: [
       { x: 0, y: 0.65, z: -170 },
       { x: 150, y: 0.65, z: -190 },
