@@ -15,7 +15,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), saveFull: $('rp-save-full'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -133,8 +133,10 @@ export function createReplayMode(d) {
     if (el.edit) el.edit.hidden = !quick;                     // the dark "editing room" screen while the film is made
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
-    d.sound.speakers?.(!quick);                               // (a quick film is made without playing any sound out loud)
+    d.sound.speakers?.(!quick || !!R.realtime);                               // (a quick film is made without playing any sound out loud)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
+    if (el.saveFull) el.saveFull.hidden = !desktop || !!R.saving;
+    if ($('re-sub')) $('re-sub').textContent = R.realtime ? 'Recording the whole race with its sound, as it plays. This takes as long as the race: please keep this page open.' : 'Your movie is being cut. Please keep this page open.';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
@@ -158,7 +160,7 @@ export function createReplayMode(d) {
   const TV = { w: 1536, h: 1024, sx: 172, sy: 122, sw: 908, sh: 674 };   // the screen opening in the 1536x1024 picture (a little oversize, so the frame covers the edge)
   let tvImg = null;
   const musicClip = () => (d.sound.musicOn && d.sound.buf && d.sound.buf.music ? { buffer: d.sound.buf.music, vol: 0.7 } : null);      // music only if it is switched on for the race
-  async function makeFilm() {
+  async function makeFilm(full = false) {
     if (!desktop || R.saving || R.making) return;
     R.making = true;
     try {
@@ -167,11 +169,13 @@ export function createReplayMode(d) {
         await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
       }
       if (!tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
-      startSave(tvImg, pickBestBit(R.player), musicClip());
+      if (full && !(d.sound.ctx && d.sound.ctx.createScriptProcessor)) { d.toast('This browser cannot record the game sound: use Make my movie'); return; }
+      startSave(tvImg, pickBestBit(R.player, 1e9), full ? null : musicClip(), full);
     } finally { R.making = false; }
   }
-  function startSave(tv, hl, clip) {
+  function startSave(tv, hl, clip, realtime = false) {
     if (R.saving) return;
+    R.realtime = realtime;
     R.saveStart = hl.start; R.saveEnd = hl.end; R.cuts = hl.cuts; R.quick = true;
     const filmLen = Math.max(1, R.saveEnd - R.saveStart), cv = d.canvas;
     // each video frame is made on a second canvas: the 3D picture is cropped into the TV screen, the TV set goes over it and the TV logo is stamped on
@@ -202,7 +206,7 @@ export function createReplayMode(d) {
     const pend = { state: 'recording', stop() { this.state = 'inactive'; } };
     R.saving = { rec: pend, cancel: false }; syncUi();
     seek(R.saveStart); R.speed = 2;
-    const make = () => createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: false, music: clip, maxBitrate: out.width > 1280 ? 6e6 : 3.5e6 }).catch(() => null);
+    const make = () => createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: realtime, music: clip, maxBitrate: out.width > 1280 ? 6e6 : 3.5e6 }).catch(() => null);
     make().then((sv) => sv || (out.width = 1280, out.height = 854, make())).then((sv) => {      // 1920 wide if this computer's encoder can, else 1280
       const me = R.saving;
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
@@ -253,9 +257,10 @@ export function createReplayMode(d) {
   }
 
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
-  el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };      // one tap: the fast film, in the TV set
+  el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(false); };
+  if (el.saveFull) el.saveFull.onclick = () => { if (!R.saving) makeFilm(true); };      // one tap: the fast film, in the TV set
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
-  if (!desktop) el.save.hidden = true;
+  if (!desktop) { el.save.hidden = true; if (el.saveFull) el.saveFull.hidden = true; }
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();
@@ -320,6 +325,7 @@ export function createReplayMode(d) {
       // evenly spaced however uneven the screen's own frame rate is (that unevenness is what made saved videos look jolty).
       const now = performance.now();
       if (R.nextT == null || R.nextT < now - 150) R.nextT = now;           // (fell behind: carry on from now)
+      if (R.realtime && !R.held && now < R.nextT - 4) { R.skip = true; return R.lastF || null; }      // the whole-race film runs at real speed so the game sound lines up
       if (R.held) { R.skip = true; R.saver.setClock(R.t - R.saveStart + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
       R.nextT += 1000 / 30; dt = 1 / 30;
       R.saver.setClock(R.t - R.saveStart + (R.playing ? dt : 0) + 0.1, false);
@@ -359,6 +365,6 @@ export function createReplayMode(d) {
 
   /** Called by main.js right after the picture is drawn, while a video is being saved. */
   function afterRender() { if (R.saving && R.stamp) R.stamp(); }
-  const turbo = () => !!(R.saving && R.saver);
+  const turbo = () => !!(R.saving && R.saver && !R.realtime);
   return { enter, exit, frame, afterRender, turbo, togglePlay, get active() { return R.active; }, state: R };
 }

@@ -195,10 +195,21 @@ test('Make my movie: one tap, TV set always, music only if it is on, fast, deskt
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!existsSync(new URL('../src/filmEditor.js', import.meta.url)), 'the film editor is gone');
   assert.ok(!html.includes('id="film"') && !html.includes('rp-film-edit'));
-  assert.match(src, /el\.save\.onclick = \(\) => \{ if \(R\.saving\) stopSave\(false\); else makeFilm\(\); \}/);
+  assert.match(src, /el\.save\.onclick = \(\) => \{ if \(R\.saving\) stopSave\(false\); else makeFilm\(false\); \}/);
   assert.match(src, /d\.sound\.musicOn && d\.sound\.buf && d\.sound\.buf\.music/);
-  assert.match(src, /startSave\(tvImg, pickBestBit/); assert.match(src, /audio: false, music: clip/);
-  assert.match(src, /if \(!desktop\) el\.save\.hidden = true/);
+  assert.match(src, /startSave\(tvImg, pickBestBit/); assert.match(src, /audio: realtime, music: clip/);
+  assert.match(src, /if \(!desktop\) \{ el\.save\.hidden = true;/);
   assert.match(mp4, /lay the sound track/);
   assert.doesNotMatch(src, /Highlights|highlights|MediaRecorder/);
+});
+
+test('Whole race + sound: a second desktop button, real-time, records the game sound and keeps the speakers on', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('id="rp-save-full"'));
+  assert.match(src, /makeFilm\(true\)/);
+  assert.match(src, /audio: realtime, music: clip/);
+  assert.match(src, /pickBestBit\(R\.player, 1e9\)/);
+  assert.match(src, /const turbo = \(\) => !!\(R\.saving && R\.saver && !R\.realtime\)/);
 });
