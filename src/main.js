@@ -679,6 +679,12 @@ function syncRivalBar(f, v) {
 /** Place each rival's visual at its (interpolated) physics pose. At most two new ones are built per frame. */
 function syncViews(a) {
   let made = 0, adopted = 0;
+  let nearSet = null;                                                       // The Oval: the few cars closest to the camera always get the full model
+  if (derby.lastStanding && tier.arenaNear && !device.touch) {
+    const ds = [];
+    for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; const p = f.cur; ds.push([(p.x - camera.position.x) ** 2 + (p.z - camera.position.z) ** 2, f.id]); }
+    ds.sort((x, y) => x[0] - y[0]); nearSet = new Set(ds.slice(0, tier.arenaNear).map((e) => e[1]));
+  }
   for (const f of derby.fighters) {
     if (f.isPlayer) continue;
     let v = views.get(f.id);
@@ -697,7 +703,7 @@ function syncViews(a) {
     if (v._wheelsOff && !f.wrecked) v.restoreWheels();                         // safety net: only a wreck goes without wheels
     if (d2 < 60 * 60) v.setWheels(f.car);                                      // wheels steer and spin on the cars near enough to see them
     const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
-    if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
+    if (lod) v.setFar(!(nearSet && nearSet.has(f.id)) && d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
     v.setLook(f.wrecked ? 0.1 : 1 - 0.55 * (1 - f.health.worst), f.flash);
     syncRivalBar(f, v);
   }

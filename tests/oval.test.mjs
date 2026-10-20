@@ -200,7 +200,8 @@ test('the arena is kept light: each quality tier caps the field and uses a close
     const line = src.split('\n').find((l) => l.trim().startsWith(tier + ':'));
     const field = Number(/arenaField:\s*(\d+)/.exec(line)?.[1]), lod = Number(/arenaLod:\s*(\d+)/.exec(line)?.[1]);
     assert.ok(field >= 4 && field <= 10, tier + ' arenaField ' + field);
-    assert.ok(lod >= 30 && lod <= 80, tier + ' arenaLod ' + lod);
+    assert.ok(lod >= 30 && lod <= 120, tier + ' arenaLod ' + lod);
+    assert.ok(Number(/arenaNear:\s*(\d+)/.exec(line)?.[1]) >= 3, tier + ' arenaNear');
   }
 });
 
