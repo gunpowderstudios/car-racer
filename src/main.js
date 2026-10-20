@@ -535,6 +535,7 @@ function derbyStart() {
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
+  if (replayMode) replayMode.dropRushes();                                               // a new race: the old rushes are thrown away
   replayRec.reset();                                                                     // a new race: a new replay
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
@@ -810,6 +811,7 @@ function recHit(x, y, z, speed, kind) {
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
   $, canvas, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
+  rushesReady: (on) => { const b = $('go-rushes'); if (b) b.hidden = !on; },
   getTrack: () => track, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
@@ -920,7 +922,7 @@ function frame(now) {
       visual.setLook(derby.player.wrecked ? 0.3 : 1 - 0.5 * (1 - derby.player.health.worst), derby.player.flash);
       mapDots.length = 0;
       for (const f of derby.fighters) if (!f.isPlayer && !f.gone) mapDots.push({ x: f.car.pos.x, z: f.car.pos.z, wreck: f.wrecked });
-      if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); }
+      if (overAt && performance.now() > overAt) { overAt = 0; hud.showGameOver(overInfo); if (!net) setTimeout(() => { if (mode === 'drive' && derby.over && !$('gameover')?.hidden) replay().startRushes(); }, 700); }
     }
     hud.drawMap(car, derby.enabled ? mapDots : null);
     sound.update(car, paused ? 0 : throttleNow, !paused && !derby.over && !car.engineOff);
@@ -1141,9 +1143,10 @@ function bindMenu() {
   const rp = $('opt-repairs'); rp.value = String(opts.repairs); rp.onchange = () => { opts.repairs = +rp.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
-  $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };
-  $('go-menu').onclick = () => showMenu();
-  $('go-replay').onclick = () => startReplay();
+  $('go-again').onclick = () => { hud.hideGameOver(); replayMode && replayMode.dropRushes(); restartRace(); };
+  $('go-menu').onclick = () => { replayMode && replayMode.dropRushes(); showMenu(); };
+  $('go-replay').onclick = () => { replayMode && replayMode.cancelRushJob(); startReplay(); };
+  $('go-rushes').onclick = () => replay().giveRushes();
   sound.hornOn = opts.horn !== false;
   { const det = $('pad-test'), idl = $('pad-id'), last = $('pad-last'), NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right'];
     const mapEl = $('pad-map'), defaults = Object.fromEntries(PAD_ACTIONS.map((a) => [a[0], a[2]]));
