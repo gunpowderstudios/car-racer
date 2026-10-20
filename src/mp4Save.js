@@ -38,19 +38,29 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
 
   // The video clock is the REPLAY's own clock (not the wall clock): a frame is stamped with how far through the replay it is, so the picture can
   // never run fast or jump, even on a slow machine. If the encoder falls behind, the replay is simply held (see busy()) and the sound pauses with it.
-  let last = null, idx = -1, stopCapture = null, samples = 0, closed = false, hold = false, clock = 0;
+  let last = null, idx = -1, stopCapture = null, pend = null, gap = false, flushSound = () => {}, samples = 0, closed = false, hold = false, clock = 0;
   return {
     bitrate, width, height,
     busy() { return venc.encodeQueueSize > 4 || (aenc && aenc.encodeQueueSize > 30); },
     setClock(seconds, h) { clock = seconds; hold = !!h; },                 // how far through the replay it is: sound is only kept up to this point, so it can never run longer than the picture
     start() {
       if (!capture) return;
-      stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix (skipped while the replay is held)
-        if (closed || failed || hold || samples / rate > clock + 0.15) return;
-        const data = new Float32Array(l.length * 2); data.set(l, 0); data.set(r, l.length);
-        const ts = Math.round((samples / rate) * 1e6); samples += l.length;
-        const ad = new G.AudioData({ format: 'f32-planar', sampleRate: rate, numberOfFrames: l.length, numberOfChannels: 2, timestamp: ts, data });
-        aenc.encode(ad); ad.close();
+      // Sound blocks that are not wanted (the replay is held, or the sound is ahead of the picture) are dropped. A dropped block leaves a hard
+      // join in the waveform, which is heard as a pop, so each run of kept blocks is eased in at its start and out at its end (about 5 ms).
+      const RAMP = Math.round(rate * 0.005);
+      const put = (b, fadeOut) => {
+        const n = b.l.length, data = new Float32Array(n * 2); data.set(b.l, 0); data.set(b.r, n);
+        if (b.fadeIn) for (let i = 0; i < RAMP && i < n; i++) { const g = i / RAMP; data[i] *= g; data[n + i] *= g; }
+        if (fadeOut) for (let i = 0; i < RAMP && i < n; i++) { const g = i / RAMP, j = n - 1 - i; data[j] *= g; data[n + j] *= g; }
+        const ad = new G.AudioData({ format: 'f32-planar', sampleRate: rate, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((b.at / rate) * 1e6), data });
+        try { aenc.encode(ad); } catch { /* encoder closed */ } ad.close();
+      };
+      flushSound = (fadeOut) => { if (pend) { put(pend, fadeOut); pend = null; } };
+      stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix
+        if (closed || failed) return;
+        if (hold || samples / rate > clock + 0.3) { flushSound(true); gap = true; return; }       // (not wanted: the block before it is faded out)
+        const b = { l, r, at: samples, fadeIn: gap }; samples += l.length; gap = false;
+        flushSound(false); pend = b;                                    // (a block waits one turn, so that it can be faded out if the next one is dropped)
       });
     },
     /** Call once per rendered picture with how many seconds into the replay it is: written at a steady 30 fps (a slow frame is held, a spare one dropped). */
@@ -64,9 +74,12 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
         venc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close(); idx = i;
       }
     },
+    queue() { return venc.encodeQueueSize; },
     cancel() { closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ } try { venc.close(); aenc && aenc.close(); } catch { /* closed */ } },
     async finish() {
-      closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ }
+      try { stopCapture && stopCapture(); } catch { /* gone */ }
+      if (!failed) flushSound(true);
+      closed = true;
       if (failed) { try { venc.close(); aenc && aenc.close(); } catch { /* closed */ } return null; }
       if (music && aenc) {                                                      // lay the sound track: the music for the whole film, quieter at the end
         const buf = music.buffer, nch = Math.min(2, buf.numberOfChannels), total = Math.round(seconds * rate), block = 4096;
