@@ -790,7 +790,10 @@ body.has-pad #controls .key-legend { display: none; }
 #rp-editing .re-car { display: block; margin: 0 auto 6px; width: 150px; height: auto; object-fit: contain; transform-origin: 50% 100%; animation: re-bounce .6s ease-in-out infinite alternate; filter: drop-shadow(0 8px 6px rgba(0,0,0,.5)); }
 @keyframes re-bounce { from { transform: translateY(0) scale(1.06, .94); } to { transform: translateY(-26px) scale(.97, 1.04); } }
 @media (prefers-reduced-motion: reduce) { #rp-editing .re-car { animation: none; } }
-#rp-editing .re-live { display: block; width: auto; max-width: 100%; height: auto; max-height: 32vh; margin-left: auto; margin-right: auto; margin: 0 0 16px; border-radius: 6px; background: #000; }
+#rp-editing .re-tv { position: relative; width: 100%; max-width: 480px; max-height: 32vh; aspect-ratio: 3 / 2; margin: 0 auto 16px; }
+#rp-editing .re-tv img, #rp-editing .re-tv video { position: absolute; display: block; }
+#rp-editing .re-tv img { inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#rp-editing .re-tv video { left: 11.2%; top: 11.9%; width: 59.1%; height: 65.8%; object-fit: cover; background: #000; }
 #rp-editing .re-pct { margin: 8px 0 22px; font-weight: 700; }
 
 body.rp-saving #replay-bar { visibility: hidden; }

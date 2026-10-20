@@ -130,6 +130,7 @@ export function createReplayMode(d) {
     el.note.hidden = true;
     const quick = !!R.saving;
     if (quick) setEditCar();
+    { const v = $('re-vid'); if (v) { if (quick) v.play().catch(() => {}); else v.pause(); } }
     if (el.edit) el.edit.hidden = !quick;                     // the dark "editing room" screen while the film is made
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
@@ -188,8 +189,6 @@ export function createReplayMode(d) {
       octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
       octx.drawImage(tv, 0, 0, out.width, out.height);
       if (logo.complete && logo.naturalWidth) { const lw = w * 0.287, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
-      const live = $('re-live'), nowMs = performance.now();                  // a small live view of the TV film as it is made
-      if (live && nowMs - (R.livePaint || 0) > 200) { R.livePaint = nowMs; live.getContext('2d').drawImage(out, 0, 0, live.width, live.height); }
       if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
     };
     const finishWith = (blob) => {
