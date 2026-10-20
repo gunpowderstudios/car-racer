@@ -56,7 +56,7 @@ function jumpOkWithBot(track, s) {
 
 /** Non-jump sections are already proven safe by the tight-corner/crossing check alone (stress-tested across
  *  thousands of seeds), so the expensive physics pass only runs when there's an actual jump to worry about. */
-function drivable(def) {
+export function drivable(def) {
   const track = new Track(def);
   for (let hi = 0; hi < def.handles.length; hi++) {
     if (!def.handles[hi].gap) continue;
@@ -249,6 +249,40 @@ function twister() {
   return out;
 }
 
+
+/** Thin and Crispy: a narrow road high up in the air with no walls. Two jumps, banked bends, and one huge dip down to a flooded valley floor and back up. */
+const TC_Y = [24, 28, 31, 30, 27, 21, 11, 1.4, 1.4, 11, 20, 27, 32, 31, 28, 25];       // road height at each of the 16 handles (the dip is handles 5 to 10)
+function thinAndCrispy() {
+  const n = TC_Y.length, out = [];
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * Math.PI * 2, wob = 1 + 0.07 * Math.sin(3 * t + 0.5);
+    const h = { x: 330 * wob * Math.cos(t), y: TC_Y[k], z: 170 * wob * Math.sin(t) };
+    if (k === 2 || k === 12) Object.assign(h, { gap: 14, kick: 4, lip: 0.8 });
+    out.push(h);
+  }
+  return out;
+}
+/** The pools on the valley floor of Thin and Crispy (overlapping, side by side, so the whole road is under water), and barrels along the high road. */
+function thinScatter(def) {
+  const track = new Track(def), rnd = mulberry(20261020), puddles = [], props = [];
+  const lo = def.handles.map((h, i) => [h.y, i]).sort((a, b) => a[0] - b[0]).slice(0, 2).map((e) => e[1]);
+  const a = track.handleS[Math.min(...lo)], b = track.handleS[Math.max(...lo)];
+  for (let s = a - 10; s <= b + 10; s += 14) {
+    const f = track.frameAt(s);
+    for (const off of [-3.5, 3.5]) puddles.push({ x: f.x + f.lx * off, z: f.z + f.lz * off, r: 8 });
+  }
+  const jumpS = track.handleS.filter((_, i) => def.handles[i].gap);
+  const dist = (p, q) => { const d = Math.abs(p - q); return Math.min(d, track.length - d); };
+  for (let guard = 0; guard < 600 && props.length < 14; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 60 || jumpS.some((j) => dist(s, j) < 70) || s > a - 25 && s < b + 25) continue;
+    const f = track.frameAt(s), off = (rnd() - 0.5) * (f.hw - 2.5);
+    const p = placeProp(track, f.x + f.lx * off, f.z + f.lz * off);
+    props.push({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
+  }
+  return { puddles: puddles.slice(0, 24), props };
+}
+
 const RAW = {
   speedway: {
     name: 'Speedway', width: 26,
@@ -297,6 +331,11 @@ const RAW = {
     name: 'The Twister', width: 22,
     handles: twister(),
     autoBank: true, bankMax: 16, lowCam: true,
+  },
+  thin: {
+    name: 'Thin and Crispy', width: 12,
+    handles: thinAndCrispy(),
+    autoBank: true, bankMax: 14, lowCam: true, walls: false, sky: true,
   },
   overpass: {
     name: 'Overpass', width: 22,
@@ -383,6 +422,7 @@ export function makeTemplate(key) {
     const banks = suggestBanks(new Track(def), raw.bankMax || 9);
     def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
   }
+  if (raw.sky) { def = normalizeTrack({ ...def, ...thinScatter(def) }); }
   if (raw.dirt) { def = normalizeTrack(steepBanks(def)); const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', bumps: OVAL_BUMPS }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
@@ -396,6 +436,7 @@ export const TEMPLATE_INFO = {
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
+  thin: 'A thin road high in the sky: no walls, banks, jumps and barrels, then a huge dip down into the water and back up',
   bluebell: 'A windy dirt rally stage through the woods: loose surface, narrow and twisty',
   random: 'A different circuit every time - hills, jumps, banks, barrels and chickens',
 };

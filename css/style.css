@@ -30,11 +30,16 @@ body:not(.mode-menu) #menu { display: none; }
 @media (prefers-reduced-motion: reduce) { .lede::before { animation: none; } }
 
 .track-groups { margin: 0 0 18px; }
-.track-group { margin: 0 0 8px; border-bottom: 2px solid rgba(246,217,176,.3); }
-.track-group > summary { cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1.1; color: var(--amber); padding: 10px 0; display: flex; align-items: center; justify-content: space-between; }
+.track-group { margin: 0 0 8px; }
+.track-group > summary { position: relative; cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.1; color: #000; background: var(--amber); padding: 8px 56px 8px 22px; margin: 6px 0;
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+.track-group > summary:hover { background: #ffc44d; }
 .track-group > summary::-webkit-details-marker { display: none; }
-.track-group > summary::after { content: "\25BE"; font-size: 24px; transition: transform .15s; }
-.track-group:not([open]) > summary::after { transform: rotate(-90deg); }
+.track-group > summary::before { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 46%; pointer-events: none;      /* the chequered flag, fading out to the left */
+  background: repeating-conic-gradient(#000 0 25%, transparent 0 50%) 0 0 / 28px 28px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 90%); mask-image: linear-gradient(to right, transparent, #000 90%); }
+.track-group > summary::after { content: "\25BE"; position: absolute; right: 28px; top: 50%; transform: translateY(-50%); font-size: 24px; color: #fff; text-shadow: 0 0 4px #000; transition: transform .15s; }
+.track-group:not([open]) > summary::after { transform: translateY(-50%) rotate(-90deg); }
 .track-group .track-list { margin-bottom: 8px; }
 .track-list li.soon { display: block; color: var(--ink-dim); font-style: italic; border-bottom: 0; }
 .track-list { list-style: none; margin: 0 0 18px; padding: 0; }

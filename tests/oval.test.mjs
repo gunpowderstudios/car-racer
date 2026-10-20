@@ -26,7 +26,7 @@ test('The Oval is a preloaded track, replacing Bed Pan', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
   assert.equal(makeTemplate('oval').name, 'The Oval (Demolition Derby)');
   assert.match(TEMPLATE_INFO.oval, /last one standing/i);
-  assert.equal(TEMPLATE_KEYS.length, 8, 'seven tracks and the random one');
+  assert.equal(TEMPLATE_KEYS.length, 9, 'eight tracks and the random one');
 });
 
 test('it is marked as a last-one-standing arena, and other tracks are not', () => {

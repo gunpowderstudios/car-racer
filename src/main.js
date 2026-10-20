@@ -1109,7 +1109,7 @@ function renderMenu() {
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'technical', 'overpass', 'random']) addTemplate(k);
-  group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell']) addTemplate(k);
+  group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
   group('Sunday Driving', 'Coming soon...');
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {

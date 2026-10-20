@@ -231,11 +231,11 @@ export function normalizeTrack(input) {
     out.dirt = true;
     if (src.berm) out.berm = true;               // dirt banks along both sides instead of walls
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;       // humps in the road
-    const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;
     const rocks = normalizeRocks(src.rocks); if (rocks.length) out.rocks = rocks;
     const rough = normalizeRough(src.rough); if (rough.length) out.rough = rough;
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
+  const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
