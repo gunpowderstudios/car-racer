@@ -1,7 +1,6 @@
-// "Make my movie": finds the liveliest stretch of a replay (wrecks and big hits count most) and plans the camera cuts for it.
+// "Make my movie": finds the liveliest stretch of a replay (wrecks and big hits count most) and chooses the camera (always the TV one) for it.
 // Nothing here touches the graphics: replayMode.js makes the film.
 const WEIGHT = { wreck: 6, hit: 3, prop: 1.2, dent: 0.6 };
-const ORDER = [0, 1, 2, 1];                       // TV, Chase, Top, Chase ... a new camera every few seconds
 
 /** `player` is a ReplayPlayer. Returns { start, end, cuts: [{ t, view }] } (replay times). */
 export function pickBestBit(player, len = 18) {
@@ -12,7 +11,7 @@ export function pickBestBit(player, len = 18) {
     sc -= Math.abs(a - (t1 - L)) * 0.002;           // (a tiny nudge towards the end, where the race is decided, when it is a tie)
     if (sc > top) { top = sc; best = a; }
   }
-  const start = best, end = Math.min(t1, best + L), cuts = [];
-  for (let k = 0, t = start; t < end - 2 || k === 0; k++, t += 4.5) cuts.push({ t, view: ORDER[k % ORDER.length] });
+  const start = best, end = Math.min(t1, best + L);
+  const cuts = [{ t: start, view: 0 }];            // the whole film is from the TV (trackside) camera, which cuts to a new spot by itself as the cars pass
   return { start, end, cuts };
 }
