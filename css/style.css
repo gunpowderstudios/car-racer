@@ -787,6 +787,10 @@ body.has-pad #controls .key-legend { display: none; }
 #rp-editing p { margin: 0 0 18px; font-size: 17px; opacity: .85; }
 #rp-editing .re-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.14); overflow: hidden; }
 #rp-editing .re-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb31f, #e8392c); transition: width .2s linear; }
+#rp-editing .re-car { display: block; margin: 0 auto 6px; width: 150px; height: auto; object-fit: contain; transform-origin: 50% 100%; animation: re-bounce .6s ease-in-out infinite alternate; filter: drop-shadow(0 8px 6px rgba(0,0,0,.5)); }
+@keyframes re-bounce { from { transform: translateY(0) scale(1.06, .94); } to { transform: translateY(-26px) scale(.97, 1.04); } }
+@media (prefers-reduced-motion: reduce) { #rp-editing .re-car { animation: none; } }
+#rp-editing .re-live { display: block; width: auto; max-width: 100%; height: auto; max-height: 32vh; margin-left: auto; margin-right: auto; margin: 0 0 16px; border-radius: 6px; background: #000; }
 #rp-editing .re-pct { margin: 8px 0 22px; font-weight: 700; }
 
 body.rp-saving #replay-bar { visibility: hidden; }
@@ -809,3 +813,4 @@ body.rp-saving #replay-bar { visibility: hidden; }
   #hud-logo { display: block; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
   #hud-logo svg { display: block; width: 100%; height: auto; }
 }
+@media (max-height: 560px) { #rp-editing .re-car { width: 80px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }

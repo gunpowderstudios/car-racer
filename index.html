@@ -230,8 +230,10 @@ html.invite-loading #invite-loading {
 </div>
 <div id="rp-editing" hidden role="status" aria-live="polite">
   <div class="re-card">
+    <img id="re-car" class="re-car" alt="" width="150" height="100" hidden>
     <h2>Now in the editing room&hellip;</h2>
     <p>Your movie is being cut. Please keep this page open.</p>
+    <canvas id="re-live" class="re-live" width="480" height="320" aria-hidden="true"></canvas>
     <div class="re-bar"><i id="re-fill"></i></div>
     <p id="re-pct" class="re-pct">0%</p>
     <p id="re-eta" class="re-eta"></p>
