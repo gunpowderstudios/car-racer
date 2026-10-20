@@ -1598,7 +1598,7 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Random circuit' : makeTemplate(k).name}</option>`).join('');
+  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
   $('mp-track').value = 'random';
   // the same track and laps choice up on the first multiplayer screen, so the host sets the game up before creating the room
   $('mp-home-track').innerHTML = $('mp-track').innerHTML;

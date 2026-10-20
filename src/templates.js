@@ -285,7 +285,7 @@ function thinScatter(def) {
 
 const RAW = {
   speedway: {
-    name: 'Speedway', width: 26,
+    name: 'Speedway Gonzales', width: 26,
     handles: ellipse(300, 190, 14),
     autoBank: true,
   },
@@ -296,7 +296,7 @@ const RAW = {
     arena: true,       // an open dirt bowl for a free-for-all banger derby: barrels everywhere, last one standing wins
   },
   technical: {
-    name: 'Technical', width: 20,
+    name: 'Curly Wurly', width: 20,
     handles: [
       { x: 0, z: -200 }, { x: 170, z: -210 }, { x: 290, z: -120 }, { x: 250, z: 0 }, { x: 330, z: 130 },
       { x: 230, z: 240 }, { x: 70, z: 200 }, { x: -30, z: 90 }, { x: -150, z: 130 }, { x: -290, z: 60 },
@@ -393,7 +393,7 @@ function buildRandomTrack(seed) {
     handles.push(h);
   }
 
-  let def = normalizeTrack({ name: 'Random circuit', width, walls: true, handles, props: [] });
+  let def = normalizeTrack({ name: 'Got the hump', width, walls: true, handles, props: [] });
   const banks = suggestBanks(new Track(def), 8 + Math.floor(rnd() * 3));
   def = { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: banks[i] })) };
 

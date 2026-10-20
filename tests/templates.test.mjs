@@ -7,7 +7,7 @@ import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from '../
 test('random is a real template: listed, has a description, and makeTemplate finds it', () => {
   assert.ok(TEMPLATE_KEYS.includes('random'));
   assert.ok(TEMPLATE_INFO.random, 'no description for the random track');
-  assert.equal(makeTemplate('random').name, 'Random circuit');
+  assert.equal(makeTemplate('random').name, 'Got the hump');
 });
 
 test('makeTemplate("random") is reproducible - same fixed seed every call', () => {
