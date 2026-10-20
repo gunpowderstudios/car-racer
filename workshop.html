@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Workshop Notes - Bangers and Smash!</title>
 <meta name="description" content="How Bangers and Smash! is built and tuned: the settings, numbers, models and tricks behind the game, for anyone who wants to download it from GitHub and adapt it.">
-<link rel="canonical" href="https://gunpowderstudios.github.io/car-racer/workshop.html">
+<link rel="canonical" href="https://bangersandsmash.co.uk/workshop.html">
 <link rel="icon" href="src/app-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,7 +69,7 @@ python3 -m http.server 8080     # or: npm start
 npm test                        # node --test tests/*.test.mjs  (Node 20 or newer)</code></pre>
   <div class="note">The tests run in plain Node with no browser. The game logic (physics, damage, AI, multiplayer, track links) has no DOM in it, so it can be tested; the drawing code cannot, so changes to looks have to be checked by eye in a real browser.</div>
   <div class="note warn"><b>Licence.</b> The source is public so people can read it, learn from it and experiment. A formal licence file has not been added yet (see the README), so please check the repository before you publish a modified copy.</div>
-  <p class="small">Every number on this page comes from the source and is the value at version 17.241. Where a value lives in code, its file is named so you can change it.</p>
+  <p class="small">Every number on this page comes from the source and is the value at version 17.242. Where a value lives in code, its file is named so you can change it.</p>
 </section>
 
 <section id="clock">
@@ -248,7 +248,7 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
   </table></div>
   <h3>Sharing a race</h3>
   <p>The share button (top of the screen on desktop, in the cog menu on a phone) makes one link holding the car, whether the caravan is hitched, and the whole track as it is now, edits included:</p>
-<pre><code>https://gunpowderstudios.github.io/car-racer/?car=car&amp;van=1#t=~&lt;packed track&gt;</code></pre>
+<pre><code>https://bangersandsmash.co.uk/?car=car&amp;van=1#t=~&lt;packed track&gt;</code></pre>
   <p>The track is packed into the address itself: a compact binary form, deflate-compressed, then base64, so there is no server and no account (<code>src/trackLink.js</code>). A link is never trusted: the packed text and the unpacked size are both capped. Your friend sees a box with the car and track, and Drive it! switches them to your car (a reload) and starts straight away.</p>
   <h3>What the game remembers (localStorage)</h3>
   <p><code>cr.opts</code> (all menu options, including the saved graphics choice), <code>cr.vehicle</code> (chosen car), <code>cr.tracks</code> (your saved tracks), <code>cr.draft</code> (the track in the editor), <code>cr.best</code> (best laps), <code>cr.mpname</code>, <code>cr.mptrack</code>, <code>cr.sfx</code>, <code>cr.music</code>, <code>cr.story</code>.</p>

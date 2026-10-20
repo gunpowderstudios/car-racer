@@ -1,5 +1,5 @@
 // Share a track as a link: the whole track is packed into the web address itself (compressed, no server, no account).
-//   https://gunpowderstudios.github.io/car-racer/#t=<packed track>
+//   https://bangersandsmash.co.uk/#t=<packed track>
 // The friend opens it and the game offers to drive it, edit it or keep it. See main.js (openSharedTrack) and editor.js (Share link).
 import { normalizeTrack } from './track.js';
 

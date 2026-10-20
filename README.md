@@ -2,7 +2,7 @@
 
 **Bangers and Smash!** is a free browser-based car racing game by Gunpowder Studios.
 
-Play it here: https://gunpowderstudios.github.io/car-racer/
+Play it here: https://bangersandsmash.co.uk/
 
 Race, jump, crash and compete in single-player or multiplayer, with destruction derby gameplay and a built-in track editor. It runs directly in a modern browser with no login and no installation required.
 
@@ -27,7 +27,7 @@ A formal licence file is not currently included in the repository, so redistribu
 
 ## Workshop Notes
 
-The settings, numbers and tricks behind the game (graphics tiers, phones, damage, the caravan, cameras, making models) are written up at https://gunpowderstudios.github.io/car-racer/workshop.html and live in [`workshop.html`](workshop.html).
+The settings, numbers and tricks behind the game (graphics tiers, phones, damage, the caravan, cameras, making models) are written up at https://bangersandsmash.co.uk/workshop.html and live in [`workshop.html`](workshop.html).
 
 ## Gunpowder Studios
 
