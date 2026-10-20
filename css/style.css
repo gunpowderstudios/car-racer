@@ -795,7 +795,6 @@ body.has-pad #controls .key-legend { display: none; }
 
 body.rp-saving #replay-bar { visibility: hidden; }
 
-#rp-editing .re-eta { margin: -14px 0 6px; font-size: 15px; }
 #rp-editing .re-hint { font-size: 13px; opacity: .6; }
 #rp-ready { position: fixed; inset: 0; z-index: 100001; display: grid; place-items: center; padding: 24px; text-align: center; background: rgba(8,5,16,.82); color: #f6d9b0; }
 #rp-ready[hidden] { display: none; }
