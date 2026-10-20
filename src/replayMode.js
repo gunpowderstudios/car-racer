@@ -175,7 +175,7 @@ export function createReplayMode(d) {
         octx.drawImage(cv, 0, 0, out.width, out.height);
         if (logo.complete && logo.naturalWidth) { const w = Math.max(195 * out.width / cv.width, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
       }
-      if (saver && !R.held) saver.addFrame(out, R.t - R.player.t0);
+      if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.player.t0);
     };
     const finishWith = (blob, ext) => {
       R.saving = null; syncUi();
@@ -198,7 +198,7 @@ export function createReplayMode(d) {
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
       if (sv) {
-        saver = sv; R.saver = sv;
+        saver = sv; R.saver = sv; R.nextT = null;
         const rec = {
           state: 'recording',
           async stop() {
@@ -300,7 +300,16 @@ export function createReplayMode(d) {
   function frame(dt) {
     const p = R.player;
     R.held = !!(R.saving && R.saver && R.saver.busy());        // saving a video and the encoder is behind: hold the replay still until it catches up
-    if (R.saver) R.saver.setClock(R.t - R.player.t0 + (R.playing ? dt : 0) + 0.1, R.held);
+    R.skip = false;
+    if (R.saving && R.saver) {
+      // Saving a video: the replay moves on in exact 1/30 s steps, one step per video frame, paced to real time. Every frame of the video is then
+      // evenly spaced however uneven the screen's own frame rate is (that unevenness is what made saved videos look jolty).
+      const now = performance.now();
+      if (R.nextT == null || R.nextT < now - 150) R.nextT = now;           // (fell behind: carry on from now)
+      if (R.held || now < R.nextT - 1) { R.skip = true; R.saver.setClock(R.t - p.t0 + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
+      R.nextT += 1000 / 30; dt = 1 / 30;
+      R.saver.setClock(R.t - p.t0 + (R.playing ? dt : 0) + 0.1, false);
+    }
     if (R.playing && !R.held) {
       R.t += dt * SPEEDS[R.speed];
       if (R.t >= p.t1) { R.t = p.t1; R.playing = false; if (R.saving) setTimeout(() => stopSave(true), 400); syncUi(); }
@@ -318,6 +327,7 @@ export function createReplayMode(d) {
     d.particles.update(dt * SPEEDS[R.speed]); d.debris.update(dt * SPEEDS[R.speed], d.debrisGround); d.wheelFlyers.update(dt * SPEEDS[R.speed], d.debrisGround);
     if (!R.dragging) el.seek.value = String(Math.round((R.t - p.t0) / Math.max(0.001, p.duration) * 1000));
     el.time.textContent = `${fmt(R.t - p.t0)} / ${fmt(p.duration)}`;
+    R.lastF = f;
     return f;
   }
 

@@ -65,3 +65,8 @@ test('the site is ready for bangersandsmash.co.uk', () => {
   assert.match(f('robots.txt'), /Sitemap: https:\/\/bangersandsmash\.co\.uk\/sitemap\.xml/);
   assert.doesNotMatch(f('site.webmanifest'), /\/car-racer\//);
 });
+test('saving a video steps the replay in exact 1/30 s steps so the video is evenly spaced', () => {
+  const r = f('src/replayMode.js');
+  assert.match(r, /R\.nextT \+= 1000 \/ 30; dt = 1 \/ 30;/);
+  assert.match(r, /saver && !R\.held && !R\.skip/);
+});
