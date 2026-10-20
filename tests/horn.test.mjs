@@ -72,6 +72,6 @@ test('saving a video shows the dark editing-room screen and silences the speaker
   assert.match(f('index.html'), /Now in the editing room/);
   assert.match(f('index.html'), /id="rp-editing"/);
   assert.match(f('src/replayMode.js'), /el\.edit\.hidden = !quick/);
-  assert.match(f("src/replayMode.js"), /d\.sound\.speakers\?\.\(!quick \|\| !!R\.realtime\)/);
+  assert.match(f("src/replayMode.js"), /d\.sound\.speakers\?\.\(!quick\)/);
   assert.match(f('src/audio.js'), /speakers\(on\)/);
 });

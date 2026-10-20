@@ -114,13 +114,13 @@ export function createReplayMode(d) {
     return f;
   }
 
-  // a little car (the player's own) bounces above the "editing room" heading while the movie is made
-  function setEditCar() {
-    const img = $('re-car'); if (!img || img.dataset.set) return;
-    let id = 'car'; try { id = localStorage.getItem('cr.vehicle') || 'car'; } catch { /* storage unavailable */ }
-    img.onerror = () => { if (img.dataset.fb) { img.hidden = true; return; } img.dataset.fb = '1'; img.src = assetUrl('cars/thumbs/car.webp'); };
-    img.onload = () => { img.hidden = false; };
-    img.src = assetUrl(`cars/thumbs/${id}.webp`); img.dataset.set = '1';
+  // cheesy lift music for the editing room (sounds/editing-music.mp3). It plays outside the game's own mix, so it is heard but never recorded into the film.
+  let lift = null;
+  function liftMusic(on) {
+    try {
+      if (on) { if (!lift) { lift = new Audio(assetUrl('sounds/editing-music.mp3')); lift.loop = true; lift.volume = 0.5; lift.onerror = () => { lift = null; }; } if (lift.paused) lift.play().catch(() => {}); }
+      else if (lift && !lift.paused) { lift.pause(); lift.currentTime = 0; }
+    } catch { /* no sound available */ }
   }
 
   // ---- the controls bar
@@ -129,14 +129,14 @@ export function createReplayMode(d) {
     el.speed.textContent = SPEEDS[R.speed] + '×';
     el.note.hidden = true;
     const quick = !!R.saving;
-    if (quick) setEditCar();
     { const v = $('re-vid'); if (v) { if (quick) v.play().catch(() => {}); else v.pause(); } }
     if (el.edit) el.edit.hidden = !quick;                     // the dark "editing room" screen while the film is made
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
-    d.sound.speakers?.(!quick || !!R.realtime);                               // (a quick film is made without playing any sound out loud)
+    d.sound.speakers?.(!quick);                               // (while a film is made the game sound goes only into the film; the editing room has its own music)
+    liftMusic(quick && !!(d.sound.sfxOn || d.sound.musicOn));      // (nobody wants lift music if they have the sound switched off)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
-    if ($('re-sub')) $('re-sub').textContent = R.realtime ? 'Recording the whole race with its sound, as it plays. This takes as long as the race: please keep this page open.' : 'Your movie is being cut. Please keep this page open.';
+    if ($('re-sub')) $('re-sub').textContent = R.realtime ? 'Recording the whole race, game sound and all, as it plays. This takes as long as the race: please keep this page open.' : 'Your movie is being cut. Please keep this page open.';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
