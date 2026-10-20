@@ -70,3 +70,10 @@ test('saving a video steps the replay in exact 1/30 s steps so the video is even
   assert.match(r, /R\.nextT \+= 1000 \/ 30; dt = 1 \/ 30;/);
   assert.match(r, /saver && !R\.held && !R\.skip/);
 });
+test('saving a video shows the dark editing-room screen and silences the speakers', () => {
+  assert.match(f('index.html'), /Now in the editing room/);
+  assert.match(f('index.html'), /id="rp-editing"/);
+  assert.match(f('src/replayMode.js'), /el\.edit\.hidden = !R\.saving/);
+  assert.match(f('src/replayMode.js'), /d\.sound\.speakers\?\.\(!R\.saving\)/);
+  assert.match(f('src/audio.js'), /speakers\(on\)/);
+});

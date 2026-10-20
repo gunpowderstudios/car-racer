@@ -34,6 +34,8 @@ export class Sound {
     this.ready = true;
   }
 
+  /** Speakers on or off (a video being made is recorded silently from the mix, so the player does not have to listen to it). */
+  speakers(on) { try { if (!this.master || !this.ctx) return; if (on && !this._spk) { this.master.connect(this.ctx.destination); this._spk = true; } else if (!on && this._spk !== false) { this.master.disconnect(this.ctx.destination); this._spk = false; } } catch { /* already in that state */ } }
   /** A second output of the mix as a MediaStream, for recording a video with sound (made on first use). */
   tap() {
     if (!this.ctx || !this.ctx.createMediaStreamDestination) return null;

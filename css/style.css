@@ -762,3 +762,13 @@ body.has-pad #controls .key-legend { display: none; }
 #pad-map { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; margin: 6px 0; }
 #pad-map button { min-width: 120px; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.25); color: inherit; font: inherit; cursor: pointer; }
 #pad-map button.waiting { background: var(--amber); color: #2a1a00; font-weight: 700; }
+
+/* saving a video: a dark "editing room" screen covers the replay while the movie is made */
+#rp-editing { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 40%, #1d1236 0, #0b0714 70%); color: #f6d9b0; }
+#rp-editing[hidden] { display: none; }
+#rp-editing .re-card { max-width: 420px; width: 100%; }
+#rp-editing h2 { margin: 0 0 8px; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: clamp(30px, 7vw, 52px); letter-spacing: .02em; color: #ffd36a; text-shadow: 0 3px 8px rgba(0,0,0,.6); }
+#rp-editing p { margin: 0 0 18px; font-size: 17px; opacity: .85; }
+#rp-editing .re-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.14); overflow: hidden; }
+#rp-editing .re-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb31f, #e8392c); transition: width .2s linear; }
+#rp-editing .re-pct { margin: 8px 0 22px; font-weight: 700; }

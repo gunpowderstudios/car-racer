@@ -11,7 +11,7 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createReplayMode(d) {
   const $ = d.$;
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), frame: $('rp-frame'), note: $('rp-note'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), frame: $('rp-frame'), note: $('rp-note'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -114,7 +114,8 @@ export function createReplayMode(d) {
     el.play.textContent = R.playing ? '❚❚' : (R.t >= R.player.t1 - 1e-3 ? '↺' : '▶');
     el.speed.textContent = SPEEDS[R.speed] + '×';
     el.note.hidden = !R.saving;
-    el.note.hidden = !R.saving;
+    if (el.edit) el.edit.hidden = !R.saving;                  // the dark "editing room" screen while a video is made
+    d.sound.speakers?.(!R.saving);                            // (and no sound out loud: it is recorded, not played)
     el.save.textContent = R.saving ? 'Saving… (tap to cancel)' : 'Save video';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
@@ -242,6 +243,7 @@ export function createReplayMode(d) {
 
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
   el.save.onclick = () => saveVideo();
+  if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
   if (el.frame) { el.frame.onclick = () => { if (!R.saving) setFrame(!frameOn()); }; syncFrameBtn(); }
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
@@ -328,6 +330,7 @@ export function createReplayMode(d) {
     if (!R.dragging) el.seek.value = String(Math.round((R.t - p.t0) / Math.max(0.001, p.duration) * 1000));
     el.time.textContent = `${fmt(R.t - p.t0)} / ${fmt(p.duration)}`;
     R.lastF = f;
+    if (R.saving && el.editFill) { const pc = Math.max(0, Math.min(100, Math.round((R.t - p.t0) / Math.max(0.001, p.duration) * 100))); el.editFill.style.width = pc + '%'; el.editPct.textContent = pc + '%'; }
     return f;
   }
 
