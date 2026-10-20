@@ -885,6 +885,17 @@ function frame(now) {
       replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
     } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
     replay().afterRender();
+    // Quick save: no need to wait for real time, so wind on several extra frames each tick (silent film, nothing to hear)
+    if (replay().turbo()) {
+      const t0 = performance.now();
+      while (replay().turbo() && performance.now() - t0 < 12) {
+        const g = replay().frame(1 / 30);
+        if (replay().state.held || replay().state.skip) break;      // the encoder is behind: let it catch up before drawing more
+        propsView.update(props); if (g) drawPos.set(g.x, g.y, g.z);
+        stage.update(drawPos, camera.position); stage.updateRollers();
+        renderer.render(stage.scene, camera); replay().afterRender();
+      }
+    }
     perfUpdate(now);
     return;
   }

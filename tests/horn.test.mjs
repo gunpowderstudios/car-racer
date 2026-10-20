@@ -17,7 +17,7 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
 });
 test('TV video is sized and compressed for social media', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.match(r, /videoBitrate\(R\.player\.duration, tv \? 3\.5e6 : 5e6\)/);
+  assert.match(r, /videoBitrate\(filmLen, tv \? 3\.5e6 : 5e6\)/);
   assert.match(r, /small \? 960 : 1280; out\.height = small \? 640 : 854/);
 });
 import { videoBitrate, WHATSAPP_BYTES } from '../src/mp4Save.js';
@@ -52,7 +52,7 @@ test('with the Campervan selected, Jamboree rivals (no look given) are not turne
 test('video is stamped with the replay clock, with the replay held when the encoder falls behind', () => {
   const m = f('src/mp4Save.js'), r = f('src/replayMode.js');
   assert.match(m, /busy\(\)/); assert.match(m, /setClock\(/);
-  assert.match(r, /saver\.addFrame\(out, R\.t - R\.player\.t0\)/);
+  assert.match(r, /saver\.addFrame\(out, R\.t - R\.saveStart\)/);
   assert.match(r, /R\.held = !!\(R\.saving && R\.saver && R\.saver\.busy\(\)\)/);
   assert.match(r, /1280 \/ Math\.max\(cv\.width, cv\.height\)/);
 });
@@ -73,7 +73,7 @@ test('saving a video steps the replay in exact 1/30 s steps so the video is even
 test('saving a video shows the dark editing-room screen and silences the speakers', () => {
   assert.match(f('index.html'), /Now in the editing room/);
   assert.match(f('index.html'), /id="rp-editing"/);
-  assert.match(f('src/replayMode.js'), /el\.edit\.hidden = !R\.saving/);
-  assert.match(f('src/replayMode.js'), /d\.sound\.speakers\?\.\(!R\.saving\)/);
+  assert.match(f('src/replayMode.js'), /el\.edit\.hidden = !quick/);
+  assert.match(f('src/replayMode.js'), /d\.sound\.speakers\?\.\(!quick\)/);
   assert.match(f('src/audio.js'), /speakers\(on\)/);
 });

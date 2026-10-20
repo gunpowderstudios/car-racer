@@ -186,8 +186,18 @@ test('replay sounds: knocks, props and honks are recorded and played; scraping a
 test('TV set option: asset ships, button exists, save uses the frame', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   assert.ok(existsSync(new URL('../tv/tv-frame.webp', import.meta.url)), 'tv/tv-frame.webp missing');
-  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="rp-frame"/);
+  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="fi-tv"/);
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(src, /tv\/tv-frame\.webp/);
-  assert.match(src, /startSave\(tvImg\)/);
+  assert.match(src, /startSave\(tv, \{/);
+});
+
+test('film editor: wired into the replay, Quick save is silent and fast', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(src, /createFilmEditor/); assert.match(src, /audio: !R\.quick/); assert.match(src, /film\.viewAt/);
+  assert.match(main, /replay\(\)\.turbo\(\)/);
+  for (const id of ['film', 'fi-make', 'fi-quick', 'fi-preview', 'rp-rec']) assert.ok(html.includes('id="' + id + '"'), id);
 });

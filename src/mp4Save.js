@@ -12,35 +12,37 @@ export function videoBitrate(seconds, cap = 3.5e6) {
 const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
 
 /** Returns a saver, or null when this browser cannot encode (the caller then uses MediaRecorder). `prefs` lets a test pick other codecs. */
-export async function createMp4Saver({ width, height, seconds, sound, prefs = {} }) {
+export async function createMp4Saver({ width, height, seconds, sound, prefs = {}, audio = true }) {
   const G = globalThis;
-  if (!G.VideoEncoder || !G.AudioEncoder || !G.VideoFrame || !G.AudioData || !sound || !sound.capture) return null;
+  if (!G.VideoEncoder || !G.VideoFrame) return null;
+  if (audio && (!G.AudioEncoder || !G.AudioData || !sound || !sound.capture)) return null;
   width = even(width); height = even(height);
   const vcodec = prefs.video || 'avc1.640029', acodec = prefs.audio || 'mp4a.40.2', mv = prefs.mux?.video || 'avc', ma = prefs.mux?.audio || 'aac';
   const bitrate = videoBitrate(seconds);
   const vcfg = { codec: vcodec, width, height, bitrate, framerate: FPS, latencyMode: 'realtime' };
-  const rate = sound.ctx ? sound.ctx.sampleRate : 48000;
+  const rate = sound && sound.ctx ? sound.ctx.sampleRate : 48000;
   const acfg = { codec: acodec, sampleRate: rate, numberOfChannels: 2, bitrate: 128000 };
   try {
-    const [v, a] = await Promise.all([G.VideoEncoder.isConfigSupported(vcfg), G.AudioEncoder.isConfigSupported(acfg)]);
+    const [v, a] = await Promise.all([G.VideoEncoder.isConfigSupported(vcfg), audio ? G.AudioEncoder.isConfigSupported(acfg) : { supported: true }]);
     if (!v.supported || !a.supported) return null;
   } catch { return null; }
 
   const target = new ArrayBufferTarget();
-  const muxer = new Muxer({ target, video: { codec: mv, width, height, frameRate: FPS }, audio: { codec: ma, numberOfChannels: 2, sampleRate: rate }, fastStart: 'in-memory' });
+  const muxer = new Muxer({ target, video: { codec: mv, width, height, frameRate: FPS }, ...(audio ? { audio: { codec: ma, numberOfChannels: 2, sampleRate: rate } } : {}), fastStart: 'in-memory' });
   let failed = false;
   const venc = new G.VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: () => { failed = true; } });
-  const aenc = new G.AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: () => { failed = true; } });
-  venc.configure(vcfg); aenc.configure(acfg);
+  const aenc = audio ? new G.AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: () => { failed = true; } }) : null;
+  venc.configure(vcfg); if (aenc) aenc.configure(acfg);
 
   // The video clock is the REPLAY's own clock (not the wall clock): a frame is stamped with how far through the replay it is, so the picture can
   // never run fast or jump, even on a slow machine. If the encoder falls behind, the replay is simply held (see busy()) and the sound pauses with it.
   let last = null, idx = -1, stopCapture = null, samples = 0, closed = false, hold = false, clock = 0;
   return {
     bitrate, width, height,
-    busy() { return venc.encodeQueueSize > 4 || aenc.encodeQueueSize > 30; },
+    busy() { return venc.encodeQueueSize > 4 || (aenc && aenc.encodeQueueSize > 30); },
     setClock(seconds, h) { clock = seconds; hold = !!h; },                 // how far through the replay it is: sound is only kept up to this point, so it can never run longer than the picture
     start() {
+      if (!audio) return;
       stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix (skipped while the replay is held)
         if (closed || failed || hold || samples / rate > clock + 0.15) return;
         const data = new Float32Array(l.length * 2); data.set(l, 0); data.set(r, l.length);
@@ -60,11 +62,11 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
         venc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close(); idx = i;
       }
     },
-    cancel() { closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ } try { venc.close(); aenc.close(); } catch { /* closed */ } },
+    cancel() { closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ } try { venc.close(); aenc && aenc.close(); } catch { /* closed */ } },
     async finish() {
       closed = true; try { stopCapture && stopCapture(); } catch { /* gone */ }
-      if (failed) { try { venc.close(); aenc.close(); } catch { /* closed */ } return null; }
-      await venc.flush(); await aenc.flush(); muxer.finalize(); venc.close(); aenc.close();
+      if (failed) { try { venc.close(); aenc && aenc.close(); } catch { /* closed */ } return null; }
+      await venc.flush(); if (aenc) await aenc.flush(); muxer.finalize(); venc.close(); if (aenc) aenc.close();
       return new Blob([target.buffer], { type: 'video/mp4' });
     },
   };
