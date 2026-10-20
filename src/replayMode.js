@@ -14,7 +14,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), rec: $('rp-rec'), recPct: $('rp-rec-pct'), recCancel: $('rp-rec-cancel'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), editFilm: $('rp-film-edit'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), rec: $('rp-rec'), recPct: $('rp-rec-pct'), recCancel: $('rp-rec-cancel'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -120,11 +120,12 @@ export function createReplayMode(d) {
     el.note.hidden = true;
     const quick = !!(R.saving && R.quick);
     if (el.edit) el.edit.hidden = !quick;                     // Quick save: the dark "editing room" screen while the film is made
-    if (el.rec) { el.rec.hidden = !(R.saving && !R.quick); if (!el.rec.hidden) { el.rec.querySelector('b').textContent = R.quiet ? '\u25CF RUSHES' : '\u25CF REC'; el.recCancel.textContent = R.quiet ? 'Skip' : 'Cancel'; } }      // otherwise the player watches (and hears) the film being made, with a REC badge
+    if (el.rec) el.rec.hidden = !(R.saving && !R.quick);      // otherwise the player watches (and hears) the film being made, with a REC badge
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
-    d.sound.speakers?.(!(quick || R.quiet));                               // (a quick film has no sound: nothing to hear)
-    el.save.textContent = R.saving ? 'Cancel film' : 'Make a movie';
+    d.sound.speakers?.(!quick);                               // (a quick film is made without playing any sound out loud)
+    el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
+    if (el.editFilm) el.editFilm.hidden = !desktop || !!R.saving;
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
@@ -148,20 +149,16 @@ export function createReplayMode(d) {
   // ---- optional 1970s TV set around the video: the game picture is cropped to fill the screen cut-out of tv/tv-frame.webp
   const TV = { w: 1536, h: 1024, sx: 172, sy: 122, sw: 908, sh: 674 };   // the screen opening in the 1536x1024 picture (a little oversize, so the frame covers the edge)
   let tvImg = null;
-  const frameOn = () => { try { return localStorage.getItem('bs-tvframe') === '1'; } catch { return false; } };
+  const frameOn = () => { try { return localStorage.getItem('bs-tvframe') !== '0'; } catch { return true; } };
   function setFrame(on) { try { localStorage.setItem('bs-tvframe', on ? '1' : '0'); } catch { /* private mode */ } syncFrameBtn(); }
   function syncFrameBtn() { /* the TV set tick box lives in the film editor */ }
   // "Make a movie" opens the film editor (film.js); its Make my film / Quick save buttons come here.
   async function makeFilm(kind) {
     if (!desktop || R.saving || R.making) return;
     R.making = true;
-    if (kind === 'auto' && R.rushes) {                           // the rushes were made after the race: nothing to wait for
-      R.making = false; film.close(); R.ready = R.rushes.give; showReady(R.rushes.info); return;
-    }
-    const rushes = kind === 'rushes';
-    if (kind === 'auto' || rushes) { film.autoCut(); kind = 'live'; }      // "Make it for me": the best bit, cuts and music chosen, then made while you watch
+    if (kind === 'auto') { film.autoCut(); kind = 'quick'; }      // "Make it for me": the best bit, cuts and music chosen, then made the fast way
     try {
-      const clip = kind === 'live' ? await film.musicClip() : null;
+      const clip = await film.musicClip();
       if (clip && clip.error) d.toast('Could not read that music file, making the film without it');
       let tv = null;
       if (frameOn()) {
@@ -171,12 +168,12 @@ export function createReplayMode(d) {
         }
         tv = tvImg && tvImg.naturalWidth ? tvImg : null;
       }
-      startSave(tv, { quick: kind === 'quick', rushes, clip: clip && !clip.error ? clip : null });
+      startSave(tv, { quick: kind === 'quick', clip: clip && !clip.error ? clip : null });
     } finally { R.making = false; }
   }
   function startSave(tv, opt = {}) {
     if (R.saving) return;
-    const trim = film.trim(); R.saveStart = trim.start; R.saveEnd = trim.end; R.quick = !!opt.quick; R.previewEnd = null; R.quiet = !!opt.rushes;
+    const trim = film.trim(); R.saveStart = trim.start; R.saveEnd = trim.end; R.quick = !!opt.quick; R.previewEnd = null;
     const filmLen = Math.max(1, R.saveEnd - R.saveStart);
     const cv = d.canvas, MR = globalThis.MediaRecorder;
     if (!cv || !cv.captureStream || !MR) { d.toast('This browser cannot save video'); return; }
@@ -221,10 +218,6 @@ export function createReplayMode(d) {
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);
       };
       const info = `${(blob.size / 1048576).toFixed(1)} MB, ${Math.round(filmLen)} seconds. ${canShare ? 'Tap Save film to share it.' : 'It has gone to your downloads: Save film saves it again.'}`;
-      if (R.quiet) {                                   // rushes: made quietly after the race, kept (in memory only) until the next race
-        R.rushes = { give, info }; R.rushJob = false; R.quiet = false;
-        exit(); d.rushesReady && d.rushesReady(true); d.toast('Your rushes are ready'); return;
-      }
       R.ready = give;
       if (!touch) give();                              // (a phone needs a tap to share: the card below has the button)
       showReady(info);
@@ -235,7 +228,7 @@ export function createReplayMode(d) {
     const pend = { state: 'recording', stop() { this.state = 'inactive'; } };
     R.saving = { rec: pend, cancel: false }; syncUi();
     film.close(); seek(R.saveStart); R.speed = 2;
-    createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: !R.quick }).catch(() => null).then((sv) => {
+    createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: !R.quick, music: R.quick ? opt.clip : null }).catch(() => null).then((sv) => {
       const me = R.saving;
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
@@ -286,18 +279,6 @@ export function createReplayMode(d) {
     if (el.ready) { el.readyInfo.textContent = info; el.ready.hidden = false; }
     tabTitle('ready'); d.toast('Your film is ready');
   }
-  // ---- rushes: after a game ends, the highlights film is made quietly (it plays behind a small badge) and kept in memory for "Make it for me" or "Save rushes".
-  // A new race, or going back to the menu, throws it away.
-  function startRushes() {
-    if (!desktop || R.active || R.saving || R.making || R.rushes || d.rec.empty || d.rec.duration < 4) return false;
-    if (!enter()) return false;
-    R.rushJob = true; R.quiet = true; el.bar.hidden = true;
-    makeFilm('rushes');
-    return true;
-  }
-  function cancelRushJob() { if (R.rushJob || R.quiet) { R.rushJob = false; R.quiet = false; if (R.active) exit(); } }
-  function dropRushes() { cancelRushJob(); if (R.rushes) { R.rushes = null; } d.rushesReady && d.rushesReady(false); }
-  function giveRushes() { if (R.rushes) R.rushes.give(); }
   function stopSave(finished) {
     const s = R.saving; if (!s) return;
     R.stamp = null; if (R.music) { R.music.stop(); R.music = null; }
@@ -318,9 +299,10 @@ export function createReplayMode(d) {
     onClose: () => { R.previewEnd = null; },
   });
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
-  el.save.onclick = () => { if (R.saving) stopSave(false); else if (film.isOpen) film.close(); else film.open(); };
+  el.save.onclick = () => { if (R.saving) stopSave(false); else { film.close(); makeFilm('auto'); } };      // one tap: the fast film, in the TV set
+  if (el.editFilm) el.editFilm.onclick = () => { if (!R.saving) { if (film.isOpen) film.close(); else film.open(); } };
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
-  if (!desktop) el.save.hidden = true;
+  if (!desktop) { el.save.hidden = true; if (el.editFilm) el.editFilm.hidden = true; }
   if (el.recCancel) el.recCancel.onclick = () => stopSave(false);
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
@@ -365,7 +347,6 @@ export function createReplayMode(d) {
     if (!R.active) return;
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null); film.close();
-    R.quiet = false; R.rushJob = false;
     R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
@@ -379,7 +360,6 @@ export function createReplayMode(d) {
 
   /** Called every frame while the replay is on. Returns the position the sun and shadows should follow. */
   function frame(dt) {
-    if (R.quiet && !R.saving && !R.making && !R.rushes) { cancelRushJob(); return null; }       // the rushes could not be made, or were skipped: back to the game
     const p = R.player;
     R.held = !!(R.saving && R.saver && R.saver.busy());        // saving a video and the encoder is behind: hold the replay still until it catches up
     R.skip = false;
@@ -428,5 +408,5 @@ export function createReplayMode(d) {
   /** Called by main.js right after the picture is drawn, while a video is being saved. */
   function afterRender() { if (R.saving && R.stamp) R.stamp(); }
   const turbo = () => !!(R.saving && R.quick && R.saver);
-  return { enter, exit, frame, afterRender, turbo, startRushes, cancelRushJob, dropRushes, giveRushes, get rushesReady() { return !!R.rushes; }, togglePlay, get active() { return R.active; }, state: R };
+  return { enter, exit, frame, afterRender, turbo, togglePlay, get active() { return R.active; }, state: R };
 }

@@ -41,7 +41,7 @@ export function createFilmEditor({ $, getPlayer, getT, seek, sound, frameOn, set
   const rateOf = (size) => store.get()[size] || (size === 'small' ? 2.2 : 1.4);
   const drawEst = () => {
     const len = Math.max(1, S.end - S.start);
-    el.est.textContent = `Watching it being made takes about ${secs(len + 2)}. Quick save (no sound) should take about ${secs(len / rateOf(S.size) + 2)}${store.get()[S.size] ? '' : ' (a guess until you have tried it once)'}.`;
+    el.est.textContent = `Make my film should take about ${secs(len / rateOf(S.size) + 2)}${store.get()[S.size] ? '' : ' (a guess until you have tried it once)'}. Watching it being made takes about ${secs(len + 2)}.`;
   };
   const sync = () => {
     el.size.value = S.size; drawEst();

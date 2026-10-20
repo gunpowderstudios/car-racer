@@ -212,14 +212,11 @@ test('film editor: Make it for me, Small size, estimates, ready card, screen kep
   assert.match(fe, /autoCut\(/); assert.match(fe, /rateOf/);
 });
 
-test('rushes: made quietly after a game, kept in memory, thrown away on a new race; film making is desktop only', async () => {
+test('film making: the fast way lays the music on afterwards, is desktop only, and there are no stored rushes', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(src, /function startRushes/); assert.match(src, /function dropRushes/); assert.match(src, /R\.rushes\.give/);
-  assert.match(src, /pointer: coarse\)'\)\.matches;\s+\/\/ making films is for a computer/);
-  assert.match(src, /if \(!desktop\) el\.save\.hidden = true/);
-  assert.match(main, /replayMode\.dropRushes\(\);\s+\/\/ a new race/); assert.match(main, /replay\(\)\.startRushes\(\)/);
-  assert.ok(html.includes('id="go-rushes"'));
+  const mp4 = readFileSync(new URL('../src/mp4Save.js', import.meta.url), 'utf8');
+  assert.match(src, /kind === 'auto'\) \{ film\.autoCut\(\); kind = 'quick'/); assert.match(src, /music: R\.quick \? opt\.clip : null/);
+  assert.match(src, /if \(!desktop\) \{ el\.save\.hidden = true/); assert.doesNotMatch(src, /Rushes|rushes/);
+  assert.match(mp4, /lay the sound track/);
 });
