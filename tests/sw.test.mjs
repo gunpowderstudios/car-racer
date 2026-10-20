@@ -10,7 +10,7 @@ const cacheObj = {
   async match(req) { return store.get(req.url); },
   async put(req, res) { store.set(req.url, res); },
 };
-globalThis.caches = { open: async () => cacheObj, keys: async () => ['car-racer-v1', 'car-racer-v2', 'other'], delete: async (k) => { calls.push('delete ' + k); return true; } };
+globalThis.caches = { open: async () => cacheObj, keys: async () => ['car-racer-v1', 'car-racer-v3', 'other'], delete: async (k) => { calls.push('delete ' + k); return true; } };
 globalThis.self = { location: { origin: 'https://site.test' }, addEventListener: (ev, fn) => { handlers[ev] = fn; }, skipWaiting() {}, clients: { claim: async () => {} } };
 globalThis.fetch = async (req) => {
   calls.push({ url: req.url, cache: req.cache, mode: req.mode });

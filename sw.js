@@ -4,7 +4,7 @@
 //  - sounds and images: served from cache straight away and refreshed in the background
 //  - three.js from the CDN: it is pinned to an exact version, so cache first
 // Anything else (multiplayer traffic, other sites, range requests) is left alone.
-const CACHE = 'car-racer-v2';
+const CACHE = 'car-racer-v3';
 const CODE = /\.(?:html|js|mjs|css|webmanifest|json)$/i;
 const MODEL = /\.glb$/i;
 const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@';

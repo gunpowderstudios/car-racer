@@ -1674,7 +1674,7 @@ addEventListener('online', () => { if (net) net.resume(); });
 bindMenu();
 bindMultiplayer();
 // Cache the heavy files (car models, sounds, three.js) so repeat visits - especially on mobile data - load fast.
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {}));
 menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false;
 renderMenu();
 setMode('menu');
