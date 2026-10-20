@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.277';
-export const NOTE = 'Two film buttons: Gone in 60 seconds (best bits) and Full movie.';
+export const VERSION = '17.278';
+export const NOTE = 'Editing room heading is Editing your movie, with a VHS cassette above it.';

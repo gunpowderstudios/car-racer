@@ -69,7 +69,7 @@ test('saving a video steps the replay in exact 1/30 s steps so the video is even
   assert.match(r, /saver && !R\.held && !R\.skip/);
 });
 test('saving a video shows the dark editing-room screen and silences the speakers', () => {
-  assert.match(f('index.html'), /Now in the editing room/);
+  assert.match(f('index.html'), /Editing your movie/);
   assert.match(f('index.html'), /id="rp-editing"/);
   assert.match(f('src/replayMode.js'), /el\.edit\.hidden = !quick/);
   assert.match(f("src/replayMode.js"), /d\.sound\.speakers\?\.\(!quick\)/);
