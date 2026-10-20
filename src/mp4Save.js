@@ -12,15 +12,15 @@ export function videoBitrate(seconds, cap = 3.5e6) {
 const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
 
 /** Returns a saver, or null when this browser cannot encode (the caller then uses MediaRecorder). `prefs` lets a test pick other codecs. */
-export async function createMp4Saver({ width, height, seconds, sound, prefs = {}, audio = true, music = null }) {
+export async function createMp4Saver({ width, height, seconds, sound, prefs = {}, audio = true, music = null, maxBitrate = 3.5e6 }) {
   const G = globalThis;
   if (!G.VideoEncoder || !G.VideoFrame) return null;
   const withAudio = audio || !!music, capture = audio && !music;                  // (music: a finished sound track is laid on afterwards, so nothing is recorded as it plays - that is what makes a quick film quick)
   if (withAudio && (!G.AudioEncoder || !G.AudioData)) return null;
   if (capture && (!sound || !sound.capture)) return null;
   width = even(width); height = even(height);
-  const vcodec = prefs.video || 'avc1.640029', acodec = prefs.audio || 'mp4a.40.2', mv = prefs.mux?.video || 'avc', ma = prefs.mux?.audio || 'aac';
-  const bitrate = videoBitrate(seconds);
+  const vcodec = prefs.video || 'avc1.640033', acodec = prefs.audio || 'mp4a.40.2', mv = prefs.mux?.video || 'avc', ma = prefs.mux?.audio || 'aac';
+  const bitrate = videoBitrate(seconds, maxBitrate);
   const vcfg = { codec: vcodec, width, height, bitrate, framerate: FPS, latencyMode: 'realtime' };
   const rate = sound && sound.ctx ? sound.ctx.sampleRate : 48000;
   const acfg = { codec: acodec, sampleRate: rate, numberOfChannels: 2, bitrate: 128000 };

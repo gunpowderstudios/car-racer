@@ -164,7 +164,7 @@ export function createReplayMode(d) {
     R.saveStart = hl.start; R.saveEnd = hl.end; R.cuts = hl.cuts; R.quick = true;
     const filmLen = Math.max(1, R.saveEnd - R.saveStart), cv = d.canvas;
     // each video frame is made on a second canvas: the 3D picture is cropped into the TV screen, the TV set goes over it and the TV logo is stamped on
-    const out = document.createElement('canvas'); out.width = 1280; out.height = 854;
+    const out = document.createElement('canvas'); out.width = 1920; out.height = 1280;
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
     R.stamp = () => {
@@ -189,7 +189,8 @@ export function createReplayMode(d) {
     const pend = { state: 'recording', stop() { this.state = 'inactive'; } };
     R.saving = { rec: pend, cancel: false }; syncUi();
     seek(R.saveStart); R.speed = 2;
-    createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: false, music: clip }).catch(() => null).then((sv) => {
+    const make = () => createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: false, music: clip, maxBitrate: out.width > 1280 ? 6e6 : 3.5e6 }).catch(() => null);
+    make().then((sv) => sv || (out.width = 1280, out.height = 854, make())).then((sv) => {      // 1920 wide if this computer's encoder can, else 1280
       const me = R.saving;
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
