@@ -1081,9 +1081,11 @@ function chooseTrack(d, blurb) {
   trackPreview.setTrack(t); trackPreview.spin = true; trackPreview.play();
   $('menu-track-preview').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
+const menuGroupOpen = {};
 function renderMenu() {
   hideTrackPreview();
-  const ul = $('track-list'); ul.innerHTML = '';
+  const box = $('track-list'); box.innerHTML = '';
+  let ul = box;
   const row = (name, meta, cls, buttons) => {
     const li = document.createElement('li'); if (cls) li.className = cls;
     li.innerHTML = `<div class="t-name"></div><div class="t-meta"></div><div class="t-btns"></div>`;
@@ -1092,11 +1094,24 @@ function renderMenu() {
     for (const [label, fn, c] of buttons) { const b = document.createElement('button'); b.textContent = label; if (c) b.className = c; b.onclick = fn; bx.appendChild(b); }
     ul.appendChild(li);
   };
-  if (track && hasPlayed) row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]);
-  for (const k of TEMPLATE_KEYS) {
+  // Tracks are grouped under headings that open and close (the open ones are remembered while the menu is redrawn)
+  const group = (title, note) => {
+    const det = document.createElement('details'); det.className = 'track-group'; det.open = menuGroupOpen[title] !== false;
+    det.ontoggle = () => { menuGroupOpen[title] = det.open; };
+    const sm = document.createElement('summary'); sm.textContent = title; det.appendChild(sm);
+    const list = document.createElement('ul'); list.className = 'track-list';
+    if (note) { const li = document.createElement('li'); li.className = 'soon'; li.textContent = note; list.appendChild(li); }
+    det.appendChild(list); box.appendChild(det); ul = list;
+  };
+  const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
     row(d.name, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`, '', [['Choose', () => chooseTrack(d, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`)], ['Edit', () => openEditor(d)]]);
-  }
+  };
+  if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
+  group('Wacky Racing'); for (const k of ['speedway', 'technical', 'overpass', 'random']) addTemplate(k);
+  group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell']) addTemplate(k);
+  group('Sunday Driving', 'Coming soon...');
+  if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
     row(name, `${km} km. Made in the editor`, 'mine', [

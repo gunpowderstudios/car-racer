@@ -29,6 +29,14 @@ body:not(.mode-menu) #menu { display: none; }
 @keyframes sweep { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @media (prefers-reduced-motion: reduce) { .lede::before { animation: none; } }
 
+.track-groups { margin: 0 0 18px; }
+.track-group { margin: 0 0 8px; border-bottom: 2px solid rgba(246,217,176,.3); }
+.track-group > summary { cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1.1; color: var(--amber); padding: 10px 0; display: flex; align-items: center; justify-content: space-between; }
+.track-group > summary::-webkit-details-marker { display: none; }
+.track-group > summary::after { content: "\25BE"; font-size: 24px; transition: transform .15s; }
+.track-group:not([open]) > summary::after { transform: rotate(-90deg); }
+.track-group .track-list { margin-bottom: 8px; }
+.track-list li.soon { display: block; color: var(--ink-dim); font-style: italic; border-bottom: 0; }
 .track-list { list-style: none; margin: 0 0 18px; padding: 0; }
 .track-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 11px 0; border-bottom: 1px dashed rgba(246,217,176,.25); }
 .track-list .t-name { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; color: var(--peach); }
