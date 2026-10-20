@@ -887,6 +887,7 @@ function frame(now) {
     // one picture of the replay (the same way every time: the extra frames of a quick film must be drawn exactly like the first, or the sky flickers)
     const drawReplayFrame = (dtStep) => {
       const f = replay().frame(dtStep);
+      if (replay().state.skip && replay().state.realtime) return;          // a film with sound is made at real speed: a screen frame that is not a film frame is not drawn at all, which leaves the page free to keep the sound unbroken
       propsView.update(props);
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();

@@ -42,10 +42,36 @@ export class Sound {
     if (!this.tapNode) { this.tapNode = this.ctx.createMediaStreamDestination(); this.master.connect(this.tapNode); }
     return this.tapNode.stream;
   }
+  /** Loads the sound recorder (an AudioWorklet, which runs on the audio thread, so a busy page cannot make it miss or chop any sound). Safe to call twice. */
+  prepareCapture() {
+    const c = this.ctx;
+    if (!c || !c.audioWorklet || typeof AudioWorkletNode === 'undefined') return Promise.resolve(false);
+    if (!this._capReady) {
+      const code = 'class Cap extends AudioWorkletProcessor{constructor(){super();this.l=new Float32Array(2048);this.r=new Float32Array(2048);this.n=0;this.on=true;this.port.onmessage=()=>{this.on=false;};}'
+        + 'process(i){const a=i[0];if(a&&a[0]){const L=a[0],R=a[1]||a[0];this.l.set(L,this.n);this.r.set(R,this.n);this.n+=L.length;if(this.n>=2048){const l=this.l.slice(),r=this.r.slice();this.port.postMessage({l,r},[l.buffer,r.buffer]);this.n=0;}}return this.on;}}'
+        + "registerProcessor('bs-cap',Cap);";
+      const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+      this._capReady = c.audioWorklet.addModule(url).then(() => true).catch(() => false).finally(() => URL.revokeObjectURL(url));
+    }
+    return this._capReady;
+  }
   /** Hands the mixed sound out as raw samples (left, right) for the video encoder; returns a function that stops it. */
   capture(cb) {
-    if (!this.ctx || !this.ctx.createScriptProcessor) return null;
-    const c = this.ctx, sp = c.createScriptProcessor(4096, 2, 2), mute = c.createGain(); mute.gain.value = 0;
+    if (!this.ctx) return null;
+    const c = this.ctx, mute = c.createGain(); mute.gain.value = 0;
+    if (this._capReady && c.audioWorklet && typeof AudioWorkletNode !== 'undefined') {
+      try {
+        const node = new AudioWorkletNode(c, 'bs-cap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+        node.port.onmessage = (e) => { if (e.data && e.data.l) cb(e.data.l, e.data.r); };
+        this.master.connect(node); node.connect(mute); mute.connect(c.destination);
+        return () => {                                       // (sound already on its way still arrives for a moment after this, so nothing at the very end is lost)
+          try { this.master.disconnect(node); node.port.postMessage(0); } catch { /* gone */ }
+          setTimeout(() => { try { node.port.onmessage = null; node.disconnect(); mute.disconnect(); } catch { /* gone */ } }, 1500);
+        };
+      } catch { /* fall back to the older recorder below */ }
+    }
+    if (!c.createScriptProcessor) return null;
+    const sp = c.createScriptProcessor(4096, 2, 2);
     sp.onaudioprocess = (e) => cb(e.inputBuffer.getChannelData(0).slice(), e.inputBuffer.getChannelData(Math.min(1, e.inputBuffer.numberOfChannels - 1)).slice());
     this.master.connect(sp); sp.connect(mute); mute.connect(c.destination);
     return () => { try { this.master.disconnect(sp); } catch { /* gone */ } sp.onaudioprocess = null; sp.disconnect(); mute.disconnect(); };

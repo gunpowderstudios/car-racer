@@ -169,7 +169,7 @@ export function createReplayMode(d) {
         await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
       }
       if (!tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
-      if (!(d.sound.ctx && d.sound.ctx.createScriptProcessor)) { d.toast('This browser cannot record the game sound: try a recent Chrome or Edge'); return; }
+      if (!(d.sound.ctx && (d.sound.ctx.audioWorklet || d.sound.ctx.createScriptProcessor))) { d.toast('This browser cannot record the game sound: try a recent Chrome or Edge'); return; }
       startSave(tvImg, pickBestBit(R.player, 1e9), null, true);
     } finally { R.making = false; }
   }

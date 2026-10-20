@@ -18,6 +18,7 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
   const withAudio = audio || !!music, capture = audio && !music;                  // (music: a finished sound track is laid on afterwards, so nothing is recorded as it plays - that is what makes a quick film quick)
   if (withAudio && (!G.AudioEncoder || !G.AudioData)) return null;
   if (capture && (!sound || !sound.capture)) return null;
+  if (capture && sound.prepareCapture) await sound.prepareCapture();             // (the sound recorder is loaded before the film starts, so no sound is missed)
   width = even(width); height = even(height);
   const vcodec = prefs.video || 'avc1.640033', acodec = prefs.audio || 'mp4a.40.2', mv = prefs.mux?.video || 'avc', ma = prefs.mux?.audio || 'aac';
   const bitrate = videoBitrate(seconds, maxBitrate);
