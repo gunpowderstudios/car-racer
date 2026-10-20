@@ -34,17 +34,6 @@ export class Sound {
     this.ready = true;
   }
 
-  /** Decodes a music file (an ArrayBuffer) into something playClip can play. */
-  decode(arrayBuffer) { return this.ctx ? this.ctx.decodeAudioData(arrayBuffer) : Promise.reject(new Error('no audio')); }
-  /** Plays a music clip into the mix (heard and recorded), fading out over its last `fade` seconds of `maxSeconds`. The game's own background music is ducked while it plays. */
-  playClip(buffer, vol = 0.7, maxSeconds = 1e9, fade = 1.5) {
-    if (!this.ctx || !buffer) return null;
-    const c = this.ctx, src = c.createBufferSource(), g = c.createGain(), t = c.currentTime, dur = Math.min(buffer.duration, maxSeconds);
-    src.buffer = buffer; g.gain.setValueAtTime(vol, t); if (dur > fade * 2) { g.gain.setValueAtTime(vol, t + dur - fade); g.gain.linearRampToValueAtTime(0, t + dur); }
-    src.connect(g).connect(this.master); src.start(t, 0, dur);
-    if (this.music) this.music.gain.value = 0;
-    return { stop: () => { try { src.stop(); } catch { /* already over */ } try { g.disconnect(); } catch { /* gone */ } if (this.music) this.music.gain.value = this.musicOn ? 0.22 : 0; } };
-  }
   /** Speakers on or off (a video being made is recorded silently from the mix, so the player does not have to listen to it). */
   speakers(on) { try { if (!this.master || !this.ctx) return; if (on && !this._spk) { this.master.connect(this.ctx.destination); this._spk = true; } else if (!on && this._spk !== false) { this.master.disconnect(this.ctx.destination); this._spk = false; } } catch { /* already in that state */ } }
   /** A second output of the mix as a MediaStream, for recording a video with sound (made on first use). */

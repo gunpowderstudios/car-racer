@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { ReplayPlayer, ReplayCams, VIEWS } from './replay.js';
 import { createMp4Saver, videoBitrate } from './mp4Save.js';
-import { createFilmEditor } from './filmEditor.js';
+import { pickBestBit } from './bestBit.js';
 
 const SPEEDS = [0.25, 0.5, 1, 2];
 const fmt = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -14,7 +14,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), editFilm: $('rp-film-edit'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), rec: $('rp-rec'), recPct: $('rp-rec-pct'), recCancel: $('rp-rec-cancel'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), eta: $('re-eta'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -118,14 +118,12 @@ export function createReplayMode(d) {
     el.play.textContent = R.playing ? '❚❚' : (R.t >= R.player.t1 - 1e-3 ? '↺' : '▶');
     el.speed.textContent = SPEEDS[R.speed] + '×';
     el.note.hidden = true;
-    const quick = !!(R.saving && R.quick);
-    if (el.edit) el.edit.hidden = !quick;                     // Quick save: the dark "editing room" screen while the film is made
-    if (el.rec) el.rec.hidden = !(R.saving && !R.quick);      // otherwise the player watches (and hears) the film being made, with a REC badge
+    const quick = !!R.saving;
+    if (el.edit) el.edit.hidden = !quick;                     // the dark "editing room" screen while the film is made
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
     d.sound.speakers?.(!quick);                               // (a quick film is made without playing any sound out loud)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
-    if (el.editFilm) el.editFilm.hidden = !desktop || !!R.saving;
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
@@ -136,8 +134,7 @@ export function createReplayMode(d) {
     else R.playing = !R.playing;
     syncUi();
   }
-  // ---- save as video (the MP4 types NAME the audio codec: with only a video codec listed, Chrome saves a silent file): the replay plays through once at normal speed while the canvas (and the sound) is recorded
-  const REC_TYPES = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  // ---- "Make my movie": the best bit of the replay, in the 1970s TV set, made as fast as the computer can (the music is laid on afterwards)
   function makeLogo() {                                                // the menu's TV logo as a picture (a still: fonts and animation do not come along inside an image)
     const img = new Image(), svg = document.getElementById('menu-tv-svg') || document.getElementById('rp-logo');
     if (!svg) return img;
@@ -149,118 +146,67 @@ export function createReplayMode(d) {
   // ---- optional 1970s TV set around the video: the game picture is cropped to fill the screen cut-out of tv/tv-frame.webp
   const TV = { w: 1536, h: 1024, sx: 172, sy: 122, sw: 908, sh: 674 };   // the screen opening in the 1536x1024 picture (a little oversize, so the frame covers the edge)
   let tvImg = null;
-  const frameOn = () => { try { return localStorage.getItem('bs-tvframe') !== '0'; } catch { return true; } };
-  function setFrame(on) { try { localStorage.setItem('bs-tvframe', on ? '1' : '0'); } catch { /* private mode */ } syncFrameBtn(); }
-  function syncFrameBtn() { /* the TV set tick box lives in the film editor */ }
-  // "Make a movie" opens the film editor (film.js); its Make my film / Quick save buttons come here.
-  async function makeFilm(kind) {
+  const musicClip = () => (d.sound.musicOn && d.sound.buf && d.sound.buf.music ? { buffer: d.sound.buf.music, vol: 0.7 } : null);      // music only if it is switched on for the race
+  async function makeFilm() {
     if (!desktop || R.saving || R.making) return;
     R.making = true;
-    if (kind === 'auto') { film.autoCut(); kind = 'quick'; }      // "Make it for me": the best bit, cuts and music chosen, then made the fast way
     try {
-      const clip = await film.musicClip();
-      if (clip && clip.error) d.toast('Could not read that music file, making the film without it');
-      let tv = null;
-      if (frameOn()) {
-        if (!(tvImg && tvImg.complete && tvImg.naturalWidth)) {
-          tvImg = new Image();
-          await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; d.toast('Could not load the TV set, making the film without it'); ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
-        }
-        tv = tvImg && tvImg.naturalWidth ? tvImg : null;
+      if (!(tvImg && tvImg.complete && tvImg.naturalWidth)) {
+        tvImg = new Image();
+        await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
       }
-      startSave(tv, { quick: kind === 'quick', clip: clip && !clip.error ? clip : null });
+      if (!tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
+      startSave(tvImg, pickBestBit(R.player), musicClip());
     } finally { R.making = false; }
   }
-  function startSave(tv, opt = {}) {
+  function startSave(tv, hl, clip) {
     if (R.saving) return;
-    const trim = film.trim(); R.saveStart = trim.start; R.saveEnd = trim.end; R.quick = !!opt.quick; R.previewEnd = null;
-    const filmLen = Math.max(1, R.saveEnd - R.saveStart);
-    const cv = d.canvas, MR = globalThis.MediaRecorder;
-    if (!cv || !cv.captureStream || !MR) { d.toast('This browser cannot save video'); return; }
-    const type = REC_TYPES.find((t) => MR.isTypeSupported(t));
-    if (!type) { d.toast('This browser cannot save video'); return; }
-    // the video is made from a second canvas: each frame the 3D picture is copied in and the TV logo stamped top right
-    const out = document.createElement('canvas'), small = matchMedia('(pointer: coarse)').matches;
-    const cap = film.size() === 'small' ? 854 : 1280;                                        // longest side: Small is quicker to make and a smaller file
-    if (tv) { out.width = Math.min(cap, small ? 960 : 1280); out.height = Math.round(out.width * 2 / 3 / 2) * 2; } else {   // (even sizes, 1280 at most: what the video encoders and social sites like)
-      const k = Math.min(1, cap / Math.max(cv.width, cv.height)); out.width = Math.max(2, Math.floor(cv.width * k / 2) * 2); out.height = Math.max(2, Math.floor(cv.height * k / 2) * 2); }
+    R.saveStart = hl.start; R.saveEnd = hl.end; R.cuts = hl.cuts; R.quick = true;
+    const filmLen = Math.max(1, R.saveEnd - R.saveStart), cv = d.canvas;
+    // each video frame is made on a second canvas: the 3D picture is cropped into the TV screen, the TV set goes over it and the TV logo is stamped on
+    const out = document.createElement('canvas'); out.width = 1280; out.height = 854;
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
-    const fcss = 'filter' in octx ? film.filterCss() : '';          // (Safari cannot filter a canvas: the film is then made without the look)
     R.stamp = () => {
-      if (tv) {
-        const k = out.width / TV.w, x = TV.sx * k, y = TV.sy * k, w = TV.sw * k, h = TV.sh * k, ca = cv.width / cv.height, ta = w / h;
-        const cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;   // cover-crop the picture to the screen shape
-        octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height);
-        if (fcss) octx.filter = fcss;
-        octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
-        octx.filter = 'none';
-        octx.drawImage(tv, 0, 0, out.width, out.height);
-        if (logo.complete && logo.naturalWidth) { const lw = w * 0.221, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
-      } else {
-        if (fcss) octx.filter = fcss;
-        octx.drawImage(cv, 0, 0, out.width, out.height);
-        octx.filter = 'none';
-        if (logo.complete && logo.naturalWidth) { const w = Math.max(195 * out.width / cv.width, out.width * 0.221), h = w * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.012; octx.drawImage(logo, out.width - w - m, m, w, h); }
-      }
-      film.drawOver(octx, out.width, out.height, R.t - R.saveStart, filmLen);
+      const k = out.width / TV.w, x = TV.sx * k, y = TV.sy * k, w = TV.sw * k, h = TV.sh * k, ca = cv.width / cv.height, ta = w / h;
+      const cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;   // cover-crop the picture to the screen shape
+      octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height);
+      octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
+      octx.drawImage(tv, 0, 0, out.width, out.height);
+      if (logo.complete && logo.naturalWidth) { const lw = w * 0.221, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
       if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
     };
-    const finishWith = (blob, ext) => {
-      const wall = (performance.now() - (R.saveWall0 || performance.now())) / 1000;
-      if (R.quick) film.learn(filmLen, wall);
+    const finishWith = (blob) => {
       R.saving = null; syncUi();
-      const file = new File([blob], 'bangers-and-smash-replay.' + ext, { type: blob.type });
-      const touch = matchMedia('(pointer: coarse)').matches, canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }) && touch);
+      const file = new File([blob], 'bangers-and-smash-replay.mp4', { type: 'video/mp4' });
       const give = () => {
-        if (canShare) { navigator.share({ files: [file], title: 'Bangers and Smash! replay' }).catch(() => {}); return; }
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);
       };
-      const info = `${(blob.size / 1048576).toFixed(1)} MB, ${Math.round(filmLen)} seconds. ${canShare ? 'Tap Save film to share it.' : 'It has gone to your downloads: Save film saves it again.'}`;
-      R.ready = give;
-      if (!touch) give();                              // (a phone needs a tap to share: the card below has the button)
-      showReady(info);
+      R.ready = give; give();
+      showReady(`${(blob.size / 1048576).toFixed(1)} MB, ${Math.round(filmLen)} seconds. It has gone to your downloads: Save film saves it again.`);
     };
-    // First choice: the browser's video encoder writes a plain steady-30-fps H.264 + AAC .mp4 sized to fit WhatsApp (about 14 MB at most).
-    // Fallback: MediaRecorder (its mp4 is fragmented, which WhatsApp can choke on).
-    const startMusic = () => { if (opt.clip && !R.quick) R.music = d.sound.playClip(opt.clip.buffer, opt.clip.vol, filmLen); };
     const pend = { state: 'recording', stop() { this.state = 'inactive'; } };
     R.saving = { rec: pend, cancel: false }; syncUi();
-    film.close(); seek(R.saveStart); R.speed = 2;
-    createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: !R.quick, music: R.quick ? opt.clip : null }).catch(() => null).then((sv) => {
+    seek(R.saveStart); R.speed = 2;
+    createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: false, music: clip }).catch(() => null).then((sv) => {
       const me = R.saving;
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
-      if (!sv && R.quick) { R.stamp = null; R.saving = null; syncUi(); d.toast('Quick save needs a newer browser: use Make my film instead'); return; }
-      if (sv) {
-        saver = sv; R.saver = sv; R.nextT = null;
-        const rec = {
-          state: 'recording',
-          async stop() {
-            if (this.state === 'inactive') return; this.state = 'inactive'; saver = null; R.saver = null;
-            if (me.cancel) { sv.cancel(); R.saving = null; syncUi(); return; }
-            let blob = null; try { blob = await sv.finish(); } catch { blob = null; }
-            if (R.saving !== me) return;
-            if (!blob) { R.saving = null; syncUi(); d.toast('Could not save the video'); return; }
-            finishWith(blob, 'mp4');
-          },
-        };
-        me.rec = rec; sv.start(); R.saveWall0 = performance.now(); holdAwake(true); startMusic(); R.playing = true; syncUi();
-        return;
-      }
-      const stream = out.captureStream(30), audio = d.sound.tap && d.sound.tap();
-      if (audio) for (const tr of audio.getAudioTracks()) stream.addTrack(tr);
-      let rec;
-      try { rec = new MR(stream, { mimeType: type, videoBitsPerSecond: videoBitrate(filmLen, tv ? 3.5e6 : 5e6), audioBitsPerSecond: 128000 }); } catch { R.saving = null; R.stamp = null; syncUi(); d.toast('This browser cannot save video'); return; }
-      const chunks = [];
-      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-      rec.onstop = () => {
-        for (const tr of stream.getTracks()) tr.stop();
-        if (!R.saving || R.saving.cancel || !chunks.length) { R.saving = null; syncUi(); return; }
-        finishWith(new Blob(chunks, { type: type.split(';')[0] }), type.startsWith('video/mp4') ? 'mp4' : 'webm');
+      if (!sv) { R.stamp = null; R.saving = null; syncUi(); d.toast('This browser cannot make films: try a recent Chrome, Edge or Safari'); return; }
+      saver = sv; R.saver = sv; R.nextT = null;
+      me.rec = {
+        state: 'recording',
+        async stop() {
+          if (this.state === 'inactive') return; this.state = 'inactive'; saver = null; R.saver = null;
+          if (me.cancel) { sv.cancel(); R.saving = null; syncUi(); return; }
+          let blob = null; try { blob = await sv.finish(); } catch { blob = null; }
+          if (R.saving !== me) return;
+          if (!blob) { R.saving = null; syncUi(); d.toast('Could not save the video'); return; }
+          finishWith(blob);
+        },
       };
-      me.rec = rec; rec.start(1000); R.saveWall0 = performance.now(); holdAwake(true); startMusic(); R.playing = true; syncUi();
+      sv.start(); R.saveWall0 = performance.now(); holdAwake(true); R.playing = true; syncUi();
     });
   }
   // ---- a film that is being made: keep the screen awake, show how far on in the tab title, and a card when it is done (so you can walk away)
@@ -281,7 +227,7 @@ export function createReplayMode(d) {
   }
   function stopSave(finished) {
     const s = R.saving; if (!s) return;
-    R.stamp = null; if (R.music) { R.music.stop(); R.music = null; }
+    R.stamp = null;
     s.cancel = !finished;
     if (s.rec.state !== 'inactive') s.rec.stop();
   }
@@ -292,18 +238,10 @@ export function createReplayMode(d) {
     R.focusId = list[(list.indexOf(R.focusId) + 1) % list.length]; R.cams.reset(); R.lastFocus = null; d.chase.snap(); syncUi();
   }
 
-  const film = createFilmEditor({
-    $, getPlayer: () => R.player, getT: () => R.t, seek: (t) => seek(t), sound: d.sound, frameOn, setFrame,
-    onMake: (kind) => makeFilm(kind),
-    onPreview: (a, b) => { seek(a); R.previewEnd = b; R.playing = true; syncUi(); },
-    onClose: () => { R.previewEnd = null; },
-  });
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
-  el.save.onclick = () => { if (R.saving) stopSave(false); else { film.close(); makeFilm('auto'); } };      // one tap: the fast film, in the TV set
-  if (el.editFilm) el.editFilm.onclick = () => { if (!R.saving) { if (film.isOpen) film.close(); else film.open(); } };
+  el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };      // one tap: the fast film, in the TV set
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
-  if (!desktop) { el.save.hidden = true; if (el.editFilm) el.editFilm.hidden = true; }
-  if (el.recCancel) el.recCancel.onclick = () => stopSave(false);
+  if (!desktop) el.save.hidden = true;
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();
@@ -346,7 +284,7 @@ export function createReplayMode(d) {
   function exit() {
     if (!R.active) return;
     if (R.saving) stopSave(false);
-    if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null); film.close();
+    if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
     R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
@@ -368,17 +306,17 @@ export function createReplayMode(d) {
       // evenly spaced however uneven the screen's own frame rate is (that unevenness is what made saved videos look jolty).
       const now = performance.now();
       if (R.nextT == null || R.nextT < now - 150) R.nextT = now;           // (fell behind: carry on from now)
-      if (R.held || (!R.quick && now < R.nextT - 1)) { R.skip = true; R.saver.setClock(R.t - R.saveStart + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
+      if (R.held) { R.skip = true; R.saver.setClock(R.t - R.saveStart + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
       R.nextT += 1000 / 30; dt = 1 / 30;
       R.saver.setClock(R.t - R.saveStart + (R.playing ? dt : 0) + 0.1, false);
     }
     if (R.playing && !R.held) {
       R.t += dt * SPEEDS[R.speed];
-      const endT = R.saving ? R.saveEnd : (R.previewEnd != null ? R.previewEnd : p.t1);
-      if (R.t >= endT) { R.t = endT; R.playing = false; if (R.saving) setTimeout(() => stopSave(true), 400); R.previewEnd = null; syncUi(); }
+      const endT = R.saving ? R.saveEnd : p.t1;
+      if (R.t >= endT) { R.t = endT; R.playing = false; if (R.saving) setTimeout(() => stopSave(true), 400); syncUi(); }
     }
-    if (R.saving || R.previewEnd != null) {                      // the film editor's camera cuts
-      const v = film.viewAt(R.t);
+    if (R.saving && R.cuts) {                                    // the film's camera cuts
+      let v = -1; for (const c of R.cuts) if (c.t <= R.t) v = c.view;
       if (v >= 0 && v !== R.view) { R.view = v; R.cams.reset(); d.chase.snap(); syncUi(); }
     }
     const ents = p.sample(R.t);
@@ -397,16 +335,16 @@ export function createReplayMode(d) {
     R.lastF = f;
     if (R.saving && R.saveWall0) {
       const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100)));
-      if (pc !== R.lastPc) { R.lastPc = pc; tabTitle(pc); if (el.recPct) el.recPct.textContent = pc + '%'; }
+      if (pc !== R.lastPc) { R.lastPc = pc; tabTitle(pc); }
       const wall = (performance.now() - R.saveWall0) / 1000;
       if (el.eta) el.eta.textContent = pc >= 4 ? `About ${Math.max(1, Math.round(wall * (100 - pc) / pc))} seconds to go` : 'Working out how long it will take…';
     }
-    if (R.saving && R.quick && el.editFill) { const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100))); el.editFill.style.width = pc + '%'; el.editPct.textContent = pc + '%'; }
+    if (R.saving && el.editFill) { const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100))); el.editFill.style.width = pc + '%'; el.editPct.textContent = pc + '%'; }
     return f;
   }
 
   /** Called by main.js right after the picture is drawn, while a video is being saved. */
   function afterRender() { if (R.saving && R.stamp) R.stamp(); }
-  const turbo = () => !!(R.saving && R.quick && R.saver);
+  const turbo = () => !!(R.saving && R.saver);
   return { enter, exit, frame, afterRender, turbo, togglePlay, get active() { return R.active; }, state: R };
 }

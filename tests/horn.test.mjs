@@ -17,8 +17,8 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
 });
 test('TV video is sized and compressed for social media', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.match(r, /videoBitrate\(filmLen, tv \? 3\.5e6 : 5e6\)/);
-  assert.match(r, /Math\.min\(cap, small \? 960 : 1280\); out\.height = Math\.round\(out\.width \* 2 \/ 3 \/ 2\) \* 2/);
+  assert.match(r, /out\.width = 1280; out\.height = 854/);
+  assert.match(r, /seconds: filmLen/);
 });
 import { videoBitrate, WHATSAPP_BYTES } from '../src/mp4Save.js';
 test('video bitrate keeps a replay under the WhatsApp size', () => {
@@ -29,10 +29,9 @@ test('video bitrate keeps a replay under the WhatsApp size', () => {
   assert.equal(videoBitrate(5), 3.5e6);
   assert.ok(videoBitrate(60) < 2e6);
 });
-test('the mp4 writer is the first choice and MediaRecorder the fallback', () => {
+test('the mp4 writer makes the film', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(r, /createMp4Saver\(/);
-  assert.match(r, /new MR\(stream/);
 });
 test('controller hints and the button check exist', () => {
   const h = f('index.html'), c = f('css/style.css');
@@ -54,7 +53,6 @@ test('video is stamped with the replay clock, with the replay held when the enco
   assert.match(m, /busy\(\)/); assert.match(m, /setClock\(/);
   assert.match(r, /saver\.addFrame\(out, R\.t - R\.saveStart\)/);
   assert.match(r, /R\.held = !!\(R\.saving && R\.saver && R\.saver\.busy\(\)\)/);
-  assert.match(r, /cap \/ Math\.max\(cv\.width, cv\.height\)/);
 });
 test('the site is ready for bangersandsmash.co.uk', () => {
   const h = f('index.html');

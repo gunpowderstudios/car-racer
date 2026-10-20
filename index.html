@@ -218,39 +218,6 @@ html.invite-loading #invite-loading {
 </div>
 
 
-<section id="film" hidden aria-label="Film editor">
-  <h2>Film editor</h2>
-  <p class="fi-sub">Cut your replay into a movie. Everything is optional.</p>
-  <button id="fi-auto" type="button" class="btn fi-auto">Make it for me <small>Picks the best bits, adds cuts and music</small></button>
-  <div class="fi-sec"><h3>Trim</h3>
-    <label>Start <input id="fi-start" type="range" min="0" max="1000" value="0"></label>
-    <label>End <input id="fi-end" type="range" min="0" max="1000" value="1000"></label>
-    <p id="fi-trim" class="fi-note"></p></div>
-  <div class="fi-sec"><h3>Cameras</h3>
-    <label>Start with <select id="fi-cam"><option value="-1">The camera I left it on</option><option value="0">TV</option><option value="1">Chase</option><option value="2">Top</option></select></label>
-    <div class="fi-row"><span>Cut to</span><select id="fi-cut-view"><option value="0">TV</option><option value="1" selected>Chase</option><option value="2">Top</option></select><button id="fi-cut-add" type="button" class="btn ghost">Cut here</button></div>
-    <p class="fi-note">Scrub the replay to a moment, then press Cut here.</p>
-    <div id="fi-cuts"></div></div>
-  <div class="fi-sec"><h3>Soundtrack</h3>
-    <label>Music <select id="fi-music"><option value="none">None - just the game sounds</option><option value="theme">The game theme</option><option value="file">My own file...</option></select></label>
-    <input id="fi-file" type="file" accept="audio/*" hidden>
-    <label>Music volume <input id="fi-vol" type="range" min="0" max="100" value="70"></label></div>
-  <div class="fi-sec"><h3>Titles</h3>
-    <label>Title card <input id="fi-title" type="text" maxlength="40" placeholder="e.g. Carnage at Dusk"></label>
-    <label>End credit <input id="fi-credit" type="text" maxlength="40" placeholder="e.g. Directed by Tim"></label></div>
-  <div class="fi-sec"><h3>Look</h3>
-    <label>Filter <select id="fi-filter"><option value="none">Normal</option><option value="sepia">Sepia</option><option value="bw">Black and white</option><option value="seventies">1970s TV</option></select></label>
-    <label class="fi-check"><input id="fi-tv" type="checkbox"> Put it inside a 1970s TV set</label>
-    <label>Size <select id="fi-size"><option value="standard">Standard (looks best)</option><option value="small">Small (quicker to make, smaller file)</option></select></label></div>
-  <p id="fi-est" class="fi-est"></p>
-  <div class="fi-btns">
-    <button id="fi-quick" type="button" class="btn" title="The fast way: your music goes on, but not the game's own engine and crash sounds">Make my film (fast, with music)</button>
-    <button id="fi-make" type="button" class="btn ghost" title="Plays the film on screen as it is made, with the game's own sounds, so it takes as long as the film">Watch it being made (slower, game sounds)</button>
-    <button id="fi-preview" type="button" class="btn ghost">Preview</button>
-    <button id="fi-close" type="button" class="btn ghost">Close</button>
-  </div>
-</section>
-<div id="rp-rec" hidden role="status"><b>&#9679; REC</b> <span id="rp-rec-pct">0%</span> <button id="rp-rec-cancel" type="button">Cancel</button></div>
 <div id="rp-ready" hidden role="status" aria-live="polite">
   <div class="re-card">
     <h2>Your film is ready!</h2>
@@ -307,7 +274,6 @@ html.invite-loading #invite-loading {
     <button id="rp-view-btn" type="button" aria-label="Camera view">TV</button>
     <button id="rp-next" type="button">Next car</button>
     <button id="rp-save" type="button" title="One tap: a fast film of the best bits, with music, in the 1970s TV set">Make my movie</button>
-    <button id="rp-film-edit" type="button" title="Choose the cuts, music, titles and look yourself">Edit it first</button>
     <button id="rp-exit" type="button" class="rp-exit">Back to game</button>
   </div>
 </div>

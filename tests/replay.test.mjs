@@ -145,7 +145,7 @@ test('replay: Save video button is wired, and airborne wheels keep spinning', as
   const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   const veh = fs.readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
   assert.ok(html.includes('id="rp-save"'));
-  assert.ok(mode.includes('captureStream') && mode.includes('MediaRecorder'));
+  assert.ok(mode.includes('createMp4Saver'));
   assert.ok(/!w\.contact\) \{[^}]*w\.spin \+=/.test(veh));
 });
 
@@ -162,11 +162,6 @@ test('every source file parses (a broken file only shows up in a real browser)',
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js'))) execFileSync(process.execPath, ['--check', new URL(f, dir).pathname]);
 });
 
-test('replay: MP4 recording names an audio codec, so the file has sound', async () => {
-  const fs = await import('node:fs');
-  const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.ok(/video\/mp4;codecs=avc1,mp4a\.40\.2/.test(mode));
-});
 
 test('replay sounds: knocks, props and honks are recorded and played; scraping and braking squeal are kept in the samples', async () => {
   const fs = await import('node:fs');
@@ -186,37 +181,24 @@ test('replay sounds: knocks, props and honks are recorded and played; scraping a
 test('TV set option: asset ships, button exists, save uses the frame', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   assert.ok(existsSync(new URL('../tv/tv-frame.webp', import.meta.url)), 'tv/tv-frame.webp missing');
-  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="fi-tv"/);
+  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="rp-save"/);
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(src, /tv\/tv-frame\.webp/);
-  assert.match(src, /startSave\(tv, \{/);
+  assert.match(src, /startSave\(tvImg, pickBestBit/);
 });
 
-test('film editor: wired into the replay, Quick save is silent and fast', async () => {
-  const { readFileSync } = await import('node:fs');
-  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(src, /createFilmEditor/); assert.match(src, /audio: !R\.quick/); assert.match(src, /film\.viewAt/);
-  assert.match(main, /replay\(\)\.turbo\(\)/);
-  for (const id of ['film', 'fi-make', 'fi-quick', 'fi-preview', 'rp-rec']) assert.ok(html.includes('id="' + id + '"'), id);
-});
 
-test('film editor: Make it for me, Small size, estimates, ready card, screen kept awake', async () => {
-  const { readFileSync } = await import('node:fs');
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  const fe = readFileSync(new URL('../src/filmEditor.js', import.meta.url), 'utf8');
-  for (const id of ['fi-auto', 'fi-size', 'fi-est', 're-eta', 'rp-ready', 'rr-save']) assert.ok(html.includes('id="' + id + '"'), id);
-  assert.match(src, /kind === 'auto'/); assert.match(src, /wakeLock/); assert.match(src, /showReady\(/); assert.match(src, /film\.learn\(/);
-  assert.match(fe, /autoCut\(/); assert.match(fe, /rateOf/);
-});
-
-test('film making: the fast way lays the music on afterwards, is desktop only, and there are no stored rushes', async () => {
-  const { readFileSync } = await import('node:fs');
+test('Make my movie: one tap, TV set always, music only if it is on, fast, desktop only', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   const mp4 = readFileSync(new URL('../src/mp4Save.js', import.meta.url), 'utf8');
-  assert.match(src, /kind === 'auto'\) \{ film\.autoCut\(\); kind = 'quick'/); assert.match(src, /music: R\.quick \? opt\.clip : null/);
-  assert.match(src, /if \(!desktop\) \{ el\.save\.hidden = true/); assert.doesNotMatch(src, /Rushes|rushes/);
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!existsSync(new URL('../src/filmEditor.js', import.meta.url)), 'the film editor is gone');
+  assert.ok(!html.includes('id="film"') && !html.includes('rp-film-edit'));
+  assert.match(src, /el\.save\.onclick = \(\) => \{ if \(R\.saving\) stopSave\(false\); else makeFilm\(\); \}/);
+  assert.match(src, /d\.sound\.musicOn && d\.sound\.buf && d\.sound\.buf\.music/);
+  assert.match(src, /startSave\(tvImg, pickBestBit/); assert.match(src, /audio: false, music: clip/);
+  assert.match(src, /if \(!desktop\) el\.save\.hidden = true/);
   assert.match(mp4, /lay the sound track/);
+  assert.doesNotMatch(src, /Highlights|highlights|MediaRecorder/);
 });
