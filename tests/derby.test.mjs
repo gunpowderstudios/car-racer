@@ -706,13 +706,13 @@ test('repairs: every wreck uses one, you come back until the last, then the car 
   const a = arena(-300, 0, 'race'); a.derby.repairsMax = 3; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
   const P = a.derby.player, overs = [];
   assert.equal(a.derby.repairs, 3);
-  for (let n = 1; n <= 3; n++) {
+  for (let n = 1; n <= 4; n++) {                                                // three spanners: three comebacks, and the fourth wreck is scrap
     a.derby._damage(P, 'front', 5000, null);
     assert.equal(P.wrecked, true);
-    assert.equal(a.derby.repairs, 3 - n);
+    assert.equal(a.derby.repairs, Math.max(0, 3 - n));
     for (const e of a.derby.events) if (e.type === 'over') overs.push(e);
     a.derby.events.length = 0;
-    if (n < 3) {
+    if (n < 4) {
       assert.equal(a.derby.over, false, 'not over yet');
       a.derby.time = P.respawnAt + 0.01; a.derby.step(DT);                      // the repair comes through
       assert.equal(P.wrecked, false, 'repaired and back on the road');
@@ -733,11 +733,11 @@ test('repairs: no budget (or Demolition) behaves as before', () => {
 });
 
 test('repairs: flying off the track costs a spanner, and the last one scraps the car', () => {
-  const a = arena(-300, 0, 'race'); a.derby.repairsMax = 2; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
+  const a = arena(-300, 0, 'race'); a.derby.repairsMax = 1; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
   const P = a.derby.player, overs = [];
-  assert.equal(a.derby.repairs, 2);
+  assert.equal(a.derby.repairs, 1);
   a.car.pos.y = -20; a.derby.step(DT);                                          // fell off the world
-  assert.equal(a.derby.repairs, 1, 'one repair used');
+  assert.equal(a.derby.repairs, 0, 'the spanner is used');
   assert.equal(a.derby.over, true, 'the 3-2-1 reset holds the game guard');
   for (let i = 0; i < 4 / DT; i++) a.derby.step(DT);                            // 3-2-1 and back on the road
   assert.equal(P.wrecked, false);
@@ -764,4 +764,17 @@ test('a rival is repaired and comes back three times; the fourth wreck is scrap 
   assert.equal(a.derby._replacementS.length, 0, 'the next wreck is not replaced');
   assert.equal(f.scrap, true);
   assert.equal(a.derby.count, 0);
+});
+
+test('Demolition: you get just the one spanner - one comeback, then the car is scrap', () => {
+  const a = arena(-300, 0, 'demolition'); a.derby.repairsMax = DERBY.repairsDemolition; a.derby.start(a.track, a.car, 0, 7, 'demolition'); a.derby.time = DERBY.grace + 1;
+  const P = a.derby.player;
+  a.derby._damage(P, 'front', 5000, null);
+  assert.equal(a.derby.over, false, 'first wreck: repaired');
+  assert.equal(a.derby.repairs, 0);
+  a.derby.time = P.respawnAt + 0.01; a.derby.step(DT);
+  assert.equal(P.wrecked, false, 'back in the fight');
+  a.derby.time += DERBY.respawnGrace + 1;
+  a.derby._damage(P, 'front', 5000, null);
+  assert.equal(a.derby.over, true, 'second wreck: scrap');
 });

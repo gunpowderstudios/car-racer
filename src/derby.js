@@ -41,6 +41,7 @@ export const DERBY = {
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
+  repairsDemolition: 1,  // in a Demolition derby you get just the one spanner
   repairs: 3,            // every car, yours and each rival, can be repaired this many times; the next wreck is scrap and stays on the track, burnt out
   wreckLife: 14,         // how long a wreck actively burns; the hulk itself can remain after that
   wreckFade: 1.6,        // fade/shrink time when an old hulk is retired after the wreck cap is exceeded
@@ -498,7 +499,7 @@ export class Derby {
       f.flash = Math.max(0, f.flash - dt * 3.5);
       if (f.wrecked) {
         f.wreckT += dt;
-        if (f.isPlayer && !this.demolition && !this.over && this.time >= f.respawnAt) this._revivePlayer(f);
+        if (f.isPlayer && !this.over && this.time >= f.respawnAt) this._revivePlayer(f);
         if (!f.isPlayer) {
           // Off-track recovery also uses wrecked=true during its 3-2-1 cinematic; that is not a real hulk.
           if (!f._offTrackReset) wrecks++;
@@ -667,12 +668,14 @@ export class Derby {
       this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null, c.pos.x, c.pos.y, c.pos.z);
     }
     if (f.isPlayer) {
-      if (this.demolition) {
+      if (Number.isFinite(this.repairsMax)) {
+        if (this.repairs <= 0) {
+          this.over = true;                                           // no spanners left: the car is scrap (and stays on the track, burnt out)
+          this.events.push({ type: 'over', scrap: true, zone, score: this.score, takedowns: this.takedowns });
+        } else { this.repairs--; f.respawnAt = this.time + DERBY.respawnDelay; }           // a spanner is used: repaired and back on the road shortly
+      } else if (this.demolition) {
         this.over = true;
         this.events.push({ type: 'over', zone, score: this.score, takedowns: this.takedowns });
-      } else if (Number.isFinite(this.repairsMax) && --this.repairs <= 0) {
-        this.repairs = 0; this.over = true;                           // Race with a repair budget: that was the last repair - the car is scrap
-        this.events.push({ type: 'over', scrap: true, zone, score: this.score, takedowns: this.takedowns });
       } else f.respawnAt = this.time + DERBY.respawnDelay;           // Race: back on the road shortly
     } else {
       const h = f.lastHit;

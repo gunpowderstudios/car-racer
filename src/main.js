@@ -554,7 +554,7 @@ function derbyStart() {
   const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
-  derby.repairsMax = derby.enabled && opts.mode !== 'demolition' && !arena && !window.__story?.active ? DERBY.repairs : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
+  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
   if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();

@@ -155,7 +155,7 @@ function beginPlayerReset(derby, f) {
   }
   const oldOver = f._playerOffTrackGuard ? f._playerOffTrackGuard.oldOver : derby.over;
   // Flying off the track costs a repair (a spanner), like any other wreck; the last one makes the car scrap.
-  const scrap = Number.isFinite(derby.repairsMax) && !derby.demolition && !oldOver && --derby.repairs <= 0;
+  const scrap = Number.isFinite(derby.repairsMax) && !derby.demolition && !oldOver && (derby.repairs <= 0 || (derby.repairs--, false));
   if (scrap) derby.repairs = 0;
   f._playerOffTrackReset = { t: RESET_DELAY, s, shown: 3, oldOver };
   f._playerOffTrackGuard = null;
