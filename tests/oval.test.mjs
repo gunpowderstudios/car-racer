@@ -377,7 +377,7 @@ test('every race starts on the Chase camera on a computer and the High camera on
   const { readFileSync } = await import('node:fs');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /function startDriving\(newDef\) \{\s*sound\.init\(\); pickStartCamera\(\);/);
-  assert.match(main, /chase\.mode = phone \? 1 : 0/, 'mode 0 is Chase, 1 is High');
+  assert.match(main, /chase\.mode = phone \|\| big \? 1 : 0/, "mode 0 is Chase, 1 is High");
 });
 
 test('Race Day stages start with the three-light Red, Red, Green sequence', async () => {

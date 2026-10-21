@@ -1006,11 +1006,12 @@ function setMode(m) {
   input.enabled = m === 'drive';
 }
 function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
-// Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet) starts on the High camera.
+// Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
   const phone = matchMedia('(pointer: coarse)').matches;
-  chase.mode = phone ? 1 : 0; chase.ready = false;
+  const big = ['bus', 'motor-home'].includes(selectedVehicle().id);           // the bus and the motorhome are so big that they start on the High camera
+  chase.mode = phone || big ? 1 : 0; chase.ready = false;
 }
 // ----- the race waits for its cars: pressing Play (or opening the game) holds on the home screen, with a bar, until every car has loaded,
 // so nobody drives off among the plain grey boxes that stand in for a car that is still downloading.

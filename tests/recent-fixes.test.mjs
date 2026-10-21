@@ -329,3 +329,10 @@ test('Handling option: Arcade (default) turns the stability layer on, Standard i
   assert.match(main, /handling: 'arcade'/);
   assert.match(main, /car\.opts\.stability = opts\.handling === 'standard' \? 0 : 1/);
 });
+
+test('the bus and the motorhome start every race on the High camera', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(src, /\['bus', 'motor-home'\]\.includes\(selectedVehicle\(\)\.id\)/);
+  assert.match(src, /chase\.mode = phone \|\| big \? 1 : 0/);
+});
