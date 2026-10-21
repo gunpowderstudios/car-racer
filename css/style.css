@@ -750,7 +750,7 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #menu-tv p { margin: 6px 0 0; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: 15px; letter-spacing: .04em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
 #menu-tv .tv-note { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 #menu-tv .tv-note p { margin: 0; text-align: right; text-wrap: balance; }
-#menu-tv .tv-note img { display: block; width: 120px; height: auto; flex: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
+#menu-tv .tv-note img { display: block; width: 144px; height: auto; flex: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
 @media (max-width: 700px) { #menu-tv { width: 128px; right: 6px; } #menu-tv .tv-note { display: none; } }
 @media (max-height: 420px) { #menu-tv { display: none; } }
 
