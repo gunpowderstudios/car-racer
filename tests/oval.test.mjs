@@ -22,9 +22,9 @@ function arena(rivals = 6) {
   return { def, track, car, derby };
 }
 
-test('The Oval is a preloaded track, replacing Bed Pan', () => {
+test('The Oval track is a preloaded track, now called Bed Pan', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
-  assert.equal(makeTemplate('oval').name, 'The Oval (Demolition Derby)');
+  assert.equal(makeTemplate('oval').name, 'Bed Pan (Demolition Derby)');
   assert.match(TEMPLATE_INFO.oval, /last one standing/i);
   assert.equal(TEMPLATE_KEYS.length, 9, 'eight tracks and the random one');
 });

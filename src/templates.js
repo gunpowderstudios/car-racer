@@ -290,7 +290,7 @@ const RAW = {
     autoBank: true,
   },
   oval: {
-    name: 'The Oval (Demolition Derby)', width: OVAL_FLOOR,
+    name: 'Bed Pan (Demolition Derby)', width: OVAL_FLOOR,
     handles: ellipse(OVAL_A, OVAL_B, 20),
     autoBank: false,
     arena: true,       // an open dirt bowl for a free-for-all banger derby: barrels everywhere, last one standing wins
@@ -430,7 +430,7 @@ export function makeTemplate(key) {
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
-  speedway: 'Fast banked oval to learn the car',
+  speedway: 'A fast banked Nascar-style paint-scraping, head rush',
   oval: 'Open dirt arena: a free-for-all banger derby with barrels everywhere. Last one standing wins',
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
