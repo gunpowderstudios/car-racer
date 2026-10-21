@@ -843,3 +843,6 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #eq-row input { width: 100%; min-width: 0; height: 10px; accent-color: #ff9f1a; }
 #eq-music { background: none; border: 1px solid #ff9f1a; color: #ff9f1a; font: inherit; padding: 0 4px; cursor: pointer; }
 #eq-music[aria-pressed="true"] { background: #ff3d9a; border-color: #ff3d9a; color: #1b1233; }
+
+#replay-bar .rp-track { display: inline-flex; align-items: center; gap: 6px; color: var(--peach); font-family: var(--cond); font-size: 15px; }
+#replay-bar .rp-track select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); font-family: var(--cond); font-size: 15px; padding: 3px 6px; }

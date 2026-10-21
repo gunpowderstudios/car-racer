@@ -15,7 +15,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -135,6 +135,8 @@ export function createReplayMode(d) {
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
     d.sound.speakers?.(!quick);                               // (while a film is made the game sound goes only into the film; the editing room has its own music)
     liftMusic(quick && !!(d.sound.sfxOn || d.sound.musicOn));      // (nobody wants lift music if they have the sound switched off)
+    if (el.track) el.track.disabled = quick; if (el.fx) el.fx.disabled = quick;
+    if (quick !== !!R.filmMusic) { R.filmMusic = quick; d.sound.filmTrack?.(quick ? (el.track ? el.track.value : 'off') : null, !el.fx || el.fx.checked); }      // (the soundtrack is laid for the film only)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
     if ($('re-sub')) $('re-sub').textContent = R.realtime ? 'Recording the whole race, game sound and all, as it plays. This takes as long as the race: please keep this page open.' : 'Your movie is being cut. Please keep this page open.';
     el.view.textContent = VIEWS[R.view];
@@ -255,6 +257,12 @@ export function createReplayMode(d) {
   }
 
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
+  if (el.track) {                                              // the film's soundtrack: one of the music tracks, or off (starts on the game's own choice)
+    let saved = null; try { saved = localStorage.getItem('cr.filmtrack'); } catch { /* none */ }
+    el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? d.sound.track : 'off');
+    el.track.onchange = () => { try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
+    if (el.fx) { try { el.fx.checked = localStorage.getItem('cr.filmfx') !== '0'; } catch { /* none */ } el.fx.onchange = () => { try { localStorage.setItem('cr.filmfx', el.fx.checked ? '1' : '0'); } catch { /* storage unavailable */ } el.fx.blur(); }; }
+  }
   el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
   if (!desktop) el.save.hidden = true;

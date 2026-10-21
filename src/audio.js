@@ -46,13 +46,32 @@ export class Sound {
     if (!TRACKS.includes(name) || name === this.track) return;
     this.track = name;
     try { localStorage.setItem('cr.musictrack', name); } catch { /* storage unavailable */ }
-    if (!this.ctx || !this.ready) return;
+    if (!this.ctx || !this.ready || this._film) return;                   // (a film in the making has its own soundtrack; the choice is picked up when it ends)
+    await this._swapMusic(name);
+  }
+  /** Decode a music file and loop it in place of the current one. */
+  async _swapMusic(name) {
+    this._want = name;
     try {
-      const r = await fetch(this.trackUrl()); const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
-      if (this.track !== name) return;                                    // (changed again while it loaded)
+      const r = await fetch(`sounds/${name}-music.mp3`); const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
+      if (this._want !== name) return;                                    // (changed again while it loaded)
       try { this.musicLoop && this.musicLoop.src.stop(); } catch { /* already stopped */ }
       this.buf.music = buf; this.musicLoop = this._loop('music', this.music, 1, false);
     } catch { /* keep the old music */ }
+  }
+  /** The soundtrack of a film being made: a track name or 'off'; null puts the game's own music back. */
+  async filmTrack(choice, fx = true) {
+    if (!this.ctx || !this.ready) return;
+    if (choice === null) {
+      if (!this._film) return;
+      this._film = null; this.music.gain.value = this.musicOn ? 0.22 * this.musicVol : 0; this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0;
+      if (this._want !== this.track) await this._swapMusic(this.track);
+      return;
+    }
+    this._film = choice; this.sfx.gain.value = fx ? (this.sfxOn ? this.sfxVol : 1) : 0;      // (effects can be left out of the film; a film made with the effects on has them even if they are quiet in the game)
+    if (choice === 'off') { this.music.gain.value = 0; return; }
+    this.music.gain.value = 0.22 * Math.max(0.5, this.musicVol);          // (always heard in a film that has a soundtrack, even if it is quiet in the game)
+    await this._swapMusic(choice);                                        // (from the top, so the tune starts with the film)
   }
 
   /** Speakers on or off (a video being made is recorded silently from the mix, so the player does not have to listen to it). */
@@ -127,16 +146,16 @@ export class Sound {
 
   setEnabled(kind, on) {
     localStorage.setItem(kind === 'music' ? 'cr.music' : 'cr.sfx', on ? '1' : '0');
-    if (kind === 'music') { this.musicOn = on; if (this.music) this.music.gain.value = on ? 0.22 * this.musicVol : 0; }
-    else { this.sfxOn = on; if (this.sfx) this.sfx.gain.value = on ? this.sfxVol : 0; }
+    if (kind === 'music') { this.musicOn = on; if (this.music && !this._film) this.music.gain.value = on ? 0.22 * this.musicVol : 0; }
+    else { this.sfxOn = on; if (this.sfx && !this._film) this.sfx.gain.value = on ? this.sfxVol : 0; }
   }
 
   /** Volume 0..1 for in-game music or effects (the cog menu sliders). */
   setVolume(kind, v) {
     v = Math.max(0, Math.min(1, +v || 0));
     try { localStorage.setItem(kind === 'music' ? 'cr.musicvol' : 'cr.sfxvol', String(v)); } catch { /* storage unavailable */ }
-    if (kind === 'music') { this.musicVol = v; if (this.music) this.music.gain.value = this.musicOn ? 0.22 * v : 0; }
-    else { this.sfxVol = v; if (this.sfx) this.sfx.gain.value = this.sfxOn ? v : 0; }
+    if (kind === 'music') { this.musicVol = v; if (this.music && !this._film) this.music.gain.value = this.musicOn ? 0.22 * v : 0; }
+    else { this.sfxVol = v; if (this.sfx && !this._film) this.sfx.gain.value = this.sfxOn ? v : 0; }
   }
 
   /** `level` (0..1) and `pitch` (1 = normal) let a replay hear a car from the camera: quieter far off, and shifted as it passes. */
