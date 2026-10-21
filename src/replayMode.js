@@ -134,7 +134,7 @@ export function createReplayMode(d) {
     el.speed.textContent = SPEEDS[R.speed] + '×';
     el.note.hidden = true;
     const quick = !!R.saving;
-    { const v = $('re-vid'); if (v) { if (quick) v.play().catch(() => {}); else v.pause(); } }
+    { const v = $('re-vid'); if (v) { if (quick) { if (!v.getAttribute('src') && v.dataset.src) v.src = v.dataset.src; v.play().catch(() => {}); } else v.pause(); } }      // (the little film only downloads when the editing room first opens)
     if (el.edit) el.edit.hidden = !quick;                     // the dark "editing room" screen while the film is made
     document.body.classList.toggle('rp-saving', !!R.saving);
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
@@ -304,6 +304,7 @@ export function createReplayMode(d) {
     R.savedMode = d.chase.mode; R.savedFov = d.camera.fov;
     R.t = R.player.t0; R.evT = R.t; R.playing = true; R.speed = 2; R.view = 0; R.focusId = 'p'; R.lastFocus = null; R.seen.clear();
     d.setMode('replay'); applyReplaySound();
+    { const v = $('re-vid'); if (v && !v.getAttribute('src') && v.dataset.src) { v.preload = 'auto'; v.src = v.dataset.src; } new Image().src = 'tv/tv-frame.webp'; }      // (warm the editing room up while the replay plays, so it is ready the moment a movie is made)
     R.active = true; R.opening = true; setTimeout(() => { R.opening = false; }, 0);          // (the key press that opened the replay is still being handled: it must not also close it)
     d.visual._rpReady = false; for (const v of d.views.values()) v._rpReady = false;
     rebuildTo(R.t);

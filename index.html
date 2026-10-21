@@ -240,10 +240,10 @@ html.invite-loading #invite-loading {
 <div id="rp-editing" hidden role="status" aria-live="polite">
   <div id="re-logo-slot"></div>
   <div class="re-card">
-    <img class="re-vhs" src="tv/vhs-cassette.png" alt="" onerror="this.hidden=true">
+    <img class="re-vhs" src="tv/vhs-cassette.webp" alt="" loading="lazy" onerror="this.hidden=true">
     <h2>Recording&hellip;</h2>
     <p id="re-sub">Pressing PLAY and RECORD at the same time is a little tricky, so keep this window open while we make your BLOCKBUSTER video!</p>
-    <div class="re-tv" aria-hidden="true"><video id="re-vid" muted loop playsinline preload="auto" src="tv/editing.mp4"></video><img src="tv/tv-frame.webp" alt=""></div>
+    <div class="re-tv" aria-hidden="true"><video id="re-vid" muted loop playsinline preload="none" data-src="tv/editing.mp4"></video><img src="tv/tv-frame.webp" alt="" loading="lazy"></div>
     <div class="re-bar"><i id="re-fill"></i></div>
     <p id="re-pct" class="re-pct">0%</p>
     <p class="re-hint">Keep this tab open and in view, or the film will pause.</p>
@@ -301,9 +301,9 @@ html.invite-loading #invite-loading {
 
 <!-- ============================ MENU ============================ -->
 <section id="menu">
-  <a id="gp-credit" href="https://www.gunpowderstudios.co.uk" target="_blank" rel="noopener" title="Gunpowder Studios"><span>A game by</span><img src="gunpowder-logo.png" alt="Gunpowder Studios" width="360" height="149" decoding="async"></a>
+  <a id="gp-credit" href="https://www.gunpowderstudios.co.uk" target="_blank" rel="noopener" title="Gunpowder Studios"><span>A game by</span><img src="gunpowder-logo.webp" alt="Gunpowder Studios" width="360" height="149" decoding="async"></a>
   <a id="music-credit" href="https://pixabay.com/users/velariomusic-54515099/" target="_blank" rel="noopener">Music by Velario Music on Pixabay</a>
-  <div id="menu-tv" aria-hidden="false"><div class="tv-set"><img src="tv/tv-set.webp" alt="" width="768" height="512" decoding="async"><div id="menu-tv-logo"></div></div><div class="tv-note"><p>Record your greatest hit!</p><img src="tv/vhs-cassette.png" alt="" width="500" height="333" decoding="async"></div></div>
+  <div id="menu-tv" aria-hidden="false"><div class="tv-set"><img src="tv/tv-set.webp" alt="" width="768" height="512" decoding="async"><div id="menu-tv-logo"></div></div><div class="tv-note"><p>Record your greatest hit!</p><img src="tv/vhs-cassette.webp" alt="" width="500" height="333" decoding="async"></div></div>
   <div class="menu-inner">
     <h1><span>Bangers</span> <span>and Smash!</span></h1>
     <button id="btn-play-now" class="btn btn-play">Buckle up! <small>A random race</small></button>

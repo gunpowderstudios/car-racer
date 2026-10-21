@@ -152,7 +152,7 @@ const props = new Props();
 const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
-let lounge = null;                  // the menu music (see loungeOn below): a plain audio element, because a browser will not start the game's own sound system before a click
+let lounge = null, loungeWait = false;                  // the menu music (see loungeOn below): a plain audio element, because a browser will not start the game's own sound system before a click
 const derby = new Derby();
 const views = new Map();            // rival id -> CarVisual
 const towHit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
@@ -1068,6 +1068,10 @@ let resumeAt = null;                                                            
 try { resumeAt = JSON.parse(sessionStorage.getItem('cr.musicpos') || 'null'); } catch { /* none */ }
 function loungeOn() {
   if (!musicWanted()) return;
+  if (document.readyState !== 'complete') {                       // (let the page itself finish loading before the tune starts to download)
+    if (!loungeWait) { loungeWait = true; addEventListener('load', () => setTimeout(() => { loungeWait = false; loungeOn(); }, 400), { once: true }); }
+    return;
+  }
   try {
     const url = assetUrl(sound.trackUrl());
     if (lounge && lounge._url !== url) { lounge.pause(); lounge = null; }
