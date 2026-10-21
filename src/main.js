@@ -1846,6 +1846,6 @@ window.__app = { car, get visual() { return visual; }, replayRec, replay, sound,
 try {
   fetch('https://gunpowder.goatcounter.com/counter/TOTAL.json').then((r) => { if (!r.ok) console.info('Visit counter: GoatCounter answered', r.status, '(is "Allow adding visitor counts on your website" switched on?)'); return r.ok ? r.json() : null; }).then((j) => {
     const n = j && String(j.count ?? '').trim(), el = $('visit-count');
-    if (n && el) { el.textContent = n + (n === '1' ? ' visit' : ' visits'); el.hidden = false; }
+    if (n && el) { el.textContent = 'Player visits: ' + n; el.hidden = false; }
   }).catch((e) => console.info('Visit counter: could not reach GoatCounter', e));
 } catch { /* no network */ }
