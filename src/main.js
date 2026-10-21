@@ -1044,7 +1044,7 @@ function loadProgress() {
 function musicWanted() { return mode === 'menu' && sound.musicOn && !sound.ready; }
 function menuMusic() { if (musicWanted()) loungeOn(); else loungeOff(); }
 let resumeAt = null;                                                             // (where the tune had got to before the vehicle-change reload; read once, as the Audio may be made more than once)
-try { resumeAt = JSON.parse(sessionStorage.getItem('cr.musicpos') || 'null'); sessionStorage.removeItem('cr.musicpos'); } catch { /* none */ }
+try { resumeAt = JSON.parse(sessionStorage.getItem('cr.musicpos') || 'null'); } catch { /* none */ }
 function loungeOn() {
   if (!musicWanted()) return;
   try {
