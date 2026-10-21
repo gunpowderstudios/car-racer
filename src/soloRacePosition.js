@@ -65,11 +65,15 @@ function continuousRivalProgress(fighter, s, playerProgress, length) {
   const slot = Number.isInteger(fighter.raceSlot) ? fighter.raceSlot : fighter.id;
   let state = rivalProgress.get(slot);
   if (!state) {
-    state = { s, unwrapped: unwrapNear(s, playerProgress, length) };
+    state = { s, fid: fighter.id, unwrapped: unwrapNear(s, playerProgress, length) };
     rivalProgress.set(slot, state);
     return state.unwrapped;
   }
 
+  if (state.fid !== fighter.id) {                // a new car took over this slot (the old one was wrecked): carry on from where it really is, near the old one's place
+    state.fid = fighter.id; state.s = s; state.unwrapped = unwrapNear(s, state.unwrapped, length);
+    return state.unwrapped;
+  }
   let d = s - state.s;
   if (d < -length / 2) d += length;
   if (d > length / 2) d -= length;

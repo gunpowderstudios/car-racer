@@ -285,7 +285,7 @@ function thinScatter(def) {
 
 const RAW = {
   speedway: {
-    name: 'Speedway Gonzales', width: 26,
+    name: 'Speedway Gonzales', width: 26, defaultLaps: 3,
     handles: ellipse(300, 190, 14),
     autoBank: true,
   },

@@ -51,3 +51,9 @@ test('a jump on a random track, if there is one, always has a takeoff ramp long 
     }
   }
 });
+
+test('Speedway Gonzales starts with 3 laps (until the player picks a number themselves); other tracks do not set one', async () => {
+  const { makeTemplate } = await import('../src/templates.js');
+  assert.equal(makeTemplate('speedway').defaultLaps, 3);
+  assert.equal(makeTemplate('technical').defaultLaps, undefined);
+});

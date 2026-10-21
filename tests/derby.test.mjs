@@ -778,3 +778,21 @@ test('Demolition: you get just the one spanner - one comeback, then the car is s
   a.derby._damage(P, 'front', 5000, null);
   assert.equal(a.derby.over, true, 'second wreck: scrap');
 });
+
+test('a rival that was wrecked comes back behind its wreck - never ahead of where it died, or ahead of a player who is past it', () => {
+  const track = new Track(makeTemplate('speedway'));
+  const player = new Vehicle();
+  placeOnRoad(player, track, 600, 0, 0);
+  const derby = new Derby(); derby.start(track, player, 4, 5);
+  const L = track.length, ps = track.progressAt(player.pos.x, player.pos.y, player.pos.z);
+  for (const behind of [15, 40, 90]) {
+    derby._replacementS.length = 0;
+    const wreckS = ((ps - behind) % L + L) % L;                       // the wreck is `behind` metres behind the player
+    derby._replacementS.push({ s: wreckS, raceSlot: 2 });
+    const f = derby._spawn();
+    assert.ok(f, 'spawned');
+    let d = track.progressAt(f.car.pos.x, f.car.pos.y, f.car.pos.z) - ps; if (d > L / 2) d -= L; if (d < -L / 2) d += L;
+    assert.ok(d < -behind + 1, `a wreck ${behind} m behind the player came back ${d.toFixed(0)} m from the player: it must be behind the wreck`);
+    derby._remove(f);
+  }
+});

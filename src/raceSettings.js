@@ -10,10 +10,14 @@ function readOpts() {
   try { return JSON.parse(localStorage.getItem('cr.opts')) || {}; } catch { return {}; }
 }
 
-function getLaps() {
+// The player's own choice wins; until they make one, a track can bring its own number of laps (Speedway Gonzales runs 3), else 1.
+function getLaps(def) {
   const gameLaps = window.__game?.opts?.laps;
   if (Number.isFinite(+gameLaps)) return clampLaps(gameLaps);
-  return clampLaps(readOpts().laps ?? DEFAULT_LAPS);
+  const saved = readOpts().laps;
+  if (saved !== undefined && saved !== null) return clampLaps(saved);
+  const own = Number((def || window.__game?.track?.def)?.defaultLaps);
+  return clampLaps(Number.isFinite(own) && own > 0 ? own : DEFAULT_LAPS);
 }
 
 function setLaps(v) {
@@ -25,7 +29,10 @@ function setLaps(v) {
   return laps;
 }
 
-window.__raceLaps = { get: getLaps, set: setLaps };
+window.__raceLaps = {
+  get: getLaps, set: setLaps,
+  syncFor(def) { const sel = document.getElementById('opt-laps'); if (sel) sel.value = String(getLaps(def)); },      // show the laps a chosen track will use (nothing is saved)
+};
 
 function installLapOption() {
   if (document.getElementById('opt-laps')) return;
@@ -59,7 +66,7 @@ Hud.prototype.update = function raceLengthHudUpdate(car, info) {
 // Multiplayer: the host's selection travels with the track so every player uses the same length.
 const originalStartGame = Multiplayer.prototype.startGame;
 Multiplayer.prototype.startGame = function raceLengthStartGame(trackDef) {
-  const laps = getLaps();
+  const laps = getLaps(trackDef);
   this._raceLaps = laps;
   const withLaps = trackDef ? { ...trackDef, raceLaps: laps } : trackDef;
   return originalStartGame.call(this, withLaps);

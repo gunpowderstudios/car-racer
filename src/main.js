@@ -324,7 +324,7 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
 // --------------------------------------------------------------------- track
 function loadTrack(newDef) {
   def = normalizeTrack(newDef);
-  track = new Track(def);
+  track = new Track(def); window.__raceLaps?.syncFor?.(def);
   chase.low = !!def.lowCam;      // (see pickStartCamera)
   stage.setTrack(track);
   hud.buildMap(track);
@@ -1170,7 +1170,7 @@ function toast(msg) {
 let trackPreview = null, chosenDef = null;
 function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; trackPreview?.stop(); }
 function chooseTrack(d, blurb) {
-  chosenDef = d;
+  chosenDef = d; window.__raceLaps?.syncFor?.(d);
   let t; try { t = new Track(d); } catch { toast('That track could not be read.'); return; }
   if (!trackPreview) { try { trackPreview = new EditorPreview($('menu-track-canvas')); } catch { startDriving(d); return; } }
   $('menu-track-name').textContent = d.name; $('menu-track-blurb').textContent = blurb;

@@ -309,9 +309,9 @@ export class Derby {
     let s = 0, off = 0, ok = false;
     for (let t = 0; t < 14 && !ok; t++) {
       if (replacementS != null) {
-        // First choice is just beyond the wreck. If that road space is occupied, walk farther
-        // forward in small steps rather than teleporting the replacement elsewhere on the lap.
-        s = replacementS + 22 + t * 7 + (t ? (rnd() - 0.5) * 4 : 0);
+        // First choice is just behind where the old car died, so a replacement never turns up ahead of you (or ahead of its own wreck) and keeps its place
+        // in the race. If that road space is occupied, walk farther back in small steps rather than teleporting it elsewhere on the lap.
+        s = replacementS - 10 - t * 7 + (t ? (rnd() - 0.5) * 4 : 0);
       } else {
         // No wreck to replace (rare): drop the car just behind the player, never out ahead of the field where it would pop into view.
         s = k >= 0 ? ps + margin + (L - 2 * margin) * (k + 0.5) / of + (t ? (rnd() - 0.5) * 40 : 0)
