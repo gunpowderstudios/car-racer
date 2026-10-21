@@ -1202,7 +1202,8 @@ function renderMenu() {
   };
   const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
-    row(d.name, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`, '', [['Choose', () => chooseTrack(d, `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`)], ['Edit', () => openEditor(d)]]);
+    const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
+    row(d.name, info, '', [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'technical', 'overpass', 'random']) addTemplate(k);
