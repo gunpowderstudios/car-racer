@@ -801,7 +801,7 @@ body.has-pad #controls .key-legend { display: none; }
 #rp-editing p { margin: 0 0 18px; font-size: 17px; opacity: .85; }
 #rp-editing .re-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.14); overflow: hidden; }
 #rp-editing .re-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb31f, #e8392c); transition: width .2s linear; }
-#rp-editing .re-vhs { display: block; margin: 0 auto 8px; width: 270px; max-width: 72vw; max-height: 32vh; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,.5)); }
+#rp-editing .re-vhs { display: block; margin: 0 auto 8px; width: 324px; max-width: 72vw; max-height: 38vh; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,.5)); }
 #rp-editing .re-tv { position: relative; width: 100%; max-width: 480px; max-height: 32vh; aspect-ratio: 3 / 2; margin: 0 auto 16px; }
 #rp-editing .re-tv img, #rp-editing .re-tv video { position: absolute; display: block; }
 #rp-editing .re-tv img { inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -827,7 +827,7 @@ body.rp-saving #replay-bar { visibility: hidden; }
   #hud-logo { display: block; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
   #hud-logo svg { display: block; width: 100%; height: auto; }
 }
-@media (max-height: 560px) { #rp-editing .re-vhs { width: 156px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
+@media (max-height: 560px) { #rp-editing .re-vhs { width: 187px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
 #re-logo-slot { display: contents; }
 
 /* 80s dashboard equaliser (desktop only): flat neon bars, music switch, FX and BTS (music) sliders */
