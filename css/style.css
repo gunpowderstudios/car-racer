@@ -848,7 +848,7 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #replay-bar .rp-track select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); font-family: var(--cond); font-size: 15px; padding: 3px 6px; }
 
 /* "A game by Gunpowder Studios": small, bottom left of the home page, links to the studio's site */
-#gp-credit { pointer-events: auto; position: fixed; left: 14px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 8px; color: rgba(246,217,176,.8); font-family: var(--cond); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; opacity: .85; }
+#gp-credit { pointer-events: auto; position: fixed; right: 14px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 8px; color: rgba(246,217,176,.8); font-family: var(--cond); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; opacity: .85; }
 #gp-credit:hover, #gp-credit:focus-visible { opacity: 1; }
-#gp-credit img { height: 34px; width: auto; display: block; }
+#gp-credit img { height: 68px; width: auto; display: block; }
 body:not(.mode-menu) #gp-credit { display: none; }
