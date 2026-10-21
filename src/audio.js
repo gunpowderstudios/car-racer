@@ -68,9 +68,9 @@ export class Sound {
       if (this._want !== this.track) await this._swapMusic(this.track);
       return;
     }
-    this._film = choice; this.sfx.gain.value = fx ? (this.sfxOn ? this.sfxVol : 1) : 0;      // (effects can be left out of the film; a film made with the effects on has them even if they are quiet in the game)
+    this._film = choice; this.sfx.gain.value = fx ? 0.5 : 0;      // (effects can be left out of the film; in a film they are at 50%)
     if (choice === 'off') { this.music.gain.value = 0; return; }
-    this.music.gain.value = 0.22 * Math.max(0.5, this.musicVol);          // (always heard in a film that has a soundtrack, even if it is quiet in the game)
+    this.music.gain.value = 0.22 * 0.8;                                    // (a film's soundtrack is at 80%, whatever the in-game music slider says)
     await this._swapMusic(choice);                                        // (from the top, so the tune starts with the film)
   }
 
