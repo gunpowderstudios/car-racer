@@ -1,10 +1,12 @@
 // WebAudio: engine (pitch follows RPM), tyre squeal, impacts, scrape and music.
 // Uses the sound files in /sounds; falls back to a synthesised engine if they are missing.
+export const TRACKS = ['lounge', 'fairground'];       // the music to pick from: sounds/<name>-music.mp3
 export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
     this.sfxOn = localStorage.getItem('cr.sfx') !== '0';
-    this.musicOn = localStorage.getItem('cr.music') === '1';
+    this.musicOn = localStorage.getItem('cr.music') !== '0';                        // (on unless the player has turned it off)
+    this.track = TRACKS.includes(localStorage.getItem('cr.musictrack')) ? localStorage.getItem('cr.musictrack') : 'lounge';
     this.buf = {};
   }
 
@@ -23,15 +25,31 @@ export class Sound {
       load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
-      load('music', 'sounds/background-music.mp3'), load('engineStart', 'sounds/engine-start.mp3'),
+      load('music', `sounds/${this.track}-music.mp3`), load('engineStart', 'sounds/engine-start.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
     this.screech = this._loop('screech', this.sfx, 0);
     this.scrape = this._loop('scrape', this.sfx, 0);
     if (!this.engine) this._synth();
     this._boostRush();
-    if (this.buf.music) this._loop('music', this.music, 1, false);
+    if (this.buf.music) this.musicLoop = this._loop('music', this.music, 1, false);
     this.ready = true;
+  }
+
+  /** The music file for the chosen track (the loading screen plays it before the sound system exists). */
+  trackUrl() { return `sounds/${this.track}-music.mp3`; }
+  /** Pick the music: it is remembered, and swapped in at once if the game's sound is already running. */
+  async setTrack(name) {
+    if (!TRACKS.includes(name) || name === this.track) return;
+    this.track = name;
+    try { localStorage.setItem('cr.musictrack', name); } catch { /* storage unavailable */ }
+    if (!this.ctx || !this.ready) return;
+    try {
+      const r = await fetch(this.trackUrl()); const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
+      if (this.track !== name) return;                                    // (changed again while it loaded)
+      try { this.musicLoop && this.musicLoop.src.stop(); } catch { /* already stopped */ }
+      this.buf.music = buf; this.musicLoop = this._loop('music', this.music, 1, false);
+    } catch { /* keep the old music */ }
   }
 
   /** Speakers on or off (a video being made is recorded silently from the mix, so the player does not have to listen to it). */

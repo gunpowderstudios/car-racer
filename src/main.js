@@ -1023,14 +1023,15 @@ function loadProgress() {
   if (!net && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
   return { done, total };
 }
-// Lounge music while the cars load ("Filling up..."): it has a tick box to switch it off (remembered), and it is only tried when a
-// click or key press has happened (a browser will not play sound before that), then stops the moment the game is ready.
+// Music while the cars load ("Filling up..."): the chosen tune (Lounge unless changed), if the Music tick is on. A browser will not play sound until a
+// click or key press has happened, so it is tried again on the first one; it stops the moment the game is ready (or the game's own music has started).
 let lounge = null;
-const loungeWanted = () => { try { return localStorage.getItem('cr.lounge') !== '0'; } catch { return true; } };
 function loungeOn() {
-  if (!loungeWanted() || !(sound.sfxOn || sound.musicOn)) return;
+  if (!sound.musicOn || sound.ready) return;
   try {
-    if (!lounge) { lounge = new Audio(assetUrl('sounds/lounge-music.mp3')); lounge.loop = true; lounge.onerror = () => { lounge = null; }; }
+    const url = assetUrl(sound.trackUrl());
+    if (lounge && lounge._url !== url) { lounge.pause(); lounge = null; }
+    if (!lounge) { lounge = new Audio(url); lounge._url = url; lounge.loop = true; lounge.onerror = () => { lounge = null; }; }
     lounge.volume = 0.5; if (lounge.paused) lounge.play().catch(() => {});
   } catch { /* no sound available */ }
 }
@@ -1039,13 +1040,13 @@ function loungeOff() {
   let v = a.volume; const fade = setInterval(() => { v -= 0.1; if (v <= 0.02) { clearInterval(fade); a.pause(); a.currentTime = 0; a.volume = 0.5; } else a.volume = v; }, 40);
 }
 {
-  const box = document.getElementById('rw-music');
-  if (box) { box.checked = loungeWanted(); box.onchange = () => { try { localStorage.setItem('cr.lounge', box.checked ? '1' : '0'); } catch { /* storage unavailable */ } if (box.checked) loungeOn(); else if (lounge) { lounge.pause(); lounge.currentTime = 0; } }; }
   const retry = () => { if (!$('race-wait').hidden) loungeOn(); };
   addEventListener('pointerdown', retry, true); addEventListener('keydown', retry, true);
+  for (const id of ['hud-track', 'opt-track']) { const el = $(id); if (el) { el.value = sound.track; el.addEventListener('change', (e) => { sound.setTrack(e.target.value); for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = e.target.value; if (lounge) { lounge.pause(); lounge = null; if (!$('race-wait').hidden) loungeOn(); } e.target.blur(); }); } }
 }
 function pollWait(now) {
   if (!pendingStart && !waitInit) return;
+  if (sound.ready && lounge && !lounge.paused) loungeOff();                   // (the game's own music has taken over)
   const { done, total } = loadProgress(), el = $('race-wait');
   const ready = done >= total || now - waitSince > 30000;            // (a car that never arrives must not hold the game for ever)
   if (ready) {
