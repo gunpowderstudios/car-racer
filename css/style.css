@@ -856,3 +856,7 @@ body:not(.mode-menu) #gp-credit { display: none; }
 #music-credit { pointer-events: auto; position: fixed; left: clamp(20px, 4vw, 56px); bottom: max(clamp(10px, 2vh, 22px), env(safe-area-inset-bottom)); z-index: 5; font-family: var(--cond); font-size: 12px; letter-spacing: .05em; color: rgba(246,217,176,.6); text-decoration: none; }
 #music-credit:hover, #music-credit:focus-visible { color: var(--amber); text-decoration: underline; }
 body:not(.mode-menu) #music-credit { display: none; }
+
+/* total plays, from GoatCounter (shows only once the number has arrived) */
+#visit-count { position: fixed; right: clamp(20px, 4vw, 56px); bottom: calc(max(clamp(20px, 5vh, 56px), env(safe-area-inset-bottom)) + 76px); z-index: 5; font-family: var(--cond); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: rgba(246,217,176,.6); pointer-events: none; }
+body:not(.mode-menu) #visit-count { display: none; }

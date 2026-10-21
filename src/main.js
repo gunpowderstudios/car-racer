@@ -1841,3 +1841,11 @@ let autoDrive = false;
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+
+// ----- total visits, from GoatCounter's public counter (shown on the home page once it arrives; nothing shows if it cannot be reached)
+try {
+  fetch('https://gunpowder.goatcounter.com/counter/TOTAL.json').then((r) => (r.ok ? r.json() : null)).then((j) => {
+    const n = j && String(j.count || '').trim(), el = $('visit-count');
+    if (n && el && n !== '0') { el.textContent = n + ' visits'; el.hidden = false; }
+  }).catch(() => {});
+} catch { /* no network */ }
