@@ -311,6 +311,33 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 0.90,
   },
 
+  'big-apple': {
+    reference: '1970s Checker-style New York yellow cab (huge, heavy, floaty, a landboat that keeps going)',
+    mass: 1900,
+    frontWeight: 0.55,
+    wheelbase: 2.95,
+    track: 1.62,
+    wheelRadius: 0.33,
+    mountY: 0.10,
+    inertia: { x: 4200, y: 5200, z: 1400 },
+    susp: {
+      free: 0.48, travel: 0.28,
+      kFront: 31000, kRear: 29000,
+      cCompFront: 2300, cCompRear: 2200, cRebFront: 3000, cRebRear: 2900,
+      arbFront: 10000, arbRear: 6500, bump: 185000, bumpDamp: 8500,
+    },
+    tyre: { muFront: 1.06, muRear: 1.08, B: 9.6, C: 1.20, slideMu: 0.82, loadSens: 0.06, rolling: 0.017 },
+    engine: { peakTorque: 330 },
+    brakeG: 1.12,
+    brakeBias: 0.62,
+    wallBounce: 0.25,
+    aero: { drag: 0.70, down: 0.12 },
+    steer: { max: 0.50, rate: 3.8, returnRate: 5.6 },
+    boost: { accel: 3.4 },
+    body: { width: 1.95, length: 5.2, bottom: -0.44, shoulder: 0.38, roof: 1.42, roofWidth: 1.60, roofLength: 3.00 },
+    mpDamageMul: 0.80,
+  },
+
   'mobility-car': {
     reference: '1960s fibreglass three-wheeled mobility car with a little two-stroke (featherweight, twitchy, easily bent)',
     mass: 380,

@@ -106,6 +106,16 @@ export const VEHICLES = [
     physicsProfile: 'bus',
   },
   {
+    id: 'big-apple',
+    name: 'Big Apple',
+    description: 'A fair ride and double the cost for tourists!',
+    url: 'cars/yellow-taxi-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 5.2,
+    damageMul: 0.8,                  // a big old yellow cab: built like a tank
+    physicsProfile: 'big-apple',
+  },
+  {
     id: 'motor-home', name: 'The Marriage Wrecker', url: 'cars/motorhome-SHRINK.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },

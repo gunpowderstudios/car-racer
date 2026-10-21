@@ -617,9 +617,11 @@ html.chat-quick-only .chat-row { display: none; }
 #menu .btn.ghost:hover, #menu .btn.ghost:focus-visible { background: #786496; }
 #menu #btn-multiplayer-top { background: #8a42e0; color: #fff; box-shadow: none; }
 #menu #btn-multiplayer-top:hover, #menu #btn-multiplayer-top:focus-visible { background: #8a42e0; }
+#menu #btn-story { background: #1e93db; color: #fff; box-shadow: none; }
+#menu #btn-story:hover, #menu #btn-story:focus-visible { background: #1e93db; }
 #menu #btn-new-top { background: #26aa56; color: #fff; box-shadow: none; }
 #menu #btn-new-top:hover, #menu #btn-new-top:focus-visible { background: #26aa56; }
-@media (hover: none) { #menu .btn:active { background: #e08f00; } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-new-top:active { background: #26aa56; } }
+@media (hover: none) { #menu .btn:active { background: #e08f00; } #menu #btn-multiplayer-top:active { background: #8a42e0; } #menu #btn-story:active { background: #1e93db; } #menu #btn-new-top:active { background: #26aa56; } }
 
 /* A track a friend sent as a link */
 #shared-track { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10,6,24,.82); }
