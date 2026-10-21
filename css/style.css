@@ -649,10 +649,10 @@ body.track-chosen #menu-vehicle-preview { display: none; }
 #van-dmg b { grid-row: 1; grid-column: 2; color: var(--ink, #f6d9b0); }
 
 /* Home screen buttons: solid, small and compact (v17.157) */
-#menu .btn-play { font-size: 26px; padding: 9px 22px; min-width: min(100%, 260px); margin: 6px 0 4px; box-shadow: 0 4px 0 #8a5200, 0 6px 12px rgba(0,0,0,.35); line-height: 1.1; }
-#menu .btn-play small { font-size: 13px; }
-#menu .btn-story { margin: 4px 0; padding: 6px 16px; font-size: 17px; line-height: 1.15; min-width: min(100%, 260px); }
-#menu .btn-story small { font-size: 12px; letter-spacing: .04em; }
+#menu .btn-play { font-size: 34px; padding: 12px 29px; min-width: min(100%, 338px); margin: 8px 0 5px; box-shadow: 0 5px 0 #8a5200, 0 8px 15px rgba(0,0,0,.35); line-height: 1.1; }      /* the four main buttons are 30% bigger than they were */
+#menu .btn-play small { font-size: 17px; }
+#menu .btn-story { margin: 5px 0; padding: 8px 21px; font-size: 22px; line-height: 1.15; min-width: min(100%, 338px); }
+#menu .btn-story small { font-size: 16px; letter-spacing: .04em; }
 #menu .btn { text-shadow: 0 1px 2px rgba(0,0,0,.75); }
 @media (max-width: 600px) {
   #menu .btn-play, #menu .btn-story { min-width: 0; width: min(100%, 300px); }
@@ -744,7 +744,7 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #menu-tv p { margin: 6px 0 0; font-family: var(--display), Impact, sans-serif; font-weight: 900; font-size: 15px; letter-spacing: .04em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
 #menu-tv .tv-note { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 #menu-tv .tv-note p { margin: 0; text-align: right; text-wrap: balance; }
-#menu-tv .tv-note img { display: block; width: 92px; height: auto; flex: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
+#menu-tv .tv-note img { display: block; width: 120px; height: auto; flex: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
 @media (max-width: 700px) { #menu-tv { width: 128px; right: 6px; } #menu-tv .tv-note { display: none; } }
 @media (max-height: 420px) { #menu-tv { display: none; } }
 
@@ -792,7 +792,7 @@ body.has-pad #controls .key-legend { display: none; }
 #rp-editing p { margin: 0 0 18px; font-size: 17px; opacity: .85; }
 #rp-editing .re-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.14); overflow: hidden; }
 #rp-editing .re-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb31f, #e8392c); transition: width .2s linear; }
-#rp-editing .re-vhs { display: block; margin: 0 auto 8px; width: 225px; max-width: 60vw; max-height: 27vh; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,.5)); }
+#rp-editing .re-vhs { display: block; margin: 0 auto 8px; width: 270px; max-width: 72vw; max-height: 32vh; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,.5)); }
 #rp-editing .re-tv { position: relative; width: 100%; max-width: 480px; max-height: 32vh; aspect-ratio: 3 / 2; margin: 0 auto 16px; }
 #rp-editing .re-tv img, #rp-editing .re-tv video { position: absolute; display: block; }
 #rp-editing .re-tv img { inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -818,5 +818,5 @@ body.rp-saving #replay-bar { visibility: hidden; }
   #hud-logo { display: block; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
   #hud-logo svg { display: block; width: 100%; height: auto; }
 }
-@media (max-height: 560px) { #rp-editing .re-vhs { width: 130px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
+@media (max-height: 560px) { #rp-editing .re-vhs { width: 156px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
 #re-logo-slot { display: contents; }
