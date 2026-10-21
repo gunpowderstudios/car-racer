@@ -327,7 +327,11 @@ export class CarVisual {
     const made = {};
     this.wheelNodes = order.map((k) => {
       if (made[k]) return made[k];                                            // the single front wheel of a three-wheeler is listed twice
-      const host = found[k], m = host.isMesh ? host : host.children.find((c) => c.isMesh);
+      // A wheel made of several pieces (a mesh with more than one primitive becomes a group of meshes): the biggest piece is the wheel itself - the hub fit
+      // measures that one - and any other piece (even a stray little triangle) turns with it. (It used to take the first child, which on the Dodge's front right
+      // wheel was a three-vertex scrap, so the real wheel was left behind, standing still.)
+      const host = found[k], parts = host.isMesh ? [host] : host.children.filter((c) => c.isMesh);
+      const m = parts.reduce((a, b) => (!a || (b.geometry?.attributes?.position?.count || 0) > (a.geometry?.attributes?.position?.count || 0) ? b : a), null);
       if (!m) return host;
       m.updateMatrix();
       // A wheel saved from Shrink says so (extras.wheel) and is already clean and centred on its axle (the node's origin): use it exactly as it is. Older models are guessed at.
@@ -341,6 +345,7 @@ export class CarVisual {
       const pivot = new THREE.Group(); pivot.name = host.name + '_axle';
       const parent = m.parent;
       pivot.position.copy(P); parent.add(pivot); pivot.add(m); m.position.sub(P);
+      for (const x of parts) if (x !== m) { x.updateMatrix(); pivot.add(x); x.position.sub(P); }      // (the other pieces of the wheel go on the same pivot)
       return (made[k] = pivot);
     });
     this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));

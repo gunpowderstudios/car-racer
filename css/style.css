@@ -854,6 +854,3 @@ body.rp-saving #replay-bar { visibility: hidden; }
 body:not(.mode-menu) #gp-credit { display: none; }
 
 
-/* total plays, from GoatCounter (shows only once the number has arrived) */
-#visit-count { position: fixed; left: clamp(20px, 4vw, 56px); bottom: max(clamp(10px, 2vh, 22px), env(safe-area-inset-bottom)); z-index: 5; font-family: var(--cond); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: rgba(246,217,176,.75); pointer-events: none; }
-body:not(.mode-menu) #visit-count { display: none; }
