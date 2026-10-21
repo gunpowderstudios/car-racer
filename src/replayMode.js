@@ -15,7 +15,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -99,7 +99,12 @@ export function createReplayMode(d) {
     R.lastFocus = R.lastFocus || { x: 0, z: 0 }; R.lastFocus.x = f.x; R.lastFocus.z = f.z;
     R.lastV.x = vx; R.lastV.z = vz;
     qTmp.set(f.qx, f.qy, f.qz, f.qw); vTmp.set(0, 0, 1).applyQuaternion(qTmp);
-    const mode = VIEWS[R.view];
+    let mode = VIEWS[R.view];
+    if (mode === 'Mix') {                                                    // a new camera every few seconds: trackside TV, chase, then from above
+      const k = Math.floor(Math.max(0, R.t - R.player.t0) / 5) % 3;
+      if (k !== R.mixK) { R.mixK = k; R.cams.reset(); d.chase.snap(); R.lastFocus = null; }
+      mode = ['TV', 'Chase', 'Top'][k];
+    }
     if (mode === 'Chase') {
       if (d.chase.mode !== 0) { d.chase.mode = 0; d.chase.ready = false; }
       d.chase.update(dt, R.fv.set(f.x, f.y, f.z), qTmp, { x: vx, y: 0, z: vz }, d.getTrack());
@@ -135,8 +140,6 @@ export function createReplayMode(d) {
     if (!R.saving) { holdAwake(false); R.saveWall0 = null; R.lastPc = -1; if (!(el.ready && !el.ready.hidden)) tabTitle(null); }
     d.sound.speakers?.(!quick);                               // (while a film is made the game sound goes only into the film; the editing room has its own music)
     liftMusic(quick && !!(d.sound.sfxOn || d.sound.musicOn));      // (nobody wants lift music if they have the sound switched off)
-    if (el.track) el.track.disabled = quick; if (el.fx) el.fx.disabled = quick;
-    if (quick !== !!R.filmMusic) { R.filmMusic = quick; d.sound.filmTrack?.(quick ? (el.track ? el.track.value : 'off') : null, !el.fx || el.fx.checked); }      // (the soundtrack is laid for the film only)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
     if ($('re-sub')) $('re-sub').textContent = R.realtime ? 'Recording the whole race, game sound and all, as it plays. This takes as long as the race: please keep this page open.' : 'Your movie is being cut. Please keep this page open.';
     el.view.textContent = VIEWS[R.view];
@@ -172,7 +175,8 @@ export function createReplayMode(d) {
       }
       if (!tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
       if (!(d.sound.ctx && (d.sound.ctx.audioWorklet || d.sound.ctx.createScriptProcessor))) { d.toast('This browser cannot record the game sound: try a recent Chrome or Edge'); return; }
-      startSave(tvImg, pickBestBit(R.player, 1e9), null, true);
+      const hl = pickBestBit(R.player, 1e9); hl.cuts = null;                  // (the film uses the camera chosen on the replay screen: TV, Chase, Top or Mix)
+      startSave(tvImg, hl, null, true);
     } finally { R.making = false; }
   }
   function startSave(tv, hl, clip, realtime = false) {
@@ -250,18 +254,20 @@ export function createReplayMode(d) {
     if (s.rec.state !== 'inactive') s.rec.stop();
   }
   function cycleView() { R.view = (R.view + 1) % VIEWS.length; R.cams.reset(); d.chase.snap(); syncUi(); }
-  function nextCar(ents) {
+  function nextCar(ents, step = 1) {
     const list = (ents || R.player.sample(R.t)).map((e) => e.id);
     if (!list.length) return;
-    R.focusId = list[(list.indexOf(R.focusId) + 1) % list.length]; R.cams.reset(); R.lastFocus = null; d.chase.snap(); syncUi();
+    R.focusId = list[(list.indexOf(R.focusId) + step + list.length) % list.length]; R.cams.reset(); R.lastFocus = null; d.chase.snap(); syncUi();
   }
 
   el.play.onclick = () => { if (!R.saving) togglePlay(); };
+  // The soundtrack and effects chosen on the replay screen are what you hear in the replay and what goes into the movie.
+  function applyReplaySound() { d.sound.filmTrack?.(el.track ? el.track.value : 'off', !el.fx || el.fx.checked); }
   if (el.track) {                                              // the film's soundtrack: one of the music tracks, or off (starts on the game's own choice)
     let saved = null; try { saved = localStorage.getItem('cr.filmtrack'); } catch { /* none */ }
     el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? d.sound.track : 'off');
-    el.track.onchange = () => { try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
-    if (el.fx) { try { el.fx.checked = localStorage.getItem('cr.filmfx') !== '0'; } catch { /* none */ } el.fx.onchange = () => { try { localStorage.setItem('cr.filmfx', el.fx.checked ? '1' : '0'); } catch { /* storage unavailable */ } el.fx.blur(); }; }
+    el.track.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
+    if (el.fx) { try { el.fx.checked = localStorage.getItem('cr.filmfx') !== '0'; } catch { /* none */ } el.fx.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmfx', el.fx.checked ? '1' : '0'); } catch { /* storage unavailable */ } el.fx.blur(); }; }
   }
   el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
@@ -269,6 +275,7 @@ export function createReplayMode(d) {
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();
+  if (el.prev) el.prev.onclick = () => nextCar(null, -1);
   el.exit.onclick = () => exit();
   const seekFromUi = () => { if (R.active) seek(R.player.t0 + (+el.seek.value / 1000) * Math.max(0.001, R.player.duration)); };
   el.seek.addEventListener('input', seekFromUi);
@@ -296,7 +303,7 @@ export function createReplayMode(d) {
     R.cams = new ReplayCams(tr, d.derby.lastStanding ? d.arenaInfo(tr) : null);
     R.savedMode = d.chase.mode; R.savedFov = d.camera.fov;
     R.t = R.player.t0; R.evT = R.t; R.playing = true; R.speed = 2; R.view = 0; R.focusId = 'p'; R.lastFocus = null; R.seen.clear();
-    d.setMode('replay');
+    d.setMode('replay'); applyReplaySound();
     R.active = true; R.opening = true; setTimeout(() => { R.opening = false; }, 0);          // (the key press that opened the replay is still being handled: it must not also close it)
     d.visual._rpReady = false; for (const v of d.views.values()) v._rpReady = false;
     rebuildTo(R.t);
@@ -309,7 +316,7 @@ export function createReplayMode(d) {
     if (!R.active) return;
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
-    R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
+    d.sound.filmTrack?.(null); R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
     rebuildTo(Infinity);

@@ -131,7 +131,7 @@ export class ReplayPlayer {
 // ------------------------------------------------------------------------------------------ cameras
 const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
-export const VIEWS = ['TV', 'Chase', 'Top'];
+export const VIEWS = ['TV', 'Chase', 'Top', 'Mix'];       // (Mix cuts between the other three every few seconds)
 
 export class ReplayCams {
   /** `track` is the game's Track; `arena` is arenaInfo(track) for an arena with no road to follow, else null. */
