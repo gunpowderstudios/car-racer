@@ -70,9 +70,9 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
       last = canvas;
       const n = idx < 0 ? 0 : Math.floor(Math.max(0, seconds) * FPS + 0.5);
       for (let i = idx + 1; i <= n; i++) {
-        if (!force && i > idx + 1 && venc.encodeQueueSize > 12) return;
+        if (!force && i > idx + 1 && venc.encodeQueueSize > 36) return;      // (a whole second of room: every key picture takes the encoder far longer than the rest, and a smaller queue made it throw away the next few pictures, which showed as a jolt)
         const f = new G.VideoFrame(canvas, { timestamp: Math.round((i / FPS) * 1e6), duration: Math.round(1e6 / FPS) });
-        venc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close(); idx = i;
+        venc.encode(f, { keyFrame: i % (FPS * 5) === 0 }); f.close(); idx = i;
       }
     },
     queue() { return venc.encodeQueueSize; },

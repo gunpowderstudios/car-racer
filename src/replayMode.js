@@ -315,7 +315,7 @@ export function createReplayMode(d) {
   /** Called every frame while the replay is on. Returns the position the sun and shadows should follow. */
   function frame(dt) {
     const p = R.player;
-    R.held = !!(R.saving && R.saver && (R.realtime ? R.saver.queue() > 24 : R.saver.busy()));        // (a film with sound runs at real speed and drops pictures rather than holding, so its sound is never chopped)        // saving a video and the encoder is behind: hold the replay still until it catches up
+    R.held = !!(R.saving && R.saver && (R.realtime ? R.saver.queue() > 80 : R.saver.busy()));        // (a film with sound runs at real speed and drops pictures rather than holding, so its sound is never chopped)        // saving a video and the encoder is behind: hold the replay still until it catches up
     R.skip = false;
     if (R.saving && R.saver) {
       // Saving a video: the replay moves on in exact 1/30 s steps, one step per video frame, paced to real time. Every frame of the video is then

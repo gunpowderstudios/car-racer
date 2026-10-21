@@ -52,7 +52,7 @@ test('video is stamped with the replay clock, with the replay held when the enco
   const m = f('src/mp4Save.js'), r = f('src/replayMode.js');
   assert.match(m, /busy\(\)/); assert.match(m, /setClock\(/);
   assert.match(r, /saver\.addFrame\(out, R\.t - R\.saveStart\)/);
-  assert.match(r, /R\.held = !!\(R\.saving && R\.saver && \(R\.realtime \? R\.saver\.queue\(\) > 24 : R\.saver\.busy\(\)\)\)/);
+  assert.match(r, /R\.held = !!\(R\.saving && R\.saver && \(R\.realtime \? R\.saver\.queue\(\) > 80 : R\.saver\.busy\(\)\)\)/);
 });
 test('the site is ready for bangersandsmash.co.uk', () => {
   const h = f('index.html');
