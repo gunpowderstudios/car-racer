@@ -1078,7 +1078,8 @@ function loungeOn() {
         a.addEventListener('loadedmetadata', () => { if (a.duration > 1) a.currentTime = at % a.duration; }, { once: true });
       }
     }
-    lounge.volume = 0.5; if (lounge.paused) lounge.play().catch(() => {});
+    lounge.volume = Math.min(1, 0.2 * sound.musicVol);   // (the same loudness as the in-game music: 0.22 x master 0.9 x the music slider)
+     if (lounge.paused) lounge.play().catch(() => {});
   } catch { /* no sound available */ }
 }
 function loungeOff() {
