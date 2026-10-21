@@ -28,11 +28,15 @@ function installPreview({
   const blurbEl = blurbId ? document.getElementById(blurbId) : null;
   if (!wrap || !canvas || !loading) return;
 
-  const chosen = selectedVehicle();
-  const vehicle = VEHICLES.find((v) => v.id === chosen.id) || chosen;
-  if (nameEl) nameEl.textContent = vehicle.name;
-  const baseBlurb = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
-  if (blurbEl) blurbEl.textContent = baseBlurb;
+  let vehicle = null, baseBlurb = '';
+  const choose = () => {
+    const chosen = selectedVehicle();
+    vehicle = VEHICLES.find((v) => v.id === chosen.id) || chosen;
+    if (nameEl) nameEl.textContent = vehicle.name;
+    baseBlurb = vehicle.description || COPY[vehicle.id] || 'Built for a bit of harmless trouble.';
+    if (blurbEl) blurbEl.textContent = baseBlurb;
+  };
+  choose();
 
   try {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -111,7 +115,11 @@ function installPreview({
     };
 
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-    loader.loadAsync(assetUrl(modelUrl(vehicle.url))).then((gltf) => {
+    let loadId = 0;
+    const loadVehicle = () => {
+    const mine = ++loadId, shown = vehicle;
+    loader.loadAsync(assetUrl(modelUrl(shown.url))).then((gltf) => {
+      if (mine !== loadId) return;                                  // (another car was picked while this one downloaded)
       model = gltf.scene;
       model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });
       if (TOW_CARS.includes(vehicle.id)) {
@@ -141,8 +149,16 @@ function installPreview({
       wrap.classList.add('ready');
       loading.textContent = '';
     }).catch((err) => {
-      console.warn('Could not load vehicle preview.', vehicle.url, err);
+      console.warn('Could not load vehicle preview.', shown.url, err);
       loading.textContent = '3D preview unavailable';
+    });
+    };
+    loadVehicle();
+    window.addEventListener('vehiclechange', () => {               // a different car was picked: show it, with no page reload
+      choose();
+      for (const c of [...holder.children]) holder.remove(c);
+      model = rig = van = null; wrap.classList.remove('ready'); loading.textContent = 'Loading…';
+      loadVehicle();
     });
 
     canvas.addEventListener('pointerdown', (e) => {

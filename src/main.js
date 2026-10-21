@@ -31,7 +31,7 @@ import { Multiplayer } from './multiplayer.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes, PowerSaveHint } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
-import { selectedVehicle, multiplayerVehicleSpec, vehicleById, VEHICLES, specForVehicle, jamboreePool } from './vehicleChoice.js';
+import { selectedVehicle, multiplayerVehicleSpec, vehicleById, VEHICLES, specForVehicle, jamboreePool, applySelectedProfile, onVehicleSwap } from './vehicleChoice.js';
 import { obbOverlap } from './obbOverlap.js';
 import { Caravan, HITCH, TOW_CARS } from './caravan.js';
 import { remoteCarHitsVan, carHitsRemoteVan } from './mpVanContacts.js';
@@ -86,7 +86,7 @@ const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 7000);
 const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
 const car = new Vehicle();
-const visual = new CarVisual(stage.scene, car.restHeight);
+let visual = new CarVisual(stage.scene, car.restHeight);       // (let: picking another vehicle on the menu swaps it, see swapVehicle)
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
 /** Should there be a caravan on the car right now? Only if asked for and on a car that can tow it (in multiplayer too: the others see it through the state reports). */
 let vanHudShown = -1;
@@ -111,12 +111,6 @@ function syncCaravan() {
   caravanView.snap(caravan);
   caravanView.load().then((d) => { if (d) ready(); else { opts.caravan = false; store.set('cr.opts', opts); const cb = $('opt-caravan'); if (cb) cb.checked = false; car.tow = null; toast('The caravan model could not be loaded.'); } });
 }
-visual.setPaint(PAINTS[opts.paint][1]);
-visual.onLoad = (v) => {
-  $('swatches').hidden = v.textured;            // a textured car brings its own paint
-  loadBar(1);
-  warmRivalLooks(v, tier.arenaField, (t) => renderer.initTexture(t));       // paint the rivals' colours now, in idle time, not mid-race
-};
 // A slim "Loading car" bar while the model downloads. It only appears if the download takes a moment (a cached car never shows it).
 let loadBarT = 0;
 function loadBar(frac) {
@@ -125,8 +119,17 @@ function loadBar(frac) {
   $('car-load-fill').style.width = Math.round(frac * 100) + '%';
   if (!loadBarT) loadBarT = setTimeout(() => { el.hidden = false; }, 350);
 }
+function wireVisual(visual) {
+visual.setPaint(PAINTS[opts.paint][1]);
+visual.onLoad = (v) => {
+  $('swatches').hidden = v.textured;            // a textured car brings its own paint
+  loadBar(1);
+  warmRivalLooks(v, tier.arenaField, (t) => renderer.initTexture(t));       // paint the rivals' colours now, in idle time, not mid-race
+};
 visual.onProgress = (done, total) => { if (done < 0) loadBar(-1); else loadBar(total > 0 ? Math.min(0.98, done / total) : 0.5); };
 visual.load();
+}
+wireVisual(visual);
 const chase = new ChaseCamera(camera);
 const skid = new SkidMarks(stage.scene);
 const particles = new Particles(stage.scene);
@@ -835,7 +838,7 @@ function recHit(x, y, z, speed, kind) {
 }
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
-  $, canvas, rec: replayRec, sound, camera, chase, visual, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
+  $, canvas, rec: replayRec, sound, camera, chase, get visual() { return visual; }, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
   getTrack: () => track, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
@@ -1029,6 +1032,23 @@ function pickStartCamera() {
   const big = ['bus', 'motor-home'].includes(selectedVehicle().id);           // the bus and the motorhome are so big that they start on the High camera
   chase.mode = phone || big ? 1 : 0; chase.ready = false;
 }
+// ----- changing vehicle on the menu: no page reload, so the menu music (and everything else) just carries on.
+// The player's Vehicle is rebuilt for the new spec (CAR is rewritten in place), a fresh model is loaded, the caravan hitch moves, the rivals are dealt again.
+function swapVehicle(id) {
+  if (net) return false;                                     // (in a multiplayer room everyone has to agree on the car: the reload path stays)
+  if (mode !== 'menu') return false;
+  applySelectedProfile();
+  car.respec();
+  const old = visual; visual = new CarVisual(stage.scene, car.restHeight); wireVisual(visual); old.dispose();
+  caravan.hitch = { ...(HITCH[id] || HITCH.escort) };
+  { const cb = $('opt-caravan'); if (cb) cb.checked = !!opts.caravan && TOW_CARS.includes(id) && !caravanBlocked(); }   // (the saved choice only shows on a car that can tow)
+  window.dispatchEvent(new Event('vehiclechange'));
+  syncCaravan();
+  if (track) { placeCar(track.startS(12), 0, 0); car.boostFuel = 1; derbyStart(); pickStartCamera(); }
+  return true;
+}
+onVehicleSwap(swapVehicle);
+
 // ----- the race waits for its cars: pressing Play (or opening the game) holds on the home screen, with a bar, until every car has loaded,
 // so nobody drives off among the plain grey boxes that stand in for a car that is still downloading.
 let pendingStart = false, waitInit = true, waitSince = performance.now();
@@ -1039,7 +1059,7 @@ function loadProgress() {
   return { done, total };
 }
 // Menu music: the chosen tune (Lounge unless changed) plays on the loading bar and on the menu while Music is ticked, and carries on while you pick your
-// racing options. Choosing a vehicle reloads the page, so where the tune had got to is kept for a moment and it picks up from there. A browser will not
+// racing options. (Choosing a vehicle swaps the car in place now; the saved position only matters if a reload ever happens, e.g. the multiplayer fallback.) A browser will not
 // play sound until a click or key press has happened, so it is tried again on the first one. It stops when a race starts (the game's own music takes over).
 function musicWanted() { return mode === 'menu' && sound.musicOn && !sound.ready; }
 function menuMusic() { if (musicWanted()) loungeOn(); else loungeOff(); }
@@ -1808,4 +1828,4 @@ let autoDrive = false;
 }
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
-window.__app = { replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };

@@ -95,13 +95,10 @@ const WATER_DRAG = 0.35;      // 1/s: deceleration per m/s of speed while a whee
 export class Vehicle {
   constructor(spec = CAR) {
     this.spec = spec;
-    this.mass = spec.mass;
     this.boostFuel = 1;           // 0..1 nitro tank (kept across respawns)
-    this.invI = new V3(1 / spec.inertia.x, 1 / spec.inertia.y, 1 / spec.inertia.z);
     this.pos = new V3(); this.vel = new V3(); this.angVel = new V3();
     this.rot = new Q();
     this.ax = new V3(1, 0, 0); this.ay = new V3(0, 1, 0); this.az = new V3(0, 0, 1);
-    this.wheels = [0, 1, 2, 3].map((i) => new Wheel(i, spec));
     this.F = new V3(); this.T = new V3();
     this.q = Track.newQuery();
     this.events = [];
@@ -109,12 +106,22 @@ export class Vehicle {
     this.engineOff = false; this.crank = 0;                  // stalled by a big hit: throttle and boost are dead until the driver restarts it (restartEngine)
     this._in = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
+    this.respec();
+    this.reset(new V3(0, this.restHeight, 0), new V3(0, 0, 1), new V3(0, 1, 0));
+  }
+
+  /** (Re)build everything that is worked out from the spec: mass, inertia, wheel positions, hull and ride height. The player's car calls this
+   *  when a different vehicle is picked on the menu (CAR is rewritten in place first), so the game does not need to reload. */
+  respec() {
+    const spec = this.spec;
+    this.mass = spec.mass;
+    this.invI = new V3(1 / spec.inertia.x, 1 / spec.inertia.y, 1 / spec.inertia.z);
+    this.wheels = [0, 1, 2, 3].map((i) => new Wheel(i, spec));
     this.hullWorld = spec.hull.map(() => new V3());
     // Static ride height: wheel centre at R above ground, suspension length = free - static compression
     const sprungFront = spec.mass * spec.frontWeight / 2;
     const xs = sprungFront * G / spec.susp.kFront;
     this.restHeight = spec.wheelRadius + (spec.susp.free - xs) - spec.mountY;
-    this.reset(new V3(0, this.restHeight, 0), new V3(0, 0, 1), new V3(0, 1, 0));
   }
 
   /** Place the car with its centre of mass at `pos`, facing `fwd`, with `up` as roof direction. */

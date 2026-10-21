@@ -242,12 +242,15 @@ export const jamboreePool = () => VEHICLES.filter((v) => !JAMBOREE_EXCLUDE.inclu
 
 // Apply the selected profile BEFORE main.js creates its Vehicle. Physics and damage toughness
 // now live in the same vehicle definition instead of a separate side-effect module.
-function applySelectedProfile() {
+const PLAIN_CAR = structuredClone(CAR);                 // the car as written in vehicle.js, so a swap starts clean (a key one vehicle adds must not leak into the next)
+const PLAYER_MUL = structuredClone(SPECS.player.mul || null);
+export function applySelectedProfile() {
   const cfg = selectedVehicle();
-  Object.assign(CAR, specForVehicle(cfg));
+  for (const k of Object.keys(CAR)) if (!(k in PLAIN_CAR)) delete CAR[k];
+  Object.assign(CAR, structuredClone(PLAIN_CAR), specForVehicle(cfg));
 
+  const base = PLAYER_MUL || {};
   if (cfg.damageMul && cfg.damageMul !== 1) {
-    const base = SPECS.player.mul || {};
     SPECS.player.mul = {
       front: (base.front ?? 1) * cfg.damageMul,
       back: (base.back ?? 1) * cfg.damageMul,
@@ -255,7 +258,16 @@ function applySelectedProfile() {
       right: (base.right ?? 1) * cfg.damageMul,
       roof: (base.roof ?? 1) * cfg.damageMul,
     };
-  }
+  } else if (PLAYER_MUL) SPECS.player.mul = { ...PLAYER_MUL }; else delete SPECS.player.mul;
+}
+
+/** The game (main.js) registers how to change vehicle without a reload; until it does (or when it cannot), a change reloads the page as it used to. */
+// (kept on window: bootstrap.js loads this file with a ?v= query and main.js without, so there are two copies of the module)
+export function onVehicleSwap(fn) { window.__swapVehicle = fn; }
+export function pickVehicle(id, reload = () => location.reload()) {
+  try { localStorage.setItem(KEY, vehicleById(id).id); } catch { /* storage unavailable */ }
+  if (window.__swapVehicle) { try { if (window.__swapVehicle(vehicleById(id).id) !== false) return; } catch (e) { console.warn('vehicle swap failed, reloading', e); } }
+  reload();
 }
 
 applySelectedProfile();
@@ -292,6 +304,7 @@ function buildVehicleGallery(onPick, extraClass = '') {
     card.addEventListener('click', () => { if (vehicle.id !== selectedVehicle().id) onPick(vehicle.id); });
     gallery.appendChild(card);
   }
+  window.addEventListener('vehiclechange', () => { const now = selectedVehicle().id; for (const c of gallery.querySelectorAll('.vcard[data-id]')) if (c.dataset.id !== 'caravan') c.setAttribute('aria-checked', String(c.dataset.id === now)); });
   return gallery;
 }
 
@@ -301,10 +314,7 @@ function addVehicleSelector() {
   const heading = document.createElement('div');
   heading.className = 'vgallery-title';
   heading.textContent = 'Choose your vehicle';
-  const gallery = buildVehicleGallery((id) => {
-    try { localStorage.setItem(KEY, id); } catch { /* storage unavailable */ }
-    location.reload();
-  });
+  const gallery = buildVehicleGallery((id) => pickVehicle(id));
   slot.append(heading, gallery);
   addCaravanCard(gallery);
 }
@@ -326,7 +336,8 @@ function addCaravanCard(gallery) {
   const name = document.createElement('span');
   name.textContent = CARAVAN_INFO.name;
   card.append(img, name);
-  const towable = TOW_CARS.includes(selectedVehicle().id), blocked = caravanBlocked();
+  let towable = TOW_CARS.includes(selectedVehicle().id);
+  const blocked = caravanBlocked();
   const checkbox = () => document.getElementById('opt-caravan');
   const sync = () => {
     const on = towable && !blocked && !!checkbox()?.checked;
@@ -345,6 +356,7 @@ function addCaravanCard(gallery) {
     sync();
   });
   window.addEventListener('change', (e) => { if (e.target?.id === 'opt-caravan') sync(); });
+  window.addEventListener('vehiclechange', () => { towable = TOW_CARS.includes(selectedVehicle().id); sync(); });
   addEventListener('load', sync);
   sync();
   gallery.appendChild(card);
@@ -364,9 +376,7 @@ function rememberMultiplayerScreen(screen) {
 }
 
 function changeMultiplayerVehicle(id, screen) {
-  rememberMultiplayerScreen(screen);
-  try { localStorage.setItem(KEY, vehicleById(id).id); } catch { /* storage unavailable */ }
-  location.reload();
+  pickVehicle(id, () => { rememberMultiplayerScreen(screen); location.reload(); });          // (swapped in place when it can be; the reload is the fallback)
 }
 
 function addMultiplayerVehicleSelector(containerId, selectId, screen) {

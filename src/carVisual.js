@@ -202,6 +202,12 @@ export class CarVisual {
     this.loaded = false;
   }
 
+  /** Take this car out of the scene and free its models (the menu swapped to another vehicle). */
+  dispose() {
+    this.root.removeFromParent();
+    this.root.traverse((o) => { if (o.isMesh) { o.geometry?.dispose(); for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m?.map?.dispose?.(); m?.dispose?.(); } } });
+  }
+
   setPaint(hex) {
     this.material.color.set(hex); this.material.userData.base = this.material.color.clone(); this._lookKey = -1;
     const kept = pristine.get(this.material); if (kept) kept.color.set(hex);
