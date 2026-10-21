@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.323';
-export const NOTE = 'GoatCounter visitor stats and a small visit count on the home page.';
+export const VERSION = '17.324';
+export const NOTE = 'Music credit removed for now; the visit counter sits bottom left of the home page.';
