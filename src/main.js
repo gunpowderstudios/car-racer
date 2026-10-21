@@ -222,7 +222,7 @@ function perfUpdate(now) {
 const physicsLabel = `${tier.physicsHz}Hz`;
 
 const input = new Input({
-  onReset: () => mode === 'drive' && respawn(),
+  onReset: () => mode === 'drive' && backOnRoad(),
   onRestart: () => mode === 'drive' && restartRace(),
   onPadConnect: () => mode === 'drive' && hud.banner('Controller connected', 1600),
   onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
@@ -310,7 +310,7 @@ syncSoundUI();
 
 // ------------------------------------------------------- on-screen controls bar
 const controlActions = {
-  restart: () => restartRace(), reset: () => respawn(),
+  restart: () => restartRace(), reset: () => backOnRoad(),
   camera: () => hud.banner(chase.cycle() + ' camera', 900),
   mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
@@ -383,6 +383,13 @@ function restartRace() {
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
 }
 
+/** The player asked to be put back on the road (B or the pad's Y): it costs a spanner while there are any left. (A recovery the game does by itself is free.) */
+function backOnRoad() {
+  if (derby.over || (derby.enabled && derby.player?.wrecked)) return;
+  const costs = derby.enabled && Number.isFinite(derby.repairsMax) && derby.repairs > 0;
+  respawn();
+  if (costs) { derby.repairs--; hud.setRepairs(derby.repairs, derby.repairsMax); hud.banner(`Back on the road - spanner used, ${derby.repairs} left`, 1500); }
+}
 function respawn() {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
