@@ -831,7 +831,7 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #re-logo-slot { display: contents; }
 
 /* 80s dashboard equaliser (desktop only): flat neon bars, music switch, FX and BTS (music) sliders */
-#eq { display: none; position: absolute; left: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 232px); width: 150px; padding: 6px 8px 7px; background: rgba(20,12,40,.82); border-left: 4px solid #ff3d9a; pointer-events: auto; font-family: var(--cond); font-size: 11px; letter-spacing: .08em; color: #ffb347; }
+#eq { display: none; position: absolute; left: 240px; top: max(14px, env(safe-area-inset-top)); width: 150px; padding: 6px 8px 7px; background: rgba(20,12,40,.82); border-left: 4px solid #ff3d9a; pointer-events: auto; font-family: var(--cond); font-size: 11px; letter-spacing: .08em; color: #ffb347; }
 @media (pointer: fine) { #eq { display: block; } }
 #eq-bars { display: flex; gap: 2px; height: 34px; align-items: flex-end; }
 #eq-bars i { flex: 1; height: 100%; --h: 0; clip-path: inset(calc((1 - var(--h)) * 100%) 0 0 0);
