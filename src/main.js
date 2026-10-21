@@ -1,4 +1,5 @@
 // Car Racer - main entry. Wires physics, rendering, HUD, audio, menu and editor together.
+import { assetUrl } from './assetVersion.js';
 import { GAME_SPEED } from './gameSpeed.js';
 import * as THREE from 'three';
 import { Track, SURF, normalizeTrack, analyzeTrack } from './track.js';
@@ -1022,18 +1023,39 @@ function loadProgress() {
   if (!net && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
   return { done, total };
 }
+// Lounge music while the cars load ("Filling up..."): it has a tick box to switch it off (remembered), and it is only tried when a
+// click or key press has happened (a browser will not play sound before that), then stops the moment the game is ready.
+let lounge = null;
+const loungeWanted = () => { try { return localStorage.getItem('cr.lounge') !== '0'; } catch { return true; } };
+function loungeOn() {
+  if (!loungeWanted() || !(sound.sfxOn || sound.musicOn)) return;
+  try {
+    if (!lounge) { lounge = new Audio(assetUrl('sounds/lounge-music.mp3')); lounge.loop = true; lounge.onerror = () => { lounge = null; }; }
+    lounge.volume = 0.5; if (lounge.paused) lounge.play().catch(() => {});
+  } catch { /* no sound available */ }
+}
+function loungeOff() {
+  const a = lounge; if (!a || a.paused) return;
+  let v = a.volume; const fade = setInterval(() => { v -= 0.1; if (v <= 0.02) { clearInterval(fade); a.pause(); a.currentTime = 0; a.volume = 0.5; } else a.volume = v; }, 40);
+}
+{
+  const box = document.getElementById('rw-music');
+  if (box) { box.checked = loungeWanted(); box.onchange = () => { try { localStorage.setItem('cr.lounge', box.checked ? '1' : '0'); } catch { /* storage unavailable */ } if (box.checked) loungeOn(); else if (lounge) { lounge.pause(); lounge.currentTime = 0; } }; }
+  const retry = () => { if (!$('race-wait').hidden) loungeOn(); };
+  addEventListener('pointerdown', retry, true); addEventListener('keydown', retry, true);
+}
 function pollWait(now) {
   if (!pendingStart && !waitInit) return;
   const { done, total } = loadProgress(), el = $('race-wait');
   const ready = done >= total || now - waitSince > 30000;            // (a car that never arrives must not hold the game for ever)
   if (ready) {
-    waitInit = false; el.hidden = true; document.body.classList.remove('waiting');
+    waitInit = false; el.hidden = true; document.body.classList.remove('waiting'); loungeOff();
     if (pendingStart) { pendingStart = false; beginDriving(); }
     return;
   }
   $('rw-fill').style.width = Math.round(done / total * 100) + '%';
   $('rw-n').textContent = `${done}/${total}`;
-  if (now - waitSince > 250) { el.hidden = false; document.body.classList.add('waiting'); }      // (a cached game is ready in a blink: no flash of a bar)
+  if (now - waitSince > 250) { if (el.hidden) loungeOn(); el.hidden = false; document.body.classList.add('waiting'); }      // (a cached game is ready in a blink: no flash of a bar)
 }
 function startDriving(newDef) {
   sound.init(); pickStartCamera();

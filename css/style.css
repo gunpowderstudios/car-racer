@@ -771,6 +771,9 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 @media (prefers-reduced-motion: reduce) { #rep-pips svg.low { animation: none; } }
 
 /* "Loading cars": the home screen holds the race until every car has arrived */
+#race-wait > span { white-space: nowrap; }
+#race-wait .rw-music { display: flex; align-items: center; gap: 6px; font-size: 14px; letter-spacing: .04em; text-transform: none; font-weight: 600; opacity: .9; cursor: pointer; pointer-events: auto; white-space: nowrap; }
+#race-wait .rw-music input { accent-color: var(--amber); width: 16px; height: 16px; margin: 0; cursor: pointer; }
 #race-wait { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 14px; padding: 9px 20px; background: rgba(27,18,51,.94); border-bottom: 3px solid var(--amber); font-family: var(--cond); font-weight: 700; font-size: 17px; letter-spacing: .08em; text-transform: uppercase; color: var(--peach); pointer-events: none; }
 #race-wait[hidden] { display: none; }
 #race-wait span b { color: var(--amber); margin-left: 6px; }
