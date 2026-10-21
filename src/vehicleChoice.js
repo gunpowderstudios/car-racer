@@ -106,7 +106,7 @@ export const VEHICLES = [
     physicsProfile: 'bus',
   },
   {
-    id: 'motor-home', name: 'Motorhome', url: 'cars/motorhome-SHRINK.glb',
+    id: 'motor-home', name: 'The Marriage Wrecker', url: 'cars/motorhome-SHRINK.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },
 ];

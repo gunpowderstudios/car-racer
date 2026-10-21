@@ -601,6 +601,12 @@ html.chat-quick-only .chat-row { display: none; }
   #feed { top: calc(max(14px, env(safe-area-inset-top)) + 76px); }
 }
 
+/* the chequered flag fades in on the right of the four main buttons, behind their writing (as on the track list headings) */
+#btn-play-now, #btn-story, #btn-multiplayer-top, #btn-new-top { position: relative; isolation: isolate; }
+#btn-play-now::before, #btn-story::before, #btn-multiplayer-top::before, #btn-new-top::before { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; right: 0; width: 34%; pointer-events: none;
+  background: repeating-conic-gradient(#000 0 25%, transparent 0 50%) 0 0 / 26px 26px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 90%); mask-image: linear-gradient(to right, transparent, #000 90%); }
+
 /* Home screen buttons: 30% see-through, fully solid when you roll over them. Multiplayer is a purple strip, Design-a-track! a green one. */
 #menu .btn { background: #eb960a; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65), 0 0 1px rgba(0,0,0,.5); transition: background .15s, transform .08s; }
 #menu .btn:hover, #menu .btn:focus-visible { background: #e08f00; }
