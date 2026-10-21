@@ -854,3 +854,8 @@ body.rp-saving #replay-bar { visibility: hidden; }
 body:not(.mode-menu) #gp-credit { display: none; }
 
 
+
+/* on a phone the logo is the last thing under the menu text, not floating over it */
+@media (max-width: 760px), (max-height: 520px) {
+  #gp-credit { position: static; order: 99; margin: 22px 0 6px; width: max-content; }
+}
