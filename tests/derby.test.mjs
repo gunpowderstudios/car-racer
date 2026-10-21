@@ -749,3 +749,19 @@ test('repairs: flying off the track costs a spanner, and the last one scraps the
   for (let i = 0; i < 4 / DT; i++) a.derby.step(DT);
   assert.equal(a.derby.over, true, 'scrap stays scrap: no way back');
 });
+
+test('a rival is repaired and comes back three times; the fourth wreck is scrap and stays on the track', () => {
+  const a = arena(-300, 0, 'race'); a.derby.damageEnabled = true; a.derby.count = 1;
+  let f = rival(a, 40, 0); f.raceSlot = 1;
+  const wreckIt = (x) => { x.health.hit('front', x.health.max.front * 10); a.derby._wreck(x, 'front'); };
+  for (let n = 1; n <= DERBY.repairs; n++) {
+    wreckIt(f);
+    assert.equal(a.derby._replacementS.length, 1, `wreck ${n} is replaced`);
+    a.derby._replacementS.length = 0;
+    f = rival(a, 40, 0); f.raceSlot = 1;                 // (the replacement takes the same slot)
+  }
+  wreckIt(f);
+  assert.equal(a.derby._replacementS.length, 0, 'the next wreck is not replaced');
+  assert.equal(f.scrap, true);
+  assert.equal(a.derby.count, 0);
+});

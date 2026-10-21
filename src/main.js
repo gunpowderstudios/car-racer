@@ -554,7 +554,7 @@ function derbyStart() {
   const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
-  derby.repairsMax = derby.enabled && opts.mode !== 'demolition' && !arena && !window.__story?.active && opts.repairs > 0 ? opts.repairs : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
+  derby.repairsMax = derby.enabled && opts.mode !== 'demolition' && !arena && !window.__story?.active ? DERBY.repairs : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
   if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
@@ -1224,7 +1224,6 @@ function bindMenu() {
   sk.onchange = () => { opts.skill = skillOf(sk.value); derby.skill = SKILL[opts.skill]; store.set('cr.opts', opts); toast('Rivals: ' + sk.options[sk.selectedIndex].text.split(' - ')[0]); sk.blur(); };
   const md = $('opt-mode'); md.value = ['demolition', 'jamboree'].includes(opts.mode) ? opts.mode : 'race';
   md.onchange = () => { opts.mode = ['demolition', 'jamboree'].includes(md.value) ? md.value : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
-  const rp = $('opt-repairs'); rp.value = String(opts.repairs); rp.onchange = () => { opts.repairs = +rp.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };

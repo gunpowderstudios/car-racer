@@ -41,6 +41,7 @@ export const DERBY = {
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
+  repairs: 3,            // every car, yours and each rival, can be repaired this many times; the next wreck is scrap and stays on the track, burnt out
   wreckLife: 14,         // how long a wreck actively burns; the hulk itself can remain after that
   wreckFade: 1.6,        // fade/shrink time when an old hulk is retired after the wreck cap is exceeded
   spawnEvery: 2.5,       // seconds between replacements
@@ -244,7 +245,7 @@ export class Derby {
     // DEMOLITION: wrecked means out, nobody is replaced, and the last car running wins. The Oval is always demolition.
     this.mode = mode === 'demolition' || this.lastStanding ? 'demolition' : 'race'; this.demolition = this.mode === 'demolition';
     this._id = 1; this._hue = 0; this._tick = 0; this._spawnT = DERBY.spawnEvery;
-    this._replacementS.length = 0; this._bag = null; this.repairs = this.repairsMax;
+    this._replacementS.length = 0; this._wrecks = new Map(); this._bag = null; this.repairs = this.repairsMax;
     const p = this.player = {
       id: 0, isPlayer: true, car: playerCar, health: new Health(SPECS.player.hp), spec: SPECS.player,
       wrecked: false, wreckT: 0, respawnAt: Infinity, graceUntil: 0, gone: false, age: 99, lastHit: null, flash: 0, flashZone: 'front', flipT: 0,
@@ -510,7 +511,7 @@ export class Derby {
     }
     if (wrecks > DERBY.maxWrecks) {                         // enough hulks: fade the oldest to make room
       let old = null;
-      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && !f._offTrackReset && (!old || f.wreckT > old.wreckT)) old = f;
+      for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && !f.scrap && !f._offTrackReset && (!old || f.wreckT > old.wreckT)) old = f;
       if (old) old.expire = true;
     }
 
@@ -642,7 +643,10 @@ export class Derby {
     c.refreshFrame();
     if (!f.isPlayer) {
       const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
-      if (Number.isFinite(wreckS)) this._replacementS.push({ s: wreckS, raceSlot: f.raceSlot });
+      const key = f.raceSlot ?? 'id' + f.id, n = (this._wrecks.get(key) || 0) + 1;
+      this._wrecks.set(key, n);
+      if (this.demolition || n <= DERBY.repairs) { if (Number.isFinite(wreckS)) this._replacementS.push({ s: wreckS, raceSlot: f.raceSlot }); }
+      else { f.scrap = true; this.count = Math.max(0, this.count - 1); }      // out of repairs: no replacement, and the burnt-out hulk stays where it fell
     }
     this.events.push({ type: 'wreck', id: f.id, isPlayer: f.isPlayer, zone, x: c.pos.x, y: c.pos.y, z: c.pos.z, dist: this._dist(c.pos.x, c.pos.y, c.pos.z) });
     // the blast heaves the hulk into the air and sets it spinning
