@@ -141,7 +141,7 @@ export function createReplayMode(d) {
     d.sound.speakers?.(!quick);                               // (while a film is made the game sound goes only into the film; the editing room has its own music)
     liftMusic(quick && !!(d.sound.sfxOn || d.sound.musicOn));      // (nobody wants lift music if they have the sound switched off)
     el.save.textContent = R.saving ? 'Cancel film' : 'Make my movie';
-    if ($('re-sub')) $('re-sub').textContent = 'Pressing PLAY and RECORD at the same time is a little tricky, so keep this window open while we make your BLOCKBUSTER video!';
+    if ($('re-sub')) $('re-sub').textContent = 'Pressing PLAY and RECORD at the same time is a little clunky, so keep this window open while we make your BLOCKBUSTER video!';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
     el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
