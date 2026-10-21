@@ -745,7 +745,7 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #re-tv-svg { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 273px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
 
 /* the TV logo on the menu (a copy of the replay logo, filled in by main.js) */
-#menu-tv { position: absolute; top: calc(6px + env(safe-area-inset-top)); right: 10px; width: 280px; z-index: 6; text-align: center; pointer-events: none; }
+#menu-tv { position: absolute; top: calc(clamp(20px, 5vh, 56px) + env(safe-area-inset-top)); right: clamp(20px, 4vw, 56px); width: 280px; z-index: 6; text-align: center; pointer-events: none; }
 #menu-tv .tv-set { position: relative; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
 #menu-tv .tv-set img { display: block; width: 100%; height: auto; }
 #menu-tv-logo { position: absolute; left: 40.7%; top: 44.8%; width: 41%; transform: translate(-50%, -50%); }      /* centred on the TV's screen */
@@ -754,7 +754,7 @@ body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !importa
 #menu-tv .tv-note { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 #menu-tv .tv-note p { margin: 0; text-align: right; text-wrap: balance; }
 #menu-tv .tv-note img { display: block; width: 144px; height: auto; flex: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
-@media (max-width: 700px) { #menu-tv { width: 128px; right: 6px; } #menu-tv .tv-note { display: none; } }
+@media (max-width: 700px) { #menu-tv { width: 128px; } #menu-tv .tv-note { display: none; } }
 @media (max-height: 420px) { #menu-tv { display: none; } }
 
 #rp-note { margin: 0 0 8px; text-align: center; font-family: var(--display), Impact, sans-serif; font-weight: 900; letter-spacing: .03em; color: #ffd36a; text-shadow: 0 2px 4px rgba(0,0,0,.8); font-size: 16px; }
@@ -848,7 +848,7 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #replay-bar .rp-track select { background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); font-family: var(--cond); font-size: 15px; padding: 3px 6px; }
 
 /* "A game by Gunpowder Studios": small, bottom left of the home page, links to the studio's site */
-#gp-credit { pointer-events: auto; position: fixed; right: 14px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 8px; color: rgba(246,217,176,.8); font-family: var(--cond); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; opacity: .85; }
+#gp-credit { pointer-events: auto; position: fixed; right: clamp(20px, 4vw, 56px); bottom: max(clamp(20px, 5vh, 56px), env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 8px; color: rgba(246,217,176,.8); font-family: var(--cond); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; opacity: .85; }
 #gp-credit:hover, #gp-credit:focus-visible { opacity: 1; }
 #gp-credit img { height: 68px; width: auto; display: block; }
 body:not(.mode-menu) #gp-credit { display: none; }
