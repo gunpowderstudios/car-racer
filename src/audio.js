@@ -1,6 +1,6 @@
 // WebAudio: engine (pitch follows RPM), tyre squeal, impacts, scrape and music.
 // Uses the sound files in /sounds; falls back to a synthesised engine if they are missing.
-export const TRACKS = ['lounge', 'fairground'];       // the music to pick from: sounds/<name>-music.mp3
+export const TRACKS = ['lounge', 'fairground', 'rock'];       // the music to pick from: sounds/<name>-music.mp3
 export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
