@@ -17,7 +17,7 @@ button, select, input { font: inherit; }
 #menu { position: fixed; inset: 0; z-index: 20; display: flex; align-items: stretch; pointer-events: none;
   background: linear-gradient(100deg, rgba(27,18,51,.94) 0%, rgba(27,18,51,.86) 34%, rgba(27,18,51,0) 68%); }
 body:not(.mode-menu) #menu { display: none; }
-.menu-inner { pointer-events: auto; width: min(560px, 100%); padding: clamp(20px, 5vh, 56px) clamp(20px, 4vw, 56px); overflow-y: auto; }
+.menu-inner { pointer-events: auto; width: min(560px, 100%); padding: clamp(20px, 5vh, 56px) clamp(20px, 4vw, 56px) calc(clamp(20px, 5vh, 56px) + 26px); overflow-y: auto; }
 #menu h1 { font-family: var(--display); font-weight: 900; font-size: clamp(56px, 8.4vw, 104px); line-height: .84; padding-right: .3em; margin: 0 0 14px;
   letter-spacing: -.01em; color: var(--amber); transform: skewX(-7deg); transform-origin: left bottom;
   text-shadow: 4px 4px 0 var(--red); }
@@ -852,3 +852,7 @@ body.rp-saving #replay-bar { visibility: hidden; }
 #gp-credit:hover, #gp-credit:focus-visible { opacity: 1; }
 #gp-credit img { height: 68px; width: auto; display: block; }
 body:not(.mode-menu) #gp-credit { display: none; }
+
+#music-credit { pointer-events: auto; position: fixed; left: clamp(20px, 4vw, 56px); bottom: max(clamp(10px, 2vh, 22px), env(safe-area-inset-bottom)); z-index: 5; font-family: var(--cond); font-size: 12px; letter-spacing: .05em; color: rgba(246,217,176,.6); text-decoration: none; }
+#music-credit:hover, #music-credit:focus-visible { color: var(--amber); text-decoration: underline; }
+body:not(.mode-menu) #music-credit { display: none; }
