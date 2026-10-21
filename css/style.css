@@ -229,6 +229,8 @@ body.arena #lap-card { display: none; }       /* The Oval has no laps */
 #sound-pop[hidden] { display: none; }
 #sound-pop label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 #sound-pop select { margin-left: 6px; background: var(--violet); color: var(--peach); border: 1px solid rgba(246,217,176,.45); font-family: var(--cond); font-size: 15px; padding: 2px 6px; }
+#sound-pop .vol { flex-direction: column; align-items: stretch; gap: 2px; }
+#sound-pop .vol input { width: 100%; }
 #sound-pop input { accent-color: var(--amber); width: 16px; height: 16px; }
 #mirror { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: clamp(180px, 30vw, 420px); aspect-ratio: 4 / 1;
   border: 3px solid #1b1233; border-radius: 10px; box-shadow: 0 0 0 2px rgba(246,217,176,.35), 0 4px 12px rgba(0,0,0,.45); }
@@ -827,3 +829,17 @@ body.rp-saving #replay-bar { visibility: hidden; }
 }
 @media (max-height: 560px) { #rp-editing .re-vhs { width: 156px; } #rp-editing h2 { font-size: 26px; } #rp-editing p { margin-bottom: 8px; } #rp-editing .re-pct { margin-bottom: 8px; } }
 #re-logo-slot { display: contents; }
+
+/* 80s dashboard equaliser (desktop only): flat neon bars, music switch, FX and BTS (music) sliders */
+#eq { display: none; position: absolute; left: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 232px); width: 150px; padding: 6px 8px 7px; background: rgba(20,12,40,.82); border-left: 4px solid #ff3d9a; pointer-events: auto; font-family: var(--cond); font-size: 11px; letter-spacing: .08em; color: #ffb347; }
+@media (pointer: fine) { #eq { display: block; } }
+#eq-bars { display: flex; gap: 2px; height: 34px; align-items: flex-end; }
+#eq-bars i { flex: 1; height: 100%; --h: 0; clip-path: inset(calc((1 - var(--h)) * 100%) 0 0 0);
+  background: repeating-linear-gradient(to top, transparent 0 1.5px, #000 1.5px 3.5px), linear-gradient(to top, #ff3d9a, #ff9f1a 45%, #ffe14d 65%, #35d6ff);
+  background-blend-mode: normal; -webkit-mask: repeating-linear-gradient(to top, #000 0 2px, transparent 2px 4px); mask: repeating-linear-gradient(to top, #000 0 2px, transparent 2px 4px); }
+#eq-bars i { background: linear-gradient(to top, #ff3d9a, #ff9f1a 45%, #ffe14d 65%, #35d6ff); }
+#eq-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+#eq-row label { display: flex; align-items: center; gap: 3px; flex: 1; }
+#eq-row input { width: 100%; min-width: 0; height: 10px; accent-color: #ff9f1a; }
+#eq-music { background: none; border: 1px solid #ff9f1a; color: #ff9f1a; font: inherit; padding: 0 4px; cursor: pointer; }
+#eq-music[aria-pressed="true"] { background: #ff3d9a; border-color: #ff3d9a; color: #1b1233; }

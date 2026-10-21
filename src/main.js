@@ -148,6 +148,7 @@ const props = new Props();
 const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
+let lounge = null;                  // the menu music (see loungeOn below): a plain audio element, because a browser will not start the game's own sound system before a click
 const derby = new Derby();
 const views = new Map();            // rival id -> CarVisual
 const towHit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
@@ -277,7 +278,10 @@ function renderMirror() {
 function syncSoundUI() {
   $('opt-sfx').checked = $('hud-sfx').checked = sound.sfxOn;
   $('opt-music').checked = $('hud-music').checked = sound.musicOn;
+  $('eq-fx').value = sound.sfxVol; $('eq-bts').value = sound.musicVol; $('eq-music').setAttribute('aria-pressed', String(sound.musicOn));
+  $('hud-sfxvol').value = sound.sfxVol; $('hud-musicvol').value = sound.musicVol;
   $('cog').classList.toggle('off', !sound.sfxOn && !sound.musicOn);
+  menuMusic();
 }
 // On touch screens the action buttons (restart, camera...) move under the cog and open with it; desktop keeps its bar.
 const cogMenuOnly = matchMedia('(pointer: coarse)').matches;
@@ -287,6 +291,16 @@ $('cog').addEventListener('click', (e) => { e.stopPropagation(); setSoundPop($('
 for (const [id, kind] of [['hud-sfx', 'sfx'], ['hud-music', 'music']]) {
   $(id).addEventListener('change', (e) => { sound.setEnabled(kind, e.target.checked); syncSoundUI(); e.target.blur(); });   // blur so Space stays the handbrake
 }
+{ // the little 80s equaliser (desktop): bars follow the master output
+  const bars = []; for (let i = 0; i < 14; i++) { const b = document.createElement('i'); $('eq-bars').appendChild(b); bars.push(b); }
+  const data = new Uint8Array(32);
+  setInterval(() => { if (!$('eq').offsetParent) return; const an = sound.ready && sound.analyser; if (an) an.getByteFrequencyData(data);
+    bars.forEach((b, i) => b.style.setProperty('--h', an ? Math.min(1, data[i + 1] / 230).toFixed(2) : '0')); }, 66);
+  $('eq-music').addEventListener('click', (e) => { const on = !sound.musicOn; if (on && sound.musicVol === 0) sound.setVolume('music', 0.5); sound.setEnabled('music', on); syncSoundUI(); e.currentTarget.blur(); });
+  for (const [id, kind] of [['eq-fx', 'sfx'], ['eq-bts', 'music']]) $(id).addEventListener('input', (e) => { sound.setVolume(kind, e.target.value); if (kind === 'music' && +e.target.value > 0 && !sound.musicOn) { sound.setEnabled('music', true); } syncSoundUI(); });
+  for (const id of ['eq-fx', 'eq-bts']) $(id).addEventListener('change', (e) => e.target.blur());
+}
+for (const [id, kind] of [['hud-sfxvol', 'sfx'], ['hud-musicvol', 'music']]) $(id).addEventListener('input', (e) => sound.setVolume(kind, e.target.value));
 addEventListener('pointerdown', (e) => { if (!$('sound-ctl').contains(e.target)) setSoundPop(false); });
 syncSoundUI();
 
@@ -1005,6 +1019,7 @@ function setMode(m) {
   $('hud').hidden = m !== 'drive';
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
+  menuMusic();
 }
 function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
@@ -1023,15 +1038,26 @@ function loadProgress() {
   if (!net && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
   return { done, total };
 }
-// Music while the cars load ("Filling up..."): the chosen tune (Lounge unless changed), if the Music tick is on. A browser will not play sound until a
-// click or key press has happened, so it is tried again on the first one; it stops the moment the game is ready (or the game's own music has started).
-let lounge = null;
+// Menu music: the chosen tune (Lounge unless changed) plays on the loading bar and on the menu while Music is ticked, and carries on while you pick your
+// racing options. Choosing a vehicle reloads the page, so where the tune had got to is kept for a moment and it picks up from there. A browser will not
+// play sound until a click or key press has happened, so it is tried again on the first one. It stops when a race starts (the game's own music takes over).
+function musicWanted() { return mode === 'menu' && sound.musicOn && !sound.ready; }
+function menuMusic() { if (musicWanted()) loungeOn(); else loungeOff(); }
+let resumeAt = null;                                                             // (where the tune had got to before the vehicle-change reload; read once, as the Audio may be made more than once)
+try { resumeAt = JSON.parse(sessionStorage.getItem('cr.musicpos') || 'null'); sessionStorage.removeItem('cr.musicpos'); } catch { /* none */ }
 function loungeOn() {
-  if (!sound.musicOn || sound.ready) return;
+  if (!musicWanted()) return;
   try {
     const url = assetUrl(sound.trackUrl());
     if (lounge && lounge._url !== url) { lounge.pause(); lounge = null; }
-    if (!lounge) { lounge = new Audio(url); lounge._url = url; lounge.loop = true; lounge.onerror = () => { lounge = null; }; }
+    if (!lounge) {
+      lounge = new Audio(url); lounge._url = url; lounge.loop = true; lounge.onerror = () => { lounge = null; };
+      const saved = resumeAt;
+      if (saved && saved.u === sound.track && Date.now() - saved.t < 20000) {
+        const at = saved.p + (Date.now() - saved.t) / 1000, a = lounge;
+        a.addEventListener('loadedmetadata', () => { if (a.duration > 1) a.currentTime = at % a.duration; }, { once: true });
+      }
+    }
     lounge.volume = 0.5; if (lounge.paused) lounge.play().catch(() => {});
   } catch { /* no sound available */ }
 }
@@ -1039,10 +1065,11 @@ function loungeOff() {
   const a = lounge; if (!a || a.paused) return;
   let v = a.volume; const fade = setInterval(() => { v -= 0.1; if (v <= 0.02) { clearInterval(fade); a.pause(); a.currentTime = 0; a.volume = 0.5; } else a.volume = v; }, 40);
 }
+addEventListener('pagehide', () => { try { if (lounge && !lounge.paused) sessionStorage.setItem('cr.musicpos', JSON.stringify({ u: sound.track, p: lounge.currentTime, t: Date.now() })); } catch { /* storage unavailable */ } });
 {
-  const retry = () => { if (!$('race-wait').hidden) loungeOn(); };
+  const retry = () => { if (mode === 'menu') loungeOn(); };
   addEventListener('pointerdown', retry, true); addEventListener('keydown', retry, true);
-  for (const id of ['hud-track', 'opt-track']) { const el = $(id); if (el) { el.value = sound.track; el.addEventListener('change', (e) => { sound.setTrack(e.target.value); for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = e.target.value; if (lounge) { lounge.pause(); lounge = null; if (!$('race-wait').hidden) loungeOn(); } e.target.blur(); }); } }
+  for (const id of ['hud-track', 'opt-track']) { const el = $(id); if (el) { el.value = sound.track; el.addEventListener('change', (e) => { sound.setTrack(e.target.value); for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = e.target.value; if (lounge) { lounge.pause(); lounge = null; } menuMusic(); e.target.blur(); }); } }
 }
 function pollWait(now) {
   if (!pendingStart && !waitInit) return;
@@ -1050,7 +1077,7 @@ function pollWait(now) {
   const { done, total } = loadProgress(), el = $('race-wait');
   const ready = done >= total || now - waitSince > 30000;            // (a car that never arrives must not hold the game for ever)
   if (ready) {
-    waitInit = false; el.hidden = true; document.body.classList.remove('waiting'); loungeOff();
+    waitInit = false; el.hidden = true; document.body.classList.remove('waiting');
     if (pendingStart) { pendingStart = false; beginDriving(); }
     return;
   }

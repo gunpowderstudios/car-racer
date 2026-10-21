@@ -134,6 +134,12 @@ html.invite-loading #invite-loading {
   <button id="share-btn" type="button" aria-label="Share this race with a friend" title="Share this race (car, caravan and track) with a friend">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.8" fill="currentColor"/><circle cx="6" cy="12" r="2.8" fill="currentColor"/><circle cx="18" cy="19" r="2.8" fill="currentColor"/><path d="M8.4 10.7 15.6 6.3M8.4 13.3l7.2 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
+  <div id="eq" aria-label="Sound mixer">
+    <div id="eq-bars" aria-hidden="true"></div>
+    <div id="eq-row"><button id="eq-music" type="button" aria-pressed="false" title="Music on / off">MUSIC</button>
+      <label>FX <input id="eq-fx" type="range" min="0" max="1" step="0.05" aria-label="Effects volume"></label>
+      <label>BTS <input id="eq-bts" type="range" min="0" max="1" step="0.05" aria-label="Music volume"></label></div>
+  </div>
   <div id="sound-ctl">
     <button id="cog" type="button" aria-label="Sound settings" aria-expanded="false" aria-controls="sound-pop" title="Sound">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="3.38 3.38"/><circle cx="12" cy="12" r="5.4" fill="none" stroke="currentColor" stroke-width="3.4"/></svg>
@@ -141,6 +147,8 @@ html.invite-loading #invite-loading {
     <div id="sound-pop" hidden>
       <label><input id="hud-sfx" type="checkbox"> Sound effects</label>
       <label><input id="hud-music" type="checkbox"> Music</label>
+      <label class="vol">Effects volume <input id="hud-sfxvol" type="range" min="0" max="1" step="0.05" aria-label="Sound effects volume"></label>
+      <label class="vol">Music volume <input id="hud-musicvol" type="range" min="0" max="1" step="0.05" aria-label="In-game music volume"></label>
       <label class="trk">Tune <select id="hud-track" aria-label="Music"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option></select></label>
     </div>
   </div>

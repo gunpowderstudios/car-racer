@@ -6,6 +6,8 @@ export class Sound {
     this.ctx = null; this.ready = false;
     this.sfxOn = localStorage.getItem('cr.sfx') !== '0';
     this.musicOn = localStorage.getItem('cr.music') !== '0';                        // (on unless the player has turned it off)
+    this.sfxVol = +(localStorage.getItem('cr.sfxvol') ?? 1);                      // (effects at full volume unless the player turns them down)
+    this.musicVol = +(localStorage.getItem('cr.musicvol') ?? 0);                  // (no music while driving until the player slides it up; the menu has its own)
     this.track = TRACKS.includes(localStorage.getItem('cr.musictrack')) ? localStorage.getItem('cr.musictrack') : 'lounge';
     this.buf = {};
   }
@@ -16,9 +18,10 @@ export class Sound {
     this.ctx = new AC();
     const c = this.ctx;
     this.master = c.createGain(); this.master.gain.value = 0.9; this.master.connect(c.destination);
+    this.analyser = c.createAnalyser(); this.analyser.fftSize = 64; this.analyser.smoothingTimeConstant = 0.7; this.master.connect(this.analyser);   // (feeds the little equaliser)
     this.tapNode = null;
-    this.sfx = c.createGain(); this.sfx.gain.value = this.sfxOn ? 1 : 0; this.sfx.connect(this.master);
-    this.music = c.createGain(); this.music.gain.value = this.musicOn ? 0.22 : 0; this.music.connect(this.master);
+    this.sfx = c.createGain(); this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0; this.sfx.connect(this.master);
+    this.music = c.createGain(); this.music.gain.value = this.musicOn ? 0.22 * this.musicVol : 0; this.music.connect(this.master);
     // (a url can be a list: the first one this browser can decode wins - older Safari cannot play Ogg, so the engine loop also comes as an MP3)
     const load = async (name, url) => { for (const u of [].concat(url)) { try { const r = await fetch(u); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); return; } catch { /* try the next, or go without */ } } };
     await Promise.all([
@@ -124,8 +127,16 @@ export class Sound {
 
   setEnabled(kind, on) {
     localStorage.setItem(kind === 'music' ? 'cr.music' : 'cr.sfx', on ? '1' : '0');
-    if (kind === 'music') { this.musicOn = on; if (this.music) this.music.gain.value = on ? 0.22 : 0; }
-    else { this.sfxOn = on; if (this.sfx) this.sfx.gain.value = on ? 1 : 0; }
+    if (kind === 'music') { this.musicOn = on; if (this.music) this.music.gain.value = on ? 0.22 * this.musicVol : 0; }
+    else { this.sfxOn = on; if (this.sfx) this.sfx.gain.value = on ? this.sfxVol : 0; }
+  }
+
+  /** Volume 0..1 for in-game music or effects (the cog menu sliders). */
+  setVolume(kind, v) {
+    v = Math.max(0, Math.min(1, +v || 0));
+    try { localStorage.setItem(kind === 'music' ? 'cr.musicvol' : 'cr.sfxvol', String(v)); } catch { /* storage unavailable */ }
+    if (kind === 'music') { this.musicVol = v; if (this.music) this.music.gain.value = this.musicOn ? 0.22 * v : 0; }
+    else { this.sfxVol = v; if (this.sfx) this.sfx.gain.value = this.sfxOn ? v : 0; }
   }
 
   /** `level` (0..1) and `pitch` (1 = normal) let a replay hear a car from the camera: quieter far off, and shifted as it passes. */
