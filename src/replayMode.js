@@ -156,7 +156,7 @@ export function createReplayMode(d) {
   function makeLogo() {                                                // the menu's TV logo as a picture (a still: fonts and animation do not come along inside an image)
     const img = new Image(), svg = document.getElementById('menu-tv-svg') || document.getElementById('rp-logo');
     if (!svg) return img;
-    const css = 'text{font-family:Impact,"Arial Narrow",sans-serif;font-weight:900;letter-spacing:.02em}.rpl-big{font-size:33px}.rpl-small{font-size:15px}.rpl-tv{font-size:38px}.rpl-live{font-size:9px;letter-spacing:.1em}.rpl-burst{fill:#e8392c;stroke:#ffb31f;stroke-width:2;stroke-linejoin:round}';
+    const css = 'text{font-family:Impact,"Arial Narrow",sans-serif;font-weight:900;letter-spacing:.02em}.rpl-big{font-size:33px}.rpl-small{font-size:15px}.rpl-tv{font-size:38px}.rpl-live{font-size:13px;letter-spacing:.08em}.rpl-burst{fill:#e8392c;stroke:#ffb31f;stroke-width:2;stroke-linejoin:round}';
     const src = svg.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg" width="540" height="204"').replace(/>/, '><style>' + css + '</style>');
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
     return img;
