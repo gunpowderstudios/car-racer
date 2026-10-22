@@ -338,6 +338,33 @@ export const VEHICLE_PHYSICS_PROFILES = {
     mpDamageMul: 0.80,
   },
 
+  'police': {
+    reference: '1980s American police cruiser (big V8, soft and bouncy, quick off the line, wallowy in the bends)',
+    mass: 1650,
+    frontWeight: 0.55,
+    wheelbase: 2.9,
+    track: 1.6,
+    wheelRadius: 0.33,
+    mountY: 0.10,
+    inertia: { x: 3600, y: 4400, z: 1200 },
+    susp: {
+      free: 0.50, travel: 0.32,
+      kFront: 24000, kRear: 22500,
+      cCompFront: 1800, cCompRear: 1700, cRebFront: 2400, cRebRear: 2300,
+      arbFront: 9000, arbRear: 5500, bump: 170000, bumpDamp: 7500,
+    },
+    tyre: { muFront: 1.10, muRear: 1.12, B: 10.0, C: 1.22, slideMu: 0.82, loadSens: 0.06, rolling: 0.016 },
+    engine: { peakTorque: 450 },
+    brakeG: 1.25,
+    brakeBias: 0.62,
+    wallBounce: 0.30,
+    aero: { drag: 0.66, down: 0.12 },
+    steer: { max: 0.56, rate: 4.4, returnRate: 6.4 },
+    boost: { accel: 4.2 },
+    body: { width: 1.92, length: 5.0, bottom: -0.44, shoulder: 0.38, roof: 1.38, roofWidth: 1.55, roofLength: 2.8 },
+    mpDamageMul: 0.95,
+  },
+
   'mobility-car': {
     reference: '1960s fibreglass three-wheeled mobility car with a little two-stroke (featherweight, twitchy, easily bent)',
     mass: 380,

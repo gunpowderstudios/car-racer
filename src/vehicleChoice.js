@@ -116,6 +116,16 @@ export const VEHICLES = [
     physicsProfile: 'big-apple',
   },
   {
+    id: 'police',
+    name: 'Hills Street Blue',
+    description: 'And remember, be careful out there!',
+    url: 'cars/police-car-SHRINK.glb',
+    fit: 'auto',
+    targetLength: 5.0,
+    damageMul: 0.95,                 // a big old cruiser: a touch tougher than average
+    physicsProfile: 'police',
+  },
+  {
     id: 'motor-home', name: 'The Marriage Wrecker', url: 'cars/motorhome-SHRINK.glb',
     fit: 'auto', targetLength: 4.85, damageMul: 0.8, physicsProfile: 'motor-home',
   },

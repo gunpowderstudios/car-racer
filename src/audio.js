@@ -27,7 +27,7 @@ export class Sound {
     await Promise.all([
       load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
-      load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
+      load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
       load('music', `sounds/${this.track}-music.mp3`), load('engineStart', 'sounds/engine-start.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -232,7 +232,18 @@ export class Sound {
   hornStart(vehicleId) {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return null;
     if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, 0); return { stop() {} }; }      // the Rootmaster rings its bell instead of honking (once per press)
+    if (vehicleId === 'police' && this.buf.policeSiren) return this._siren();      // Hills Street Blue wails its siren for as long as H is held
     const v = this._hornVoice(0.269, 1); v.stop(1.6); return v;
+  }
+  /** The police car's siren: the clip loops while the key is down (and stops by itself after a few seconds, like a horn). */
+  _siren() {
+    const c = this.ctx, t = c.currentTime, s = c.createBufferSource(), g = c.createGain();
+    s.buffer = this.buf.policeSiren; s.loop = true; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.6, t + 0.05);
+    s.connect(g).connect(this.sfx); s.start(t);
+    let done = false;
+    const stop = () => { if (done) return; done = true; const n = c.currentTime; g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(0, n, 0.06); s.stop(n + 0.4); };
+    setTimeout(stop, 6000);
+    return { stop };
   }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1) {
