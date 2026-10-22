@@ -322,7 +322,9 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
 }
 
 // --------------------------------------------------------------------- track
+let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
 function loadTrack(newDef) {
+  demoDay = !!newDef?.demoDay;
   def = normalizeTrack(newDef);
   track = new Track(def); window.__raceLaps?.syncFor?.(def);
   chase.low = !!def.lowCam;      // (see pickStartCamera)
@@ -552,13 +554,13 @@ function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  derby.enabled = !net && opts.rivals > 0;
+  derby.enabled = !net && (opts.rivals > 0 || demoDay);
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const mixedKinds = derby.enabled && (opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
+  const mixedKinds = derby.enabled && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
   const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
   derby.pool = mixedKinds ? jamboreePoolForRace() : null;                               // Wacky Racing and Demolition: every rival is a different vehicle
   derby.towing = derby.enabled && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
-  const field = Math.min(arena ? Math.min(tier.arenaField, opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
+  const field = Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
   derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // a repair budget: Race and Jamboree only (a Demolition wreck is out anyway)
@@ -1291,6 +1293,7 @@ function bindMenu() {
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   $('btn-play-now').onclick = () => startDriving(makeRandomTrack());
+  $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: straight into the Bed Pan
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
   $('import-file').onchange = async (e) => {

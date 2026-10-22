@@ -803,3 +803,15 @@ test('Demolition: rivals hitting each other take only a share of the damage, so 
   assert.ok(DERBY.rivalClash > 0 && DERBY.rivalClash < 1);
   assert.match(src, /crashDamage\(H\.mu, H\.closing\) \* \(this\.demolition && !a\.isPlayer && !b\.isPlayer \? DERBY\.rivalClash : 1\)/);
 });
+
+test('Demolition Day: a home button starts the Bed Pan with 8 rivals, each a different vehicle, whatever the options say', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(html, /<button id="btn-demo"[^>]*>Demolition Day <small>Crash, bang, wallop what a picture!<\/small>/);
+  assert.ok(html.indexOf('id="btn-story"') < html.indexOf('id="btn-demo"') && html.indexOf('id="btn-demo"') < html.indexOf('id="btn-multiplayer-top"'), 'below Race Day');
+  assert.match(css, /#menu #btn-demo \{ background: #9f5212/);
+  assert.match(main, /\$\('btn-demo'\)\.onclick = \(\) => \{ const d = makeTemplate\('oval'\); d\.demoDay = true; startDriving\(d\)/);
+  assert.match(main, /demoDay \? 8 : opts\.rivals \* 2/);
+  assert.match(main, /derby\.enabled = !net && \(opts\.rivals > 0 \|\| demoDay\)/);
+});

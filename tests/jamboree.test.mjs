@@ -72,7 +72,7 @@ test('jamboree: menu option, everything-pool and phone cap are wired', () => {
 
 test('jamboree: the grid behind the home screen is a Jamboree on a computer, a plain one on a phone or tablet', () => {
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("(opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch)"));
+  assert.ok(main.includes("(demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch)"));
   assert.ok(main.includes("menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false;"));
 });
 
