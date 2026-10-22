@@ -8,7 +8,7 @@ import { Derby, DERBY, collideVanCar } from './derby.js';
 import { IDLE } from './ai.js';
 import { ZONE_LABEL, DAMAGE, TOUGHNESS, PLAYER_TOUGHNESS, blastFraction, crashDamage, zoneAt, wallDamage, roofDentHp } from './damage.js';
 import { DENT } from './dentMath.js';
-import { arenaInfo, arenaPlayerStart } from './arena.js';
+import { arenaInfo, arenaPlayerStart, arenaClearSpot } from './arena.js';
 import { ReplayRecorder } from './replay.js';
 import { createReplayMode } from './replayMode.js';
 import { ReplayDof } from './replayDof.js';
@@ -364,8 +364,8 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
 }
 
 /** The Oval has no start line: you begin near one end of the floor, facing the middle. */
-function placeCarInArena() {
-  const A = arenaInfo(track), p = arenaPlayerStart(A);
+function placeCarInArena(away) {
+  const A = arenaInfo(track), p = away ? arenaClearSpot(A, away) : arenaPlayerStart(A);
   car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
   car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = opts.handling === 'standard' ? 0 : 1;
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
@@ -394,6 +394,7 @@ function backOnRoad() {
 }
 function respawn() {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
+  if (track.def.mode === 'lastStanding') { placeCarInArena(derby.rivals.filter((f) => !f.wrecked).map((f) => f.car.pos)); race.reverseT = 0; return; }      // the arena has no road: back on a clear patch of floor, away from the rivals (the road's own line runs over the humps)
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
   race.reverseT = 0;

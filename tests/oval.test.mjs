@@ -675,3 +675,15 @@ test('a touch screen never loads the caravan: it is blocked in the game, the men
   assert.match(readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8'), /caravan-desktop-only/);
   assert.match(readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8'), /caravanBlocked\(\)\) return false/);
 });
+
+test('The Bed Pan: a repaired player goes back on a clear patch of floor, away from the humps and from the rivals', async () => {
+  const { arenaClearSpot, arenaInfo } = await import('../src/arena.js');
+  const def = makeTemplate('oval'), A = arenaInfo(new Track(def));
+  const alone = arenaClearSpot(A);
+  for (const o of [[], [{ x: alone.x, z: alone.z }], [{ x: A.cx, z: A.cz - 48 }, { x: A.cx + 90, z: A.cz }]]) {
+    const p = arenaClearSpot(A, o);
+    assert.ok(def.bumps.every((b) => Math.hypot(p.x - b.x, p.z - b.z) > b.r + 6), 'not on a hump');
+    if (o.length) assert.ok(o.every((c) => Math.hypot(p.x - c.x, p.z - c.z) > 20), 'not on a rival');
+    assert.ok(Math.abs(Math.hypot(p.fx, p.fz) - 1) < 1e-9);
+  }
+});

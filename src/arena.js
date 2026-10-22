@@ -38,6 +38,18 @@ export function arenaSpawn(A, k, of) {
   return { x, z, fx: dx / d, fz: dz / d };
 }
 
+/** Where a repaired player goes back: one of four spots on the floor's axes (clear of the humps, which sit in the corners), the one furthest from every running car in `others`, facing the middle. */
+export function arenaClearSpot(A, others = []) {
+  const m = 26, spots = [[A.cx - (A.ax - m), A.cz], [A.cx + (A.ax - m), A.cz], [A.cx, A.cz - (A.az - m)], [A.cx, A.cz + (A.az - m)]];
+  let best = spots[0], bestD = -1;
+  for (const s of spots) {
+    let d = 1e9; for (const o of others) d = Math.min(d, Math.hypot(o.x - s[0], o.z - s[1]));
+    if (d > bestD) { bestD = d; best = s; }
+  }
+  const dx = A.cx - best[0], dz = A.cz - best[1], len = Math.hypot(dx, dz) || 1;
+  return { x: best[0], z: best[1], fx: dx / len, fz: dz / len };
+}
+
 /** The player's start: near the far end of the floor, facing the middle. */
 export function arenaPlayerStart(A) {
   return { x: A.cx - (A.ax - 26), z: A.cz, fx: 1, fz: 0 };
