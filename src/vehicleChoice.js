@@ -118,7 +118,7 @@ export const VEHICLES = [
   {
     id: 'police',
     name: 'Hills Street Blue',
-    description: 'And remember, be careful out there!',
+    description: 'And Hey!... let\'s be careful out there.',
     url: 'cars/police-car-SHRINK.glb',
     fit: 'auto',
     targetLength: 5.0,
