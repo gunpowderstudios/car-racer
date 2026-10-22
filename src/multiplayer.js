@@ -269,7 +269,7 @@ export class Multiplayer {
       this._sendAll({ t: 'roll', from: id, i: msg.i }, id);
     } else if (msg.t === 'dent') {
       const d = cleanDent(msg.d), now = performance.now();
-      if (!d || now - (this._dentLast.get(id) || 0) < 60) return;     // nonsense, or a flood: dropped, not relayed
+      if (!d || now - (this._dentLast.get(id) ?? -Infinity) < 60) return;     // nonsense, or a flood: dropped, not relayed
       this._dentLast.set(id, now);
       this.h.onDent?.(id, d);
       this._sendAll({ t: 'dent', from: id, d }, id);
