@@ -42,6 +42,7 @@ export const DERBY = {
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
   repairsDemolition: 1,  // in a Demolition derby you get just the one spanner
+  rivalClash: 0.4,       // Demolition: rivals hitting each other take just this share of the damage, so they don't wreck one another before you get to them
   repairs: 3,            // every car, yours and each rival, can be repaired this many times; the next wreck is scrap and stays on the track, burnt out
   wreckLife: 14,         // how long a wreck actively burns; the hulk itself can remain after that
   wreckFade: 1.6,        // fade/shrink time when an old hulk is retired after the wreck cap is exceeded
@@ -463,7 +464,7 @@ export class Derby {
         if (!collideCars(a.car, b.car, H)) continue;
         if (H.closing > 1.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
         if (this.damageEnabled) {
-          const hp = crashDamage(H.mu, H.closing);
+          const hp = crashDamage(H.mu, H.closing) * (this.demolition && !a.isPlayer && !b.isPlayer ? DERBY.rivalClash : 1);
           if (hp > 0) {
             this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b, H.x, H.y, H.z);
             this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a, H.x, H.y, H.z);

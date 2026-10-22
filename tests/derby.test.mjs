@@ -2,6 +2,7 @@
 // Run with:  npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Track } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { V3 } from '../src/math.js';
@@ -795,4 +796,10 @@ test('a rival that was wrecked comes back behind its wreck - never ahead of wher
     assert.ok(d < -behind + 1, `a wreck ${behind} m behind the player came back ${d.toFixed(0)} m from the player: it must be behind the wreck`);
     derby._remove(f);
   }
+});
+
+test('Demolition: rivals hitting each other take only a share of the damage, so you get to them first', () => {
+  const src = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
+  assert.ok(DERBY.rivalClash > 0 && DERBY.rivalClash < 1);
+  assert.match(src, /crashDamage\(H\.mu, H\.closing\) \* \(this\.demolition && !a\.isPlayer && !b\.isPlayer \? DERBY\.rivalClash : 1\)/);
 });
