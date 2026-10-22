@@ -21,13 +21,13 @@ test('makeRandomTrack(seed) is reproducible, but different seeds give different 
   assert.notDeepEqual(a, b, 'a different seed should produce a different track');
 });
 
-test('a random track always includes both barrels and chickens', () => {
+test('a random track always includes barrels, and no chickens', () => {
   for (const seed of [1, 2, 3, 4, 5]) {
     const def = makeRandomTrack(seed);
     const barrels = def.props.filter((p) => p.type === 'barrel').length;
     const chickens = def.props.filter((p) => p.type === 'chicken').length;
     assert.ok(barrels >= 3, `seed ${seed}: only ${barrels} barrels`);
-    assert.ok(chickens >= 2, `seed ${seed}: only ${chickens} chickens`);
+    assert.equal(chickens, 0, `seed ${seed}: ${chickens} chickens`);
   }
 });
 

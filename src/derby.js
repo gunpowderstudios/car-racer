@@ -22,7 +22,6 @@ import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDama
 export const POINTS = {
   takedown: 100,
   winner: 500,           // last car running in a free-for-all arena
-  chicken: 10,
   // Ideas for later - award them from wherever the event happens:
   //   landing: 50,   (a clean landing after a big jump)
   //   barrel: 25,    (an explosive barrel set off)

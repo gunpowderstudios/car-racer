@@ -346,7 +346,7 @@ const RAW = {
 
 /** Templates as ready-to-use track definitions (banking applied). */
 /** A different circuit every call: a wobbly loop with rolling hills, the odd big peak, one or two jumps, banked
- *  corners, and a scatter of barrels and chickens. Fully random by default; pass a seed to reproduce one. Retries
+ *  corners, and a scatter of barrels. Fully random by default; pass a seed to reproduce one. Retries
  *  with a new seed (rare, checked against thousands of samples) if a layout would come out too tight or a jump
  *  too rough to clear cleanly. */
 export function makeRandomTrack(seed = (Math.random() * 1e9) | 0) {
@@ -408,7 +408,6 @@ function buildRandomTrack(seed) {
     }
   };
   scatter('barrel', 6 + Math.floor(rnd() * 7));   // 6-12 drums: enough to make random races lively
-  scatter('chicken', 4 + Math.floor(rnd() * 6));  // 4-9 chickens scattered around the circuit
 
   return normalizeTrack({ ...def, props });
 }
@@ -438,5 +437,5 @@ export const TEMPLATE_INFO = {
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
   thin: 'A thin road high in the sky: no walls, banks, jumps and barrels, then a huge dip down into the water and back up',
   bluebell: 'A windy dirt rally stage through the woods: loose surface, narrow and twisty',
-  random: 'A different circuit every time - hills, jumps, banks, barrels and chickens',
+  random: 'A different circuit every time - hills, jumps, banks and barrels',
 };

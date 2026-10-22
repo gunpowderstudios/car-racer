@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { Track, normalizeTrack, TRACK_VERSION } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS } from '../src/templates.js';
-import { Props, placeProp, BARREL, BLAST, CHICKEN, barrelNeedsDraw } from '../src/props.js';
+import { Props, placeProp, BARREL, BLAST, barrelNeedsDraw } from '../src/props.js';
 import { DRAG_DEF, placeOnTrack, DT } from './harness.mjs';
 
 /** Drag strip with barrels at the given (x, z); the straight part runs along x = 0 between z = -550 and 550. */
@@ -125,10 +125,6 @@ test('barrels are 20% bigger than the previous size, and 44% bigger than the ver
   assert.ok(Math.abs(BARREL.height / 0.9 - 1.44) < 0.02 && Math.abs(BARREL.radius / 0.3 - 1.44) < 0.02);
 });
 
-test('chickens are 20% bigger than their original size', () => {
-  assert.ok(Math.abs(CHICKEN.radius / 0.22 - 1.2) < 0.02);
-});
-
 test('igniteRemote sets off exactly the barrel with that index, once, and the blast event says which', () => {
   const { props } = setup([[0, -100], [0, 100]]);
   assert.equal(props.igniteRemote(99), false, 'no barrel has that index');
@@ -244,79 +240,10 @@ test('constants stay sane', () => {
   assert.ok(BLAST.chainRadius < BLAST.radius);
 });
 
-// ---------------------------------------------------------------- chickens
-
-function chickenSetup(points) {
-  const def = { ...DRAG_DEF, props: [] };
-  let track = new Track(def);
-  def.props = points.map(([x, z]) => { const p = placeProp(track, x, z); return { type: 'chicken', x: p.x, z: p.z, y: p.y }; });
-  track = new Track(def);
-  const props = new Props(); props.load(track, track.def.props);
-  return { track, props };
-}
-
-test('a chicken splats on any real touch, with no damage or explosion', () => {
-  const { track, props } = chickenSetup([[0, -350]]);
-  assert.equal(props.aliveChickens, 1);
-  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -358), 0, 15);
-  let splat = null;
-  for (let i = 0; i < 1 / DT && !splat; i++) {
-    car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track);
-    props.step(DT, car);
-    splat = props.events.find((e) => e.type === 'splat') || null;
-    props.events.length = 0;
-  }
-  assert.ok(splat, 'never splatted');
-  assert.equal(props.aliveChickens, 0);
-  assert.ok(car.speed > 5, 'a chicken should not stop the car dead - it has no mass of its own');
-});
-
-test('chickens do not react to cars that never come near them', () => {
-  const { track, props } = chickenSetup([[8, -350]]);   // well off to the side
-  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -420), 0, 20);
-  for (let i = 0; i < 3 / DT; i++) {
-    car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track);
-    props.step(DT, car);
-    props.events.length = 0;
-  }
-  assert.equal(props.aliveChickens, 1, 'a chicken well clear of the road should survive');
-});
-
-test('a chicken wanders back and forth across the road without ever leaving it', () => {
-  const { track, props } = chickenSetup([[0, -300]]);
-  const c = props.chickens[0];
-  let sawTurnaround = false, offRoad = 0, lastDir = c.walkDir;
-  for (let i = 0; i < 40 / DT; i++) {
-    props.step(DT, []);
-    if (c.walkDir !== lastDir) { sawTurnaround = true; lastDir = c.walkDir; }
-    const q = Track.newQuery();
-    track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, q, 1.0);
-    if (q.idx < 0) offRoad++;
-    else assert.ok(Math.abs(q.d) <= q.hw, `wandered off the road: d=${q.d.toFixed(2)} hw=${q.hw.toFixed(2)}`);
-  }
-  assert.equal(offRoad, 0, 'never lost the road');
-  assert.ok(sawTurnaround, 'never turned around, so it would eventually walk off the road');
-});
-
-test('splatting a chicken starts its pop timer, and it stops reacting to further contact', () => {
-  const { track, props } = chickenSetup([[0, -350]]);
-  const c = props.chickens[0];
-  const car = new Vehicle(); placeOnTrack(car, track, track.progressAt(0, 0.65, -358), 0, 15);
-  for (let i = 0; i < 1 / DT && c.deadT < 0; i++) { car.step(DT, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track); props.step(DT, car); props.events.length = 0; }
-  assert.ok(c.deadT >= 0, 'splat timer never started');
-  const deadTAfter = c.deadT;
-  props.step(DT, car);          // a further step with the same car right on top of it
-  assert.ok(c.deadT > deadTAfter, 'the timer should keep ticking');
-  assert.equal(props.events.length, 0, 'an already-splatted chicken should not splat again');
-});
-
-test('chickens survive a track save/load round trip (PROP_TYPES)', () => {
-  const def = normalizeTrack({ handles: makeTemplate('speedway').handles, props: [
-    { type: 'barrel', x: 1, z: 1, y: 0.65 }, { type: 'chicken', x: 2, z: 2, y: 0.65 },
-  ] });
-  assert.equal(def.props.length, 2, 'both survive normalization');
-  const again = normalizeTrack(JSON.parse(JSON.stringify(def)));
-  assert.deepEqual(again.props, def.props, 'survives an export / import round trip');
+// ---------------------------------------------------------------- chickens (gone)
+test('an old track that still has chickens in it loads without them, and keeps its barrels', () => {
+  const def = normalizeTrack({ ...makeTemplate('speedway'), props: [{ type: 'barrel', x: 1, z: 1, y: 0.65 }, { type: 'chicken', x: 2, z: 2, y: 0.65 }] });
+  assert.deepEqual(def.props.map((p) => p.type), ['barrel']);
 });
 
 test('a resting barrel that goes off with no fuse (a multiplayer sync) is redrawn once, so it disappears', () => {

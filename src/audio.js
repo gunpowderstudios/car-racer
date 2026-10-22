@@ -27,7 +27,7 @@ export class Sound {
     await Promise.all([
       load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
-      load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'), load('cluck', 'sounds/cluck.mp3'),
+      load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'),
       load('music', `sounds/${this.track}-music.mp3`), load('engineStart', 'sounds/engine-start.mp3'),
     ]);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -246,8 +246,10 @@ export class Sound {
     return { stop };
   }
   /** A rival's short honk (two toots), quieter with distance. */
-  honk(dist = 0, pitch = 1) {
+  honk(dist = 0, pitch = 1, vehicleId = null) {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return;
+    if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, dist); return; }                         // (the replay: the Rootmaster's bell...
+    if (vehicleId === 'police' && this.buf.policeSiren) { this._shot('policeSiren', 0.6, 1, dist, 1.2); return; }          // ...and the police siren, one wail for the press)
     const gain = 0.32 * clamp01(1 - dist / 70); if (gain < 0.03) return;
     const a = this._hornVoice(gain, pitch); a.stop(0.16);
     setTimeout(() => { if (this.ctx) { const b = this._hornVoice(gain, pitch); b.stop(0.2); } }, 230);
@@ -259,8 +261,6 @@ export class Sound {
     o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.01); g.gain.setTargetAtTime(0, t + dur * 0.6, dur * 0.2);
     o.connect(g).connect(this.sfx); o.start(t); o.stop(t + dur + 0.1);
   }
-  /** A chicken meeting its end. */
-  splat(dist = 0) { this._shot('cluck', 0.85, 0.85 + Math.random() * 0.3, dist, 0.5); }
 }
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);

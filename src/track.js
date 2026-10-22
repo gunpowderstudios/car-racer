@@ -57,7 +57,7 @@ export function takeoffRamp(h) {
 /** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
-export const PROP_TYPES = ['barrel', 'chicken'];
+export const PROP_TYPES = ['barrel'];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 400;
 
 export function normalizeProps(list) {
@@ -565,7 +565,7 @@ export class Track {
   }
 
   /**
-   * Ground under (x, z) for something that sits near height yHint (a prop, a barrel, a chicken).
+   * Ground under (x, z) for something that sits near height yHint (a prop or a barrel).
    * Same rules as query(). With `top` set, if nothing is found at that level it falls back to the
    * highest surface there, which is what you want when the road has been raised since yHint was saved.
    */

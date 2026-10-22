@@ -61,9 +61,9 @@ test('German Beema is available with its own size and handling profile', () => {
 });
 
 
-test('random circuits scatter more barrels and chickens', () => {
+test('random circuits scatter barrels, and no chickens', () => {
   assert.match(templates, /scatter\('barrel', 6 \+ Math\.floor\(rnd\(\) \* 7\)\)/);
-  assert.match(templates, /scatter\('chicken', 4 \+ Math\.floor\(rnd\(\) \* 6\)\)/);
+  assert.doesNotMatch(templates, /scatter\('chicken'/);
 });
 
 

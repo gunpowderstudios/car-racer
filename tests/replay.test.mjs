@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { ReplayRecorder, ReplayPlayer, ReplayCams, HZ, STRIDE } from '../src/replay.js';
 import { Track } from '../src/track.js';
 import { DRAG_DEF } from './harness.mjs';
@@ -95,7 +96,7 @@ test('the Top view follows from above and behind', () => {
 test('STRIDE matches the layout the player reads', () => { assert.equal(STRIDE, 29); });
 
 test('replay is wired into the game: a button, the T key, the game-over card, the recorder reset on a new race, and the replay frame', async () => {
-  const { readFileSync } = await import('node:fs');
+  // (readFileSync is imported at the top)
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const input = readFileSync(new URL('../src/input.js', import.meta.url), 'utf8'), css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(html, /data-act="replay"/); assert.match(html, /id="go-replay"/); assert.match(html, /id="replay-bar"/);
@@ -122,7 +123,7 @@ test('the engine sound data is recorded and blended: rpm, throttle, tyre skid an
 });
 
 test('a replay hears the car it follows: quieter far off, pitch shifted by the Doppler effect, and silent when it exits', async () => {
-  const { readFileSync } = await import('node:fs');
+  // (readFileSync is imported at the top)
   const rm = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
   assert.match(audio, /update\(car, throttle, active, level = 1, pitch = 1\)/);
   assert.match(rm, /343 \/ \(343 \+ away\)/);
@@ -130,7 +131,7 @@ test('a replay hears the car it follows: quieter far off, pitch shifted by the D
 });
 
 test('the replay screen carries the Bangers and Smash TV logo, top right, and a car that is not wrecked always has its wheels on', async () => {
-  const { readFileSync } = await import('node:fs');
+  // (readFileSync is imported at the top)
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), rm = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(html, /<svg id="rp-logo"[^>]*aria-label="Bangers and Smash TV"/);
   assert.match(html, /BANGERS<\/text>/); assert.match(html, /AND SMASH!<\/text>/);
@@ -168,7 +169,7 @@ test('replay sounds: knocks, props and honks are recorded and played; scraping a
   const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const mode = fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.ok(main.includes('recHit(e.x, e.y, e.z, e.speed, e.type)'), 'the player\'s own wall and ground knocks');
-  assert.ok(main.includes("type: 'prop', kind: 'blast'") && main.includes("type: 'prop', kind: 'clang'") && main.includes("type: 'prop', kind: 'splat'"));
+  assert.ok(main.includes("type: 'prop', kind: 'blast'") && main.includes("type: 'prop', kind: 'clang'") && !main.includes("kind: 'splat'"), 'blasts and clangs are recorded; the chickens (splats) are gone');
   assert.ok(main.includes("type: 'honk'"));
   assert.ok(mode.includes("e.type === 'prop'") && mode.includes("e.type === 'honk'"));
   const rec = new ReplayRecorder({ maxSeconds: 10 });
@@ -204,11 +205,21 @@ test('Make my movie: one tap, TV set always, music only if it is on, fast, deskt
 });
 
 test('Make my movie is the whole race, real-time, record the game sound', async () => {
-  const { readFileSync } = await import('node:fs');
+  // (readFileSync is imported at the top)
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!html.includes('rp-save-full') && !html.includes('Gone in 60'), 'one button: Make my movie');
   assert.match(src, /audio: realtime, music: clip/);
   assert.match(src, /pickBestBit\(R\.player, 1e9\)/);
   assert.match(src, /const turbo = \(\) => !!\(R\.saving && R\.saver && !R\.realtime\)/);
+});
+
+test('the replay plays the Rootmaster\'s bell and the police siren, not the plain horn', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(main, /own: true, veh: selectedVehicle\(\)\.id/);
+  assert.match(main, /sound\.honk\(dist, e\.pitch \|\| 1, e\.veh\)/);
+  assert.match(audio, /honk\(dist = 0, pitch = 1, vehicleId = null\)/);
+  assert.match(audio, /vehicleId === 'bus' && this\.buf\.busBell\) \{ this\._shot\('busBell'/);
+  assert.match(audio, /vehicleId === 'police' && this\.buf\.policeSiren\) \{ this\._shot\('policeSiren'/);
 });

@@ -38,7 +38,7 @@ class In {
   count(max) { const n = this.u(); if (n > max) throw new Error('count'); return n; }
   str() { const n = this.count(200); if (this.i + n > this.a.length) throw new Error('short'); const t = new TextDecoder().decode(this.a.subarray(this.i, this.i + n)); this.i += n; return t; }
 }
-const PROP_KINDS = ['barrel', 'chicken'];
+const PROP_KINDS = ['barrel', 'chicken'];      // (the chicken slot stays so links made before the chickens went still unpack; normalizeProps then drops them)
 const Q = { xz: 10, y: 20, bank: 4, w: 2, lip: 10, kick: 2 };
 
 function encodeTrack(d) {

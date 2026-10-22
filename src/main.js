@@ -147,7 +147,6 @@ function crashDebris(x, y, z, speed, paint, bx = 0, bz = 0, scale = 1) {
 }
 const rivalPaint = () => RIVAL_LOOKS[(Math.random() * RIVAL_LOOKS.length) | 0].tint;
 const scorch = new Scorch(stage.scene);
-const splats = new Scorch(stage.scene, 40, 0xb5502e);   // a warmer tint than the black burn marks
 const props = new Props();
 const propsView = new PropsView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
@@ -471,7 +470,7 @@ function stepPhysics(dt) {
   const raw = input.read();
   const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
-  if (raw.horn && !hornVoice && hornOn()) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
+  if (raw.horn && !hornVoice && hornOn()) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true, veh: selectedVehicle().id }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
   while (acc >= DT && n < 6) {
     prevPos.copy(curPos); prevQ.copy(curQ);
@@ -516,15 +515,6 @@ function propEvents() {
       if (derby.damageEnabled) derby.blast(e.x, e.y, e.z);
       if (net) mpBarrelBlast(e);
     } else if (e.type === 'clang') { sound.clang(e.speed, e.dist); replayRec.event(simTime, { type: 'prop', kind: 'clang', x: e.x, y: e.y, z: e.z, speed: e.speed }); }
-    else if (e.type === 'splat') {
-      for (let k = 0; k < 7; k++) {
-        const a = Math.random() * Math.PI * 2, h = 0.6 + Math.random() * 1.6;
-        particles.puff(e.x + Math.cos(a) * 0.15, e.y + 0.2 + Math.random() * 0.2, e.z + Math.sin(a) * 0.15, Math.cos(a) * h, Math.sin(a) * h, 0.7 + Math.random() * 0.5, 0.7 + Math.random() * 0.5, 0xf2ede0);
-      }
-      splats.add(e.x, e.y, e.z, e.nx, e.ny, e.nz, 0.9 + Math.random() * 0.3);
-      sound.splat(e.dist); replayRec.event(simTime, { type: 'prop', kind: 'splat', x: e.x, y: e.y, z: e.z });
-      if (derby.damageEnabled && e.dist < DERBY.creditNear) derby.award('chicken', 1, 'Splat!');
-    }
   }
   props.events.length = 0;
 }
@@ -875,15 +865,14 @@ const replay = () => replayMode || (replayMode = createReplayMode({
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
       sound.explode(dist);
     },
-    prop(e) {                                                       // barrels going off, drums clanging, chickens
+    prop(e) {                                                       // barrels going off, drums clanging
       const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
       if (e.kind === 'blast') { particles.blast(e.x, e.y, e.z); sound.explode(dist); }
       else if (e.kind === 'clang') sound.clang(e.speed || 6, dist);
-      else if (e.kind === 'splat') sound.splat(dist);
     },
     honk(e) {
       const dist = 0.33 * Math.hypot(e.x - camera.position.x, e.y - camera.position.y, e.z - camera.position.z);
-      sound.honk(dist, e.pitch || 1);
+      sound.honk(dist, e.pitch || 1, e.veh);
     },
   },
   resyncLive() {                                                    // back to the real race: the pictures jump straight to where the cars really are
