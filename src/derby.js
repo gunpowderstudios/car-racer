@@ -42,6 +42,7 @@ export const DERBY = {
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
   repairsDemolition: 1,  // in a Demolition derby you get just the one spanner
+  brutalArmour: 0.6,     // Demolition Day: rivals take just this share of every hit, and drive at full (Expert) skill
   rivalClash: 0.4,       // Demolition: rivals hitting each other take just this share of the damage, so they don't wreck one another before you get to them
   repairs: 3,            // every car, yours and each rival, can be repaired this many times; the next wreck is scrap and stays on the track, burnt out
   wreckLife: 14,         // how long a wreck actively burns; the hulk itself can remain after that
@@ -217,6 +218,7 @@ export class Derby {
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
     this.slotSkill = null;                               // optional { raceSlot: skill offset }
+    this.brutal = false;                                 // Demolition Day: tougher, Expert-skill rivals whatever the options say (main.js sets it)
     this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
     this.towing = false;                               // set by main.js: every rival tows a caravan
     this.mode = 'race'; this.demolition = false;       // see start(): Race respawns the player, Demolition is last one standing
@@ -398,12 +400,12 @@ export class Derby {
     // -------- rivals think and drive
     const ctx = this._ctx;
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
-    ctx.skill = this.skill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
+    const baseSkill = this.brutal ? 1 : this.skill; ctx.skill = baseSkill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;
-      ctx.skill = slotSkill && slotSkill[f.raceSlot] != null ? Math.max(0, Math.min(1, this.skill + slotSkill[f.raceSlot])) : this.skill;
+      ctx.skill = slotSkill && slotSkill[f.raceSlot] != null ? Math.max(0, Math.min(1, baseSkill + slotSkill[f.raceSlot])) : baseSkill;
       if (f.driver && !f.wrecked && (this._tick + f.id) % 4 === 0) {
         if (this.lastStanding) ctx.player = this._nearestFoe(f);         // everyone is everyone's target
         f.inp = f.driver.drive(f.car, T, ctx, dt * 4);
@@ -610,6 +612,7 @@ export class Derby {
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };
     if (by && by.isPlayer && !f.isPlayer && f.driver) f.driver.grudgeT = Math.max(f.driver.grudgeT, AI.grudgeTime);
+    if (this.brutal && !f.isPlayer) hp *= DERBY.brutalArmour;
     f.health.hit(zone, hp * (f.spec.mul?.[zone] ?? 1));
     for (const n of NEIGHBOURS[zone]) f.health.hit(n, hp * DAMAGE.bleed * (f.spec.mul?.[n] ?? 1));
     f.health.last = zone;

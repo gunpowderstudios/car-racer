@@ -815,3 +815,15 @@ test('Demolition Day: a home button starts the Bed Pan with 8 rivals, each a dif
   assert.match(main, /demoDay \? 8 : opts\.rivals \* 2/);
   assert.match(main, /derby\.enabled = !net && \(opts\.rivals > 0 \|\| demoDay\)/);
 });
+
+test('Demolition Day: rivals are tougher and drive at full skill; every other game is untouched', () => {
+  const track = new Track(makeTemplate('oval')), player = new Vehicle();
+  const run = (brutal) => {
+    const d = new Derby(); d.enabled = true; d.brutal = brutal; d.start(track, player, 3, 7, 'demolition');
+    d.time = 10; const f = d.rivals[0]; f.age = 10;
+    d._damage(f, 'front', 20, null);
+    return f.health.hp.front;
+  };
+  assert.ok(DERBY.brutalArmour > 0 && DERBY.brutalArmour < 1);
+  assert.ok(run(true) > run(false), 'the same hit costs a brutal rival less');
+});
