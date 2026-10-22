@@ -29,3 +29,11 @@ test('the menu swaps the car in place and keeps the page (and its music) running
   assert.match(choice, /export function pickVehicle/);
   assert.match(choice, /window\.__swapVehicle/);
 });
+
+test('the player\'s wheels turn 15% further at low speed; a plain Vehicle (rivals, bots) keeps the old lock', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const veh = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
+  assert.match(main, /const car = new Vehicle\(\); car\.lockMul = 1\.15;/);
+  assert.match(veh, /this\.lockMul = 1;/);
+  assert.match(veh, /Math\.min\(st\.max \* this\.lockMul, 0\.17/);
+});

@@ -103,6 +103,7 @@ export class Vehicle {
     this.q = Track.newQuery();
     this.events = [];
     this.hurt = { front: 0, back: 0, left: 0, right: 0, roof: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
+    this.lockMul = 1;                                        // front-wheel lock multiplier: main.js gives the player's car 1.15 (tighter turns); rivals and bots keep 1
     this.engineOff = false; this.crank = 0;                  // stalled by a big hit: throttle and boost are dead until the driver restarts it (restartEngine)
     this._in = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
@@ -386,7 +387,7 @@ export class Vehicle {
     this.steerState += clamp(target - this.steerState, -rate * dt, rate * dt);
     const v = Math.max(this.speed, 0.1);
     // Full lock at low speed, tapering to roughly the front tyres' peak slip angle at speed.
-    const lock = Math.min(st.max, 0.17 + 36.6 / Math.max(v * v, 60));
+    const lock = Math.min(st.max * this.lockMul, 0.17 + 36.6 / Math.max(v * v, 60));
     const hu = this.hurt;
     let angle = this.steerState * lock;
     angle *= angle > 0 ? 1 - 0.5 * hu.left : 1 - 0.5 * hu.right;                  // a crumpled left side turns left less, a crumpled right side turns right less...
