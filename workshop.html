@@ -55,7 +55,7 @@ footer { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; color: var(-
   <p>How Bangers and Smash! is put together, and the numbers we have tuned along the way. Written for anyone who wants to download the game from GitHub, poke at it and make it their own.</p>
 </header>
 <nav><div>
-  <a href="#start">Start here</a><a href="#clock">The clock</a><a href="#graphics">Graphics tiers</a><a href="#phones">Phones</a><a href="#vehicles">Vehicles</a><a href="#damage">Damage</a><a href="#caravan">Caravan</a><a href="#tracks">Tracks &amp; modes</a><a href="#movie">Replay &amp; movie</a><a href="#cameras">Cameras &amp; controls</a><a href="#links">Links &amp; switches</a><a href="#models">Making models</a><a href="#rules">House rules</a><a href="#map">Source map</a>
+  <a href="#start">Start here</a><a href="#clock">The clock</a><a href="#graphics">Graphics tiers</a><a href="#phones">Phones</a><a href="#vehicles">Vehicles</a><a href="#damage">Damage</a><a href="#caravan">Caravan</a><a href="#tracks">Tracks &amp; modes</a><a href="#movie">Replay &amp; movie</a><a href="#sound">Sound &amp; music</a><a href="#cameras">Cameras &amp; controls</a><a href="#links">Links &amp; switches</a><a href="#models">Making models</a><a href="#rules">House rules</a><a href="#map">Source map</a>
 </div></nav>
 <main>
 
@@ -69,7 +69,7 @@ python3 -m http.server 8080     # or: npm start
 npm test                        # node --test tests/*.test.mjs  (Node 20 or newer)</code></pre>
   <div class="note">The tests run in plain Node with no browser. The game logic (physics, damage, AI, multiplayer, track links) has no DOM in it, so it can be tested; the drawing code cannot, so changes to looks have to be checked by eye in a real browser.</div>
   <div class="note warn"><b>Licence.</b> The source is public so people can read it, learn from it and experiment. A formal licence file has not been added yet (see the README), so please check the repository before you publish a modified copy.</div>
-  <p class="small">Every number on this page comes from the source and is the value at version 17.344. Where a value lives in code, its file is named so you can change it.</p>
+  <p class="small">Every number on this page comes from the source and is the value at version 17.345. Where a value lives in code, its file is named so you can change it.</p>
 </section>
 
 <section id="clock">
@@ -163,13 +163,16 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <tr><td>Happy Camper</td><td><code>campervan</code></td><td>campervan-shrink.glb</td><td class="n">4.50</td><td class="n">1280</td><td class="n">1.10</td><td>no</td><td>no</td></tr>
     <tr><td>Rootmaster</td><td><code>bus</code></td><td>bus-SHRINK.glb</td><td class="n">6.40</td><td class="n">4300</td><td class="n">0.70</td><td>no</td><td>no</td></tr>
     <tr><td>The Marriage Wrecker</td><td><code>motor-home</code></td><td>motorhome-SHRINK.glb</td><td class="n">4.85</td><td class="n">2800</td><td class="n">0.80</td><td>no</td><td>no</td></tr>
+    <tr><td>Big Apple</td><td><code>big-apple</code></td><td>yellow-taxi-SHRINK.glb</td><td class="n">5.20</td><td class="n">1900</td><td class="n">0.80</td><td>no</td><td>yes</td></tr>
   </table></div>
+  <p>Changing vehicle on the home screen does not reload the page: <code>pickVehicle</code> calls <code>window.__swapVehicle</code> (set by <code>main.js</code>), which re-specs the car, loads the new model and deals the rivals again, so the music keeps playing. It falls back to a reload only in multiplayer or when a game is running. The handler lives on <code>window</code> because <code>bootstrap.js</code> imports <code>vehicleChoice.js</code> with a version query, which makes two copies of the module.</p>
   <p><b>Toughness</b> is a multiplier on the damage a vehicle takes, so below 1 is tougher and above 1 is weaker. A tuk-tuk has a physics profile (520 kg) and a tow ball ready, but no model yet.</p>
   <h3>Adding a vehicle</h3>
   <ol>
     <li>Make the model (see <a href="#models">Making models</a>) and put it in <code>cars/</code>.</li>
     <li>Add a physics profile in <code>src/vehiclePhysicsProfiles.js</code>.</li>
     <li>Add an entry in <code>VEHICLES</code> that points at the profile and the file, with its length and toughness.</li>
+    <li>Make its menu picture with <code>python3 tools/make-vehicle-thumbs.py &lt;id&gt;</code> (a test fails without <code>cars/thumbs/&lt;id&gt;.webp</code>), and add a line to <code>COPY</code> in <code>src/menuVehiclePreview.js</code> if it needs different wording from its <code>description</code>.</li>
     <li>For a phone copy, add the lite file in <code>cars/lite/</code> and list it in <code>LITE_MODELS</code>.</li>
     <li>To let it tow, add a tow-ball position in <code>HITCH</code> in <code>src/caravan.js</code>.</li>
   </ol>
@@ -191,6 +194,10 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <li>Barrel blast: 90 at point blank, reaching 10 m. A wrecked car going up: 60, reaching 8 m. You take 0.4 of a blast.</li>
     <li>A big single hit (14% of a zone for you, 28% for a rival) stalls the engine for a couple of seconds.</li>
     <li>Race mode: a wrecked player smoulders for 3 s and is put back on the road with 3 s of protection. Demolition: last one standing wins.</li>
+    <li><b>Spanners:</b> every car, yours and each rival's, can be repaired 3 times (<code>DERBY.repairs</code>); in a Demolition derby you get one (<code>repairsDemolition</code>). After the last one a wreck is scrap: you get game over, a rival stays on the track as a burnt-out hulk. Going back to the previous track in Race Day costs a spanner.</li>
+    <li>A rival that is repaired or replaced comes back behind you (or where it died), never ahead, and its race position is tracked from that moment (<code>src/soloRacePosition.js</code>), so the rank you see is true.</li>
+    <li><b>Demolition:</b> rivals hitting each other take only 40% of the damage (<code>DERBY.rivalClash</code>), so they do not wreck one another before you reach them.</li>
+    <li><b>Demolition Day</b> (the brown home button): the Bed Pan with 8 random rivals, each a different vehicle, whatever the options say. Rivals take 60% of every hit (<code>DERBY.brutalArmour</code>) and drive at Expert skill. It is a flag on the track definition (<code>demoDay</code>) read by <code>derbyStart</code>, so no saved option is changed.</li>
     <li>A car on its roof burns at 16 hit points a second. At most 4 wrecks stay on the track before the oldest fades.</li>
   </ul>
   <h3>Visible dents</h3>
@@ -224,8 +231,8 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
   <h3>Keys</h3>
   <div class="wrap"><table>
     <tr><th>Key</th><th>Does</th><th>Key</th><th>Does</th></tr>
-    <tr><td><kbd>W</kbd> <kbd>S</kbd></td><td>Throttle, brake (and reverse)</td><td><kbd>B</kbd></td><td>Back on the road</td></tr>
-    <tr><td><kbd>A</kbd> <kbd>D</kbd></td><td>Steer</td><td><kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Restart the race</td></tr>
+    <tr><td><kbd>W</kbd> <kbd>S</kbd> or <kbd>&uarr;</kbd> <kbd>&darr;</kbd></td><td>Throttle, brake (and reverse)</td><td><kbd>B</kbd></td><td>Back on the road</td></tr>
+    <tr><td><kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Steer</td><td><kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Restart the race</td></tr>
     <tr><td><kbd>Space</kbd></td><td>Boost</td><td><kbd>C</kbd></td><td>Camera</td></tr>
     <tr><td><kbd>Shift</kbd></td><td>Drift (handbrake)</td><td><kbd>V</kbd></td><td>Rear-view mirror</td></tr>
     <tr><td><kbd>H</kbd></td><td>Horn</td><td><kbd>P</kbd></td><td>Pause (single player)</td></tr>
@@ -252,7 +259,7 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
 <pre><code>https://bangersandsmash.co.uk/?car=car&amp;van=1#t=~&lt;packed track&gt;</code></pre>
   <p>The track is packed into the address itself: a compact binary form, deflate-compressed, then base64, so there is no server and no account (<code>src/trackLink.js</code>). A link is never trusted: the packed text and the unpacked size are both capped. Your friend sees a box with the car and track, and Drive it! switches them to your car (a reload) and starts straight away.</p>
   <h3>What the game remembers (localStorage)</h3>
-  <p><code>cr.opts</code> (all menu options, including the saved graphics choice), <code>cr.vehicle</code> (chosen car), <code>cr.tracks</code> (your saved tracks), <code>cr.draft</code> (the track in the editor), <code>cr.best</code> (best laps), <code>cr.mpname</code>, <code>cr.mptrack</code>, <code>cr.sfx</code>, <code>cr.music</code>, <code>cr.story</code>.</p>
+  <p><code>cr.opts</code> (all menu options, including the saved graphics choice), <code>cr.vehicle</code> (chosen car), <code>cr.tracks</code> (your saved tracks), <code>cr.draft</code> (the track in the editor), <code>cr.best</code> (best laps), <code>cr.mpname</code>, <code>cr.mptrack</code>, <code>cr.sfx</code>, <code>cr.music</code>, <code>cr.sfxvol</code>, <code>cr.musicvol</code>, <code>cr.musictrack</code> (sound, see below), <code>cr.story</code>.</p>
 </section>
 
 <section id="models">
@@ -283,7 +290,8 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <li><b>The service worker</b> (<code>sw.js</code>) is network-first for code and <code>.glb</code> files, so an update shows on the next reload. Sounds and images come from cache first. Three.js is pinned to an exact version, so it is cached for good.</li>
     <li><b>Saved settings beat Auto.</b> If a phone reads Medium when you expected High, it is probably a saved Graphics choice in the menu. Set it back to Auto.</li>
     <li><b>The body mesh for dents</b> is the one with the most vertices that is not a wheel. If a wheel has more vertices than the body, it must be excluded by name or the wheel gets dented.</li>
-    <li><b>One multiplayer test is occasionally flaky</b> (a dent-relay timing test). If it fails alone, run the whole suite again before assuming a real fault.</li>
+    <li><b>Declare module-level state before anything can call it.</b> A <code>let</code> used by a function that runs during start-up must be declared above the first call, or it throws "before initialisation" (this has bitten twice).</li>
+    <li><b>The full test run takes about two minutes</b> on a slow machine. Start it in the background and wait for the summary line.</li>
     <li><b>You cannot test drawing without a browser.</b> Physics and logic can be checked headless; anything visual needs a real device.</li>
   </ul>
 </section>
@@ -298,7 +306,8 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <tr><td>Driving Tests</td><td>Coming soon</td></tr>
   </table></div>
   <p><b>Thin and Crispy</b> is a 12 m wide road with no walls, up to about 32 m in the air, with two jumps, banked bends, barrels and one huge dip to a flooded valley floor (pools of water across the whole road) and back up. The heights are <code>TC_Y</code> in <code>templates.js</code>. Pools of water can now be put on any track, not only dirt stages.</p>
-  <p>Game mode names in the cog menu: <b>Wacky Racing</b> (every rival a different vehicle), <b>Send in the clones</b> (same vehicle, different colours) and <b>Demolition</b> (last one standing). Laps default to 1 everywhere.</p>
+  <p>Game mode names in the cog menu: <b>Wacky Racing</b> (every rival a different vehicle), <b>Send in the clones</b> (same vehicle, different colours) and <b>Demolition</b> (last one standing). Laps default to 1; Speedway Gonzales brings its own 3 until you choose a number.</p>
+  <p>The home page also has three big buttons for ways to play: <b>Race Day</b> (blue: a four-circuit championship with points, or one race on any circuit; <code>src/storyMode.js</code>, <code>storyData.js</code>), <b>Demolition Day</b> (brown, see Damage) and <b>Buckle up!</b> (a random race). Multiplayer is purple and Design-a-track! green.</p>
 </section>
 
 <section id="movie">
@@ -307,8 +316,21 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
   <ul>
     <li><b>One tap:</b> <i>Make my movie</i> films the whole race from the TV (trackside) camera, in the 1970s TV set (<code>tv/tv-frame.webp</code>) with the TV logo. It runs at real speed so the game sound (engines, crashes, and music if it is on) is recorded as it plays: a film takes as long as the race, so keep the tab open. Desktop only.</li>
     <li><b>Fast:</b> frames are drawn as fast as the computer can manage and written with the browser's own video encoder as a proper 30 fps H.264 mp4 under about 14 MB, so WhatsApp takes it (<code>src/mp4Save.js</code>, using the vendored <code>mp4-muxer</code>). The picture is stamped with the replay's own clock, so it can never run fast or jolt.</li>
-    <li><b>Sound:</b> the game music is laid on afterwards and only if the music is switched on; engine and crash sounds are not recorded (that is what keeps it fast).</li>
+    <li><b>Sound:</b> on the replay screen, before the movie button, you choose a <b>Soundtrack</b> (the list in <code>TRACKS</code> in <code>src/audio.js</code>, or Off) and whether to include <b>Sound effects</b>. What you pick is what you hear during playback and what the film gets (<code>sound.filmTrack</code>): music at 80% and effects at 50%, or effects at 50% if there is no music. The in-game volume sliders do not change a film.</li>
+    <li><b>Cameras:</b> TV (the default), Chase, Top, or <b>Mix</b>, which switches camera every few seconds. Previous car and next car buttons step through the field.</li>
+    <li>While the film is made, a short editing-room tune plays outside the game's own mix, so it is heard but never recorded.</li>
     <li>Needs a browser with WebCodecs (recent Chrome, Edge or Safari).</li>
+  </ul>
+</section>
+
+<section id="sound">
+  <h2>Sound and music</h2>
+  <p>Everything goes through <code>src/audio.js</code>: a <code>music</code> gain and an <code>sfx</code> gain feeding one master. The home page plays music; it stops when you start driving (press <kbd>M</kbd> to bring it back) and sound effects are on by default.</p>
+  <ul>
+    <li><b>Equaliser (desktop):</b> a small 1980s-style graphic equaliser top left (<code>#eq</code> in <code>index.html</code>): a Music on/off button, an <b>FX</b> slider for effects and a <b>BTS</b> slider for music. They default to 50% music and 80% effects on a first visit, and are remembered (<code>cr.musicvol</code>, <code>cr.sfxvol</code>). The same volumes are under the cog menu.</li>
+    <li><b>Home screen:</b> the music carries on when you change vehicle, because the page no longer reloads (see Vehicles).</li>
+    <li><b>Tracks:</b> <code>sounds/&lt;name&gt;-music.mp3</code>, listed in <code>TRACKS</code>. Add a name there and drop in the file to put it in the movie soundtrack list.</li>
+    <li><b>Licence:</b> all music and sound effects come from royalty-free sources approved for commercial and personal use, and the home page footer says they may not be copied, sold or shared. Keep a note (page URL and date) of where each one came from. Do not use music from TV shows or commercial releases without a proper licence; a credit is not a licence.</li>
   </ul>
 </section>
 
@@ -328,6 +350,8 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
     <tr><td><code>src/track.js</code>, <code>trackGeometry.js</code>, <code>templates.js</code>, <code>editor.js</code></td><td>Tracks, built-in tracks, the editor</td></tr>
     <tr><td><code>src/trackLink.js</code></td><td>Tracks as links</td></tr>
     <tr><td><code>src/multiplayer.js</code> and <code>mp*.js</code></td><td>Peer-to-peer multiplayer, chat, rejoining, caravan contacts</td></tr>
+    <tr><td><code>src/storyMode.js</code>, <code>storyData.js</code>, <code>raceSettings.js</code>, <code>soloRacePosition.js</code></td><td>Race Day, laps per track, and each car's true race position</td></tr>
+    <tr><td><code>src/menuVehicle.js</code>, <code>menuVehiclePreview.js</code></td><td>The home screen car picker and its 3D preview</td></tr>
     <tr><td><code>src/input.js</code>, <code>hud.js</code>, <code>audio.js</code></td><td>Keys, pad and touch; the on-screen display; sound</td></tr>
     <tr><td><code>tests/</code></td><td>Headless tests (<code>npm test</code>)</td></tr>
   </table></div>
