@@ -14,7 +14,7 @@ function ensure() {
   if (!hud) return null;
   prompt = document.createElement('button');
   prompt.id = 'engine-off'; prompt.type = 'button'; prompt.hidden = true;
-  prompt.innerHTML = '<strong>Engine off!</strong><span>Press SPACE or ENTER (or tap) to restart</span>';
+  prompt.innerHTML = '<strong>Stalled!</strong><span>Press SPACE or ENTER (or tap) to restart</span>';
   const st = document.createElement('style');
   st.textContent = `
 #engine-off{position:absolute;left:50%;top:34%;transform:translateX(-50%) skewX(-7deg);z-index:25;padding:10px 26px;border:0;border-block:4px solid #e8392c;background:rgba(27,18,51,.92);color:#fff;text-align:center;cursor:pointer;pointer-events:auto;animation:engineBlink 1s ease-in-out infinite}
