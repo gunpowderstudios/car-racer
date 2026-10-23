@@ -341,8 +341,8 @@ export function createReplayMode(d) {
       if (R.realtime && !R.held && now < R.nextT - 4) { R.skip = true; return R.lastF || null; }      // the whole-race film runs at real speed so the game sound lines up
       if (R.held) { R.skip = true; R.saver.setClock(R.t - R.saveStart + 0.1, R.held); return R.lastF || null; }      // not this frame's turn: the picture just stays as it was
       R.nextT += 1000 / 30; dt = 1 / 30;
-      if (R.realtime) {                                                    // a film with sound follows the clock on the wall, so a slow computer repeats pictures but never lets the sound drift away from them
-        dt = Math.max(1 / 60, Math.min(0.25, (now - (R.wallPrev == null ? now - 1000 / 30 : R.wallPrev)) / 1000)); R.wallPrev = now;
+      if (R.realtime) {                                                    // a film with sound follows the clock on the wall, so a slow computer repeats pictures but never lets the sound drift away from them (a long slow frame is still caught up in one step: if the replay clock lagged, the recorder threw away the sound it was ahead of, which cut the effects short)
+        dt = Math.max(1 / 60, Math.min(1.5, (now - (R.wallPrev == null ? now - 1000 / 30 : R.wallPrev)) / 1000)); R.wallPrev = now;
       }
       R.saver.setClock(R.t - R.saveStart + (R.playing ? dt : 0) + 0.1, false);
     }

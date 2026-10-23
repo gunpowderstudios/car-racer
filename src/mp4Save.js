@@ -59,7 +59,7 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
       flushSound = (fadeOut) => { if (pend) { put(pend, fadeOut); pend = null; } };
       stopCapture = sound.capture((l, r) => {                          // sound, as it comes out of the mix
         if (closed || failed) return;
-        if (hold || samples / rate > clock + 0.3) { flushSound(true); gap = true; return; }       // (not wanted: the block before it is faded out)
+        if (hold || samples / rate > clock + 0.6) { flushSound(true); gap = true; return; }       // (not wanted: the block before it is faded out)
         const b = { l, r, at: samples, fadeIn: gap }; samples += l.length; gap = false;
         flushSound(false); pend = b;                                    // (a block waits one turn, so that it can be faded out if the next one is dropped)
       });
