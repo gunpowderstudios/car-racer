@@ -27,7 +27,7 @@ test('track links are short enough to paste anywhere, and use only web-safe char
   const d = makeTemplate('oval'); d.name = 'My track';
   const url = await trackLinkUrl(d, 'https://example.com/car-racer/');
   assert.match(url, /^https:\/\/example\.com\/car-racer\/#t=~[A-Za-z0-9_-]+$/);
-  assert.ok(url.length < 500, `link is ${url.length} characters`);
+  assert.ok(url.length < 900, `link is ${url.length} characters`);
   assert.equal(packedFromHash(new URL(url).hash), url.split('#t=')[1]);
   assert.equal(packedFromHash('#other'), null);
 });

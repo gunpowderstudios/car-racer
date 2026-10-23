@@ -259,25 +259,36 @@ test('every vehicle has a gallery picture and a model file, and the pickers are 
   assert.doesNotMatch(VEHICLES_SOURCE, /fillVehicleSelect/);
 });
 
-test('The Oval has four humps, one in each corner, that the physics ground follows', () => {
+test('The Oval is really uneven: lots of humps with dips between, and puddles in the hollows, the same every time', () => {
   const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track), q = Track.newQuery();
-  assert.equal(def.bumps.length, 4);
-  assert.deepEqual(new Set(def.bumps.map((b) => Math.sign(b.x) + ',' + Math.sign(b.z))).size, 4, 'one in each corner');
+  assert.ok(def.bumps.length >= 20 && def.bumps.length <= 40, 'lots of humps: ' + def.bumps.length);
+  assert.ok(def.puddles.length >= 4, 'puddles: ' + def.puddles.length);
   assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same humps');
+  assert.deepEqual(makeTemplate('oval').puddles, def.puddles, 'always the same puddles');
+  assert.ok(new Set(def.bumps.map((b) => b.r)).size > 10 && Math.max(...def.bumps.map((b) => b.h)) > 0.5 && Math.min(...def.bumps.map((b) => b.h)) < 0.4, 'humps of all sizes');
   for (const b of def.bumps) {
     track.query(b.x, A.y + 5, b.z, q, 7);
-    assert.ok(Math.abs(q.y - (A.y + b.h)) < 0.01, 'the top of the hump is h above the floor: ' + q.y);
-    assert.ok(q.ny > 0.99, 'level at the very top');
-    track.query(b.x + b.r * 0.5, A.y + 5, b.z, q, 7);
-    assert.ok(q.y > A.y + 0.2 && q.y < A.y + b.h && q.nx > 0.05, 'on the slope the ground is lower and tilts away from the top (nx ' + q.nx.toFixed(2) + ')');
-    track.query(b.x + b.r + 0.5, A.y + 5, b.z, q, 7);
-    assert.ok(Math.abs(q.y - A.y) < 0.01, 'flat floor again outside it');
+    assert.ok(q.y >= A.y + b.h - 0.01, 'the top of a hump is at least h above the floor: ' + q.y);
   }
   const ps = arenaPlayerStart(A);
-  for (const b of def.bumps) assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > b.r + 20, 'not at the player start');
-  for (const b of def.props.filter((p) => p.type === 'barrel')) for (const k of def.bumps) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r + 3 - 0.01, 'no drum on a hump');
+  for (const b of def.bumps) assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > b.r + 14, 'not at the player start');
+  for (const p of def.puddles) { assert.ok(track.puddleAt(p.x, p.z) > 0.9, 'water in the middle'); assert.ok(def.bumps.every((b) => Math.hypot(p.x - b.x, p.z - b.z) > b.r), 'a puddle is never on a hump'); }
+  for (const b of def.props.filter((p) => p.type === 'barrel')) {
+    for (const k of def.bumps) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r + 3 - 0.01, 'no drum on a hump');
+    for (const k of def.puddles) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r * 1.5 + 3 - 0.01, 'no drum in a puddle');
+  }
   assert.equal(new Track(normalizeTrack({ handles: def.handles, mode: 'lastStanding', width: def.width, bumps: [{ x: 0, z: 0, r: 999, h: -5 }, 'junk'] })).bumps[0].r, 20, 'clamped');
   assert.equal(new Track(makeTemplate('speedway')).bumps, null, 'ordinary tracks have none');
+});
+
+test('Thin and Crispy has one big pond across the bottom of the dip, drawn on the road', async () => {
+  const def = makeTemplate('thin'), track = new Track(def);
+  assert.ok(def.puddles.length >= 3 && def.puddles.every((p) => p.r >= 20), 'big overlapping pools');
+  const low = def.handles.map((h) => h.y).indexOf(Math.min(...def.handles.map((h) => h.y)));
+  const f = track.frameAt(track.handleS[low]);
+  assert.ok(track.puddleAt(f.x, f.z) > 0.9, 'the middle of the low road is under water');
+  const SRC = (await import('node:fs')).readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
+  assert.match(SRC, /if \(track\.puddles\) \{/, 'water is drawn on every track that has it, not only dirt stages');
 });
 
 test('rivals in The Oval steer round the humps instead of launching off them', () => {

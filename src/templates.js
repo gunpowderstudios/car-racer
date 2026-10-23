@@ -92,8 +92,29 @@ function figureEight() {
 /** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
 const OVAL_A = 78, OVAL_B = 36, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width, and full floor width
 
-/** Four humps in The Oval's floor, one in each corner: round mounds you can catch air off. Well clear of the walls, the start and the rivals' ring. */
-const OVAL_BUMPS = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => ({ x: sx * 52, z: sz * 21, r: 9, h: 1.3 }));
+/** The Bed Pan's floor: really uneven. Lots of humps of every size, crowded so there are dips between them, and a few puddles lying in the hollows (like Bluebell Woods).
+ *  Always the same lumps. Kept off the player's start, the four respawn spots, and the ring where the rivals line up, so nobody starts on a launch ramp. */
+function ovalLumps(def) {
+  const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261023), q = Track.newQuery(), r2 = (v) => Math.round(v * 100) / 100;
+  const keep = [arenaPlayerStart(A), ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([i, j]) => ({ x: A.cx + i * (A.ax - 26), z: A.cz + j * (A.az - 26) }))];   // (the start and the respawn spots)
+  const onRing = (x, z, m) => { const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62)); return Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < m; };
+  const floorOk = (x, z, pad) => { track.query(x, A.y + 0.5, z, q, 1.5); return q.idx >= 0 && Math.abs(q.d) <= q.hw - pad; };
+  const bumps = [];
+  for (let guard = 0; guard < 4000 && bumps.length < 34; guard++) {
+    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 6 + Math.pow(rnd(), 1.2) * 6, big = bumps.length % 9 === 4, h = big ? 1.1 + rnd() * 0.4 : 0.3 + rnd() * rnd() * 0.6 + r * 0.02;
+    if (!floorOk(x, z, r + 4) || keep.some((k) => Math.hypot(x - k.x, z - k.z) < r + 15) || onRing(x, z, r + 6)) continue;
+    if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < (r + b.r) * 0.8)) continue;       // (close enough to make dips between them, never stacked)
+    bumps.push({ x: r2(x), z: r2(z), r: r2(r), h: r2(Math.min(1.6, h) * 0.5) });      // (half as tall as first drawn: the rivals steer round humps, but taller ones launched them)
+  }
+  const puddles = [];
+  for (let guard = 0; guard < 4000 && puddles.length < 8; guard++) {                         // puddles in the low ground: well clear of every hump
+    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 4.5 + rnd() * 3.5;
+    if (!floorOk(x, z, r + 8) || keep.some((k) => Math.hypot(x - k.x, z - k.z) < r + 14) || onRing(x, z, r + 6)) continue;
+    if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + r * 1.4) || puddles.some((p) => Math.hypot(x - p.x, z - p.z) < (r + p.r) * 1.6 + 6)) continue;
+    puddles.push({ x: r2(x), z: r2(z), r: r2(r) });
+  }
+  return { bumps, puddles };
+}
 
 /** Drums for The Oval: about forty - a scatter across the floor plus a few tight clusters - well spread out, none where you start and none on the ring where the rivals line up (so nobody blows up at the start). Always the same ones. */
 function arenaProps(def) {
@@ -109,7 +130,7 @@ function arenaProps(def) {
       if (Math.hypot(x - start.x, z - start.z) < 24) continue;
       const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62));      // the rivals line up on this ring (arena.js arenaSpawn): keep well off it
       if (Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < 11) continue;
-      if ((def.bumps || []).some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 3)) continue;           // not on a hump
+      if ((def.bumps || []).some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 3) || (def.puddles || []).some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 1.5 + 3)) continue;           // not on a hump or in a puddle
       if (spots.some((o) => Math.hypot(x - o.x, z - o.z) < gap)) continue;
       spots.push({ x, z });
       return { x, z };
@@ -122,7 +143,7 @@ function arenaProps(def) {
     const p = spot();
     drum(p.x, p.z); drum(p.x + 2.3, p.z); drum(p.x - 2.3, p.z); drum(p.x, p.z + 2.3);
   }
-  return props;
+  return props.filter((p) => !(def.bumps || []).some((b) => Math.hypot(p.x - b.x, p.z - b.z) < b.r + 3) && !(def.puddles || []).some((b) => Math.hypot(p.x - b.x, p.z - b.z) < b.r * 1.5 + 3));      // (a drum in a cluster can land a little off its spot)
 }
 
 /** Bluebell Woods: a windy dirt rally stage. The radius wanders in and out with two overlapping waves, with gentle rises and dips, and three jumps. */
@@ -267,9 +288,9 @@ function thinScatter(def) {
   const track = new Track(def), rnd = mulberry(20261020), puddles = [], props = [];
   const lo = def.handles.map((h, i) => [h.y, i]).sort((a, b) => a[0] - b[0]).slice(0, 2).map((e) => e[1]);
   const a = track.handleS[Math.min(...lo)], b = track.handleS[Math.max(...lo)];
-  for (let s = a - 10; s <= b + 10; s += 14) {
+  for (let s = a - 14; s <= b + 14; s += 20) {                                  // a big pond lying across the whole dip: a chain of wide, overlapping pools, so it is easy to see from the high road
     const f = track.frameAt(s);
-    for (const off of [-3.5, 3.5]) puddles.push({ x: f.x + f.lx * off, z: f.z + f.lz * off, r: 8 });
+    puddles.push({ x: f.x, z: f.z, r: 22 });
   }
   const jumpS = track.handleS.filter((_, i) => def.handles[i].gap);
   const dist = (p, q) => { const d = Math.abs(p - q); return Math.min(d, track.length - d); };
@@ -423,7 +444,7 @@ export function makeTemplate(key) {
   }
   if (raw.sky) { def = normalizeTrack({ ...def, ...thinScatter(def) }); }
   if (raw.dirt) { def = normalizeTrack(steepBanks(def)); const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
-  if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', bumps: OVAL_BUMPS }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
+  if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', ...ovalLumps(def) }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }
 

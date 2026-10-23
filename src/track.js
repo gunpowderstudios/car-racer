@@ -171,7 +171,7 @@ export function normalizePuddles(list) {
     if (out.length >= MAX_PUDDLES || !b) continue;
     const x = Number(b.x), z = Number(b.z), r = Number(b.r);
     if (![x, z, r].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
-    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 1.5, 9) });
+    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 1.5, 30) });
   }
   return out;
 }

@@ -145,7 +145,7 @@ export class Stage {
     mesh(geo.wall, vcMat(0.75), { cast: true });
 
     // puddles on a rally stage: flat, glossy pools lying on the road (turned to follow its slope)
-    if (dirty && track.puddles) {
+    if (track.puddles) {
       const wm = new THREE.MeshStandardMaterial({ color: 0x2f5c78, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.82, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
       const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
       for (const p of track.puddles) {
