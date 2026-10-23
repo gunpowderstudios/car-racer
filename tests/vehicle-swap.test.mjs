@@ -37,3 +37,11 @@ test('the player\'s wheels turn 15% further at low speed; a plain Vehicle (rival
   assert.match(veh, /this\.lockMul = 1;/);
   assert.match(veh, /Math\.min\(st\.max \* this\.lockMul, 0\.17/);
 });
+
+test('the game does not need structuredClone (it would stop an older browser starting), and a failed start is shown on screen', () => {
+  for (const f of ['vehicleChoice.js', 'main.js', 'vehicle.js', 'derby.js']) assert.doesNotMatch(readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8'), /structuredClone\(/, f);
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /The game could not start\./);
+  assert.match(html, /module specifier\|import map/);
+  assert.match(html, /getContext\('webgl2'\)/);      // an old computer with no WebGL 2 is told so, not left on a blank menu
+});

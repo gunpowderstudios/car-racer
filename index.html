@@ -21,6 +21,31 @@
   } catch { /* normal page load if the URL cannot be read */ }
 })();
 </script>
+<script>
+// If the game cannot start (a browser that is too old, a file that would not load), say so on screen instead of leaving a menu with no cars in it.
+addEventListener('error', (e) => {
+  try {
+    const t = e.target && e.target !== window ? e.target : null, from = (t && (t.src || t.href)) || e.filename || '';
+    if (!from.includes('/src/') && !/module specifier|import map|importmap/i.test(e.message || '')) return;      // (not the visitor counter being blocked, say)
+    const show = () => {
+      const f = document.getElementById('fatal'); if (!f || !f.hidden) return;
+      f.hidden = false;
+      f.textContent = 'The game could not start.\n\n' + (e.message || ('Could not load ' + from)) + (e.filename ? '\n' + e.filename + ':' + e.lineno : '') +
+        '\n\nThis usually means the browser is too old (update Edge, Chrome, Firefox or Safari) or graphics acceleration is switched off. If it keeps happening, please send a screenshot of this to Gunpowder Studios.\n\n' + navigator.userAgent;
+    };
+    if (document.getElementById('fatal')) show(); else addEventListener('DOMContentLoaded', show, { once: true });
+  } catch { /* nothing more we can do */ }
+}, true);
+// The 3D engine needs WebGL 2. A computer from about 2011 (Intel HD Graphics 3000, say) does not have it, and no browser can add it, so say so plainly.
+addEventListener('DOMContentLoaded', () => {
+  try {
+    if (document.createElement('canvas').getContext('webgl2')) return;
+    const f = document.getElementById('fatal'); if (!f) return;
+    f.hidden = false;
+    f.textContent = 'Sorry, this computer\'s graphics cannot run the game.\n\nIt needs WebGL 2, and this browser does not offer it. First check the browser setting "Use graphics acceleration when available" is on (Edge: Settings > System and performance) and the graphics driver is up to date. Very old graphics chips (before about 2012) cannot do it at all, but the game works on newer computers, phones and tablets.\n\n' + navigator.userAgent;
+  } catch { /* leave the page alone */ }
+}, { once: true });
+</script>
 <style>
 #invite-loading { display: none; }
 html.invite-loading body { background: #111; }

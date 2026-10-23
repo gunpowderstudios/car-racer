@@ -262,12 +262,14 @@ export const jamboreePool = () => VEHICLES.filter((v) => !JAMBOREE_EXCLUDE.inclu
 
 // Apply the selected profile BEFORE main.js creates its Vehicle. Physics and damage toughness
 // now live in the same vehicle definition instead of a separate side-effect module.
-const PLAIN_CAR = structuredClone(CAR);                 // the car as written in vehicle.js, so a swap starts clean (a key one vehicle adds must not leak into the next)
-const PLAYER_MUL = structuredClone(SPECS.player.mul || null);
+// (a small deep copy of plain data: structuredClone would stop the whole game starting on an older browser, from before 2022)
+const deepCopy = (v) => (v === null || typeof v !== 'object' ? v : Array.isArray(v) ? v.map(deepCopy) : Object.fromEntries(Object.keys(v).map((k) => [k, deepCopy(v[k])])));
+const PLAIN_CAR = deepCopy(CAR);                 // the car as written in vehicle.js, so a swap starts clean (a key one vehicle adds must not leak into the next)
+const PLAYER_MUL = deepCopy(SPECS.player.mul || null);
 export function applySelectedProfile() {
   const cfg = selectedVehicle();
   for (const k of Object.keys(CAR)) if (!(k in PLAIN_CAR)) delete CAR[k];
-  Object.assign(CAR, structuredClone(PLAIN_CAR), specForVehicle(cfg));
+  Object.assign(CAR, deepCopy(PLAIN_CAR), specForVehicle(cfg));
 
   const base = PLAYER_MUL || {};
   if (cfg.damageMul && cfg.damageMul !== 1) {
