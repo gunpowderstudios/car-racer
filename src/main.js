@@ -1822,6 +1822,19 @@ async function openSharedTrack(packed) {
     while (all[name]) name = `${d.name.slice(0, 34)} (${n++})`;                 // never overwrite a track you already have
     saveUserTrack({ ...d, name }); renderMenu(); toast(`Saved "${name}" to your tracks.`); close();
   };
+  $('shared-mp').onclick = () => {                                              // save the track, go to the multiplayer screen with it already picked
+    const all = userTracks(); let name = d.name, n = 2;
+    if (all[name] && JSON.stringify(all[name]) !== JSON.stringify(d)) { while (all[name]) name = `${d.name.slice(0, 34)} (${n++})`; }
+    if (!all[name]) saveUserTrack({ ...d, name });
+    close(); $('btn-multiplayer').click();
+    setTimeout(() => {                                                          // (the lobby's "My tracks" list is filled in just after the click)
+      const home = $('mp-home-track'), lobby = $('mp-track'), key = `custom:${name}`;
+      home.querySelector('optgroup[data-custom-tracks]')?.remove();
+      const grp = lobby.querySelector('optgroup[data-custom-tracks]');
+      if (grp) home.appendChild(grp.cloneNode(true));
+      if ([...home.options].some((o) => o.value === key)) { home.value = key; home.dispatchEvent(new Event('change')); toast(`"${name}" is picked: enter your name and make a room.`); }
+    }, 60);
+  };
   $('shared-close').onclick = close;
   box.hidden = false;
   if (autoDrive) $('shared-drive').click();
