@@ -99,17 +99,21 @@ export class ArenaDriver {
     // Humps in the floor: a car that hits one at speed is launched into the wall or onto its roof. Steer round any hump in the way
     // (aim for a point just beside it) and ease off while one is close, so the nose can swing clear first.
     if (track.bumps) {
+      let pick = null, pickAhead = 1e9;                                    // (the nearest hump in the way, not just the first one in the list: the floor now has dozens)
       for (const b of track.bumps) {
         const rx = b.x - car.pos.x, rz = b.z - car.pos.z;
         const ahead = rx * fx + rz * fz, side = rx * car.ax.x + rz * car.ax.z;       // + = hump is on our left
         const clear = b.r + 3.2;
         if (ahead < -b.r * 0.4 || ahead > 16 + car.speed * 1.3 + b.r || Math.abs(side) > clear) continue;
+        if (ahead < pickAhead) { pickAhead = ahead; pick = { b, ahead, side, clear }; }
+      }
+      if (pick) {
+        const { b, ahead, side, clear } = pick;
         const sgn = Math.abs(side) < 0.6 ? (dx * car.ax.x + dz * car.ax.z >= 0 ? -1 : 1) : (side > 0 ? -1 : 1);
         const reach = Math.max(ahead, 8);
         ax = car.pos.x + fx * reach + car.ax.x * sgn * clear * 1.15; az = car.pos.z + fz * reach + car.ax.z * sgn * clear * 1.15;
         dx = ax - car.pos.x; dz = az - car.pos.z;
-        if (ahead < b.r + 14) vT = Math.min(vT, 15);
-        break;
+        if (ahead < b.r + 14) vT = Math.min(vT, b.h > 0.6 ? 12 : 15);
       }
     }
 

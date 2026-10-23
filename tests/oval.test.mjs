@@ -298,7 +298,7 @@ test('rivals in The Oval steer round the humps instead of launching off them', (
     car.step(DT, { ...IDLE, brake: 1 }, track); derby.step(DT, null);
     for (const f of derby.fighters) {
       if (f.isPlayer || f.wrecked) continue;
-      for (const b of track.bumps) if (Math.hypot(f.car.pos.x - b.x, f.car.pos.z - b.z) < b.r + 1) { near++; if (!f.car.onGround) air++; }
+      for (const b of track.bumps) if (Math.hypot(f.car.pos.x - b.x, f.car.pos.z - b.z) < b.r + 1 && f.car.ay.y > 0.5) { near++; if (!f.car.onGround) air++; }      // (upright cars only: one lying on its roof is not 'launched')
     }
     car.events.length = 0; derby.events.length = 0;
   }

@@ -101,10 +101,10 @@ function ovalLumps(def) {
   const floorOk = (x, z, pad) => { track.query(x, A.y + 0.5, z, q, 1.5); return q.idx >= 0 && Math.abs(q.d) <= q.hw - pad; };
   const bumps = [];
   for (let guard = 0; guard < 4000 && bumps.length < 34; guard++) {
-    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 6 + Math.pow(rnd(), 1.2) * 6, big = bumps.length % 9 === 4, h = big ? 1.1 + rnd() * 0.4 : 0.3 + rnd() * rnd() * 0.6 + r * 0.02;
+    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 6 + Math.pow(rnd(), 1.2) * 6, big = bumps.length % 7 === 3, h = big ? 1.15 + rnd() * 0.25 : (0.3 + rnd() * rnd() * 0.6 + r * 0.02) * 0.5;
     if (!floorOk(x, z, r + 4) || keep.some((k) => Math.hypot(x - k.x, z - k.z) < r + 15) || onRing(x, z, r + 6)) continue;
     if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < (r + b.r) * 0.8)) continue;       // (close enough to make dips between them, never stacked)
-    bumps.push({ x: r2(x), z: r2(z), r: r2(r), h: r2(Math.min(1.6, h) * 0.5) });      // (half as tall as first drawn: the rivals steer round humps, but taller ones launched them)
+    bumps.push({ x: r2(x), z: r2(z), r: r2(r), h: r2(Math.min(1.6, h)) });      // (a few tall ones you can see and jump; the rest are low and rolling, because the rivals launched off tall ones all over the floor)
   }
   const puddles = [];
   for (let guard = 0; guard < 4000 && puddles.length < 8; guard++) {                         // puddles in the low ground: well clear of every hump
