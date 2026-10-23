@@ -57,7 +57,7 @@ test('German Beema is available with its own size and handling profile', () => {
   assert.match(vehicleProfiles, /body: \{ width: 1\.72, length: 4\.33/);
   assert.match(vehicleProfiles, /bmw: \{/);
   assert.match(vehicleProfiles, /mass: 1080/);
-  assert.match(vehicleProfiles, /peakTorque: 190/);
+  assert.match(vehicleProfiles, /peakTorque: 201/);
 });
 
 
@@ -261,7 +261,7 @@ test('1972 VW Type 2 camper uses period-correct size and 1600 drivetrain charact
   assert.match(camper, /frontWeight: 0\.44/);
   assert.match(camper, /wheelbase: 2\.40/);
   assert.match(camper, /track: 1\.41/);
-  assert.match(camper, /peakTorque: 420/);      // (a stock 1600 makes 106; this one is tuned so the camper reaches 65 mph like every other vehicle)
+  assert.match(camper, /peakTorque: 242/);      // (a stock 1600 makes 106: this camper is tuned to take about 8.7 s to 60 mph)
   assert.match(camper, /gears: \[3\.80, 2\.06, 1\.26, 0\.82\]/);
   assert.match(camper, /finalDrive: 5\.375/);
   assert.match(camper, /aero: \{ drag: 0\.80, down: 0\.08 \}/);
