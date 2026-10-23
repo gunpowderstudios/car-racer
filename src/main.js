@@ -1835,3 +1835,19 @@ let autoDrive = false;
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+
+// ---- "Get the app": Chrome, Edge, Silk (Fire tablets) and Android offer a real install; iPhone and iPad need Share > Add to Home Screen, so the button explains that
+{
+  const btn = document.getElementById('btn-install'); let offer = null;
+  const standalone = () => (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (btn && !standalone()) {
+    if (ios) btn.hidden = false;
+    addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); offer = e; btn.hidden = false; });
+    addEventListener('appinstalled', () => { offer = null; btn.hidden = true; });
+    btn.onclick = async () => {
+      if (offer) { try { offer.prompt(); await offer.userChoice; } catch { /* closed */ } offer = null; btn.hidden = true; }
+      else toast(ios ? 'Tap the Share button, then "Add to Home Screen"' : 'Use your browser menu, then "Install app" or "Add to Home screen"');
+    };
+  }
+}

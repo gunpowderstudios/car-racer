@@ -188,6 +188,7 @@ body:not(.mode-menu) #menu { display: none; }
   #btn-demo { order: 2; }
   #btn-multiplayer-top { order: 2; }
   #btn-new-top { order: 2; }
+  #btn-install { order: 2; }
   #version { order: 3; }
   #menu .lede { order: 4; }
   #menu-vehicle-choice { order: 6; }              /* phones and tablets: the preview and its blurb sit above the car grid, under the Clunk-click text */
@@ -209,15 +210,15 @@ body:not(.mode-menu) #menu { display: none; }
 }
 
 /* ------------------------------------------------------------------- HUD */
-#hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-family: var(--display); text-shadow: 0 2px 6px rgba(0,0,0,.5); }
+#hud { position: fixed; inset: 0; z-index: 40; pointer-events: none; font-family: var(--display); text-shadow: 0 2px 6px rgba(0,0,0,.5); }
 #lap-card { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 16px; padding: 10px 26px 10px 14px; background: rgba(42,29,74,.82);
   clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); border-left: 5px solid var(--amber); }
 body.arena #lap-card { display: none; }       /* The Oval has no laps */
 #lap-num { font-weight: 700; font-size: 20px; color: var(--amber); letter-spacing: .02em; }
 #lap-time { font-weight: 900; font-size: 44px; line-height: 1; color: var(--peach); font-variant-numeric: tabular-nums; }
 #lap-best { font-family: var(--cond); font-size: 15px; color: var(--ink-dim); text-shadow: none; }
-#minimap { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px; width: 168px; height: 168px; background: rgba(27,18,51,.6); border: 2px solid rgba(246,217,176,.35); border-radius: 50%; }
-#sound-ctl { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 180px); right: 16px; pointer-events: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+#minimap { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 52px); right: 16px; width: 168px; height: 168px; background: rgba(27,18,51,.6); border: 2px solid rgba(246,217,176,.35); border-radius: 50%; }
+#sound-ctl { position: fixed; z-index: 100; top: max(8px, env(safe-area-inset-top)); right: 8px; pointer-events: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 #cog { position: relative; width: 40px; height: 40px; padding: 8px; border-radius: 50%; border: 2px solid rgba(246,217,176,.35); background: rgba(42,29,74,.82);
   color: var(--peach); cursor: pointer; transition: transform .35s, border-color .2s; }
 #cog svg { display: block; width: 100%; height: 100%; }
@@ -458,7 +459,6 @@ body:not(.mode-drive) .mp-label { display: none; }
   #speed-plate { min-width: 0; padding-left: 40px; }
   #speed { font-size: 56px; }
   #minimap { width: 110px; height: 110px; }
-  #sound-ctl { top: calc(max(14px, env(safe-area-inset-top)) + 122px); }
   #controls { bottom: auto; top: calc(max(14px, env(safe-area-inset-top)) + 124px); max-width: 60vw; font-size: 13px; }
   #controls .legend { display: none; }
   #derby-score { top: calc(max(14px, env(safe-area-inset-top)) + 4px); min-width: 130px; padding: 3px 14px 5px; }
@@ -495,12 +495,12 @@ body:not(.mode-drive) .mp-label { display: none; }
   #derby-score .ds-label { font-size: 10px; }
   #ds-score { font-size: 24px; }
   #ds-sub { font-size: 10px; }
-  #minimap { right: 10px; width: 84px; height: 84px; }
+  #minimap { right: 10px; width: 84px; height: 84px; top: calc(max(8px, env(safe-area-inset-top)) + 48px); }
 
   #controls { left: 10px; right: 58px; top: calc(max(14px, env(safe-area-inset-top)) + 96px); bottom: auto; max-width: none;
     flex-wrap: nowrap; gap: 4px; font-size: 12px; opacity: .9; }
   #controls .ctl { flex: 1 1 0; min-width: 0; justify-content: center; padding: 6px 2px; white-space: normal; text-align: center; line-height: 1.05; }
-  #sound-ctl { right: 10px; top: calc(max(14px, env(safe-area-inset-top)) + 94px); }
+  #sound-ctl { right: 8px; }
   #cog { width: 38px; height: 38px; padding: 7px; }
 
   #mirror { top: calc(max(14px, env(safe-area-inset-top)) + 140px); width: 62vw; }
@@ -689,7 +689,7 @@ body.mode-drive #vignette { display: block; }
   #sound-ctl #controls .ctl { flex: none; justify-content: flex-start; text-align: left; white-space: nowrap; padding: 9px 12px; font-size: 16px; line-height: 1.1; }
   #sound-ctl #controls [data-act="edit"] { display: none; }   /* the track editor is desktop only */
   /* the open cog menu sits over the driving buttons (it used to hide behind them and clash) */
-  #hud:has(#cog[aria-expanded="true"]) { z-index: 14; }
+  #hud:has(#cog[aria-expanded="true"]) { z-index: 41; }
   #sound-ctl #controls { background: rgba(27,18,51,.97); pointer-events: auto; }
 }
 
@@ -864,3 +864,5 @@ body:not(.mode-menu) #gp-credit { display: none; }
 @media (max-width: 760px), (max-height: 520px) {
   #gp-credit { position: static; order: 99; margin: 22px 0 6px; width: max-content; }
 }
+
+#btn-install[hidden] { display: none; }

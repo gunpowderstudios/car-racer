@@ -10,6 +10,8 @@
   "lang": "en-GB",
   "categories": ["games", "racing", "multiplayer"],
   "icons": [
+    { "src": "src/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "src/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     {
       "src": "src/app-icon.png",
       "sizes": "500x500",
