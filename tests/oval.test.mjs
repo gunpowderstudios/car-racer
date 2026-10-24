@@ -26,7 +26,7 @@ test('The Oval track is a preloaded track, now called Deep Pan Pizza', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
   assert.equal(makeTemplate('oval').name, 'Deep Pan Pizza');
   assert.equal(TEMPLATE_INFO.oval, 'A cheesy pizza-shaped pile up of olives and exploding peppers!');
-  assert.equal(TEMPLATE_KEYS.length, 9, 'eight tracks and the random one');
+  assert.equal(TEMPLATE_KEYS.length, 10, 'nine tracks and the random one');
 });
 
 test('it is marked as a last-one-standing arena, and other tracks are not', () => {
@@ -728,4 +728,18 @@ test('the Deep Pan Pizza loads its drums at 3x size, and other tracks go back to
   assert.equal(DAMAGE.barrel.point, 180, '2x the damage'); assert.equal(DAMAGE.barrel.radius, 20, '2x the radius'); assert.equal(BLAST.radius, 20);
   assert.ok(Math.abs(BARREL.radius - 1.29) < 1e-9, 'still 3x the size');
   pr.load(track, def.props, 1);
+});
+
+test('Roll out the barrels: a flat oval with a jump on each straight and rows of red barrels either side', async () => {
+  const { drivable } = await import('../src/templates.js');
+  const def = makeTemplate('barrels'), track = new Track(def);
+  assert.equal(def.name, 'Roll out the barrels');
+  assert.equal(def.handles.filter((h) => h.gap).length, 2, 'one jump on each straight');
+  assert.ok(def.handles.every((h) => h.y < 2), 'flat');
+  const n = def.props.filter((p) => p.type === 'barrel').length;
+  assert.ok(n >= 60 && n <= 200, 'full of barrels: ' + n);
+  const q = Track.newQuery();
+  for (const b of def.props) { track.query(b.x, b.y + 0.5, b.z, q, 2); assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw, 'every barrel is on the road'); }
+  assert.ok(drivable(def), 'the jumps can be cleared');
+  assert.ok(track.length > 1500, String(track.length));
 });

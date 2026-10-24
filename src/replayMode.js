@@ -194,6 +194,7 @@ export function createReplayMode(d) {
       if (plain) {
         const ca = cv.width / cv.height, ta = out.width / out.height, cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;
         octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, 0, 0, out.width, out.height);
+        if (logo.complete && logo.naturalWidth) { const lw = out.width * 0.2, lh = lw * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.02; octx.drawImage(logo, out.width - lw - m, m * 0.7, lw, lh); }      // the Bangers and Smash TV logo, top right, with or without the set
         if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
         return;
       }
