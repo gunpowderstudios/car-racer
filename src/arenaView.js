@@ -43,11 +43,34 @@ export function buildArena(track, aniso = 8) {
   const playR = (A.ax + A.az) / 2, SIZE = 1024, k = SIZE / (2 * R);
   const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
   const c = cv.getContext('2d'), disc = (x, z, r, fill) => { c.fillStyle = fill; c.beginPath(); c.arc((x - cx + R) * k, (z - cz + R) * k, r * k, 0, Math.PI * 2); c.fill(); };
-  c.fillStyle = '#d6aa6e'; c.fillRect(0, 0, SIZE, SIZE);                                    // dough
-  disc(cx, cz, playR * 0.8, '#c0301f');                                                      // sauce: everything inside the outer fifth
-  for (const b of bumps) disc(b.x, b.z, b.r, b.h > 0 ? '#1b1919' : '#f3c93a');               // olives (hills) and cheese (dips): the same circle, one up and one down
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;          // a little speckle so it still looks like dirt
-  for (let i = 0; i < 5000; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)'; c.fillRect(rnd() * SIZE, rnd() * SIZE, 2 + rnd() * 5, 2 + rnd() * 5); }
+  // painted like the cartoon pizza: flat tan dough, wobbly-edged red sauce with a few red splashes on the crust, olives with a shine, cheese with shine marks and a pale patch
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const px = (x, z) => [(x - cx + R) * k, (z - cz + R) * k];
+  c.fillStyle = '#d5b97f'; c.fillRect(0, 0, SIZE, SIZE);                                      // dough
+  c.fillStyle = '#b93330'; c.beginPath();                                                      // sauce: the edge wanders in and out, never closer in than 0.8 of the way out (the lumps stay on it)
+  for (let i = 0; i <= 180; i++) {
+    const th = i / 180 * Math.PI * 2, rr = playR * (0.87 + 0.03 * Math.sin(3 * th + 1) + 0.025 * Math.sin(5 * th + 2) + 0.015 * Math.sin(8 * th)), [X, Z] = px(cx + Math.cos(th) * rr, cz + Math.sin(th) * rr);
+    i ? c.lineTo(X, Z) : c.moveTo(X, Z);
+  }
+  c.fill();
+  for (let i = 0; i < 16; i++) {                                                               // splashes of sauce on the crust
+    const th = rnd() * Math.PI * 2, rr = playR * (0.9 + rnd() * 0.07), sz = (0.9 + rnd() * 1.8) * k, [X, Z] = px(cx + Math.cos(th) * rr, cz + Math.sin(th) * rr);
+    c.beginPath(); c.ellipse(X, Z, sz * 1.3, sz, rnd() * Math.PI, 0, Math.PI * 2); c.fill();
+  }
+  for (const b of bumps) {
+    const [X, Z] = px(b.x, b.z), r = b.r * k;
+    if (b.h > 0) {                                                                             // olive: black ring, dark grey middle, white shine
+      c.fillStyle = '#1f1e1c'; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#403c35'; c.beginPath(); c.arc(X, Z, r * 0.7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(X + r * 0.32, Z - r * 0.36, r * 0.17, r * 0.12, -0.5, 0, Math.PI * 2); c.fill();
+    } else {                                                                                   // cheese: yellow, a pale patch low on the left, shine marks on the left and upper right
+      c.fillStyle = '#f8d762'; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#e7d07c'; c.beginPath(); c.ellipse(X - r * 0.1, Z + r * 0.62, r * 0.28, r * 0.17, -0.2, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#fff6d0'; c.lineWidth = Math.max(1.5, r * 0.07); c.lineCap = 'round';
+      c.beginPath(); c.arc(X, Z, r * 0.82, Math.PI * 0.82, Math.PI * 1.12); c.stroke();
+      c.beginPath(); c.arc(X, Z, r * 0.82, -Math.PI * 0.42, -Math.PI * 0.1); c.stroke();
+    }
+  }
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = aniso; tex.generateMipmaps = true;
   const RINGS = 56, pos = [0, y0, 0], uv = [0.5, 0.5], idx = [], tmp = { h: 0, gx: 0, gz: 0 };
   for (let ri = 1; ri <= RINGS; ri++) for (let j = 0; j < SEG; j++) {

@@ -701,7 +701,7 @@ test('Deep Pan Pizza is a round floor painted as a margherita; the editor guards
   const def = makeTemplate('oval'), A = arenaInfo(new Track(def));
   assert.ok(Math.abs(A.a - A.b) < 0.01 && Math.abs(A.ax - A.az) < 0.01, 'a circle, not an oval');
   const view = readFileSync(new URL('../src/arenaView.js', import.meta.url), 'utf8');
-  assert.match(view, /#1b1919/, 'olives are black'); assert.match(view, /#f3c93a/, 'cheese is yellow'); assert.match(view, /#c0301f/, 'sauce is red'); assert.match(view, /#d6aa6e/, 'dough is dirt coloured');
+  assert.match(view, /#1f1e1c/, 'olives are black'); assert.match(view, /#f8d762/, 'cheese is yellow'); assert.match(view, /#b93330/, 'sauce is red'); assert.match(view, /#d5b97f/, 'dough is dirt coloured');
   assert.doesNotMatch(view, /for \(const b of bumps\) \{[^}]*new THREE\.Mesh/, 'no mesh per hump');
   const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
   assert.match(ed, /cr\.autosave/); assert.match(ed, /performance\.memory/); assert.match(ed, /_show3d\(false\)/);
