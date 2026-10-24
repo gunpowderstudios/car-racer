@@ -116,7 +116,7 @@ function ovalLumps(def) {
 
 /** Drums for The Oval: about forty - a scatter across the floor plus a few tight clusters - well spread out, none where you start and none on the ring where the rivals line up (so nobody blows up at the start). Always the same ones. */
 function arenaProps(def) {
-  const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261010), props = [], q = Track.newQuery();
+  const track = new Track(def), A = arenaInfo(track), count = 20 + Math.floor(Math.random() * 11), rnd = mulberry(20261010 + count * 7919), props = [], q = Track.newQuery();
   const start = arenaPlayerStart(A), r2 = (v) => Math.round(v * 100) / 100;
   const spots = [];
   const spot = () => {                                                   // a random place on the floor: clear of the walls, your start, the rivals' starting ring, and other drums
@@ -136,11 +136,7 @@ function arenaProps(def) {
     return { x: A.cx, z: A.cz };
   };
   const drum = (x, z) => { const p = placeProp(track, x, z); props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) }); };
-  for (let i = 0; i < 22; i++) { const p = spot(); drum(p.x, p.z); }
-  for (let c = 0; c < 4; c++) {                                          // four clusters of four: one spark sets the lot off
-    const p = spot();
-    drum(p.x, p.z); drum(p.x + 2.3, p.z); drum(p.x - 2.3, p.z); drum(p.x, p.z + 2.3);
-  }
+  for (let i = 0; i < count; i++) { const p = spot(); drum(p.x, p.z); }          // 20 to 30 giant (3x) peppers, a different number each time: far too big to cluster
   return props.filter((p) => !(def.bumps || []).some((b) => Math.hypot(p.x - b.x, p.z - b.z) < b.r + 3) && !(def.puddles || []).some((b) => Math.hypot(p.x - b.x, p.z - b.z) < b.r * 1.5 + 3));      // (a drum in a cluster can land a little off its spot)
 }
 

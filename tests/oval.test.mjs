@@ -36,11 +36,12 @@ test('it is marked as a last-one-standing arena, and other tracks are not', () =
   assert.equal(normalizeTrack({ handles: makeTemplate('oval').handles, mode: 'nonsense' }).mode, undefined);
 });
 
-test('full of drums, some in clusters, all on the floor, none where the player starts, and the same every time', () => {
+test('20 to 30 giant drums, all on the floor, none where the player starts, spaced out', () => {
   const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track);
   const barrels = def.props.filter((p) => p.type === 'barrel');
-  assert.ok(barrels.length >= 30 && barrels.length <= 45, String(barrels.length));
-  assert.deepEqual(makeTemplate('oval').props, def.props, 'always the same drums');
+  assert.ok(barrels.length >= 20 && barrels.length <= 30, String(barrels.length));
+  const seen = new Set(); for (let i = 0; i < 40; i++) seen.add(makeTemplate('oval').props.length);
+  assert.ok(seen.size >= 5, 'the number of drums is random: ' + [...seen]);
   const q = Track.newQuery(), ps = arenaPlayerStart(A);
   for (const b of barrels) {
     track.query(b.x, b.y + 0.5, b.z, q, 2);
@@ -48,9 +49,7 @@ test('full of drums, some in clusters, all on the floor, none where the player s
     assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > 12, 'clear of the player start');
     for (let k = 0; k < 10; k++) { const sp = arenaSpawn(A, k, 10); assert.ok(Math.hypot(b.x - sp.x, b.z - sp.z) > 8, 'no drum beside a rival\'s starting spot'); }
   }
-  let close = 0;
-  for (let i = 0; i < barrels.length; i++) for (let j = i + 1; j < barrels.length; j++) if (Math.hypot(barrels[i].x - barrels[j].x, barrels[i].z - barrels[j].z) < 3.2) close++;
-  assert.ok(close >= 8, 'clusters of drums that set each other off: ' + close);
+  for (let i = 0; i < barrels.length; i++) for (let j = i + 1; j < barrels.length; j++) assert.ok(Math.hypot(barrels[i].x - barrels[j].x, barrels[i].z - barrels[j].z) > 4.5, 'giant drums do not overlap');
 });
 
 test('it is a big open, walled, flat dirt floor, and its outline matches the physics wall', () => {
@@ -714,4 +713,13 @@ test('the Deep Pan Pizza paints its barrels pepper green', () => {
   assert.match(view, /build\(props, peppers = false\)/);
   assert.match(main, /propsView\.build\(props, def\.mode === 'lastStanding' && def\.name === 'Deep Pan Pizza'\)/);
   assert.doesNotMatch(view, /setColorAt\(i, PAINT\[/, 'the paint is chosen per track, not fixed');
+});
+
+test('the Deep Pan Pizza loads its drums at 3x size, and other tracks go back to normal', async () => {
+  const { Props, BARREL } = await import('../src/props.js');
+  const def = makeTemplate('oval'), track = new Track(def), pr = new Props();
+  pr.load(track, def.props, 3);
+  assert.ok(Math.abs(BARREL.radius - 1.29) < 1e-9 && Math.abs(BARREL.height - 3.9) < 1e-9, 'three times the size');
+  pr.load(track, def.props, 1);
+  assert.ok(Math.abs(BARREL.radius - 0.43) < 1e-9 && Math.abs(BARREL.height - 1.3) < 1e-9, 'normal again');
 });

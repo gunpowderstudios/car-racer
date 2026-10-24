@@ -48,7 +48,7 @@ export class PropsView {
     this.drumMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.35 });
     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
     this.bitMat = new THREE.MeshStandardMaterial({ color: 0x3b3a40, roughness: 0.6, metalness: 0.6 });
-    this._lastPropsTime = 0;
+    this._lastPropsTime = 0; this._size = 1;
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(1, 1, 1);
 
     this._e = new THREE.Euler();
@@ -57,6 +57,8 @@ export class PropsView {
 
   build(props, peppers = false) {
     this._paint = peppers ? PEPPER : PAINT;
+    this._size = props.size || 1;
+    this._s.set(this._size, this._size, this._size);
     if (this.drums) { this.scene.remove(this.drums); this.drums.dispose(); this.drums = null; }
     this._lastPropsTime = props.time;
     const n = props.barrels.length;
@@ -100,7 +102,7 @@ export class PropsView {
         this._p.set(p.pos.x, p.pos.y, p.pos.z); this._q.set(p.q.x, p.q.y, p.q.z, p.q.w); this._s.set(p.sx * k, p.sy * k, p.sz * k);
         this._m.compose(this._p, this._q, this._s); bm.setMatrixAt(n++, this._m);
       }
-      this._s.set(1, 1, 1);
+      this._s.set(this._size || 1, this._size || 1, this._size || 1);
       bm.count = n; bm.instanceMatrix.needsUpdate = true;
     }
   }

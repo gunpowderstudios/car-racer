@@ -17,6 +17,7 @@ import { Track, WALL_GAP, WALL_T, WALL_HEIGHT } from './track.js';
 const G = 9.81;
 const UP = new V3(0, 1, 0);
 
+const BARREL_BASE = { radius: 0.43, height: 1.3, mass: 100, reach: 0.48, step: 0.39 };
 export const BARREL = {
   radius: 0.43, height: 1.3, mass: 100,   // 20% bigger than the previous size (44% over the very first version)
   reach: 0.48, step: 0.39,       // three spheres this far apart along the axis stand in for the cylinder
@@ -37,8 +38,9 @@ export const BLAST = {
   carLift: 0.9,                  // how much of that push is straight up: the blast jolts the car into the air
   bits: 6,                       // scrap pieces per barrel
 };
+const BLAST_BASE = { radius: BLAST.radius, chainRadius: BLAST.chainRadius };
 const MAX_BITS = 128;
-const INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;   // one number for all axes: good enough for a drum
+let INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;   // one number for all axes: good enough for a drum
 
 // Car hull as two boxes (car-local: x left, y up, z forward): the body and the cabin on top.
 const CAR_BOXES = [
@@ -48,12 +50,24 @@ const CAR_BOXES = [
 
 // A ring of 12 points on each rim of the drum, in barrel-local coordinates.
 const RIM = new Float64Array(24 * 3);
-for (let k = 0; k < 12; k++) {
-  const a = k / 12 * Math.PI * 2;
-  for (let e = 0; e < 2; e++) {
-    const i = (k * 2 + e) * 3;
-    RIM[i] = Math.cos(a) * BARREL.radius; RIM[i + 1] = (e ? 1 : -1) * BARREL.height / 2; RIM[i + 2] = Math.sin(a) * BARREL.radius;
+function fillRim() {
+  for (let k = 0; k < 12; k++) {
+    const a = k / 12 * Math.PI * 2;
+    for (let e = 0; e < 2; e++) {
+      const i = (k * 2 + e) * 3;
+      RIM[i] = Math.cos(a) * BARREL.radius; RIM[i + 1] = (e ? 1 : -1) * BARREL.height / 2; RIM[i + 2] = Math.sin(a) * BARREL.radius;
+    }
   }
+}
+fillRim();
+
+/** Resize every drum (1 = normal). Size is per track, set by Props.load: the Deep Pan Pizza's peppers are 3x. Mass grows with the square only, so they stay shoveable. */
+function setBarrelSize(k) {
+  BARREL.radius = BARREL_BASE.radius * k; BARREL.height = BARREL_BASE.height * k; BARREL.reach = BARREL_BASE.reach * k; BARREL.step = BARREL_BASE.step * k;
+  BARREL.mass = BARREL_BASE.mass * k * k;
+  INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;
+  BLAST.radius = BLAST_BASE.radius * (1 + (k - 1) * 0.35); BLAST.chainRadius = BLAST_BASE.chainRadius * k;
+  fillRim();
 }
 
 function mulberry(seed) {
@@ -138,7 +152,7 @@ function sphereBox(c, R, car, box) {
 const vanB = new Float64Array(6), vanV = { x: 0, z: 0 };
 export class Props {
   constructor() {
-    this.track = null; this.defs = [];
+    this.track = null; this.defs = []; this.size = 1;
     this.barrels = []; this.bits = []; this.events = [];
     for (let i = 0; i < MAX_BITS; i++) {
       this.bits.push({ pos: new V3(), vel: new V3(), w: new V3(), q: new Q(), life: 0, rest: false, sx: 0.3, sy: 0.04, sz: 0.2 });
@@ -150,7 +164,7 @@ export class Props {
   }
 
   /** Put the barrels of a track definition where the editor placed them. */
-  load(track, defs) { this.track = track; this.defs = defs || []; this.reset(); }
+  load(track, defs, size = 1) { this.track = track; this.defs = defs || []; this.size = size; setBarrelSize(size); this.reset(); }
 
   /** Every barrel back where it started; scrap and events cleared. */
   reset() {
