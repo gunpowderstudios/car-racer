@@ -121,13 +121,13 @@ function arenaProps(def) {
   const spots = [];
   const spot = () => {                                                   // a random place on the floor: clear of the walls, your start, the rivals' starting ring, and other drums
     for (let tries = 0; tries < 600; tries++) {
-      const gap = Math.max(5, 14 - Math.floor(tries / 40));                // 14 m from the nearest other drum or cluster, relaxed if the floor is getting full
-      const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az;
+      const gap = Math.max(5.5, 9 - Math.floor(tries / 80));                // 9 m from the nearest other drum or cluster, relaxed if the floor is getting full
+      const a = rnd() * Math.PI * 2, rr = rnd() ** (tries % 2 ? 1 : 0.7), x = A.cx + Math.cos(a) * rr * A.ax, z = A.cz + Math.sin(a) * rr * A.az;      // evenly over the whole disc, leaning towards the middle, because the olive humps fill most of it
       track.query(x, A.y + 0.5, z, q, 1.5);
       if (q.idx < 0 || Math.abs(q.d) > q.hw - 6) continue;
       if (Math.hypot(x - start.x, z - start.z) < 24) continue;
       const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62));      // the rivals line up on this ring (arena.js arenaSpawn): keep well off it
-      if (Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < 11) continue;
+      if (Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < 9) continue;
       if ((def.bumps || []).some((b) => Math.hypot(x - b.x, z - b.z) < b.r + 3) || (def.puddles || []).some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 1.5 + 3)) continue;           // not on a hump or in a puddle
       if (spots.some((o) => Math.hypot(x - o.x, z - o.z) < gap)) continue;
       spots.push({ x, z });
