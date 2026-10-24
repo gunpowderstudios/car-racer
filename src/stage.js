@@ -109,33 +109,34 @@ export class Stage {
     }
   }
 
-  /** Goldfish swimming about at random in the flooded tank: one instanced body and one instanced tail, moved a little every frame (see updateRollers). */
+  /** Goldfish swimming about at random INSIDE the thick glass walls of the flooded tank (the walls are the aquariums): one instanced body and one instanced tail, moved a little every frame (see updateRollers). */
   _addFish(g, track, range, rows) {
-    const N = 14, rnd = mulberry(4242);
+    const N = 22, rnd = mulberry(4242), T = 1.65, H = TANK_H;
     const body = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xff8a1f, emissive: 0x7a2a00, emissiveIntensity: 0.6, roughness: 0.4 }), N);
     const tg = new THREE.ConeGeometry(0.5, 1, 6); tg.rotateZ(-Math.PI / 2);                      // apex towards the body, wide end out behind
     const tail = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: 0xffb040, emissive: 0x7a4a00, emissiveIntensity: 0.6, roughness: 0.5, side: THREE.DoubleSide }), N);
     body.frustumCulled = tail.frustumCulled = false; g.add(body); g.add(tail);
-    const hw = rows[0].hw - 0.8, fish = [];
-    for (let i = 0; i < N; i++) fish.push({ s: range.a + 4 + rnd() * (range.b - range.a - 8), o: (rnd() * 2 - 1) * hw, h: rnd() * 6.28, v: 0.5 + rnd() * 0.7, ph: rnd() * 6.28, big: 0.85 + rnd() * 0.5 });
-    this.fish = { track, range, fish, body, tail, hw, t: performance.now() };
+    const hw = rows[0].hw, fish = [];
+    for (let i = 0; i < N; i++) fish.push({ side: i % 2 ? 1 : -1, s: range.a + 3 + rnd() * (range.b - range.a - 6), d: 0.55 + rnd() * (T - 1.1), y: 0.9 + rnd() * (H - 2.2), h: rnd() * 6.28, v: 0.7 + rnd() * 1.0, ph: rnd() * 6.28, big: 1.5 + rnd() * 1.1 });
+    this.fish = { track, range, fish, body, tail, hw, T, H, t: performance.now() };
   }
 
   _swim() {
     const F = this.fish; if (!F) return;
     const now = performance.now(), dt = Math.min(0.1, (now - F.t) / 1000); F.t = now;
-    const f = this._ff || (this._ff = {}), m = this._fm || (this._fm = new THREE.Matrix4()), m2 = new THREE.Matrix4(), tm = new THREE.Matrix4(), X = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(), P = new THREE.Vector3(), S = new THREE.Vector3();
+    const f = this._ff || (this._ff = {}), m = this._fm || (this._fm = new THREE.Matrix4()), m2 = new THREE.Matrix4(), tm = new THREE.Matrix4(), X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3(), P = new THREE.Vector3(), S = new THREE.Vector3(), Y2 = new THREE.Vector3(), U = new THREE.Vector3(0, 1, 0);
     F.fish.forEach((k, i) => {
-      k.h += (Math.sin(now / 1000 * 0.9 + k.ph * 3) * 1.3 + (Math.random() - 0.5) * 2.2) * dt;      // wander: the heading drifts and gets nudged at random
-      k.s += Math.cos(k.h) * k.v * dt; k.o += Math.sin(k.h) * k.v * dt;
-      if (k.s < F.range.a + 3 || k.s > F.range.b - 3) { k.h = Math.PI - k.h; k.s = Math.min(F.range.b - 3, Math.max(F.range.a + 3, k.s)); }       // turn round at the glass
-      if (k.o < -F.hw || k.o > F.hw) { k.h = -k.h; k.o = Math.min(F.hw, Math.max(-F.hw, k.o)); }
+      k.h += (Math.sin(now / 1000 * 0.9 + k.ph * 3) * 1.2 + (Math.random() - 0.5) * 2.4) * dt;      // wander: the heading drifts and gets nudged at random (h is the angle in the plane of the wall: along it and up)
+      k.s += Math.cos(k.h) * k.v * dt; k.y += Math.sin(k.h) * k.v * dt;
+      k.d += (Math.random() - 0.5) * 0.6 * dt; k.d = Math.min(F.T - 0.5, Math.max(0.5, k.d));          // a little drift in and out through the thickness of the glass
+      if (k.s < F.range.a + 2 || k.s > F.range.b - 2) { k.h = Math.PI - k.h; k.s = Math.min(F.range.b - 2, Math.max(F.range.a + 2, k.s)); }       // turn round at the ends of the wall
+      if (k.y < 0.6 || k.y > F.H - 0.8) { k.h = -k.h; k.y = Math.min(F.H - 0.8, Math.max(0.6, k.y)); }                                              // and at the bottom and the water surface
       F.track.frameAt(k.s, f);
-      const up = 0.17 + 0.07 * Math.sin(now / 1000 * 1.4 + k.ph);
-      P.set(f.x + f.lx * k.o, f.y + f.ly * k.o + up, f.z + f.lz * k.o);
+      const o = k.side * (F.hw + k.d);
+      P.set(f.x + f.lx * o, f.y + f.ly * o + k.y, f.z + f.lz * o);
       const c = Math.cos(k.h), sn = Math.sin(k.h);
-      X.set(f.fx * c + f.lx * sn, f.fy * c + f.ly * sn, f.fz * c + f.lz * sn).normalize();         // the way it is facing
-      Z.crossVectors(X, Y).normalize(); const Y2 = new THREE.Vector3().crossVectors(Z, X);
+      X.set(f.fx * c, f.fy * c + sn, f.fz * c).normalize();                                          // the way it is facing: along the wall and up or down
+      Z.crossVectors(X, U); if (Z.lengthSq() < 1e-6) Z.set(f.lx, f.ly, f.lz); Z.normalize(); Y2.crossVectors(Z, X);
       m.makeBasis(X, Y2, Z).setPosition(P);
       S.set(0.3 * k.big, 0.12 * k.big, 0.09 * k.big); m2.copy(m).scale(S); F.body.setMatrixAt(i, m2);
       const wag = Math.sin(now / 1000 * 9 + k.ph) * 0.55;
@@ -205,6 +206,10 @@ export class Stage {
           ribbon((r) => [at(r, side, -0.05), at(r, side, W)], water);                   // ...and its side, seen through the glass
           ribbon((r) => [at(r, side, -0.05), at(r, side, H)], glass);                   // the glass slab: inner face, outer face, top, and a bright edge along the top and bottom
           ribbon((r) => [at(r, side, -0.05, T), at(r, side, H, T)], glass);
+          const wm2 = water.clone(); wm2.opacity = 0.32;                                    // the wall is an aquarium: water fills it (a little inside the glass), up to just below the top
+          ribbon((r) => [at(r, side, 0.05, 0.1), at(r, side, H - 0.3, 0.1)], wm2);
+          ribbon((r) => [at(r, side, 0.05, T - 0.1), at(r, side, H - 0.3, T - 0.1)], wm2);
+          ribbon((r) => [at(r, side, H - 0.3, 0.1), at(r, side, H - 0.3, T - 0.1)], wm2);
           ribbon((r) => [at(r, side, H), at(r, side, H, T)], edge);
           ribbon((r) => [at(r, side, -0.05), at(r, side, -0.05, T)], edge);
           ribbon((r) => [at(r, side, H - 0.25), at(r, side, H)], edge);
