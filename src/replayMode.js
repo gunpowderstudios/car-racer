@@ -105,6 +105,7 @@ export function createReplayMode(d) {
       if (k !== R.mixK) { R.mixK = k; R.cams.reset(); d.chase.snap(); R.lastFocus = null; }
       mode = ['TV', 'Chase', 'Top'][k];
     }
+    R.camMode = mode;                                                        // (what is actually on screen now: the depth of field is for the TV camera only)
     if (mode === 'Chase') {
       if (d.chase.mode !== 0) { d.chase.mode = 0; d.chase.ready = false; }
       d.chase.update(dt, R.fv.set(f.x, f.y, f.z), qTmp, { x: vx, y: 0, z: vz }, d.getTrack());

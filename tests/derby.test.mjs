@@ -805,7 +805,7 @@ test('Demolition Day: a home button starts the Bed Pan with 8 rivals, each a dif
   assert.match(css, /#menu #btn-demo \{ background: #9f5212/);
   assert.match(main, /\$\('btn-demo'\)\.onclick = \(\) => \{ const d = makeTemplate\('oval'\); d\.demoDay = true; startDriving\(d\)/);
   assert.match(main, /demoDay \? 8 : opts\.rivals \* 2/);
-  assert.match(main, /derby\.enabled = !net && \(opts\.rivals > 0 \|\| demoDay\)/);
+  assert.match(main, /derby\.enabled = !net && !testDrive && \(opts\.rivals > 0 \|\| demoDay\)/);
 });
 
 test('Demolition Day: rivals are tougher and drive at full skill; every other game is untouched', () => {

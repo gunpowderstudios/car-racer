@@ -243,7 +243,7 @@ test('desktop Drift no longer brakes when Shift is pressed before steering', () 
 test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
   const derbyFile = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
   assert.match(indexHtml, /option value="0">0 — Lap time only<\/option>/);
-  assert.match(main, /derby\.enabled = !net && \(opts\.rivals > 0 \|\| demoDay\)/);
+  assert.match(main, /derby\.enabled = !net && !testDrive && \(opts\.rivals > 0 \|\| demoDay\)/);
   assert.match(main, /derby\.damageEnabled = derby\.enabled;/);
   assert.match(main, /v\.root\.scale\.setScalar\(1\)/);
   assert.doesNotMatch(main, /f\.expire\) k = 1 - f\.expireT/);
@@ -348,4 +348,13 @@ test('Test my hardware: the cog has the button and the verdict is plain English'
   const { readFileSync } = await import('node:fs');
   assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="btn-hwtest"/);
   assert.equal(verdict(60, 55).cls, 'ok'); assert.equal(verdict(40, 20).cls, 'meh'); assert.equal(verdict(18, 10).cls, 'bad'); assert.equal(verdict(0, 0).cls, 'meh');
+});
+
+test('Test Drive from the editor has no rivals, and the replay blur is for the TV camera only', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="ed-drive"[^>]*>Test Drive</);
+  assert.match(main, /derby\.enabled = !net && !testDrive/);
+  assert.match(main, /pendingTest = true; startDriving\(d\)/);
+  assert.match(main, /replay\(\)\.state\.camMode === 'TV'/);
+  assert.match(readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /R\.camMode = mode/);
 });

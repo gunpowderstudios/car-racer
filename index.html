@@ -176,6 +176,7 @@ html.invite-loading #invite-loading {
       <label class="vol">Effects volume <input id="hud-sfxvol" type="range" min="0" max="1" step="0.05" aria-label="Sound effects volume"></label>
       <label class="vol">Music volume <input id="hud-musicvol" type="range" min="0" max="1" step="0.05" aria-label="In-game music volume"></label>
       <label class="trk">Tune <select id="hud-track" aria-label="Music"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option></select></label>
+      <button id="btn-hwtest" class="btn ghost" type="button" title="Live speed, graphics tier and what is slowing this computer down">Test my hardware</button>
     </div>
   </div>
   <div id="banner" role="status" aria-live="polite"></div>
@@ -377,7 +378,6 @@ html.invite-loading #invite-loading {
         <label class="sel">Music tune <select id="opt-track" aria-label="Music tune"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option></select></label>
         <label><input id="opt-shadow" type="checkbox" checked> Shadows</label>
         <label class="sel">Graphics <select id="opt-quality" aria-label="Graphics quality"><option value="auto">Auto</option><option value="low">Low (older phones)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-        <button id="btn-hwtest" class="btn ghost" type="button">Test my hardware</button>
         <label class="sel">Chat <select id="opt-chat" aria-label="Multiplayer chat"><option value="all">Everything</option><option value="quick">Quick chat only</option><option value="off">Off</option></select></label>
         <div class="swatches" id="swatches" role="radiogroup" aria-label="Car colour"></div>
       </div>
@@ -521,7 +521,7 @@ html.invite-loading #invite-loading {
       <button id="ed-save">Save</button>
       <button id="ed-share" title="Copy a link that opens this track for a friend">Share link</button>
       <button id="ed-export">Export</button>
-      <button id="ed-drive" class="primary">Drive it</button>
+      <button id="ed-drive" class="primary" title="Drive the track with just your own car, no rivals">Test Drive</button>
       <button id="ed-close">Menu</button>
     </div>
   </header>

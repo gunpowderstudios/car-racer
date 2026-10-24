@@ -323,7 +323,9 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
+let testDrive = false, pendingTest = false;      // Test Drive from the editor: just your own car on the track, no rivals (any other way of loading a track clears it)
 function loadTrack(newDef) {
+  testDrive = pendingTest; pendingTest = false;
   demoDay = !!newDef?.demoDay;
   def = normalizeTrack(newDef);
   track = new Track(def); window.__raceLaps?.syncFor?.(def);
@@ -546,7 +548,7 @@ function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  derby.enabled = !net && (opts.rivals > 0 || demoDay); derby.brutal = demoDay;
+  derby.enabled = !net && !testDrive && (opts.rivals > 0 || demoDay); derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const mixedKinds = derby.enabled && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
   const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
@@ -913,7 +915,7 @@ function frame(now) {
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
-      if (tierName === 'high' && !device.touch && adapt.scale >= 0.8) {
+      if (tierName === 'high' && !device.touch && adapt.scale >= 0.8 && replay().state.camMode === 'TV') {      // (only the trackside TV camera gets the blur: Chase and Top stay sharp)
         if (!replayDof.on) replayDof.enable();
         replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20);
       } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
@@ -1136,7 +1138,7 @@ const editor = window.__editor = new Editor({
   onDrive: (d) => {
     editor.close(); store.set('cr.draft', d);
     const a = analyzeTrack(new Track(d));
-    startDriving(d);
+    pendingTest = true; startDriving(d);
     if (a.tight.length || a.crossings.length) toast('Heads up: this track has problems the editor flagged.');
   },
   onClose: (d) => { editor.close(); store.set('cr.draft', d); if (!track) loadTrack(makeTemplate('speedway')); showMenu(); },
@@ -1268,11 +1270,12 @@ function bindMenu() {
   const qsel = $('opt-quality'); qsel.value = TIER_NAMES.includes(opts.quality) ? opts.quality : 'auto';
   const csel = $('opt-chat'); csel.value = ['all', 'quick', 'off'].includes(opts.chat) ? opts.chat : 'all';
   csel.onchange = () => { opts.chat = csel.value; store.set('cr.opts', opts); chatUI.applyMode(); };
-  $('btn-hwtest').onclick = () => openHardwareTest(() => {
+  $('btn-hwtest').addEventListener('pointerdown', (e) => e.preventDefault());      // never take focus, so Space stays the handbrake
+  $('btn-hwtest').onclick = () => { setSoundPop(false); openHardwareTest(() => {
     const i = renderer.info;
     return { tier: tierName, quality: opts.quality, fps, res: baseRatio * adapt.scale, maxRes: baseRatio, physicsHz: tier.physicsHz, shadows: opts.shadow, mirror: mirror.on, rivals: derby.enabled ? derby.fighters.length - 1 : 0,
       calls: i.render.calls, tris: i.render.triangles, geo: i.memory.geometries, tex: i.memory.textures, gpu: device.gpu, cores: device.cores, memory: device.memory, screen: `${innerWidth}x${innerHeight} at ${(devicePixelRatio || 1).toFixed(1)}x`, loadMs: visual.loadMs };
-  }, (q) => { qsel.value = q; qsel.onchange(); });
+  }, (q) => { qsel.value = q; qsel.onchange(); }); };
   qsel.onchange = () => {
     opts.quality = qsel.value; store.set('cr.opts', opts);
     if (net) { toast('Graphics quality will change next time the game loads.'); return; }   // don't drop a multiplayer room
