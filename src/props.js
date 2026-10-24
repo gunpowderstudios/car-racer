@@ -63,12 +63,12 @@ function fillRim() {
 fillRim();
 
 /** Resize every drum (1 = normal). Size is per track, set by Props.load: the Deep Pan Pizza's peppers are 3x. Mass grows with the square only, so they stay shoveable. */
-function setBarrelSize(k, power = k) {
+function setBarrelSize(k, power = k, hurt = power) {
   BARREL.radius = BARREL_BASE.radius * k; BARREL.height = BARREL_BASE.height * k; BARREL.reach = BARREL_BASE.reach * k; BARREL.step = BARREL_BASE.step * k;
   BARREL.mass = BARREL_BASE.mass * k * k;
   INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;
   BLAST.radius = BLAST_BASE.radius * power; BLAST.chainRadius = BLAST_BASE.chainRadius * power;      // the shove reaches k times as far...
-  DAMAGE.barrel.radius = BLAST_BASE.dmgRadius * power; DAMAGE.barrel.point = BLAST_BASE.dmgPoint * power;      // ...and so does the damage, at `power` times the punch (size and power are separate: the pizza's drums are 3x size but 2x power)
+  DAMAGE.barrel.radius = BLAST_BASE.dmgRadius * power; DAMAGE.barrel.point = BLAST_BASE.dmgPoint * hurt;      // ...and so does the damage, at `power` times the punch (size and power are separate: the pizza's drums are 3x size but 2x power)
   fillRim();
 }
 
@@ -166,7 +166,7 @@ export class Props {
   }
 
   /** Put the barrels of a track definition where the editor placed them. */
-  load(track, defs, size = 1, power = size) { this.track = track; this.defs = defs || []; this.size = size; setBarrelSize(size, power); this.reset(); }
+  load(track, defs, size = 1, power = size, hurt = power) { this.track = track; this.defs = defs || []; this.size = size; setBarrelSize(size, power, hurt); this.reset(); }
 
   /** Every barrel back where it started; scrap and events cleared. */
   reset() {
