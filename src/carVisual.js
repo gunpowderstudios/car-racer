@@ -482,7 +482,7 @@ export class CarVisual {
   }
 }
 
-const HELI_ZOOM = 1.2;      // the helicopter view is zoomed in by this much (1.2 = 20% closer)
+const HELI_ZOOM = 1.09;      // the helicopter view is zoomed in by this much (1.09 = 9% closer; it was 1.2, then backed out 10%)
 export class ChaseCamera {
   constructor(camera) {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
@@ -532,7 +532,7 @@ export class ChaseCamera {
     this.ly += (p.y - this.ly) * (1 - Math.exp(-14 * dt));
     const heli = this.mode === 4, far = this.mode === 1 || heli, stacked = this.low;       // (mode 4, the helicopter: a long way up and a little behind, looking down at the car)                 // (stacked: a track with roads above each other - the camera must not end up behind the road above)
     this._tow += (this.towLen - this._tow) * (1 - Math.exp(-3 * dt));
-    const dist = heli ? 20 + speed * 0.15 + this._tow * 0.7 : (far ? 12 : 7.2) + speed * 0.025 + this._tow * (far ? 0.7 : 1.0), h = heli ? 28 + this._tow * 0.5 : (far ? 5.8 : 2.5) + this._tow * (far ? 0.4 : 0.85);
+    const dist = heli ? 24 + speed * 0.18 + this._tow * 0.8 : (far ? 12 : 7.2) + speed * 0.025 + this._tow * (far ? 0.7 : 1.0), h = heli ? 28 + this._tow * 0.5 : (far ? 5.8 : 2.5) + this._tow * (far ? 0.4 : 0.85);
     const sx = Math.sin(this.yaw), cz = Math.cos(this.yaw);
     let reach = 1;
     if (stacked) {
