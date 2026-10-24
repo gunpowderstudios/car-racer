@@ -148,7 +148,21 @@ export class Stage {
     if (track.puddles) {
       const wm = new THREE.MeshStandardMaterial({ color: 0x2f5c78, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.82, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
       const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
+      const flood = track.puddles.filter((p) => p.r >= 15);                      // a flooded dip (Thin and Crispy): a chain of big pools. Drawn as water lying ON the road, not as round discs that stick out into the air either side
+      if (flood.length) {
+        let a = Infinity, b = -Infinity;
+        for (const p of flood) { track.query(p.x, 1e4, p.z, q, 1); const sp = track.s[q.idx]; if (sp < a) a = sp; if (sp > b) b = sp; }
+        const pos = [], idx = [], f = {}, STEP = 2, OVER = 0.6;
+        for (let sv = a - 6, k = 0; sv <= b + 6; sv += STEP, k++) {
+          track.frameAt(sv, f);
+          for (const side of [-1, 1]) { const o = side * (f.hw + OVER); pos.push(f.x + f.lx * o, f.y + f.ly * o + 0.06, f.z + f.lz * o); }
+          if (k > 0) { const i = k * 2; idx.push(i - 2, i - 1, i, i - 1, i + 1, i); }
+        }
+        const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); fg.setIndex(idx); fg.computeVertexNormals();
+        const sheet = new THREE.Mesh(fg, wm.clone()); sheet.material.side = THREE.DoubleSide; sheet.receiveShadow = false; sheet.frustumCulled = false; g.add(sheet);
+      }
       for (const p of track.puddles) {
+        if (p.r >= 15) continue;
         track.query(p.x, 1e4, p.z, q, 1);
         const sh = puddleShape(p), pts = [];
         for (let i = 0; i < 48; i++) {                                           // an irregular, lumpy, stretched outline (the same one the physics uses); local y is world -z once the mesh is laid on the ground
