@@ -317,21 +317,20 @@ function barrelRunHandles() {
   for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);
   return out;
 }
-/** Rows of red barrels strewn across the road either side of each jump, with a few gaps in every row: swerve or smash. */
+/** Red barrels strewn at random all the way round the lap (a different scatter each time), never on a ramp, a landing or the start line: swerve or smash. */
 function barrelRunProps(def) {
-  const track = new Track(def), rnd = mulberry(20261024), props = [], jumps = track.handleS.filter((_, i) => def.handles[i].gap);
+  const track = new Track(def), rnd = mulberry((Math.random() * 1e9) | 0), props = [], jumps = track.handleS.filter((_, i) => def.handles[i].gap);
   const dist = (a, b) => { const d = Math.abs(a - b); return Math.min(d, track.length - d); };
-  for (const j of jumps) for (let off = -110; off <= 110; off += 12) {
-    if (Math.abs(off) < 30) continue;                                                // not on the ramp or the landing
-    const f = track.frameAt(((j + off) % track.length + track.length) % track.length), lanes = 6, free = new Set();
-    while (free.size < 2) free.add(Math.floor(rnd() * lanes));                       // two lanes left open in each row, a different two each time
-    for (let k = 0; k < lanes; k++) {
-      if (free.has(k) || rnd() < 0.15) continue;
-      const o = (-0.5 + (k + 0.5) / lanes) * (f.hw * 2 - 5) + (rnd() - 0.5) * 1.2;
-      const p = placeProp(track, f.x + f.lx * o, f.z + f.lz * o);
-      props.push({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
-    }
+  const spots = [], want = 110;
+  for (let guard = 0; guard < 6000 && spots.length < want; guard++) {
+    const s = rnd() * track.length;
+    if (dist(s, 0) < 45 || jumps.some((j) => dist(s, j) < 32)) continue;
+    const f = track.frameAt(s), o = (rnd() * 2 - 1) * (f.hw - 2.5);
+    const x = f.x + f.lx * o, z = f.z + f.lz * o;
+    if (spots.some((p) => Math.hypot(p.x - x, p.z - z) < 5.5)) continue;                 // not touching: there is always a way through
+    spots.push({ x, z });
   }
+  for (const sp of spots) { const p = placeProp(track, sp.x, sp.z); props.push({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }); }
   return props;
 }
 
@@ -492,7 +491,7 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
-  barrels: "We'll have a barrel of fun... or not! A flat Nascar-style oval with a massive jump in the middle of each straight, and the road full of red barrels to swerve round",
+  barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
   thin: 'A thin road high in the sky: no walls, banks, jumps and barrels, then a huge dip down into the water and back up',
   bluebell: 'A windy dirt rally stage through the woods: loose surface, narrow and twisty',
