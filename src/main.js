@@ -1274,7 +1274,7 @@ function bindMenu() {
   $('btn-hwtest').onclick = () => { setSoundPop(false); openHardwareTest(() => {
     const i = renderer.info;
     return { tier: tierName, quality: opts.quality, fps, res: baseRatio * adapt.scale, maxRes: baseRatio, physicsHz: tier.physicsHz, shadows: opts.shadow, mirror: mirror.on, rivals: derby.enabled ? derby.fighters.length - 1 : 0,
-      calls: i.render.calls, tris: i.render.triangles, geo: i.memory.geometries, tex: i.memory.textures, gpu: device.gpu, cores: device.cores, memory: device.memory, screen: `${innerWidth}x${innerHeight} at ${(devicePixelRatio || 1).toFixed(1)}x`, loadMs: visual.loadMs };
+      alive: props.alive, heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1048576 : 0, calls: i.render.calls, tris: i.render.triangles, geo: i.memory.geometries, tex: i.memory.textures, gpu: device.gpu, cores: device.cores, memory: device.memory, screen: `${innerWidth}x${innerHeight} at ${(devicePixelRatio || 1).toFixed(1)}x`, loadMs: visual.loadMs };
   }, (q) => { qsel.value = q; qsel.onchange(); }); };
   qsel.onchange = () => {
     opts.quality = qsel.value; store.set('cr.opts', opts);

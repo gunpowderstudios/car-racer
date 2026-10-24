@@ -358,3 +358,12 @@ test('Test Drive from the editor has no rivals, and the replay blur is for the T
   assert.match(main, /replay\(\)\.state\.camMode === 'TV'/);
   assert.match(readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /R\.camMode = mode/);
 });
+
+test('Test my hardware graph: draws a series, marks its peak and dip', async () => {
+  const { drawGraph } = await import('../src/hardwareTest.js');
+  const calls = []; const g = new Proxy({}, { get: (_, k) => (k === 'arc' ? (...a) => calls.push(a) : () => {}), set: () => true });
+  const cv = { clientWidth: 300, width: 0, height: 0, getContext: () => g };
+  const r = drawGraph(cv, [60, 58, 20, 59, 61], [2], { goodHigh: true });
+  assert.equal(r.min, 20); assert.equal(r.max, 61); assert.equal(calls.length, 2, 'a dot on the peak and one on the dip');
+  assert.deepEqual(drawGraph(cv, [5], [], {}), { min: 0, max: 0 });
+});
