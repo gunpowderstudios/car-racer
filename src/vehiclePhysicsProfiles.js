@@ -37,6 +37,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   escort: {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: '1970s Ford Escort-style lightweight RWD saloon',
     mass: 920,
     frontWeight: 0.53,
@@ -62,6 +63,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   bmw: {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: 'late-1980s German compact RWD saloon',
     mass: 1080,
     frontWeight: 0.52,
@@ -87,6 +89,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'v8-pilot': {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: 'late-1940s Ford V8 Pilot-style RWD saloon',
     mass: 1510,
     frontWeight: 0.54,
@@ -208,6 +211,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'french-cheese': {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: '1970s Citroen 2CV-style bouncy French classic (soft, tall, rolls and bobs)',
     mass: 640,
     frontWeight: 0.60,
@@ -234,6 +238,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'bus': {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: '1960s Routemaster-style London double-decker (very heavy, tall, slow to turn, hard to stop)',
     mass: 4300,
     frontWeight: 0.50,
@@ -285,6 +290,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'volvo': {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: '1980s Volvo 240 estate-style RWD load-lugger (heavy, solid, stable, a bit understeery)',
     mass: 1420,
     frontWeight: 0.56,
@@ -366,6 +372,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'mobility-car': {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
     reference: '1960s fibreglass three-wheeled mobility car with a little two-stroke (featherweight, twitchy, easily bent)',
     mass: 380,
     frontWeight: 0.44,

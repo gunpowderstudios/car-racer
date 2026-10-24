@@ -38,7 +38,20 @@ test('a caravan does not roll the car over in a weave (it used to far more than 
   }
 });
 
-test('without a drift or a caravan a hard weave can still roll a car (the guard is not on all the time)', () => {
-  const worst = Math.min(...[22, 24, 26].map((v) => run('escort', false, v, 'weave')));      // (a gentler engine than it once had, so a touch more speed to get it rolling)
-  assert.ok(worst < 0.5, `the escort only leaned to ${worst.toFixed(2)}`);
+test('the cars that used to tip over on full lock now have a steady anti-roll assist, and stay on their wheels in a hard weave', () => {
+  for (const id of ['escort', 'volvo', 'french-cheese', 'mobility-car', 'bmw', 'v8-pilot', 'bus']) assert.ok(vehiclePhysicsProfile(id).rollGuard > 0, id + ' has a roll guard');
+  const worst = Math.min(...[22, 24, 26].map((v) => run('escort', false, v, 'weave')));
+  assert.ok(worst > 0.8, `the escort leaned to ${worst.toFixed(2)}`);
 });
+
+test('the drift roll guard eases in (it used to switch on at full strength, which slammed the car down when Shift was pressed)', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
+  assert.match(src, /\(1 - \(this\.rollGuard \|\| 0\)\) \* \(1 - Math\.exp\(-dt \/ 0\.3\)\)/);
+  const track = new Track(DRAG_DEF), car = new Vehicle(spec('car')); car.opts.stability = 1;
+  placeOnTrack(car, track, track.progressAt(0, 0.65, -900), 0, 25);
+  for (let i = 0; i < 2 / DT; i++) car.step(DT, { throttle: 0.5, brake: 0, steer: 0.5, handbrake: false, boost: false }, track);
+  let first = null;
+  for (let i = 0; i < 0.5 / DT; i++) { car.step(DT, { throttle: 0.5, brake: 0, steer: 0.5, handbrake: true, boost: false }, track); if (first == null && car.rollGuard > 0) first = car.rollGuard; car.events.length = 0; }
+  assert.ok(first < 0.2, `the guard started at ${first}`);
+});
+

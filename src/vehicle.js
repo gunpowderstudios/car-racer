@@ -321,8 +321,10 @@ export class Vehicle {
    * grip then tips the car over far more easily than it would roll on its own.
    */
   _rollGuard(dt) {
-    this.rollGuard = this.driftActive || this.driftBlend > 0.05 ? 1 : (this.rollGuard || 0) * Math.exp(-dt / 0.7);
-    const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0);
+    // The guard eases IN over about a third of a second when a drift starts (switching it on at full strength used to slam a leaning car down onto the road
+    // the instant Shift was pressed) and fades out over most of a second afterwards.
+    this.rollGuard = this.driftActive || this.driftBlend > 0.05 ? (this.rollGuard || 0) + (1 - (this.rollGuard || 0)) * (1 - Math.exp(-dt / 0.3)) : (this.rollGuard || 0) * Math.exp(-dt / 0.7);
+    const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0, this.spec.rollGuard || 0);      // (spec.rollGuard: a car that tips too easily gets a little of this all the time)
     if (g <= 0 || !this.onGround) return;
     const roll = -this.ay.z * this.az.x + this.ay.x * this.az.z;                       // (ay x up) along the car's long axis: the sine of how far it has rolled, signed so a torque of +roll rights it
     const rate = this.angVel.dot(this.az);
