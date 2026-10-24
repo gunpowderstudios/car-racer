@@ -482,6 +482,7 @@ export class CarVisual {
   }
 }
 
+const HELI_ZOOM = 1.2;      // the helicopter view is zoomed in by this much (1.2 = 20% closer)
 export class ChaseCamera {
   constructor(camera) {
     this.cam = camera; this.mode = 0; this.yaw = 0; this.y = 0; this.ly = 0;
@@ -551,7 +552,7 @@ export class ChaseCamera {
     this.cam.position.set(this.pos.x + (Math.random() - 0.5) * sh, this.pos.y + (Math.random() - 0.5) * sh, this.pos.z + (Math.random() - 0.5) * sh);
     const look = heli ? 20 + speed * 0.45 : (far ? 6 : 5) + speed * 0.12;
     this.cam.lookAt(p.x + sx * look, this.ly + (heli ? 0 : far ? 0.4 : 1.0), p.z + cz * look);
-    const fov = heli ? 60 + clamp(speed, 0, 65) * 0.15 + this.kick * 6 : (far ? 58 : 62) + clamp(speed, 0, 65) * 0.34 + this.kick * 12;
+    const fov = heli ? 2 * Math.atan(Math.tan((60 + clamp(speed, 0, 65) * 0.15 + this.kick * 6) * Math.PI / 360) / HELI_ZOOM) * 180 / Math.PI : (far ? 58 : 62) + clamp(speed, 0, 65) * 0.34 + this.kick * 12;
     this.cam.fov += (fov - this.cam.fov) * Math.min(1, 5 * dt);
     this.cam.updateProjectionMatrix();
   }
