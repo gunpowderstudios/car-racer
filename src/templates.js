@@ -308,11 +308,11 @@ function thinScatter(def) {
 function barrelRunHandles() {
   const L = 270, Rr = 125, out = [], P = (x, z, extra) => out.push({ x, y: 0.65, z, ...(extra || {}) });
   for (const x of [-L, -L / 2]) P(x, -Rr);
-  P(0, -Rr, { gap: 28, kick: 4, lip: 0.8 });                                        // the jump on the bottom straight
+  P(0, -Rr, { gap: 38, kick: 8, lip: 1.5 });                                        // the jump on the bottom straight
   for (const x of [L / 2, L]) P(x, -Rr);
   for (const a of [-45, 0, 45]) P(L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);     // the round end
   for (const x of [L, L / 2]) P(x, Rr);
-  P(0, Rr, { gap: 28, kick: 4, lip: 0.8 });                                        // and on the top straight
+  P(0, Rr, { gap: 38, kick: 8, lip: 1.5 });                                        // and on the top straight
   for (const x of [-L / 2, -L]) P(x, Rr);
   for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);
   return out;
@@ -324,7 +324,7 @@ function barrelRunProps(def) {
   const spots = [], want = 110;
   for (let guard = 0; guard < 6000 && spots.length < want; guard++) {
     const s = rnd() * track.length;
-    if (dist(s, 0) < 45 || jumps.some((j) => dist(s, j) < 32)) continue;
+    if (dist(s, 0) < 45 || jumps.some((j) => dist(s, j) < 48)) continue;
     const f = track.frameAt(s), o = (rnd() * 2 - 1) * (f.hw - 2.5);
     const x = f.x + f.lx * o, z = f.z + f.lz * o;
     if (spots.some((p) => Math.hypot(p.x - x, p.z - z) < 5.5)) continue;                 // not touching: there is always a way through
