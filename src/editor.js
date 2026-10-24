@@ -376,8 +376,9 @@ export class Editor {
     $('ed-w-auto').checked = auto; $('ed-w').disabled = auto; $('ed-w').value = h.w || this.def.width; $('ed-w-o').textContent = `${h.w || this.def.width} m`;
     $('ed-gap').checked = h.gap > 0; $('ed-gap-len').disabled = !h.gap; $('ed-gap-len').value = h.gap || 14; $('ed-gap-o').textContent = h.gap ? `${h.gap} m` : 'off';
     for (const id of ['ed-lip', 'ed-kick']) { $(id).disabled = !h.gap; $(id).closest('.field').classList.toggle('off', !h.gap); }
-    $('ed-lip').value = h.lip; $('ed-lip-o').textContent = h.gap ? `${h.lip.toFixed(1)} m` : '';
-    $('ed-kick').value = h.kick; $('ed-kick-o').textContent = h.gap ? (h.kick ? `${h.kick}\u00b0` : 'flat') : '';
+    const lip = Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : 0.5, kick = Number(h.kick) || 0;      // (a point added in the editor has no lip or kick yet)
+    $('ed-lip').value = lip; $('ed-lip-o').textContent = h.gap ? `${lip.toFixed(1)} m` : '';
+    $('ed-kick').value = kick; $('ed-kick-o').textContent = h.gap ? (kick ? `${kick}\u00b0` : 'flat') : '';
     $('ed-ramp').hidden = !h.gap;
     if (h.gap) this.drawRamp(h);
     const t = this.track;
@@ -627,6 +628,7 @@ export class Editor {
     $('ed-w-auto').onchange = (e) => { this.snapshot(); H().w = e.target.checked ? 0 : this.def.width; this.rebuild(true); this.updateInspector(); this.draw(); };
     $('ed-gap').onchange = (e) => {
       this.snapshot(); const h = H(); h.gap = e.target.checked ? 14 : 0;
+      if (h.gap) { if (!Number.isFinite(+h.lip) || h.lip === null || h.lip === '') h.lip = 0.5; if (!Number.isFinite(+h.kick)) h.kick = 0; }          // (a new point has neither: give it the usual flat ramp)
       this.rebuild(true); this.updateInspector(); this.draw();
     };
     $('ed-walls').onchange = (e) => { this.snapshot(); this.def.walls = e.target.checked; };

@@ -335,3 +335,10 @@ test('the bus and the motorhome start every race on the High camera', async () =
   assert.match(src, /\['bus', 'motor-home'\]\.includes\(selectedVehicle\(\)\.id\)/);
   assert.match(src, /chase\.mode = phone \|\| big \? 1 : 0/);
 });
+
+test('a new point in the editor can be made a jump without crashing, and a crash tells you the track was kept', () => {
+  const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(ed, /\$\('ed-lip-o'\)\.textContent = h\.gap \? `\$\{h\.lip\.toFixed/, 'the lip readout no longer assumes a lip');
+  assert.match(ed, /if \(h\.gap\) \{ if \(!Number\.isFinite\(\+h\.lip\)/, 'ticking Gap gives the point a lip and kick');
+  assert.match(main, /copied automatically a moment ago/, 'the crash screen says the track was kept');
+});

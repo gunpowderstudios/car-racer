@@ -1749,7 +1749,11 @@ function bindMultiplayer() {
 }
 
 // ---------------------------------------------------------------------- boot
-addEventListener('error', (e) => { const f = $('fatal'); f.hidden = false; f.textContent = 'Something broke:\n' + (e.error?.stack || e.message); });
+addEventListener('error', (e) => {
+  const f = $('fatal'); f.hidden = false;
+  let kept = false; try { window.__editor?.visible && window.__editor._autosave(); kept = !!localStorage.getItem('cr.autosave'); } catch { /* storage blocked */ }
+  f.textContent = 'Something broke:\n' + (e.error?.stack || e.message) + (kept ? '\n\nYour track in the editor was copied automatically a moment ago. Reload this page and press OK when it asks to get it back.' : '');
+});
 addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
 document.addEventListener('visibilitychange', () => { last = performance.now(); if (!document.hidden && net) net.resume(); });
 addEventListener('online', () => { if (net) net.resume(); });
