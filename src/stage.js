@@ -98,6 +98,7 @@ export class Stage {
 
   /** Put each rolling boulder where the simulation has it, turning as it rolls. */
   updateRollers() {
+    if (this.fish) this._swim();
     if (!this.rollerMeshes || !this.rollerMeshes.length) return;
     const ax = new THREE.Vector3(), dq = new THREE.Quaternion();
     for (const m of this.rollerMeshes) {
@@ -108,7 +109,44 @@ export class Stage {
     }
   }
 
+  /** Goldfish swimming about at random in the flooded tank: one instanced body and one instanced tail, moved a little every frame (see updateRollers). */
+  _addFish(g, track, range, rows) {
+    const N = 14, rnd = mulberry(4242);
+    const body = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xff8a1f, emissive: 0x7a2a00, emissiveIntensity: 0.6, roughness: 0.4 }), N);
+    const tg = new THREE.ConeGeometry(0.5, 1, 6); tg.rotateZ(-Math.PI / 2);                      // apex towards the body, wide end out behind
+    const tail = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: 0xffb040, emissive: 0x7a4a00, emissiveIntensity: 0.6, roughness: 0.5, side: THREE.DoubleSide }), N);
+    body.frustumCulled = tail.frustumCulled = false; g.add(body); g.add(tail);
+    const hw = rows[0].hw - 0.8, fish = [];
+    for (let i = 0; i < N; i++) fish.push({ s: range.a + 4 + rnd() * (range.b - range.a - 8), o: (rnd() * 2 - 1) * hw, h: rnd() * 6.28, v: 0.5 + rnd() * 0.7, ph: rnd() * 6.28, big: 0.85 + rnd() * 0.5 });
+    this.fish = { track, range, fish, body, tail, hw, t: performance.now() };
+  }
+
+  _swim() {
+    const F = this.fish; if (!F) return;
+    const now = performance.now(), dt = Math.min(0.1, (now - F.t) / 1000); F.t = now;
+    const f = this._ff || (this._ff = {}), m = this._fm || (this._fm = new THREE.Matrix4()), m2 = new THREE.Matrix4(), tm = new THREE.Matrix4(), X = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(), P = new THREE.Vector3(), S = new THREE.Vector3();
+    F.fish.forEach((k, i) => {
+      k.h += (Math.sin(now / 1000 * 0.9 + k.ph * 3) * 1.3 + (Math.random() - 0.5) * 2.2) * dt;      // wander: the heading drifts and gets nudged at random
+      k.s += Math.cos(k.h) * k.v * dt; k.o += Math.sin(k.h) * k.v * dt;
+      if (k.s < F.range.a + 3 || k.s > F.range.b - 3) { k.h = Math.PI - k.h; k.s = Math.min(F.range.b - 3, Math.max(F.range.a + 3, k.s)); }       // turn round at the glass
+      if (k.o < -F.hw || k.o > F.hw) { k.h = -k.h; k.o = Math.min(F.hw, Math.max(-F.hw, k.o)); }
+      F.track.frameAt(k.s, f);
+      const up = 0.17 + 0.07 * Math.sin(now / 1000 * 1.4 + k.ph);
+      P.set(f.x + f.lx * k.o, f.y + f.ly * k.o + up, f.z + f.lz * k.o);
+      const c = Math.cos(k.h), sn = Math.sin(k.h);
+      X.set(f.fx * c + f.lx * sn, f.fy * c + f.ly * sn, f.fz * c + f.lz * sn).normalize();         // the way it is facing
+      Z.crossVectors(X, Y).normalize(); const Y2 = new THREE.Vector3().crossVectors(Z, X);
+      m.makeBasis(X, Y2, Z).setPosition(P);
+      S.set(0.3 * k.big, 0.12 * k.big, 0.09 * k.big); m2.copy(m).scale(S); F.body.setMatrixAt(i, m2);
+      const wag = Math.sin(now / 1000 * 9 + k.ph) * 0.55;
+      tm.copy(m).multiply(m2.makeTranslation(-0.27 * k.big, 0, 0)).multiply(m2.makeRotationY(wag)).multiply(m2.makeTranslation(-0.1 * k.big, 0, 0)).multiply(m2.makeScale(0.2 * k.big, 0.2 * k.big, 0.03 * k.big));
+      F.tail.setMatrixAt(i, tm);
+    });
+    F.body.instanceMatrix.needsUpdate = true; F.tail.instanceMatrix.needsUpdate = true;
+  }
+
   clearTrack() {
+    this.fish = null;
     if (!this.trackGroup) return;
     this.scene.remove(this.trackGroup);
     this.trackGroup.traverse((o) => {
@@ -150,7 +188,7 @@ export class Stage {
       const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
       const range = track.floodRange();                                               // a flooded dip (Big Dipper): a fish tank, glass walls either side with the water inside, lying on the road
       if (range) {
-        const f = {}, STEP = 2, H = TANK_H, W = 0.4, T = 0.55, GAP = WALL_GAP;          // glass height, water depth (about halfway up a wheel), glass thickness, and how far outside the road edge the glass stands (the physics wall is there too)
+        const f = {}, STEP = 2, H = TANK_H, W = 0.4, T = 1.65, GAP = WALL_GAP;          // glass height, water depth (about halfway up a wheel), glass thickness (a thick slab), and how far outside the road edge the glass stands (the physics wall is there too)
         const rows = []; for (let sv = range.a; sv <= range.b + 1e-6; sv += STEP) { track.frameAt(sv, f); rows.push({ x: f.x, y: f.y, z: f.z, lx: f.lx, ly: f.ly, lz: f.lz, hw: f.hw + GAP }); }
         const at = (r, side, up, extra = 0) => { const o = side * (r.hw + extra); return [r.x + r.lx * o, r.y + r.ly * o + up, r.z + r.lz * o]; };
         const ribbon = (pts, mat) => {                                                 // pts(r) -> the two edges of one strip at that step along the road
@@ -171,11 +209,17 @@ export class Stage {
           ribbon((r) => [at(r, side, -0.05), at(r, side, -0.05, T)], edge);
           ribbon((r) => [at(r, side, H - 0.25), at(r, side, H)], edge);
         }
+        const quad = (p0, p1, p2, p3, mat) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute([...p0, ...p1, ...p2, ...p3], 3)); geo.setIndex([0, 1, 2, 0, 2, 3]); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; g.add(m); };
+        for (const side of [-1, 1]) for (const r of [rows[0], rows[rows.length - 1]]) {   // the glass slabs are solid blocks: a face closes each end
+          quad(at(r, side, -0.05), at(r, side, -0.05, T), at(r, side, H, T), at(r, side, H), glass);
+          quad(at(r, side, H - 0.25), at(r, side, H - 0.25, T), at(r, side, H, T), at(r, side, H), edge);
+        }
         for (const r of [rows[0], rows[rows.length - 1]]) {                             // the ends of the water block: a cross-section, so it reads as a solid slab of water
           const pts = [at(r, -1, -0.05), at(r, 1, -0.05), at(r, 1, W), at(r, -1, W)], geo = new THREE.BufferGeometry();
           geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3)); geo.setIndex([0, 1, 2, 0, 2, 3]); geo.computeVertexNormals();
           const m = new THREE.Mesh(geo, water); m.frustumCulled = false; g.add(m);
         }
+        this._addFish(g, track, range, rows);
       }
       for (const p of track.puddles) {
         if (p.r >= 15) continue;
