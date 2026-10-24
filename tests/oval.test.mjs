@@ -25,7 +25,7 @@ function arena(rivals = 6) {
 test('The Oval track is a preloaded track, now called Deep Pan Pizza', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
   assert.equal(makeTemplate('oval').name, 'Deep Pan Pizza');
-  assert.match(TEMPLATE_INFO.oval, /last one standing/i);
+  assert.equal(TEMPLATE_INFO.oval, 'A cheesy pizza-shaped pile up of olives and exploding peppers!');
   assert.equal(TEMPLATE_KEYS.length, 9, 'eight tracks and the random one');
 });
 
@@ -706,4 +706,12 @@ test('Deep Pan Pizza is a round floor painted as a margherita; the editor guards
   const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
   assert.match(ed, /cr\.autosave/); assert.match(ed, /performance\.memory/); assert.match(ed, /_show3d\(false\)/);
   assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="ed-mem"/);
+});
+
+test('the Deep Pan Pizza paints its barrels pepper green', () => {
+  const view = readFileSync(new URL('../src/propsView.js', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(view, /PEPPER = \[new THREE\.Color\(0x3f9e2f\)/);
+  assert.match(view, /build\(props, peppers = false\)/);
+  assert.match(main, /propsView\.build\(props, def\.mode === 'lastStanding' && def\.name === 'Deep Pan Pizza'\)/);
+  assert.doesNotMatch(view, /setColorAt\(i, PAINT\[/, 'the paint is chosen per track, not fixed');
 });

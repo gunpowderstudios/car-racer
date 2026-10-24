@@ -449,7 +449,7 @@ export function makeTemplate(key) {
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
   speedway: 'A fast 1.6 km banked Nascar-style paint-scraping, head rush',
-  oval: 'Open dirt arena: a free-for-all banger derby with barrels everywhere. Last one standing wins',
+  oval: 'A cheesy pizza-shaped pile up of olives and exploding peppers!',
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',

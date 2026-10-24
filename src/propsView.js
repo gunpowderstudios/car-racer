@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { BARREL, barrelNeedsDraw } from './props.js';
 
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xb8351f)];
+const PEPPER = [new THREE.Color(0x3f9e2f), new THREE.Color(0x3f9e2f)];      // the Deep Pan Pizza's drums are painted green, like peppers
 const HOT = new THREE.Color(3, 2.1, 1.4);
 
 function drumGeometry() {
@@ -42,7 +43,7 @@ function mergeParts(parts) {
 export class PropsView {
   constructor(scene) {
     this.scene = scene;
-    this.drums = null; this.bits = null;
+    this.drums = null; this.bits = null; this._paint = PAINT;
     this.drumGeo = drumGeometry();
     this.drumMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.35 });
     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -54,13 +55,14 @@ export class PropsView {
     this._zero = new THREE.Matrix4().makeScale(0, 0, 0);
   }
 
-  build(props) {
+  build(props, peppers = false) {
+    this._paint = peppers ? PEPPER : PAINT;
     if (this.drums) { this.scene.remove(this.drums); this.drums.dispose(); this.drums = null; }
     this._lastPropsTime = props.time;
     const n = props.barrels.length;
     if (n) {
       const im = this.drums = new THREE.InstancedMesh(this.drumGeo, this.drumMat, n);
-      props.barrels.forEach((b, i) => im.setColorAt(i, PAINT[b.paint]));
+      props.barrels.forEach((b, i) => im.setColorAt(i, this._paint[b.paint]));
       im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
       this.scene.add(im);
     }
@@ -79,7 +81,7 @@ export class PropsView {
       let paint = false;
       props.barrels.forEach((b, i) => {
         const want = b.alive && b.fuse >= 0 && Math.floor(b.fuse * 12) % 2 === 0 ? 1 : 0;
-        if (b._col !== want) { im.setColorAt(i, want ? HOT : PAINT[b.paint]); b._col = want; paint = true; }
+        if (b._col !== want) { im.setColorAt(i, want ? HOT : this._paint[b.paint]); b._col = want; paint = true; }
         const settled = (!b.alive || b.asleep) && b.fuse < 0;
         if (!barrelNeedsDraw(b, force)) return;
         if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(i, this._m); }
