@@ -722,4 +722,9 @@ test('the Deep Pan Pizza loads its drums at 3x size, and other tracks go back to
   assert.ok(Math.abs(BARREL.radius - 1.29) < 1e-9 && Math.abs(BARREL.height - 3.9) < 1e-9, 'three times the size');
   pr.load(track, def.props, 1);
   assert.ok(Math.abs(BARREL.radius - 0.43) < 1e-9 && Math.abs(BARREL.height - 1.3) < 1e-9, 'normal again');
+  const { DAMAGE } = await import('../src/damage.js'), { BLAST } = await import('../src/props.js');
+  assert.equal(DAMAGE.barrel.point, 90); assert.equal(DAMAGE.barrel.radius, 10); assert.equal(BLAST.radius, 10);
+  pr.load(track, def.props, 3);
+  assert.equal(DAMAGE.barrel.point, 270, '3x the damage'); assert.equal(DAMAGE.barrel.radius, 30, '3x the radius'); assert.equal(BLAST.radius, 30);
+  pr.load(track, def.props, 1);
 });

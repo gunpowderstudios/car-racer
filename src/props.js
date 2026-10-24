@@ -12,6 +12,7 @@
 //    propsView.js draws it, and main.js turns the events it emits into sound and smoke.
 
 import { V3, Q, clamp } from './math.js';
+import { DAMAGE } from './damage.js';
 import { Track, WALL_GAP, WALL_T, WALL_HEIGHT } from './track.js';
 
 const G = 9.81;
@@ -38,7 +39,7 @@ export const BLAST = {
   carLift: 0.9,                  // how much of that push is straight up: the blast jolts the car into the air
   bits: 6,                       // scrap pieces per barrel
 };
-const BLAST_BASE = { radius: BLAST.radius, chainRadius: BLAST.chainRadius };
+const BLAST_BASE = { radius: BLAST.radius, chainRadius: BLAST.chainRadius, dmgRadius: DAMAGE.barrel.radius, dmgPoint: DAMAGE.barrel.point };
 const MAX_BITS = 128;
 let INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;   // one number for all axes: good enough for a drum
 
@@ -66,7 +67,8 @@ function setBarrelSize(k) {
   BARREL.radius = BARREL_BASE.radius * k; BARREL.height = BARREL_BASE.height * k; BARREL.reach = BARREL_BASE.reach * k; BARREL.step = BARREL_BASE.step * k;
   BARREL.mass = BARREL_BASE.mass * k * k;
   INERTIA = BARREL.mass * (3 * BARREL.radius ** 2 + BARREL.height ** 2) / 12;
-  BLAST.radius = BLAST_BASE.radius * (1 + (k - 1) * 0.35); BLAST.chainRadius = BLAST_BASE.chainRadius * k;
+  BLAST.radius = BLAST_BASE.radius * k; BLAST.chainRadius = BLAST_BASE.chainRadius * k;      // the shove reaches k times as far...
+  DAMAGE.barrel.radius = BLAST_BASE.dmgRadius * k; DAMAGE.barrel.point = BLAST_BASE.dmgPoint * k;      // ...and so does the damage, at k times the punch
   fillRim();
 }
 
