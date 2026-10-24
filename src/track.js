@@ -15,6 +15,7 @@ export const SURF = { ROAD: 0, VERGE: 1, BASE: 2 };
 export const GROUND_Y = 0;          // flat terrain height far from the road
 export const WALL_GAP = 0.6;        // wall face sits this far outside the road edge
 export const WALL_HEIGHT = 1.25;
+export const TANK_H = 6;           // the glass of a flooded dip (a fish tank) stands this high
 export const WALL_T = 0.5;          // wall thickness
 // With walls, the strip between the road edge and the back of the wall is a flat kerb at
 // road height; the embankment only starts falling away behind the wall. (If the ground
@@ -618,7 +619,7 @@ export class Track {
     if (q.idx < 0 || this.wallOff[q.idx] || !(this.def.walls || this.inTank(q.idx))) return 0;
     const ad = Math.abs(q.d), face = q.hw + WALL_GAP;
     if (ad <= face || ad > face + 2.4) return 0;
-    if (y > q.edgeY + WALL_HEIGHT) return 0;
+    if (y > q.edgeY + (this.def.walls ? WALL_HEIGHT : TANK_H)) return 0;
     return ad - face;
   }
 

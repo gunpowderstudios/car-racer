@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
-import { Track, puddleShape, puddleEdge, WALL_GAP } from './track.js';
+import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
@@ -150,27 +150,31 @@ export class Stage {
       const q = Track.newQuery(), zAxis = new THREE.Vector3(0, 0, 1), nrm = new THREE.Vector3();
       const range = track.floodRange();                                               // a flooded dip (Big Dipper): a fish tank, glass walls either side with the water inside, lying on the road
       if (range) {
-        const f = {}, STEP = 2, H = 1.4, W = 0.75, GAP = WALL_GAP;                    // glass height, water depth, and how far outside the road edge the glass stands (the physics wall is there too)
+        const f = {}, STEP = 2, H = TANK_H, W = 0.4, T = 0.55, GAP = WALL_GAP;          // glass height, water depth (about halfway up a wheel), glass thickness, and how far outside the road edge the glass stands (the physics wall is there too)
         const rows = []; for (let sv = range.a; sv <= range.b + 1e-6; sv += STEP) { track.frameAt(sv, f); rows.push({ x: f.x, y: f.y, z: f.z, lx: f.lx, ly: f.ly, lz: f.lz, hw: f.hw + GAP }); }
-        const at = (r, side, up) => [r.x + r.lx * r.hw * side, r.y + r.ly * r.hw * side + up, r.z + r.lz * r.hw * side];
-        const build = (corners, mat) => {                                              // corners(r, k) -> [bottomLeft, bottomRight, topLeft, topRight] of one quad per step
+        const at = (r, side, up, extra = 0) => { const o = side * (r.hw + extra); return [r.x + r.lx * o, r.y + r.ly * o + up, r.z + r.lz * o]; };
+        const ribbon = (pts, mat) => {                                                 // pts(r) -> the two edges of one strip at that step along the road
           const pos = [], idx = [];
-          rows.forEach((r, k) => { const c = corners(r); pos.push(...c[0], ...c[1]); if (k > 0) { const i = k * 2; idx.push(i - 2, i - 1, i, i - 1, i + 1, i); } });
+          rows.forEach((r, k) => { const e = pts(r); pos.push(...e[0], ...e[1]); if (k > 0) { const i = k * 2; idx.push(i - 2, i - 1, i, i - 1, i + 1, i); } });
           const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
           const m = new THREE.Mesh(geo, mat); m.receiveShadow = false; m.frustumCulled = false; g.add(m);
         };
-        const water = new THREE.MeshStandardMaterial({ color: 0x1ea4ff, emissive: 0x0a4a8a, emissiveIntensity: 0.9, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
-        const glass = new THREE.MeshStandardMaterial({ color: 0xcdf3ff, emissive: 0x2a6a8a, emissiveIntensity: 0.4, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
-        const rail = new THREE.MeshStandardMaterial({ color: 0xeaf9ff, emissive: 0x6ab8d8, emissiveIntensity: 0.6, roughness: 0.3, side: THREE.DoubleSide });
-        build((r) => [at(r, -1, W), at(r, 1, W)], water);                              // the water's surface
+        const water = new THREE.MeshStandardMaterial({ color: 0x1ea4ff, emissive: 0x0a4a8a, emissiveIntensity: 0.9, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+        const glass = new THREE.MeshStandardMaterial({ color: 0xbfeaff, emissive: 0x2a6a8a, emissiveIntensity: 0.5, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
+        const edge = new THREE.MeshStandardMaterial({ color: 0xeaf9ff, emissive: 0x6ab8d8, emissiveIntensity: 0.7, roughness: 0.3, side: THREE.DoubleSide });
+        ribbon((r) => [at(r, -1, W), at(r, 1, W)], water);                              // the water: a top surface...
         for (const side of [-1, 1]) {
-          const vertical = (up0, up1, mat) => {                                         // a standing strip along one side: bottom edge up0, top edge up1
-            const pos = [], idx = [];
-            rows.forEach((r, k) => { pos.push(...at(r, side, up0), ...at(r, side, up1)); if (k > 0) { const i = k * 2; idx.push(i - 2, i - 1, i, i - 1, i + 1, i); } });
-            const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
-            const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; g.add(m);
-          };
-          vertical(-0.05, H, glass); vertical(-0.05, W, water); vertical(H - 0.12, H, rail); vertical(-0.05, 0.1, rail);      // the glass, the water seen through it, a top rail and a base rail
+          ribbon((r) => [at(r, side, -0.05), at(r, side, W)], water);                   // ...and its side, seen through the glass
+          ribbon((r) => [at(r, side, -0.05), at(r, side, H)], glass);                   // the glass slab: inner face, outer face, top, and a bright edge along the top and bottom
+          ribbon((r) => [at(r, side, -0.05, T), at(r, side, H, T)], glass);
+          ribbon((r) => [at(r, side, H), at(r, side, H, T)], edge);
+          ribbon((r) => [at(r, side, -0.05), at(r, side, -0.05, T)], edge);
+          ribbon((r) => [at(r, side, H - 0.25), at(r, side, H)], edge);
+        }
+        for (const r of [rows[0], rows[rows.length - 1]]) {                             // the ends of the water block: a cross-section, so it reads as a solid slab of water
+          const pts = [at(r, -1, -0.05), at(r, 1, -0.05), at(r, 1, W), at(r, -1, W)], geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3)); geo.setIndex([0, 1, 2, 0, 2, 3]); geo.computeVertexNormals();
+          const m = new THREE.Mesh(geo, water); m.frustumCulled = false; g.add(m);
         }
       }
       for (const p of track.puddles) {
