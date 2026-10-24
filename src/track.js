@@ -604,9 +604,18 @@ export class Track {
     return w;
   }
 
+  /** The stretch of road that is a flooded fish tank (a chain of big pools, as on Big Dipper): { a, b } in metres along the road, or null. Glass walls stand along it even when the track has none. */
+  floodRange() {
+    if (this._flood !== undefined) return this._flood;
+    let a = Infinity, b = -Infinity; const q = Track.newQuery();
+    for (const p of this.puddles || []) if (p.r >= 15) { this.query(p.x, 1e4, p.z, q, 1); if (q.idx < 0) continue; const sp = this.s[q.idx]; if (sp < a) a = sp; if (sp > b) b = sp; }
+    return (this._flood = a <= b ? { a: a - 6, b: b + 6 } : null);
+  }
+  inTank(idx) { const r = this.floodRange(); return !!r && this.s[idx] >= r.a && this.s[idx] <= r.b; }
+
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */
   wallPenetration(q, y) {
-    if (!this.def.walls || q.idx < 0 || this.wallOff[q.idx]) return 0;
+    if (q.idx < 0 || this.wallOff[q.idx] || !(this.def.walls || this.inTank(q.idx))) return 0;
     const ad = Math.abs(q.d), face = q.hw + WALL_GAP;
     if (ad <= face || ad > face + 2.4) return 0;
     if (y > q.edgeY + WALL_HEIGHT) return 0;

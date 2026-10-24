@@ -278,7 +278,7 @@ test('The Deep Pan Pizza has olive humps and cheese dips (each dip a hump upside
   assert.equal(new Track(makeTemplate('speedway')).bumps, null, 'ordinary tracks have none');
 });
 
-test('Thin and Crispy has one big pond across the bottom of the dip, drawn on the road', async () => {
+test('Big Dipper has one big pond across the bottom of the dip, drawn on the road', async () => {
   const def = makeTemplate('thin'), track = new Track(def);
   assert.ok(def.puddles.length >= 3 && def.puddles.every((p) => p.r >= 20), 'big overlapping pools');
   const low = def.handles.map((h) => h.y).indexOf(Math.min(...def.handles.map((h) => h.y)));
@@ -742,4 +742,15 @@ test('Roll out the barrels: a flat oval with a jump on each straight and rows of
   for (const b of def.props) { track.query(b.x, b.y + 0.5, b.z, q, 2); assert.ok(q.idx >= 0 && Math.abs(q.d) < q.hw, 'every barrel is on the road'); }
   assert.ok(drivable(def), 'the jumps can be cleared');
   assert.ok(track.length > 1500, String(track.length));
+});
+
+test('Big Dipper: the flooded dip is a fish tank with solid glass walls, and nowhere else has them', async () => {
+  const t = new Track(makeTemplate('thin')), r = t.floodRange(), q = Track.newQuery();
+  assert.ok(r && r.b - r.a > 60 && r.b - r.a < 140, JSON.stringify(r));
+  const mid = (r.a + r.b) / 2, f = t.frameAt(mid), off = f.hw + 1.0;      // just outside the road edge, inside the glass
+  t.query(f.x + f.lx * off, f.y + f.ly * off + 0.5, f.z + f.lz * off, q, 2);
+  assert.ok(t.wallPenetration(q, f.y + 0.5) > 0, 'the glass pushes back');
+  const g = t.frameAt(r.a - 60); t.query(g.x + g.lx * (g.hw + 1.0), g.y + 0.5, g.z + g.lz * (g.hw + 1.0), q, 2);
+  assert.equal(t.wallPenetration(q, g.y + 0.5), 0, 'no wall away from the tank');
+  assert.equal(new Track(makeTemplate('bluebell')).floodRange(), null, 'small rally puddles are not a tank');
 });

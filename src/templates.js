@@ -381,7 +381,7 @@ const RAW = {
     autoBank: true, bankMax: 16, lowCam: true,
   },
   thin: {
-    name: 'Thin and Crispy', width: 12,
+    name: 'Big Dipper', width: 12,
     handles: thinAndCrispy(),
     autoBank: true, bankMax: 14, lowCam: true, walls: false, sky: true,
   },
