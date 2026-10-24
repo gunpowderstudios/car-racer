@@ -342,3 +342,10 @@ test('a new point in the editor can be made a jump without crashing, and a crash
   assert.match(ed, /if \(h\.gap\) \{ if \(!Number\.isFinite\(\+h\.lip\)/, 'ticking Gap gives the point a lip and kick');
   assert.match(main, /copied automatically a moment ago/, 'the crash screen says the track was kept');
 });
+
+test('Test my hardware: the cog has the button and the verdict is plain English', async () => {
+  const { verdict } = await import('../src/hardwareTest.js');
+  const { readFileSync } = await import('node:fs');
+  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="btn-hwtest"/);
+  assert.equal(verdict(60, 55).cls, 'ok'); assert.equal(verdict(40, 20).cls, 'meh'); assert.equal(verdict(18, 10).cls, 'bad'); assert.equal(verdict(0, 0).cls, 'meh');
+});

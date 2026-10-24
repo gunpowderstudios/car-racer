@@ -28,6 +28,7 @@ import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
 import { packedFromHash, unpackTrack, trackLinkUrl } from './trackLink.js';
 import { Multiplayer } from './multiplayer.js';
+import { openHardwareTest } from './hardwareTest.js';
 import { TIERS, TIER_NAMES, detectTier, probeDevice, AdaptiveRes, PowerSaveHint } from './quality.js';
 import { createChatUI } from './mpChat.js';
 import { VERSION } from './version.js';
@@ -1267,6 +1268,11 @@ function bindMenu() {
   const qsel = $('opt-quality'); qsel.value = TIER_NAMES.includes(opts.quality) ? opts.quality : 'auto';
   const csel = $('opt-chat'); csel.value = ['all', 'quick', 'off'].includes(opts.chat) ? opts.chat : 'all';
   csel.onchange = () => { opts.chat = csel.value; store.set('cr.opts', opts); chatUI.applyMode(); };
+  $('btn-hwtest').onclick = () => openHardwareTest(() => {
+    const i = renderer.info;
+    return { tier: tierName, quality: opts.quality, fps, res: baseRatio * adapt.scale, maxRes: baseRatio, physicsHz: tier.physicsHz, shadows: opts.shadow, mirror: mirror.on, rivals: derby.enabled ? derby.fighters.length - 1 : 0,
+      calls: i.render.calls, tris: i.render.triangles, geo: i.memory.geometries, tex: i.memory.textures, gpu: device.gpu, cores: device.cores, memory: device.memory, screen: `${innerWidth}x${innerHeight} at ${(devicePixelRatio || 1).toFixed(1)}x`, loadMs: visual.loadMs };
+  }, (q) => { qsel.value = q; qsel.onchange(); });
   qsel.onchange = () => {
     opts.quality = qsel.value; store.set('cr.opts', opts);
     if (net) { toast('Graphics quality will change next time the game loads.'); return; }   // don't drop a multiplayer room
