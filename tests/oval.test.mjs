@@ -259,25 +259,23 @@ test('every vehicle has a gallery picture and a model file, and the pickers are 
   assert.doesNotMatch(VEHICLES_SOURCE, /fillVehicleSelect/);
 });
 
-test('The Oval is really uneven: lots of humps with dips between, and puddles in the hollows, the same every time', () => {
+test('The Deep Pan Pizza has olive humps and cheese dips (each dip a hump upside down), the same every time', () => {
   const def = makeTemplate('oval'), track = new Track(def), A = arenaInfo(track), q = Track.newQuery();
-  assert.ok(def.bumps.length >= 20 && def.bumps.length <= 40, 'lots of humps: ' + def.bumps.length);
-  assert.ok(def.puddles.length >= 4, 'puddles: ' + def.puddles.length);
-  assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same humps');
-  assert.deepEqual(makeTemplate('oval').puddles, def.puddles, 'always the same puddles');
-  assert.ok(new Set(def.bumps.map((b) => b.r)).size > 10 && Math.max(...def.bumps.map((b) => b.h)) > 0.5 && Math.min(...def.bumps.map((b) => b.h)) < 0.4, 'humps of all sizes');
+  const hills = def.bumps.filter((b) => b.h > 0), dips = def.bumps.filter((b) => b.h < 0);
+  assert.ok(hills.length >= 6 && hills.length <= 10, 'olives: ' + hills.length);
+  assert.equal(dips.length, hills.length, 'one dip for every hump');
+  assert.deepEqual(dips.map((b) => [b.r, -b.h]).sort(), hills.map((b) => [b.r, b.h]).sort(), 'the same widths and depths');
+  assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same lumps');
+  assert.ok(!def.puddles, 'a plain margherita: no puddles');
   for (const b of def.bumps) {
     track.query(b.x, A.y + 5, b.z, q, 7);
-    assert.ok(q.y >= A.y + b.h - 0.01, 'the top of a hump is at least h above the floor: ' + q.y);
+    assert.ok(Math.abs(q.y - (A.y + b.h)) < 0.35 + 0.01, 'the middle is h above (or below) the floor: ' + q.y + ' vs ' + b.h);
+    assert.ok(Math.hypot(b.x - A.cx, b.z - A.cz) + b.r < A.ax * 0.8, 'on the sauce, never on the crust');
   }
   const ps = arenaPlayerStart(A);
   for (const b of def.bumps) assert.ok(Math.hypot(b.x - ps.x, b.z - ps.z) > b.r + 14, 'not at the player start');
-  for (const p of def.puddles) { assert.ok(track.puddleAt(p.x, p.z) > 0.9, 'water in the middle'); assert.ok(def.bumps.every((b) => Math.hypot(p.x - b.x, p.z - b.z) > b.r), 'a puddle is never on a hump'); }
-  for (const b of def.props.filter((p) => p.type === 'barrel')) {
-    for (const k of def.bumps) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r + 3 - 0.01, 'no drum on a hump');
-    for (const k of def.puddles) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r * 1.5 + 3 - 0.01, 'no drum in a puddle');
-  }
-  assert.equal(new Track(normalizeTrack({ handles: def.handles, mode: 'lastStanding', width: def.width, bumps: [{ x: 0, z: 0, r: 999, h: -5 }, 'junk'] })).bumps[0].r, 20, 'clamped');
+  for (const b of def.props.filter((p) => p.type === 'barrel')) for (const k of def.bumps) assert.ok(Math.hypot(b.x - k.x, b.z - k.z) >= k.r + 3 - 0.01, 'no drum on a hump or in a dip');
+  assert.equal(new Track(normalizeTrack({ handles: def.handles, mode: 'lastStanding', width: def.width, bumps: [{ x: 0, z: 0, r: 999, h: -5 }, 'junk'] })).bumps[0].h, -3, 'a dip is clamped to 3 m');
   assert.equal(new Track(makeTemplate('speedway')).bumps, null, 'ordinary tracks have none');
 });
 
@@ -699,13 +697,12 @@ test('The Bed Pan: a repaired player goes back on a clear patch of floor, away f
   }
 });
 
-test('Deep Pan Pizza is a round floor, with green humps, a crust and visible puddles; the editor guards against crashes', async () => {
+test('Deep Pan Pizza is a round floor painted as a margherita; the editor guards against crashes', async () => {
   const def = makeTemplate('oval'), A = arenaInfo(new Track(def));
   assert.ok(Math.abs(A.a - A.b) < 0.01 && Math.abs(A.ax - A.az) < 0.01, 'a circle, not an oval');
   const view = readFileSync(new URL('../src/arenaView.js', import.meta.url), 'utf8');
-  assert.match(view, /color: 0x62c24a/, 'humps are green');
-  assert.match(view, /color: 0xd2704c/, 'the low floor is red-brown');
-  assert.match(view, /track\.puddles/, 'the arena draws its puddles');
+  assert.match(view, /#1b1919/, 'olives are black'); assert.match(view, /#f3c93a/, 'cheese is yellow'); assert.match(view, /#c0301f/, 'sauce is red'); assert.match(view, /#d6aa6e/, 'dough is dirt coloured');
+  assert.doesNotMatch(view, /for \(const b of bumps\) \{[^}]*new THREE\.Mesh/, 'no mesh per hump');
   const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
   assert.match(ed, /cr\.autosave/); assert.match(ed, /performance\.memory/); assert.match(ed, /_show3d\(false\)/);
   assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="ed-mem"/);

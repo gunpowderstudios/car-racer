@@ -2,10 +2,11 @@
 // The shape comes from arena.js, the same numbers the physics uses, so the wall you see is the wall you hit.
 import * as THREE from 'three';
 import { arenaInfo, arenaOutline } from './arena.js';
-import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt, puddleShape, puddleEdge } from './track.js';
-import { dirtTexture, barrierTexture } from './textures.js';
+import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt } from './track.js';
+import { barrierTexture } from './textures.js';
 
 const N = 96;              // points round the outline
+const SEG = 128;           // points round the floor
 const APRON_W = 2.4;
 
 export function buildArena(track, aniso = 8) {
@@ -32,57 +33,37 @@ export function buildArena(track, aniso = 8) {
   const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, side: THREE.DoubleSide, ...opts });
   const cheap = (opts) => new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, ...opts });      // plain shading is plenty for the apron
 
-  // ---- the floor
+  // ---- the floor: ONE mesh. A round grid of points whose heights come from the same function the physics uses (humps up, dips down), painted from ONE small picture:
+  // dough crust round the edge, red sauce inside it, black olives where the humps are and yellow cheese where the dips are. (One mesh and one picture,
+  // instead of a mesh per hump, is what keeps this arena quick on slow computers.)
   const rFloor = A.hw + WALL_GAP + WALL_T;
-  const shape = new THREE.Shape(outline(rFloor).map((p) => new THREE.Vector2(p.x, -p.z)));
-  const dirt = dirtTexture(aniso); dirt.repeat.set(1 / 24, 1 / 24);
-  const floor = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), std({ map: dirt, color: 0xd2704c, roughness: 1 }));      // (tomato and sausage: the low ground is a red-brown)
-  floor.position.y = y0; floor.receiveShadow = true; floor.frustumCulled = false;
-  g.add(floor);
-
-  // ---- humps: a round mound of the same dirt laid over the floor (rings of points, heights from the same function the physics uses)
   const bumps = track.bumps || [];
-  if (bumps.length) {
-    const bd = dirtTexture(aniso); bd.repeat.set(1 / 24, 1 / 24);
-    const bumpMat = std({ map: bd, color: 0x62c24a, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-    const RINGS = 14, SEG = 36, tmp = { h: 0, gx: 0, gz: 0 };
-    for (const b of bumps) {
-      const pos = [0, y0 + b.h, 0], idx = [];
-      for (let ri = 1; ri <= RINGS; ri++) for (let k = 0; k < SEG; k++) {
-        const r = b.r * ri / RINGS, a = k / SEG * Math.PI * 2, x = b.x + Math.cos(a) * r, z = b.z + Math.sin(a) * r;
-        bumpAt([b], x, z, tmp); pos.push(x - b.x, y0 + tmp.h + 0.01, z - b.z);
-      }
-      for (let k = 0; k < SEG; k++) idx.push(0, 1 + k, 1 + (k + 1) % SEG);
-      for (let ri = 1; ri < RINGS; ri++) for (let k = 0; k < SEG; k++) {
-        const a0 = 1 + (ri - 1) * SEG + k, a1 = 1 + (ri - 1) * SEG + (k + 1) % SEG, b0 = 1 + ri * SEG + k, b1 = 1 + ri * SEG + (k + 1) % SEG;
-        idx.push(a0, b0, a1, a1, b0, b1);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      // texture coordinates in world space, so the mound's dirt lines up with the floor around it
-      const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push(pos[i] + b.x, -(pos[i + 2] + b.z));
-      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
-      const mound = new THREE.Mesh(geo, bumpMat); mound.position.set(b.x, 0, b.z); mound.receiveShadow = true; mound.castShadow = false; mound.frustumCulled = false;
-      g.add(mound);
-    }
+  const edge = arenaOutline(A, rFloor, SEG), cx = A.cx, cz = A.cz;
+  let R = 0; for (const p of edge) R = Math.max(R, Math.hypot(p.x - cx, p.z - cz));
+  const playR = (A.ax + A.az) / 2, SIZE = 1024, k = SIZE / (2 * R);
+  const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
+  const c = cv.getContext('2d'), disc = (x, z, r, fill) => { c.fillStyle = fill; c.beginPath(); c.arc((x - cx + R) * k, (z - cz + R) * k, r * k, 0, Math.PI * 2); c.fill(); };
+  c.fillStyle = '#d6aa6e'; c.fillRect(0, 0, SIZE, SIZE);                                    // dough
+  disc(cx, cz, playR * 0.8, '#c0301f');                                                      // sauce: everything inside the outer fifth
+  for (const b of bumps) disc(b.x, b.z, b.r, b.h > 0 ? '#1b1919' : '#f3c93a');               // olives (hills) and cheese (dips): the same circle, one up and one down
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;          // a little speckle so it still looks like dirt
+  for (let i = 0; i < 5000; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)'; c.fillRect(rnd() * SIZE, rnd() * SIZE, 2 + rnd() * 5, 2 + rnd() * 5); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = aniso; tex.generateMipmaps = true;
+  const RINGS = 56, pos = [0, y0, 0], uv = [0.5, 0.5], idx = [], tmp = { h: 0, gx: 0, gz: 0 };
+  for (let ri = 1; ri <= RINGS; ri++) for (let j = 0; j < SEG; j++) {
+    const t = ri / RINGS, x = cx + (edge[j].x - cx) * t, z = cz + (edge[j].z - cz) * t;
+    bumpAt(bumps, x, z, tmp); pos.push(x, y0 + tmp.h, z); uv.push((x - cx + R) / (2 * R), (z - cz + R) / (2 * R));
   }
-
-  // ---- puddles: glossy pools lying on the floor, the same lumpy outlines the physics uses
-  if (track.puddles && track.puddles.length) {
-    const wm = new THREE.MeshStandardMaterial({ color: 0x2f5c78, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-    for (const p of track.puddles) {
-      const sh = puddleShape(p), pts = [];
-      for (let i = 0; i < 48; i++) {
-        const th = i / 48 * Math.PI * 2, e = puddleEdge(sh, th), u = Math.cos(th) * sh.a * e, v = Math.sin(th) * sh.b * e;
-        pts.push(new THREE.Vector2(u * sh.cos - v * sh.sin, -(u * sh.sin + v * sh.cos)));
-      }
-      const m = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(pts)), wm);
-      m.rotation.x = -Math.PI / 2; m.position.set(p.x, y0 + 0.05, p.z); m.receiveShadow = false; m.frustumCulled = false; g.add(m);
-    }
+  pos[1] = y0 + bumpAt(bumps, cx, cz, tmp).h;
+  for (let j = 0; j < SEG; j++) idx.push(0, 1 + (j + 1) % SEG, 1 + j);
+  for (let ri = 1; ri < RINGS; ri++) for (let j = 0; j < SEG; j++) {
+    const a0 = 1 + (ri - 1) * SEG + j, a1 = 1 + (ri - 1) * SEG + (j + 1) % SEG, b0 = 1 + ri * SEG + j, b1 = 1 + ri * SEG + (j + 1) % SEG;
+    idx.push(a0, a1, b0, a1, b1, b0);
   }
-
-  // ---- the crust: a golden-brown rim round the pizza, along the foot of the wall (where the other roads have their red and white kerb)
-  ribbon(A.hw - 4.5, y0 + 0.03, A.hw, y0 + 0.03, std({ map: dirt, color: 0xe0a640, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 6, { receive: true });
+  const fg = new THREE.BufferGeometry();
+  fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); fg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); fg.setIndex(idx); fg.computeVertexNormals();
+  const floor = new THREE.Mesh(fg, std({ map: tex, roughness: 1 }));
+  floor.receiveShadow = true; floor.frustumCulled = false; g.add(floor);
 
   // ---- the crash wall: inner face, top, outer face
   const barrier = barrierTexture(aniso), concrete = cheap({ color: 0xb9b4aa });

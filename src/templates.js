@@ -90,30 +90,28 @@ function figureEight() {
 }
 
 /** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
-const OVAL_A = 57, OVAL_B = 57, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width (equal: the floor is a round pizza, 190 m across), and full floor width
+const OVAL_A = 36, OVAL_B = 36, OVAL_FLOOR = 118;       // metres: centreline half-length / half-width (equal: a small circle), and full floor width (59 m each side of it, so the floor is one solid round pizza 190 m across, with no hole in the middle)
 
-/** The Deep Pan Pizza's floor: really uneven. Lots of humps of every size, crowded so there are dips between them, and a few puddles lying in the hollows (like Bluebell Woods).
- *  Always the same lumps. Kept off the player's start, the four respawn spots, and the ring where the rivals line up, so nobody starts on a launch ramp. */
+/** The Deep Pan Pizza's floor, a plain margherita: dough crust round the edge (the outer fifth of the radius), red sauce inside it, black olive HUMPS and yellow cheese DIPS.
+ *  Each dip is exactly a hump turned upside down (same width, same depth). Always the same, and kept off the crust, the player's start, the respawn spots and the ring where the rivals line up. */
 function ovalLumps(def) {
-  const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261023), q = Track.newQuery(), r2 = (v) => Math.round(v * 100) / 100;
-  const keep = [arenaPlayerStart(A), ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([i, j]) => ({ x: A.cx + i * (A.ax - 26), z: A.cz + j * (A.az - 26) }))];   // (the start and the respawn spots)
+  const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261024), r2 = (v) => Math.round(v * 100) / 100;
+  const sauce = A.ax * 0.8;                                                                   // the sauce ends here; the crust is the rest
+  const keep = [arenaPlayerStart(A), ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([i, j]) => ({ x: A.cx + i * (A.ax - 26), z: A.cz + j * (A.az - 26) }))];
   const onRing = (x, z, m) => { const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62)); return Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < m; };
-  const floorOk = (x, z, pad) => { track.query(x, A.y + 0.5, z, q, 1.5); return q.idx >= 0 && Math.abs(q.d) <= q.hw - pad; };
-  const bumps = [];
-  for (let guard = 0; guard < 4000 && bumps.length < 34; guard++) {
-    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 6 + Math.pow(rnd(), 1.2) * 6, big = bumps.length % 7 === 3, h = big ? 1.15 + rnd() * 0.25 : (0.3 + rnd() * rnd() * 0.6 + r * 0.02) * 0.5;
-    if (!floorOk(x, z, r + 4) || keep.some((k) => Math.hypot(x - k.x, z - k.z) < r + 15) || onRing(x, z, r + 6)) continue;
-    if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < (r + b.r) * 0.8)) continue;       // (close enough to make dips between them, never stacked)
-    bumps.push({ x: r2(x), z: r2(z), r: r2(r), h: r2(Math.min(1.6, h)) });      // (a few tall ones you can see and jump; the rest are low and rolling, because the rivals launched off tall ones all over the floor)
+  const bumps = [], shapes = [];
+  for (let k = 0; k < 8; k++) shapes.push({ r: 6.5 + rnd() * 3, h: 0.45 + rnd() * 0.5 });
+  for (const sg of [1, -1]) {                                                                 // first the olives (humps), then the cheese (dips) with the very same sizes
+    for (const sh of shapes) {
+      for (let guard = 0; guard < 3000; guard++) {
+        const x = A.cx + (rnd() * 2 - 1) * sauce, z = A.cz + (rnd() * 2 - 1) * sauce;
+        if (Math.hypot(x - A.cx, z - A.cz) > sauce - sh.r - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < sh.r + 14) || onRing(x, z, sh.r + 4)) continue;
+        if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + sh.r + 3)) continue;
+        bumps.push({ x: r2(x), z: r2(z), r: r2(sh.r), h: r2(sg * sh.h) }); break;
+      }
+    }
   }
-  const puddles = [];
-  for (let guard = 0; guard < 4000 && puddles.length < 8; guard++) {                         // puddles in the low ground: well clear of every hump
-    const x = A.cx + (rnd() * 2 - 1) * A.ax, z = A.cz + (rnd() * 2 - 1) * A.az, r = 4.5 + rnd() * 3.5;
-    if (!floorOk(x, z, r + 8) || keep.some((k) => Math.hypot(x - k.x, z - k.z) < r + 14) || onRing(x, z, r + 6)) continue;
-    if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + r * 1.4) || puddles.some((p) => Math.hypot(x - p.x, z - p.z) < (r + p.r) * 1.6 + 6)) continue;
-    puddles.push({ x: r2(x), z: r2(z), r: r2(r) });
-  }
-  return { bumps, puddles };
+  return { bumps };
 }
 
 /** Drums for The Oval: about forty - a scatter across the floor plus a few tight clusters - well spread out, none where you start and none on the ring where the rivals line up (so nobody blows up at the start). Always the same ones. */

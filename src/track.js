@@ -75,7 +75,7 @@ export function normalizeProps(list) {
 
 // ---------------------------------------------------------------- bumps
 
-/** Humps in an arena floor: round mounds, { x, z, r (radius, m), h (height, m) }, smooth all over and flat at the edge. */
+/** Humps in an arena floor: round mounds, { x, z, r (radius, m), h (height, m) }, smooth all over and flat at the edge. A negative h is a dip. */
 export const MAX_BUMPS = 80;
 export function normalizeBumps(list) {
   const out = [];
@@ -84,7 +84,7 @@ export function normalizeBumps(list) {
     if (out.length >= MAX_BUMPS || !b) continue;
     const x = Number(b.x), z = Number(b.z), r = Number(b.r), h = Number(b.h);
     if (![x, z, r, h].every(Number.isFinite) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
-    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 4, 20), h: clamp(h, 0.2, 3) });
+    out.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: clamp(r, 4, 20), h: h < 0 ? clamp(h, -3, -0.2) : clamp(h, 0.2, 3) });      // (a negative h is a dip, the same shape upside down)
   }
   return out;
 }
@@ -92,9 +92,9 @@ export function normalizeBumps(list) {
 export function bumpAt(bumps, x, z, out) {
   let h = 0, gx = 0, gz = 0;
   for (const b of bumps) {
-    const dx = x - b.x, dz = z - b.z, d = Math.hypot(dx, dz);
-    if (d >= b.r) continue;
-    const u = Math.PI * d / b.r;
+    const dx = x - b.x, dz = z - b.z, d2 = dx * dx + dz * dz;
+    if (d2 >= b.r * b.r) continue;                                   // (most humps are nowhere near: skip them without a square root, this runs for every wheel of every car)
+    const d = Math.sqrt(d2), u = Math.PI * d / b.r;
     h += b.h * 0.5 * (1 + Math.cos(u));
     if (d > 1e-6) { const k = -b.h * 0.5 * Math.PI / b.r * Math.sin(u) / d; gx += k * dx; gz += k * dz; }
   }

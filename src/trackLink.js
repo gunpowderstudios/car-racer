@@ -64,7 +64,7 @@ function encodeTrack(d) {
   for (const p of props) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(PROP_KINDS.indexOf(p.type)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); px = x; pz = z; }
   const bumps = d.bumps || [];
   o.u(bumps.length); px = 0; pz = 0;
-  for (const b of bumps) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 10); o.u(b.h * 100); px = x; pz = z; }
+  for (const b of bumps) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 10); o.u(b.h < 0 ? 10000 + Math.round(-b.h * 100) : Math.round(b.h * 100)); px = x; pz = z; }      // (a dip is its depth plus 10000: older links never go that high)
   const pud = d.puddles || [];
   o.u(pud.length); px = 0; pz = 0;
   for (const b of pud) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 10); px = x; pz = z; }
@@ -98,7 +98,7 @@ function decodeTrack(bytes) {
   def.props = []; px = 0; pz = 0;
   for (let i = 0, c = r.count(1000); i < c; i++) { const k = PROP_KINDS[r.u()]; px += r.z(); pz += r.z(); def.props.push({ type: k, x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }); }
   const bumps = []; px = 0; pz = 0;
-  for (let i = 0, c = r.count(100); i < c; i++) { px += r.z(); pz += r.z(); bumps.push({ x: px / Q.xz, z: pz / Q.xz, r: r.u() / 10, h: r.u() / 100 }); }
+  for (let i = 0, c = r.count(100); i < c; i++) { px += r.z(); pz += r.z(); const rr = r.u() / 10, hv = r.u(); bumps.push({ x: px / Q.xz, z: pz / Q.xz, r: rr, h: hv >= 10000 ? -(hv - 10000) / 100 : hv / 100 }); }
   if (bumps.length) def.bumps = bumps;
   const pud = []; px = 0; pz = 0;
   for (let i = 0, c = r.count(100); i < c; i++) { px += r.z(); pz += r.z(); pud.push({ x: px / Q.xz, z: pz / Q.xz, r: r.u() / 10 }); }

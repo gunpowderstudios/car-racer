@@ -113,7 +113,7 @@ export class ArenaDriver {
         const reach = Math.max(ahead, 8);
         ax = car.pos.x + fx * reach + car.ax.x * sgn * clear * 1.15; az = car.pos.z + fz * reach + car.ax.z * sgn * clear * 1.15;
         dx = ax - car.pos.x; dz = az - car.pos.z;
-        if (ahead < b.r + 14) vT = Math.min(vT, b.h > 0.6 ? 12 : 15);
+        if (ahead < b.r + 14) vT = Math.min(vT, Math.abs(b.h) > 0.6 ? 12 : 15);
       }
     }
 
