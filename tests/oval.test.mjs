@@ -22,9 +22,9 @@ function arena(rivals = 6) {
   return { def, track, car, derby };
 }
 
-test('The Oval track is a preloaded track, now called Bed Pan', () => {
+test('The Oval track is a preloaded track, now called Deep Pan Pizza', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
-  assert.equal(makeTemplate('oval').name, 'Bed Pan (Demolition Derby)');
+  assert.equal(makeTemplate('oval').name, 'Deep Pan Pizza');
   assert.match(TEMPLATE_INFO.oval, /last one standing/i);
   assert.equal(TEMPLATE_KEYS.length, 9, 'eight tracks and the random one');
 });
@@ -697,4 +697,16 @@ test('The Bed Pan: a repaired player goes back on a clear patch of floor, away f
     if (o.length) assert.ok(o.every((c) => Math.hypot(p.x - c.x, p.z - c.z) > 20), 'not on a rival');
     assert.ok(Math.abs(Math.hypot(p.fx, p.fz) - 1) < 1e-9);
   }
+});
+
+test('Deep Pan Pizza is a round floor, with green humps, a crust and visible puddles; the editor guards against crashes', async () => {
+  const def = makeTemplate('oval'), A = arenaInfo(new Track(def));
+  assert.ok(Math.abs(A.a - A.b) < 0.01 && Math.abs(A.ax - A.az) < 0.01, 'a circle, not an oval');
+  const view = readFileSync(new URL('../src/arenaView.js', import.meta.url), 'utf8');
+  assert.match(view, /color: 0x62c24a/, 'humps are green');
+  assert.match(view, /color: 0xd2704c/, 'the low floor is red-brown');
+  assert.match(view, /track\.puddles/, 'the arena draws its puddles');
+  const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
+  assert.match(ed, /cr\.autosave/); assert.match(ed, /performance\.memory/); assert.match(ed, /_show3d\(false\)/);
+  assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="ed-mem"/);
 });

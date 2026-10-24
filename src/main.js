@@ -1139,7 +1139,7 @@ const editor = window.__editor = new Editor({
     if (a.tight.length || a.crossings.length) toast('Heads up: this track has problems the editor flagged.');
   },
   onClose: (d) => { editor.close(); store.set('cr.draft', d); if (!track) loadTrack(makeTemplate('speedway')); showMenu(); },
-  onSave: (d) => { saveUserTrack(d); toast(`Saved "${d.name}". It is in the track list.`); },
+  onSave: (d) => { saveUserTrack(d); editor.markSaved(); toast(`Saved "${d.name}". It is in the track list.`); },
   onShare: async (d) => {                                     // a link that opens this track on a friend's screen
     try {
       const url = await trackLinkUrl(d);
@@ -1848,6 +1848,14 @@ let autoDrive = false;
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
+
+// ---- crash recovery: the editor keeps a copy of the track being edited (cr.autosave) and removes it when you leave cleanly, so if one is still here the game stopped while you were editing
+setTimeout(() => {
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('cr.autosave') || 'null'); localStorage.removeItem('cr.autosave'); } catch { /* blocked or damaged */ }
+  if (!saved || !saved.def || matchMedia('(pointer: coarse)').matches) return;
+  const mins = Math.max(1, Math.round((Date.now() - saved.t) / 60000)), name = String(saved.def.name || 'your track').slice(0, 40);
+  if (window.confirm(`The game stopped while you were editing "${name}". Get it back? (copy made ${mins < 60 ? mins + ' min' : Math.round(mins / 60) + ' h'} ago)`)) { try { openEditor(normalizeTrack(saved.def)); } catch { toast('Sorry, that copy could not be opened.'); } }
+}, 1200);
 
 // ---- "Get the app": Chrome, Edge, Silk (Fire tablets) and Android offer a real install; iPhone and iPad need Share > Add to Home Screen, so the button explains that
 {

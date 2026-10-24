@@ -40,8 +40,43 @@ export class Editor {
     this._resize(); this._resizeProfile();
     this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     this._show3d(this.show3d); this.preview?.fit();
+    this._memMsg = ''; this._guard(true);
   }
-  close() { this.visible = false; this.preview?.stop(); }
+  close() { this.visible = false; this.preview?.stop(); this._guard(false); }
+
+  // ------------------------------------------------------ crash protection: a memory gauge, and a copy of the work kept every few seconds
+  /** Starts or stops the watchers while the editor is open. The copy (cr.autosave) is wiped on a clean close or a save, so it only survives a crash. */
+  _guard(on) {
+    clearInterval(this._guardT); this._guardT = 0;
+    if (!on) { try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ } return; }
+    this._lastSaved = JSON.stringify(this.def);
+    const tick = () => { this._autosave(); this._memory(); };
+    this._guardT = setInterval(tick, 4000); tick();
+  }
+  _autosave() {
+    if (!this.visible || !this.def) return;
+    const now = JSON.stringify(this.def);
+    if (now === this._lastSaved) return;                                         // nothing new since the last save
+    try { localStorage.setItem('cr.autosave', JSON.stringify({ t: Date.now(), def: this.def })); } catch { /* full or blocked */ }
+  }
+  /** Called after a Save: the work is safe in the track list, so the copy is not needed until the next change. */
+  markSaved() { this._lastSaved = JSON.stringify(this.def); try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ } }
+  _memory() {
+    const box = $('ed-mem'); if (!box) return;
+    const m = performance && performance.memory, val = box.querySelector('.mem-val'), bar = box.querySelector('.mem-bar i'), note = box.querySelector('.mem-note');
+    let pct = -1, msg = '';
+    if (m && m.jsHeapSizeLimit) {
+      const used = m.usedJSHeapSize / 1048576, max = m.jsHeapSizeLimit / 1048576; pct = used / max;
+      val.textContent = `${Math.round(used)} of ${Math.round(max)} MB`; bar.style.width = Math.min(100, pct * 100).toFixed(0) + '%';
+      if (pct >= 0.88 && this.show3d) { this._show3d(false); msg = 'Nearly out of memory: the 3D view has been switched off. Save your track now.'; this._memMsg = msg; }
+      else if (pct >= 0.88) msg = 'Nearly out of memory! Save your track now, then close other tabs.';
+      else if (pct >= 0.7) msg = 'Memory is getting full. Save your track.';
+      else msg = this._memMsg && !this.show3d ? '3D view is off to save memory.' : '';
+    } else {
+      val.textContent = 'not shown here'; bar.style.width = '0'; msg = 'This browser does not report memory. Save often: your work is also copied automatically every few seconds.';
+    }
+    note.textContent = msg; box.className = pct >= 0.88 ? 'crit' : pct >= 0.7 ? 'warn' : '';
+  }
   _show3d(on) {
     this.show3d = on; try { localStorage.setItem('cr.ed3d', on ? '1' : '0'); } catch { /* blocked */ }
     $('ed-3d').hidden = !on || !this.preview; $('ed-3d-toggle').setAttribute('aria-pressed', String(on));

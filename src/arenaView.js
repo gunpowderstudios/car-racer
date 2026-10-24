@@ -1,9 +1,9 @@
-// Draws The Oval's open arena: a dirt floor, a crash wall and floodlights.
+// Draws the Deep Pan Pizza's open arena (a round floor): a dirt floor, a crash wall and floodlights.
 // The shape comes from arena.js, the same numbers the physics uses, so the wall you see is the wall you hit.
 import * as THREE from 'three';
 import { arenaInfo, arenaOutline } from './arena.js';
-import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt } from './track.js';
-import { dirtTexture, barrierTexture, kerbTexture } from './textures.js';
+import { WALL_GAP, WALL_T, WALL_HEIGHT, bumpAt, puddleShape, puddleEdge } from './track.js';
+import { dirtTexture, barrierTexture } from './textures.js';
 
 const N = 96;              // points round the outline
 const APRON_W = 2.4;
@@ -36,7 +36,7 @@ export function buildArena(track, aniso = 8) {
   const rFloor = A.hw + WALL_GAP + WALL_T;
   const shape = new THREE.Shape(outline(rFloor).map((p) => new THREE.Vector2(p.x, -p.z)));
   const dirt = dirtTexture(aniso); dirt.repeat.set(1 / 24, 1 / 24);
-  const floor = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), std({ map: dirt, roughness: 1 }));
+  const floor = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), std({ map: dirt, color: 0xd2704c, roughness: 1 }));      // (tomato and sausage: the low ground is a red-brown)
   floor.position.y = y0; floor.receiveShadow = true; floor.frustumCulled = false;
   g.add(floor);
 
@@ -44,7 +44,7 @@ export function buildArena(track, aniso = 8) {
   const bumps = track.bumps || [];
   if (bumps.length) {
     const bd = dirtTexture(aniso); bd.repeat.set(1 / 24, 1 / 24);
-    const bumpMat = std({ map: bd, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const bumpMat = std({ map: bd, color: 0x62c24a, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     const RINGS = 14, SEG = 36, tmp = { h: 0, gx: 0, gz: 0 };
     for (const b of bumps) {
       const pos = [0, y0 + b.h, 0], idx = [];
@@ -67,9 +67,22 @@ export function buildArena(track, aniso = 8) {
     }
   }
 
-  // ---- the standard red and white kerb stripe along the foot of the wall, as on the other roads
-  const kerb = kerbTexture(aniso);
-  ribbon(A.hw - 1.6, y0 + 0.03, A.hw, y0 + 0.03, std({ map: kerb, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 4, { receive: true });
+  // ---- puddles: glossy pools lying on the floor, the same lumpy outlines the physics uses
+  if (track.puddles && track.puddles.length) {
+    const wm = new THREE.MeshStandardMaterial({ color: 0x2f5c78, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    for (const p of track.puddles) {
+      const sh = puddleShape(p), pts = [];
+      for (let i = 0; i < 48; i++) {
+        const th = i / 48 * Math.PI * 2, e = puddleEdge(sh, th), u = Math.cos(th) * sh.a * e, v = Math.sin(th) * sh.b * e;
+        pts.push(new THREE.Vector2(u * sh.cos - v * sh.sin, -(u * sh.sin + v * sh.cos)));
+      }
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(pts)), wm);
+      m.rotation.x = -Math.PI / 2; m.position.set(p.x, y0 + 0.05, p.z); m.receiveShadow = false; m.frustumCulled = false; g.add(m);
+    }
+  }
+
+  // ---- the crust: a golden-brown rim round the pizza, along the foot of the wall (where the other roads have their red and white kerb)
+  ribbon(A.hw - 4.5, y0 + 0.03, A.hw, y0 + 0.03, std({ map: dirt, color: 0xe0a640, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 6, { receive: true });
 
   // ---- the crash wall: inner face, top, outer face
   const barrier = barrierTexture(aniso), concrete = cheap({ color: 0xb9b4aa });

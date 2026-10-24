@@ -293,9 +293,9 @@ test('menu vehicle selector has a rotating 3D preview and playful blurbs', () =>
 });
 
 
-test('oval template is displayed as Bed Pan', () => {
+test('oval template is displayed as Deep Pan Pizza', () => {
   const templates = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
-  assert.match(templates, /oval:\s*\{\s*name: 'Bed Pan \(Demolition Derby\)'/);
+  assert.match(templates, /oval:\s*\{\s*name: 'Deep Pan Pizza'/);
 });
 
 

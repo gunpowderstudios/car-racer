@@ -90,9 +90,9 @@ function figureEight() {
 }
 
 /** The Oval's centreline: a short, fat ellipse. With the wide 'road' round it (see arena.js) it is the middle of a big dirt bowl. */
-const OVAL_A = 78, OVAL_B = 36, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width, and full floor width
+const OVAL_A = 57, OVAL_B = 57, OVAL_FLOOR = 76;       // metres: centreline half-length / half-width (equal: the floor is a round pizza, 190 m across), and full floor width
 
-/** The Bed Pan's floor: really uneven. Lots of humps of every size, crowded so there are dips between them, and a few puddles lying in the hollows (like Bluebell Woods).
+/** The Deep Pan Pizza's floor: really uneven. Lots of humps of every size, crowded so there are dips between them, and a few puddles lying in the hollows (like Bluebell Woods).
  *  Always the same lumps. Kept off the player's start, the four respawn spots, and the ring where the rivals line up, so nobody starts on a launch ramp. */
 function ovalLumps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261023), q = Track.newQuery(), r2 = (v) => Math.round(v * 100) / 100;
@@ -311,7 +311,7 @@ const RAW = {
     autoBank: true,
   },
   oval: {
-    name: 'Bed Pan (Demolition Derby)', width: OVAL_FLOOR,
+    name: 'Deep Pan Pizza', width: OVAL_FLOOR,
     handles: ellipse(OVAL_A, OVAL_B, 20),
     autoBank: false,
     arena: true,       // an open dirt bowl for a free-for-all banger derby: barrels everywhere, last one standing wins
