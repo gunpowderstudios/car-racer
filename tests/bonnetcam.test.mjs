@@ -42,5 +42,5 @@ test('the C key cycles Chase, High, Bumper, Bonnet, Helicopter (the bonnet is sk
   assert.match(choice, /\['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter'\]/);
   assert.match(choice, /m = \(m \+ 1\) % 5/);
   assert.match(view, /const heli = this\.mode === 4/);
-  assert.match(view, /h = heli \? 42/, 'the helicopter is about 42 m up');
+  assert.match(view, /h = heli \? 28/, 'the helicopter is about 28 m up');
 });
