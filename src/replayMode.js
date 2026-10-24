@@ -15,8 +15,8 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
-  const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: 0, focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), tvset: $('rp-tvset'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
+  const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: VIEWS.indexOf('Mix'), focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
   const setVan = (v) => { const a = v.van; fakeVan.axle.x = a[0]; fakeVan.axle.y = a[1]; fakeVan.axle.z = a[2]; fakeVan.yaw = a[3]; fakeVan.pitch = a[4]; fakeVan.roll = a[5]; fakeVan.spin = a[6]; fakeVan.sway = a[7]; fakeVan.health = a[8]; return fakeVan; };
@@ -169,14 +169,16 @@ export function createReplayMode(d) {
     if (!desktop || R.saving || R.making) return;
     R.making = true;
     try {
-      if (!(tvImg && tvImg.complete && tvImg.naturalWidth)) {
+      const inTv = !el.tvset || el.tvset.checked;                             // "In a TV set" ticked: the 1970s set and logo; unticked: the plain picture
+      try { if (el.tvset) localStorage.setItem('cr.filmtv', inTv ? '1' : '0'); } catch { /* none */ }
+      if (inTv && !(tvImg && tvImg.complete && tvImg.naturalWidth)) {
         tvImg = new Image();
         await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
       }
-      if (!tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
+      if (inTv && !tvImg) { d.toast('Could not load the TV set, so no film this time'); return; }
       if (!(d.sound.ctx && (d.sound.ctx.audioWorklet || d.sound.ctx.createScriptProcessor))) { d.toast('This browser cannot record the game sound: try a recent Chrome or Edge'); return; }
       const hl = pickBestBit(R.player, 1e9); hl.cuts = null;                  // (the film uses the camera chosen on the replay screen: TV, Chase, Top or Mix)
-      startSave(tvImg, hl, null, true);
+      startSave(inTv ? tvImg : null, hl, null, true);
     } finally { R.making = false; }
   }
   function startSave(tv, hl, clip, realtime = false) {
@@ -185,10 +187,16 @@ export function createReplayMode(d) {
     R.saveStart = hl.start; R.saveEnd = hl.end; R.cuts = hl.cuts; R.quick = true;
     const filmLen = Math.max(1, R.saveEnd - R.saveStart), cv = d.canvas;
     // each video frame is made on a second canvas: the 3D picture is cropped into the TV screen, the TV set goes over it and the TV logo is stamped on
-    const out = document.createElement('canvas'); out.width = 1920; out.height = 1280;
+    const out = document.createElement('canvas'), plain = !tv; out.width = 1920; out.height = plain ? 1080 : 1280;      // (no TV set: a plain 16:9 film)
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
     R.stamp = () => {
+      if (plain) {
+        const ca = cv.width / cv.height, ta = out.width / out.height, cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;
+        octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, 0, 0, out.width, out.height);
+        if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
+        return;
+      }
       const k = out.width / TV.w, x = TV.sx * k, y = TV.sy * k, w = TV.sw * k, h = TV.sh * k, ca = cv.width / cv.height, ta = w / h;
       const cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;   // cover-crop the picture to the screen shape
       octx.fillStyle = '#000'; octx.fillRect(0, 0, out.width, out.height);
@@ -211,7 +219,7 @@ export function createReplayMode(d) {
     R.saving = { rec: pend, cancel: false }; syncUi();
     seek(R.saveStart); R.speed = 2;
     const make = () => createMp4Saver({ width: out.width, height: out.height, seconds: filmLen, sound: d.sound, prefs: globalThis.__bsEncoderPrefs, audio: realtime, music: clip, maxBitrate: out.width > 1280 ? 6e6 : 3.5e6 }).catch(() => null);
-    make().then((sv) => sv || (out.width = 1280, out.height = 854, make())).then((sv) => {      // 1920 wide if this computer's encoder can, else 1280
+    make().then((sv) => sv || (out.width = 1280, out.height = plain ? 720 : 854, make())).then((sv) => {      // 1920 wide if this computer's encoder can, else 1280
       const me = R.saving;
       if (!me || me.rec !== pend) { sv && sv.cancel(); return; }
       if (me.cancel || pend.state === 'inactive') { sv && sv.cancel(); R.stamp = null; R.saving = null; syncUi(); return; }      // cancelled while the encoder was starting
@@ -267,6 +275,7 @@ export function createReplayMode(d) {
     let saved = null; try { saved = localStorage.getItem('cr.filmtrack'); } catch { /* none */ }
     el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? d.sound.track : 'off');
     el.track.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
+    if (el.tvset) { try { el.tvset.checked = localStorage.getItem('cr.filmtv') !== '0'; } catch { /* none */ } }
     if (el.fx) { try { el.fx.checked = localStorage.getItem('cr.filmfx') !== '0'; } catch { /* none */ } el.fx.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmfx', el.fx.checked ? '1' : '0'); } catch { /* storage unavailable */ } el.fx.blur(); }; }
   }
   el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };
@@ -302,7 +311,7 @@ export function createReplayMode(d) {
     const tr = d.getTrack();
     R.cams = new ReplayCams(tr, d.derby.lastStanding ? d.arenaInfo(tr) : null);
     R.savedMode = d.chase.mode; R.savedFov = d.camera.fov;
-    R.t = R.player.t0; R.evT = R.t; R.playing = true; R.speed = 2; R.view = 0; R.focusId = 'p'; R.lastFocus = null; R.seen.clear();
+    R.t = R.player.t0; R.evT = R.t; R.playing = true; R.speed = 2; R.view = VIEWS.indexOf('Mix'); R.focusId = 'p'; R.lastFocus = null; R.seen.clear();
     d.setMode('replay'); applyReplaySound();
     { const v = $('re-vid'); if (v && !v.getAttribute('src') && v.dataset.src) { v.preload = 'auto'; v.src = v.dataset.src; } new Image().src = 'tv/tv-frame.webp'; }      // (warm the editing room up while the replay plays, so it is ready the moment a movie is made)
     R.active = true; R.opening = true; setTimeout(() => { R.opening = false; }, 0);          // (the key press that opened the replay is still being handled: it must not also close it)

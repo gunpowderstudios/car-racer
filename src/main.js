@@ -330,7 +330,7 @@ function loadTrack(newDef) {
   stage.setTrack(track);
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
-  props.load(track, def.props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 3 : 1); propsView.build(props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza');      // (the pizza's drums are green, like peppers)
+  props.load(track, def.props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 3 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 2 : 1); propsView.build(props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza');      // (the pizza's drums are green, like peppers)
   race.best = store.get('cr.best', {})[bestKey(track)] ?? null;
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);

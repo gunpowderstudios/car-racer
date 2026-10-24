@@ -185,11 +185,11 @@ test('TV set option: asset ships, button exists, save uses the frame', async () 
   assert.match(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), /id="rp-save"/);
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   assert.match(src, /tv\/tv-frame\.webp/);
-  assert.match(src, /pickBestBit\(R\.player, 1e9\)[^]*?startSave\(tvImg, hl/);
+  assert.match(src, /pickBestBit\(R\.player, 1e9\)[^]*?startSave\(inTv \? tvImg : null, hl/);
 });
 
 
-test('Make my movie: one tap, TV set always, music only if it is on, fast, desktop only', async () => {
+test('Make my movie: one tap, TV set by default (and a tick box for it), music only if it is on, fast, desktop only', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   const mp4 = readFileSync(new URL('../src/mp4Save.js', import.meta.url), 'utf8');
@@ -198,7 +198,7 @@ test('Make my movie: one tap, TV set always, music only if it is on, fast, deskt
   assert.ok(!html.includes('id="film"') && !html.includes('rp-film-edit'));
   assert.match(src, /el\.save\.onclick = \(\) => \{ if \(R\.saving\) stopSave\(false\); else makeFilm\(\); \}/);
   assert.match(src, /d\.sound\.musicOn && d\.sound\.buf && d\.sound\.buf\.music/);
-  assert.match(src, /pickBestBit\(R\.player, 1e9\)[^]*?startSave\(tvImg, hl/); assert.match(src, /audio: realtime, music: clip/);
+  assert.match(src, /pickBestBit\(R\.player, 1e9\)[^]*?startSave\(inTv \? tvImg : null, hl/); assert.match(src, /audio: realtime, music: clip/);
   assert.match(src, /if \(!desktop\) el\.save\.hidden = true/);
   assert.match(mp4, /lay the sound track/);
   assert.doesNotMatch(src, /Highlights|highlights|MediaRecorder/);

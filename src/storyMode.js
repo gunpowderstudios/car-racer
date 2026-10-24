@@ -61,7 +61,8 @@ const rivalsAlive = () => state.alive.filter((id) => id !== 'you');
 
 function applyStage(i) {
   const app = window.__app, s = stageDef(i), rv = rivalsAlive();
-  app.opts.mode = 'race'; app.opts.rivals = Math.max(1, rv.length);
+  if (app.opts.mode !== 'jamboree') app.opts.mode = 'race';            // (Wacky Racing, chosen in the options, stays: every rival a different vehicle)
+  app.opts.rivals = Math.max(1, rv.length);
   window.__raceLaps?.set?.(lapsFor(i));
   app.derby.skill = s.skill;
   app.derby.slotSkill = {};                                             // grid slot n is the nth surviving rival

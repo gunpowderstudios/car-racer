@@ -59,12 +59,18 @@ export function buildArena(track, aniso = 8) {
   }
   for (const b of bumps) {
     const [X, Z] = px(b.x, b.z), r = b.r * k;
+    const halo = c.createRadialGradient(X, Z, r * 0.8, X, Z, r * 1.35);                        // a soft shadow in the sauce round every olive and dip, so the ground looks like it rises and falls
+    halo.addColorStop(0, 'rgba(40,0,0,0.55)'); halo.addColorStop(1, 'rgba(40,0,0,0)');
+    c.fillStyle = halo; c.beginPath(); c.arc(X, Z, r * 1.35, 0, Math.PI * 2); c.fill();
     if (b.h > 0) {                                                                             // olive: black ring, dark grey middle, white shine
       c.fillStyle = '#1f1e1c'; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#403c35'; c.beginPath(); c.arc(X, Z, r * 0.7, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(X + r * 0.32, Z - r * 0.36, r * 0.17, r * 0.12, -0.5, 0, Math.PI * 2); c.fill();
     } else {                                                                                   // cheese: yellow, a pale patch low on the left, shine marks on the left and upper right
-      c.fillStyle = '#f8d762'; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      const deep = c.createRadialGradient(X, Z, 0, X, Z, r);                                 // cheese: pale at the lip, getting darker and more orange to the bottom of the dip
+      deep.addColorStop(0, '#8a5612'); deep.addColorStop(0.45, '#b9822a'); deep.addColorStop(0.8, '#e2b844'); deep.addColorStop(1, '#f8d762');
+      c.fillStyle = deep; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(70,35,0,0.5)'; c.lineWidth = Math.max(2, r * 0.1); c.beginPath(); c.arc(X, Z, r * 0.96, 0, Math.PI * 2); c.stroke();      // dark lip where the wall of the dip casts shade
       c.fillStyle = '#e7d07c'; c.beginPath(); c.ellipse(X - r * 0.1, Z + r * 0.62, r * 0.28, r * 0.17, -0.2, 0, Math.PI * 2); c.fill();
       c.strokeStyle = '#fff6d0'; c.lineWidth = Math.max(1.5, r * 0.07); c.lineCap = 'round';
       c.beginPath(); c.arc(X, Z, r * 0.82, Math.PI * 0.82, Math.PI * 1.12); c.stroke();
