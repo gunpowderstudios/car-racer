@@ -5,7 +5,8 @@ let panel = null, timer = 0, samples = [];
 const CSS = `#hw-test{position:fixed;right:10px;bottom:10px;z-index:10050;width:min(340px,calc(100vw - 20px));box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(18,16,28,.94);color:#f4efe4;font:13px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.18)}
 #hw-test h3{margin:0 0 6px;font-size:16px}#hw-test .hw-verdict{font-weight:700;margin:6px 0 8px}#hw-test .ok{color:#8fe388}#hw-test .meh{color:#ffd166}#hw-test .bad{color:#ff7a6b}
 #hw-test table{border-collapse:collapse;width:100%}#hw-test td{padding:1px 0;vertical-align:top}#hw-test td:first-child{opacity:.7;padding-right:10px;white-space:nowrap}
-#hw-test .hw-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}#hw-test .hw-note{opacity:.7;font-size:12px;margin:8px 0 0}`;
+#hw-test .hw-now{margin:2px 0 8px;padding:6px 8px;border-radius:8px;background:rgba(80,200,90,.16);border:1px solid rgba(120,230,120,.55);color:#b8f5b0;font-weight:700}#hw-test .hw-lbl{margin:10px 0 4px;opacity:.75;font-size:12px}
+#hw-test .hw-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}#hw-test .hw-btns button{padding:6px 8px;border-radius:8px;border:1px solid transparent;font:inherit;font-weight:700;cursor:pointer;background:#f3c64b;color:#2a1d4a}#hw-test .hw-btns button small{display:block;font-weight:400;opacity:.8}#hw-test .hw-btns button.cur{background:#4cbf5a;color:#0c2a10;cursor:default}#hw-test .hw-btns button.cls{grid-column:1/-1;background:transparent;color:#f4efe4;border-color:rgba(255,255,255,.3)}#hw-test .hw-note{opacity:.7;font-size:12px;margin:8px 0 0}`;
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
@@ -24,15 +25,17 @@ export function openHardwareTest(getStats, setQuality) {
   if (panel) { closeHardwareTest(); return; }
   if (!document.getElementById('hw-test-css')) { const st = document.createElement('style'); st.id = 'hw-test-css'; st.textContent = CSS; document.head.appendChild(st); }
   panel = document.createElement('div'); panel.id = 'hw-test'; panel.setAttribute('role', 'status');
+  panel.innerHTML = '<h3>Test my hardware</h3><div class="hw-live"></div><div class="hw-ctl"></div>';
   document.body.appendChild(panel); samples = [];
+  const live = panel.querySelector('.hw-live'), ctl = panel.querySelector('.hw-ctl'); let built = false;
   const draw = () => {
     if (!panel) return;
     const s = getStats(); if (s.fps > 0) samples.push(s.fps); if (samples.length > 20) samples.shift();
     const avg = samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : 0, low = samples.length ? Math.min(...samples) : 0, v = verdict(avg, low);
     const row = (k, val) => `<tr><td>${k}</td><td>${esc(val)}</td></tr>`;
-    panel.innerHTML = `<h3>Test my hardware</h3><div class="hw-verdict ${v.cls}">${esc(v.text)}</div><table>` +
+    const setting = ['low', 'medium', 'high'].includes(s.quality) ? s.quality : 'auto', auto = setting === 'auto', tn = s.tier[0].toUpperCase() + s.tier.slice(1);
+    live.innerHTML = `<div class="hw-now">Running now: ${esc(tn)} graphics (${auto ? 'chosen automatically' : 'chosen by you'})</div><div class="hw-verdict ${v.cls}">${esc(v.text)}</div><table>` +
       row('Speed', `${s.fps.toFixed(0)} fps now, ${avg.toFixed(0)} average, ${low.toFixed(0)} lowest (last 10 s)`) +
-      row('Graphics', `${s.tier}${s.quality && s.quality !== 'auto' ? ' (chosen)' : ' (automatic)'}`) +
       row('Picture sharpness', `${(s.res / s.maxRes * 100).toFixed(0)}% of full (${s.res.toFixed(2)}x)`) +
       row('Physics', `${s.physicsHz} Hz`) +
       row('Shadows / mirror', `${s.shadows ? 'on' : 'off'} / ${s.mirror ? 'on' : 'off'}`) +
@@ -41,10 +44,14 @@ export function openHardwareTest(getStats, setQuality) {
       row('Models / textures', `${s.geo} / ${s.tex}`) +
       row('Graphics chip', s.gpu || 'unknown') +
       row('Processor / memory', `${s.cores || '?'} cores${s.memory ? `, ${s.memory}+ GB` : ''}`) +
-      row('Screen', s.screen) +
-      `</table><div class="hw-btns"><button type="button" class="btn" data-q="low">Use Low graphics</button><button type="button" class="btn ghost" data-q="auto">Automatic</button><button type="button" class="btn ghost" data-q="close">Close</button></div>` +
-      `<p class="hw-note">Keep this open while you drive for real numbers. Same figures as adding ?perf to the web address.</p>`;
-    panel.querySelectorAll('button').forEach((b) => { b.onclick = () => { if (b.dataset.q === 'close') closeHardwareTest(); else { closeHardwareTest(); setQuality(b.dataset.q); } }; });
+      row('Screen', s.screen) + '</table>';
+    if (built) return;                                                           // the buttons are made once: rebuilding them twice a second could swallow a click
+    built = true;
+    const choice = (q, label, note) => `<button type="button" data-q="${q}" class="${q === setting ? 'cur' : ''}" ${q === setting ? 'disabled' : ''}>${q === setting ? '&#10003; ' : ''}${label}<small>${note}</small></button>`;
+    ctl.innerHTML = '<div class="hw-lbl">Switch graphics (green = in use). Changing it restarts the game, because the sharpness, shadows and smoothing are set when it loads.</div><div class="hw-btns">' +
+      choice('auto', 'Automatic', auto ? `now ${tn}` : 'let the game pick') + choice('low', 'Low', 'fastest, plainest') + choice('medium', 'Medium', 'in between') + choice('high', 'High', 'best looking') +
+      '<button type="button" data-q="close" class="cls">Close</button></div><p class="hw-note">Keep this open while you drive for real numbers. Same figures as adding ?perf to the web address.</p>';
+    ctl.querySelectorAll('button:not([disabled])').forEach((b) => { b.onclick = () => { if (b.dataset.q === 'close') closeHardwareTest(); else { closeHardwareTest(); setQuality(b.dataset.q); } }; });
   };
   draw(); timer = setInterval(draw, 500);
 }
