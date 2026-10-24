@@ -306,14 +306,11 @@ function thinScatter(def) {
 
 /** Roll out the barrels: a flat stadium oval (long straights, round ends) with one massive jump in the middle of each straight. */
 function barrelRunHandles() {
-  const L = 270, Rr = 125, out = [], P = (x, z, extra) => out.push({ x, y: 0.65, z, ...(extra || {}) });
-  for (const x of [-L, -L / 2]) P(x, -Rr);
-  P(0, -Rr, { gap: 38, kick: 8, lip: 1.5 });                                        // the jump on the bottom straight
-  for (const x of [L / 2, L]) P(x, -Rr);
+  const L = 270, Rr = 125, out = [], P = (x, z, y = 0.65, extra) => out.push({ x, y, z, ...(extra || {}) });
+  const JUMP = { gap: 38, kick: 8, lip: 1.5 }, TOP = 20, SHOULDER = 14;                  // each jump is the crest of a long hill: 20 m up at the lip
+  P(-L, -Rr); P(-L / 2, -Rr, SHOULDER); P(0, -Rr, TOP, JUMP); P(L / 2, -Rr, SHOULDER); P(L, -Rr);
   for (const a of [-45, 0, 45]) P(L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);     // the round end
-  for (const x of [L, L / 2]) P(x, Rr);
-  P(0, Rr, { gap: 38, kick: 8, lip: 1.5 });                                        // and on the top straight
-  for (const x of [-L / 2, -L]) P(x, Rr);
+  P(L, Rr); P(L / 2, Rr, SHOULDER); P(0, Rr, TOP, JUMP); P(-L / 2, Rr, SHOULDER); P(-L, Rr);
   for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);
   return out;
 }

@@ -735,7 +735,7 @@ test('Roll out the barrels: a flat oval with a jump on each straight and rows of
   const def = makeTemplate('barrels'), track = new Track(def);
   assert.equal(def.name, 'Roll out the barrels');
   assert.equal(def.handles.filter((h) => h.gap).length, 2, 'one jump on each straight');
-  assert.ok(def.handles.every((h) => h.y < 2), 'flat');
+  assert.ok(def.handles.filter((h) => h.gap).every((h) => h.y === 20), "the jumps are 20 m up");
   const n = def.props.filter((p) => p.type === 'barrel').length;
   assert.ok(n >= 60 && n <= 200, 'full of barrels: ' + n);
   const q = Track.newQuery();
