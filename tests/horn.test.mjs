@@ -56,9 +56,9 @@ test('video is stamped with the replay clock, with the replay held when the enco
 });
 test('the site is ready for bangersandsmash.co.uk', () => {
   const h = f('index.html');
-  assert.equal(f('CNAME').trim(), 'bangersandsmash.co.uk');
-  assert.match(h, /rel="canonical" href="https:\/\/bangersandsmash\.co\.uk\/"/);
-  assert.match(h, /og:image" content="https:\/\/bangersandsmash\.co\.uk\/src\/share-card\.png"/);
+  assert.equal(f('CNAME').trim(), 'www.bangersandsmash.co.uk');
+  assert.match(h, /rel="canonical" href="https:\/\/www\.bangersandsmash\.co\.uk\/"/);
+  assert.match(h, /og:image" content="https:\/\/www\.bangersandsmash\.co\.uk\/src\/share-card\.png"/);
   assert.match(f('sitemap.xml'), /<loc>https:\/\/bangersandsmash\.co\.uk\/<\/loc>/);
   assert.match(f('robots.txt'), /Sitemap: https:\/\/bangersandsmash\.co\.uk\/sitemap\.xml/);
   assert.doesNotMatch(f('site.webmanifest'), /\/car-racer\//);
