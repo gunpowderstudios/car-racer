@@ -75,3 +75,9 @@ test('saving a video shows the dark editing-room screen and silences the speaker
   assert.match(f("src/replayMode.js"), /d\.sound\.speakers\?\.\(!quick\)/);
   assert.match(f('src/audio.js'), /speakers\(on\)/);
 });
+test('Best quality movies get a much higher bitrate than the WhatsApp size', async () => {
+  const { videoBitrate, BIG_BYTES, WHATSAPP_BYTES } = await import('../src/mp4Save.js');
+  assert.ok(videoBitrate(65, 10e6, BIG_BYTES) >= 8e6, 'a minute of 1080p gets at least 8 Mbps');
+  assert.ok(videoBitrate(65, 10e6, WHATSAPP_BYTES) < 2e6, 'the old small-file budget');
+  assert.ok((videoBitrate(240, 10e6, BIG_BYTES) + 128000) * 240 / 8 <= BIG_BYTES * 1.001, 'a long film still stays under the budget');
+});

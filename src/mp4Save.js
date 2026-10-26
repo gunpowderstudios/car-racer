@@ -5,14 +5,15 @@ import { Muxer, ArrayBufferTarget } from './vendor/mp4-muxer.mjs';
 const FPS = 30;
 export const WHATSAPP_BYTES = 14e6;                                   // WhatsApp sends video up to about 16 MB as a video: aim a little under
 /** Video bits per second that keep a replay of `seconds` under ~14 MB with 128 kbps sound (never above 3.5 Mbps, never below 1 Mbps). */
-export function videoBitrate(seconds, cap = 3.5e6) {
-  const total = (WHATSAPP_BYTES * 8) / Math.max(5, seconds) - 128000;
+export const BIG_BYTES = 100e6;                                       // the 'Best quality' size budget: a long film still stays under about 100 MB
+export function videoBitrate(seconds, cap = 3.5e6, budget = WHATSAPP_BYTES) {
+  const total = (budget * 8) / Math.max(5, seconds) - 128000;
   return Math.round(Math.min(cap, Math.max(1e6, total)));
 }
 const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
 
 /** Returns a saver, or null when this browser cannot encode (the caller then uses MediaRecorder). `prefs` lets a test pick other codecs. */
-export async function createMp4Saver({ width, height, seconds, sound, prefs = {}, audio = true, music = null, maxBitrate = 3.5e6 }) {
+export async function createMp4Saver({ width, height, seconds, sound, prefs = {}, audio = true, music = null, maxBitrate = 3.5e6, budget = WHATSAPP_BYTES }) {
   const G = globalThis;
   if (!G.VideoEncoder || !G.VideoFrame) return null;
   const withAudio = audio || !!music, capture = audio && !music;                  // (music: a finished sound track is laid on afterwards, so nothing is recorded as it plays - that is what makes a quick film quick)
@@ -21,7 +22,7 @@ export async function createMp4Saver({ width, height, seconds, sound, prefs = {}
   if (capture && sound.prepareCapture) await sound.prepareCapture();             // (the sound recorder is loaded before the film starts, so no sound is missed)
   width = even(width); height = even(height);
   const vcodec = prefs.video || 'avc1.640033', acodec = prefs.audio || 'mp4a.40.2', mv = prefs.mux?.video || 'avc', ma = prefs.mux?.audio || 'aac';
-  const bitrate = videoBitrate(seconds, maxBitrate);
+  const bitrate = videoBitrate(seconds, maxBitrate, budget);
   const vcfg = { codec: vcodec, width, height, bitrate, framerate: FPS, latencyMode: 'realtime' };
   const rate = sound && sound.ctx ? sound.ctx.sampleRate : 48000;
   const acfg = { codec: acodec, sampleRate: rate, numberOfChannels: 2, bitrate: 128000 };
