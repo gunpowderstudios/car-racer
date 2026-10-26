@@ -78,3 +78,29 @@ test('reset puts everything back: health, wreck state, timers', () => {
   assert.equal(l.invulnerable(0), false);
   assert.equal(l.respawnDue(1e9), false);
 });
+
+test('in a derby arena a wrecked driver is out for good: no respawn', async () => {
+  const { Life } = await import('../src/mplife.js');
+  const l = new Life(); l.elimination = true;
+  assert.equal(l.damage(1, 10), 'died'); assert.equal(l.out, true);
+  assert.equal(l.respawnDue(1000), false, 'never comes back');
+  l.reset(); assert.equal(l.out, false, 'a new game starts everyone in');
+  const r = new Life(); assert.equal(r.damage(1, 10), 'died'); assert.equal(r.out, false); assert.equal(r.respawnDue(14), true, 'a race still respawns');
+});
+
+test('derby podium order: the last one standing first, then the others newest-knocked-out first', async () => {
+  const { derbyOrder } = await import('../src/mplife.js');
+  assert.deepEqual(derbyOrder(['a', 'b', 'c', 'd'], ['c', 'a', 'd']), ['b', 'd', 'a', 'c']);
+  assert.deepEqual(derbyOrder(['a', 'b'], []), ['a', 'b']);
+});
+
+test('derby multiplayer wiring: no wrong way in an arena, the host ends the match, wrecked players spectate', async () => {
+  const { readFileSync } = await import('node:fs');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /const lapped = !derby\.lastStanding && track\.def\.mode !== 'lastStanding'/);
+  assert.match(main, /life\.elimination = track\.def\.mode === 'lastStanding'/);
+  assert.match(main, /out: life\.out, alive:/);
+  assert.match(main, /const spec = net && life\.out \? mpSpecStep\(0\) : null/);
+  const pod = readFileSync(new URL('../src/podium.js', import.meta.url), 'utf8');
+  assert.match(pod, /is the last one standing/);
+});

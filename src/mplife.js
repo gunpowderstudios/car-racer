@@ -14,11 +14,12 @@ export function getCurrentLife() { return currentLife; }
 export class Life {
   constructor() {
     currentLife = this;
+    this.elimination = false;      // an arena derby: a wrecked car is OUT for good, never comes back, and its driver watches the rest battle it out
     this.reset();
   }
 
   /** Full health, not wrecked, no timers running. */
-  reset() { this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = 0; }
+  reset() { this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = 0; this.out = false; }
 
   get dead() { return this.health <= 0; }
 
@@ -34,7 +35,8 @@ export class Life {
     if (this.dead || this.invulnerable(t) || !(amount > 0)) return null;
     this.health = Math.max(0, this.health - amount);
     if (this.health > 0) return 'hurt';
-    this.exploded = true; this.respawnAt = t + LIFE.respawnDelay;
+    this.exploded = true;
+    if (this.elimination) { this.out = true; this.respawnAt = Infinity; } else this.respawnAt = t + LIFE.respawnDelay;
     return 'died';
   }
 
@@ -45,4 +47,10 @@ export class Life {
     this.health = 1; this.exploded = false; this.respawnAt = Infinity; this.graceUntil = t + LIFE.grace;
     return true;
   }
+}
+
+/** The podium order for a derby: those still in first, then the knocked-out ones, the most recent first. `out` is the order they went out. */
+export function derbyOrder(ids, out) {
+  const alive = ids.filter((id) => !out.includes(id)), gone = ids.filter((id) => out.includes(id)).sort((a, b) => out.indexOf(b) - out.indexOf(a));
+  return [...alive, ...gone];
 }

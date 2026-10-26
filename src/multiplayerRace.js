@@ -1,6 +1,7 @@
 // Multiplayer race layer: configurable finishing order and live race position.
 // Multiplayer remains a banger/destruction race: cars can ram, take damage, wreck and respawn.
 import { Multiplayer, getCurrentMultiplayer } from './multiplayer.js';
+import { derbyOrder } from './mplife.js';
 
 const patched = Symbol('multiplayerRacePatched');
 const clampLaps = (v) => Math.max(1, Math.min(3, Math.round(+v || 1)));
@@ -67,16 +68,18 @@ function recordFinishAsHost(net, id) {
 }
 
 /** The finishing order as the host sees it: who finished, in order, then the rest by how far they got. */
-function sendPodium(net) {
+function sendPodium(net, derbyOrder = null) {
   if (!net.isHost || net._podiumSent) return;
   net._podiumSent = true;
   const order = [...net.players.values()].map((p) => {
     const st = net._raceStates.get(p.id), place = net._raceFinishPlaces.get(p.id) || null;
     return { id: p.id, name: p.name, hue: p.hue, vehicleId: p.vehicleId || 'car', place, progress: Number.isFinite(st?.raceProgress) ? st.raceProgress : -Infinity };
   }).sort((a, b) => (a.place && b.place ? a.place - b.place : a.place ? -1 : b.place ? 1 : b.progress - a.progress));
+  if (derbyOrder) order.sort((a, b) => derbyOrder.indexOf(a.id) - derbyOrder.indexOf(b.id));           // a derby: the last one standing first, then the others in the reverse of the order they were knocked out
   const list = order.map(({ id, name, hue, vehicleId }) => ({ id, name, hue, vehicleId }));
-  net._sendAll({ t: 'race-podium', list });
-  window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: net.selfId } }));
+  const derby = !!derbyOrder;
+  net._sendAll({ t: 'race-podium', list, derby });
+  window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: net.selfId, derby } }));
 }
 
 const originalSendState = Multiplayer.prototype.sendState;
@@ -117,7 +120,7 @@ Multiplayer.prototype.joinRoom = async function raceJoinRoom(code, name) {
         window.__raceLaps?.set?.(this._raceLaps);
       } else if (msg?.t === 'state' && msg.id && msg.s) this._raceStates.set(msg.id, msg.s);
       else if (msg?.t === 'race-finish-result' && msg.id && Number.isInteger(msg.place)) emitFinish(this, msg);
-      else if (msg?.t === 'race-podium' && Array.isArray(msg.list)) window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { selfId: this.selfId, list: msg.list.slice(0, 12).map((p) => ({ id: String(p.id), name: String(p.name || 'Driver').slice(0, 24), hue: Number.isInteger(p.hue) ? p.hue : 0, vehicleId: String(p.vehicleId || 'car').slice(0, 24) })) } }));
+      else if (msg?.t === 'race-podium' && Array.isArray(msg.list)) window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { derby: !!msg.derby, selfId: this.selfId, list: msg.list.slice(0, 12).map((p) => ({ id: String(p.id), name: String(p.name || 'Driver').slice(0, 24), hue: Number.isInteger(p.hue) ? p.hue : 0, vehicleId: String(p.vehicleId || 'car').slice(0, 24) })) } }));
       else if (msg?.t === 'left' && msg.id) {
         this._raceStates.delete(msg.id);
         this._raceFinishPlaces.delete(msg.id);
@@ -144,6 +147,7 @@ Multiplayer.prototype.startGame = function raceStartGame(trackDef) {
   this._raceFinishPlaces.clear();
   this._raceFinishReported = false;
   this._podiumSent = false; clearTimeout(this._podiumTimer);
+  this._outOrder = []; this._derbyStart = this.players.size; clearTimeout(this._derbyEndTimer); this._derbyEndTimer = 0;
   return originalStartGame.call(this, trackDef);
 };
 
@@ -222,7 +226,7 @@ function updateRaceHud() {
   const { row, value } = ensurePositionRow();
   if (!row || !value) return;
 
-  if (!net || !document.body.classList.contains('mode-drive')) {
+  if (!net || !document.body.classList.contains('mode-drive') || window.__game?.arena) {      // (no race position in a derby arena)
     row.hidden = true;
     currentSession = null;
     return;
@@ -263,3 +267,18 @@ if (!window[patched]) {
   else installHud();
   requestAnimationFrame(updateRaceHud);
 }
+
+// ---- a destruction derby (an arena track): the host watches who is knocked out. When one driver is left standing the podium comes up on every screen:
+//      the survivor first, then the others in the reverse of the order they went out. (A driver who leaves counts as out.)
+setInterval(() => {
+  const net = getCurrentMultiplayer();
+  if (!net || !net.isHost || !net.started || net._podiumSent || !window.__game?.arena) return;
+  ensureRaceData(net);
+  net._outOrder = net._outOrder || [];
+  const ids = [...net.players.keys()];
+  for (const id of ids) if (net._raceStates.get(id)?.out && !net._outOrder.includes(id)) net._outOrder.push(id);
+  const left = ids.filter((id) => !net._outOrder.includes(id));
+  if ((net._derbyStart || 0) >= 2 && left.length <= 1 && !net._derbyEndTimer) {
+    net._derbyEndTimer = setTimeout(() => { net._derbyEndTimer = 0; sendPodium(net, derbyOrder(ids, net._outOrder)); }, 2500);      // a beat to watch the last wreck
+  }
+}, 400);

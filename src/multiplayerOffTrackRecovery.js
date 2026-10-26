@@ -89,6 +89,7 @@ export function updateMultiplayerOffTrack(outgoingState) {
   if (typeof window === 'undefined') return outgoingState;
   const game = window.__game;
   if (!game?.track || !game.car || !game.derby) return outgoingState;
+  if (getCurrentLife()?.out) return outgoingState;                       // knocked out of a derby: no cinematic reset, no coming back
 
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const dt = state.lastFrame ? Math.min(0.05, Math.max(0, (now - state.lastFrame) / 1000)) : 0;

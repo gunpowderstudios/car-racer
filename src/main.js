@@ -225,7 +225,7 @@ const input = new Input({
   onReset: () => mode === 'drive' && backOnRoad(),
   onRestart: () => mode === 'drive' && restartRace(),
   onPadConnect: () => mode === 'drive' && hud.banner('Controller connected', 1600),
-  onCamera: () => mode === 'drive' && hud.banner(chase.cycle() + ' camera', 900),
+  onCamera: () => mode === 'drive' && cameraKey(),
   onPause: () => togglePause(),
   onBoom: () => selfDestruct(),
   onReplay: () => startReplay(),
@@ -311,7 +311,7 @@ syncSoundUI();
 // ------------------------------------------------------- on-screen controls bar
 const controlActions = {
   restart: () => restartRace(), reset: () => backOnRoad(),
-  camera: () => hud.banner(chase.cycle() + ' camera', 900),
+  camera: () => cameraKey(),
   mirror: () => toggleMirror(),
   edit: () => openEditor(def), menu: () => showMenu(),
   share: () => shareRace(), pause: () => togglePause(), boom: () => selfDestruct(), replay: () => startReplay(),
@@ -338,7 +338,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, get arena() { return track?.def?.mode === 'lastStanding'; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -424,7 +424,7 @@ function syncPose() {
 // ---------------------------------------------------------------- lap logic
 function updateRace(dt) {
   const L = track.length, s = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
-  const lapped = !derby.lastStanding;                         // an arena has no laps and no wrong way
+  const lapped = !derby.lastStanding && track.def.mode !== 'lastStanding';      // an arena has no laps and no wrong way (in multiplayer too, where the derby itself is switched off)
   if (lapped && race.lastS != null) {
     let d = s - race.lastS; if (d < -L / 2) d += L; if (d > L / 2) d -= L;
     if (Math.abs(d) < 60) {
@@ -942,7 +942,10 @@ function frame(now) {
     velV.set(car.vel.x, car.vel.y, car.vel.z);
     chase.bonnet = visual.loaded ? visual.bonnetCam : null;
     chase.boosting = car.boosting; chase.towLen = car.tow ? car.tow.spec.length : 0;
-    chase.update(dt, drawPos, drawQ, velV, track);
+    const spec = net && life.out ? mpSpecStep(0) : null;                                        // knocked out of a derby: the camera follows a player who is still in
+    if (spec) { mpSpecP.copy(spec.view.root.position); mpSpecQ.copy(spec.view.root.quaternion); mpSpecV.set(+spec.cur.vx || 0, +spec.cur.vy || 0, +spec.cur.vz || 0); chase.update(dt, mpSpecP, mpSpecQ, mpSpecV, track); }
+    else chase.update(dt, drawPos, drawQ, velV, track);
+    mpSpecLabel(spec);
     if (!paused) effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
@@ -965,7 +968,7 @@ function frame(now) {
       net.sendState({ x: car.pos.x, y: car.pos.y, z: car.pos.z, qx: car.rot.x, qy: car.rot.y, qz: car.rot.z, qw: car.rot.w,
         vx: car.vel.x, vy: car.vel.y, vz: car.vel.z, steer: car.steerAngle, health: life.health, ts: performance.now(),
         van: car.tow ? mpVanState(car.tow) : null,
-        alive: !(derby.enabled && derby.player && derby.player.wrecked) && !life.dead });
+        out: life.out, alive: !(derby.enabled && derby.player && derby.player.wrecked) && !life.dead });
       mpSyncRemote();
     }
   } else {
@@ -1305,6 +1308,27 @@ function bindMenu() {
 }
 
 // -------------------------------------------------------------- multiplayer
+// Spectating: a driver knocked out of a derby follows the players still in it. C (or the camera button) moves on to the next one.
+let mpSpecId = null;
+const mpSpecP = new THREE.Vector3(), mpSpecQ = new THREE.Quaternion(), mpSpecV = new THREE.Vector3();
+function mpSpectatables() { const out = []; for (const [id, p] of remotePlayers) if (p.view && p.cur && !p.cur.out && p.cur.alive !== false && (p.cur.health ?? 1) > 0) out.push([id, p]); return out; }
+/** The player being watched (dir 1 = the next one); null when nobody is left to watch. */
+function mpSpecStep(dir) {
+  const list = mpSpectatables(); if (!list.length) { mpSpecId = null; return null; }
+  let i = list.findIndex(([id]) => id === mpSpecId);
+  if (dir || i < 0) i = (((i < 0 ? 0 : i + dir) % list.length) + list.length) % list.length;
+  mpSpecId = list[i][0]; return list[i][1];
+}
+function cameraKey() { if (net && life.out && mpSpectatables().length > 1) mpSpecStep(1); else hud.banner(chase.cycle() + ' camera', 900); }
+function mpSpecLabel(p) {
+  let el = $('mp-spectate');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'mp-spectate'; el.hidden = true;
+    el.style.cssText = 'position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;padding:6px 16px;border-radius:999px;background:rgba(27,18,51,.88);border:2px solid #ffb31f;color:#f6d9b0;font:700 17px "Barlow Condensed",Arial,sans-serif;letter-spacing:.04em;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+  }
+  el.hidden = !p; if (p) el.textContent = `Watching ${p.name}  \u00b7  C: next player`;
+}
 const mpLabelV = new THREE.Vector3();
 const MP_DAMAGE_HP_SCALE = 140 * TOUGHNESS * PLAYER_TOUGHNESS; // derby crash HP converted onto multiplayer's single 0..1 health bar
 const mpRaceLaps = () => Math.max(1, Math.min(3, Math.round(window.__raceLaps?.get?.() || 1)));  // host-selected multiplayer race length
@@ -1342,7 +1366,8 @@ function mpImpactFx(x, y, z, speed) {
 function mpTakeDamage(amount) {
   if (life.damage(amount, simTime) !== 'died') return false;
   mpExplodeAt(car.pos.x, car.pos.y, car.pos.z); wheelFlyers.launch(visual, car.vel);
-  hud.banner('Wrecked! Back in a moment...', LIFE.respawnDelay * 1000);
+  if (life.out) hud.banner("You're out! Watch the rest battle it out (C = next player)", 4500);
+  else hud.banner('Wrecked! Back in a moment...', LIFE.respawnDelay * 1000);
   return true;
 }
 /** A barrel has gone off on our copy of the track: tell everyone else (unless we only set it off because
@@ -1571,6 +1596,7 @@ function mpBeginDrive(trackDef) {
   life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
   startDriving(trackDef || makeTemplate('speedway'));
+  life.elimination = track.def.mode === 'lastStanding'; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out
   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
   mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
