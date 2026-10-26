@@ -223,3 +223,11 @@ test('the replay plays the Rootmaster\'s bell and the police siren, not the plai
   assert.match(audio, /vehicleId === 'bus' && this\.buf\.busBell\) \{ this\._shot\('busBell'/);
   assert.match(audio, /vehicleId === 'police' && this\.buf\.policeSiren\) \{ this\._shot\('policeSiren'/);
 });
+
+test('Film shape: a tall 9:16 option for Shorts and TikTok, plain picture with the logo, no TV set', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="rp-shape"[^]*?value="tall"/);
+  assert.match(src, /out\.width = tall \? 1080 : 1920; out\.height = tall \? 1920/);
+  assert.match(src, /const inTv = !R\.tall && /);
+});

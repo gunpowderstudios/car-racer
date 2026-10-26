@@ -17,7 +17,7 @@ test('Jamboree rivals keep the original colours of their vehicles', () => {
 });
 test('TV video is sized and compressed for social media', () => {
   const r = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.match(r, /out\.width = 1920; out\.height = plain \? 1080 : 1280/);
+  assert.match(r, /out\.width = tall \? 1080 : 1920; out\.height = tall \? 1920 : plain \? 1080 : 1280/);
   assert.match(r, /seconds: filmLen/);
 });
 import { videoBitrate, WHATSAPP_BYTES } from '../src/mp4Save.js';
