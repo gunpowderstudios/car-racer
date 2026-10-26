@@ -171,7 +171,7 @@ export function createReplayMode(d) {
     R.making = true;
     try {
       const inTv = !el.tvset || el.tvset.checked;                             // "In a TV set" ticked: the 1970s set and logo; unticked: the plain picture
-      try { if (el.tvset) localStorage.setItem('cr.filmtv', inTv ? '1' : '0'); } catch { /* none */ }
+      try { if (el.tvset) localStorage.setItem('cr.filmtvset', inTv ? '1' : '0'); } catch { /* none */ }
       if (inTv && !(tvImg && tvImg.complete && tvImg.naturalWidth)) {
         tvImg = new Image();
         await new Promise((ok) => { tvImg.onload = ok; tvImg.onerror = () => { tvImg = null; ok(); }; tvImg.src = 'tv/tv-frame.webp'; });
@@ -277,7 +277,7 @@ export function createReplayMode(d) {
     let saved = null; try { saved = localStorage.getItem('cr.filmtrack'); } catch { /* none */ }
     el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? d.sound.track : 'off');
     el.track.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
-    if (el.tvset) { try { el.tvset.checked = localStorage.getItem('cr.filmtv') !== '0'; } catch { /* none */ } }
+    if (el.tvset) { try { el.tvset.checked = localStorage.getItem('cr.filmtvset') === '1'; } catch { /* none */ } }
     if (el.fx) { try { el.fx.checked = localStorage.getItem('cr.filmfx') !== '0'; } catch { /* none */ } el.fx.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmfx', el.fx.checked ? '1' : '0'); } catch { /* storage unavailable */ } el.fx.blur(); }; }
   }
   el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };

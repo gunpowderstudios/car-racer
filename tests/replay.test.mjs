@@ -189,7 +189,7 @@ test('TV set option: asset ships, button exists, save uses the frame', async () 
 });
 
 
-test('Make my movie: one tap, TV set by default (and a tick box for it), music only if it is on, fast, desktop only', async () => {
+test('Make my movie: one tap, a tick box for the TV set, off by default, music only if it is on, fast, desktop only', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
   const mp4 = readFileSync(new URL('../src/mp4Save.js', import.meta.url), 'utf8');
