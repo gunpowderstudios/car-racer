@@ -1005,3 +1005,24 @@ body:not(.mode-menu) #gp-credit { display: none; }
   white-space: nowrap;
   opacity: .72;
 }
+
+
+.music-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.music-upload-row .music-upload { flex: 1 1 auto; min-width: 0; }
+.music-clear {
+  min-height: 34px;
+  padding: 5px 11px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.music-clear[hidden] { display: none; }

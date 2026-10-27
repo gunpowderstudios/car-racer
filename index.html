@@ -404,7 +404,7 @@ html.invite-loading #invite-loading {
         <label><input id="opt-horn" type="checkbox"> Horns</label>
         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
         <label><input id="opt-music" type="checkbox"> Music</label>
-        <label class="music-upload" for="opt-music-file"><input id="opt-music-file" type="file" accept="audio/*"> <span>Upload your own music</span><small id="custom-music-name"></small></label>
+        <div class="music-upload-row"><label class="music-upload" for="opt-music-file"><input id="opt-music-file" type="file" accept="audio/*"> <span>Upload your own music</span><small id="custom-music-name"></small></label><button id="clear-custom-music" class="music-clear" type="button" hidden>Reset</button></div>
         <label class="sel">Music tune <select id="opt-track" aria-label="Music tune"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="custom">Custom upload</option></select></label>
         <label><input id="opt-shadow" type="checkbox" checked> Shadows</label>
         <label class="sel">Graphics <select id="opt-quality" aria-label="Graphics quality"><option value="auto">Auto</option><option value="low">Low (older phones)</option><option value="medium">Medium</option><option value="high">High</option></select></label>

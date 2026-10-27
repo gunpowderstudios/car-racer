@@ -23,7 +23,7 @@ import { Props } from './props.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound } from './audio.js';
-import { saveCustomMusic, getCustomMusic } from './customMusic.js';
+import { saveCustomMusic, getCustomMusic, clearCustomMusic } from './customMusic.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
@@ -1114,12 +1114,34 @@ addEventListener('pagehide', () => { try { if (lounge && !lounge.paused) session
     menuMusic(); e.target.blur();
   }); } }
 
-  const fileInput = $('opt-music-file'), fileName = $('custom-music-name');
+  const fileInput = $('opt-music-file'), fileName = $('custom-music-name'), clearMusic = $('clear-custom-music');
   const showCustomName = async () => {
-    try { const item = await getCustomMusic(); fileName.textContent = item?.name ? item.name : ''; }
-    catch { fileName.textContent = ''; }
+    try {
+      const item = await getCustomMusic();
+      fileName.textContent = item?.name ? item.name : '';
+      if (clearMusic) clearMusic.hidden = !item?.blob;
+      return item;
+    } catch {
+      fileName.textContent = '';
+      if (clearMusic) clearMusic.hidden = true;
+      return null;
+    }
   };
   showCustomName();
+  if (clearMusic) clearMusic.addEventListener('click', async () => {
+    try {
+      await clearCustomMusic();
+      if (sound.track === 'custom') await sound.setTrack('lounge');
+      for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = sound.track === 'custom' ? 'lounge' : sound.track;
+      if (lounge) { lounge.pause(); lounge = null; }
+      await showCustomName();
+      menuMusic();
+      toast('Custom music reset');
+    } catch {
+      toast('Could not reset custom music');
+    }
+    clearMusic.blur();
+  });
   if (fileInput) fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) return;
@@ -1127,6 +1149,7 @@ addEventListener('pagehide', () => { try { if (lounge && !lounge.paused) session
     try {
       await saveCustomMusic(file);
       fileName.textContent = file.name;
+      if (clearMusic) clearMusic.hidden = false;
       await sound.setTrack('custom');
       sound.setEnabled('music', true);
       for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = 'custom';

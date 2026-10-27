@@ -30,3 +30,14 @@ export async function getCustomMusic() {
   d.close();
   return value;
 }
+
+
+export async function clearCustomMusic() {
+  const d = await db();
+  await new Promise((resolve, reject) => {
+    const tx = d.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(KEY);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+  });
+  d.close();
+}
