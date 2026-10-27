@@ -1061,7 +1061,7 @@ function setMode(m) {
   input.enabled = m === 'drive';
   menuMusic();
 }
-function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
+function showMenu() { mpTeardown(); if (appleHud) appleHud.hidden = true; setMode('menu'); renderMenu(); }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
