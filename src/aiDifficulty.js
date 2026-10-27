@@ -10,4 +10,5 @@ AI.aLatCruise = 11.25;
 AI.aLatHunt = 13.4;
 AI.catchupStart = 20;
 AI.catchupFull = 165;
-AI.catchupSpeed = 0.28; // stronger only while genuinely behind; still driven through normal car physics
+AI.catchupSpeed = 0.36; // stronger only while genuinely behind; still driven through normal car physics
+AI.raceMax = 74;          // allow a fast player to pull the field up to arcade-racing speeds

@@ -419,6 +419,7 @@ export class Derby {
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
     const baseSkill = this.brutal ? 1 : this.skill; ctx.skill = baseSkill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
+    ctx.racePace = !this.demolition;                         // race AI may pace itself against the player; demolition keeps natural vehicle performance
     for (const f of F) {
       if (f.isPlayer || f.gone) continue;
       f.age += dt;

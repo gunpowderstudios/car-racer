@@ -26,10 +26,11 @@ export const AI = {
   catchupStart: 70,                 // m of road lead before a rival starts getting a small helping hand
   catchupFull: 240,                 // m of road lead where the catch-up bonus reaches its cap
   catchupSpeed: 0.10,               // max +10% target speed, still entirely through normal car physics
+  raceMax: 74,                       // absolute target ceiling for arcade race catch-up (~165 mph)
 };
 
 /** Rival skill 0..1 (Easy .2, Normal .5 = the original behaviour, Hard .75, Expert 1). One number, a handful of knobs. */
-export function skillOf(ctx) { return clamp(ctx && ctx.skill != null ? ctx.skill : 0.5, 0, 1); }
+export function skillOf(ctx) { return clamp(ctx && ctx.skill != null ? ctx.skill : 0.5, 0, 1.15); }
 
 /** Largest corner curvature in the next `span` metres. */
 function curvAhead(track, s, span = 130) {
@@ -168,6 +169,16 @@ export class Driver {
     // Stage 3 difficulty: faster base pace plus a modest catch-up bonus when the PLAYER is genuinely ahead.
     // It raises the AI's chosen target speed; it never moves the car or bypasses normal physics.
     if (catchup > 0) vT *= 1 + AI.catchupSpeed * (1 + 2 * d) * catchup;
+
+    // Arcade race pressure: once the player opens a gap, don't let a cautious cruise target make the
+    // field give up. Match the player's real pace and ask for a little more on Hard/Expert. This is
+    // still only a target speed: the rival must achieve it with its own tyres, gearbox and physics.
+    if (ctx.racePace && P && pRoad && playerLead > 5) {
+      const pressure = clamp((playerLead - 5) / 80, 0, 1);
+      const paceMul = 0.96 + 0.11 * sk;                       // Hard ~107%, Expert ~109%
+      const chaseTarget = P.speed * paceMul + pressure * (2 + 4 * sk);
+      vT = Math.max(vT, Math.min(AI.raceMax, chaseTarget));
+    }
 
     // ---------------------------------------------------------------- other cars in the way
     let laneBias = 0, brake = 0;
