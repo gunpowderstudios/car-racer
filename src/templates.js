@@ -499,7 +499,7 @@ export function makeTemplate(key) {
     const props = [0.49,0.505,0.52,0.59,0.605,0.62,0.91,0.925].map((u, i) => {
       const f = t.frameAt(t.length * u), off = ((i % 3) - 1) * Math.min(5.5, f.hw * .45);
       return placeProp(t, f.x + f.lx * off, f.z + f.lz * off);
-    }).map((p) => ({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) }));
+    }).map((p) => ({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }));
     def = normalizeTrack({ ...def, assaultCourse: true, hammers, rollers, props });
   }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', ...ovalLumps(def) }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }

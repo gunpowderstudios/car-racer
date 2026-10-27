@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.427 — Apple Crumple startup fix
+- Fixed the game-wide startup crash introduced by Apple Crumple.
+- The obstacle-course barrel generator now rounds coordinates directly instead of calling an out-of-scope helper.
+
 ## v17.426 — Apple Crumple
 - Added **Apple Crumple** under Wacky Racing as a solo one-lap assault course.
 - Added deterministic swinging demolition hammers with real car impacts and denting.
