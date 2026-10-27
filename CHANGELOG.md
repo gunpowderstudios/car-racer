@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.414 — Mobile quick actions
+- Added three small white vertical buttons above the phone speedometer: Mirror, Back on road and Explode.
+- Each uses the existing game action so behaviour matches the desktop/cog controls.
+
 ## v17.413 — Mobile camera button
 - Added a small white camera-cycle icon directly above Boost on phones.
 - It uses the same camera switching behaviour as the existing C/LB camera control.

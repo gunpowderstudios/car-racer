@@ -1052,3 +1052,34 @@ body:not(.mode-menu) #gp-credit { display: none; }
   #t-camera svg { display: block; width: 100%; height: 100%; fill: currentColor; }
   #t-camera:active { background: rgba(255,255,255,.2) !important; }
 }
+
+
+/* Phone quick actions above the speedometer: mirror, back on road, explode. */
+#mobile-quick-actions { display: none; }
+@media (pointer: coarse) and (max-width: 760px) {
+  body.mode-drive #mobile-quick-actions {
+    position: fixed;
+    left: 12px;
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 182px);
+    z-index: 13;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  #mobile-quick-actions button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 6px;
+    border: 1.5px solid rgba(255,255,255,.9);
+    border-radius: 50%;
+    background: rgba(0,0,0,.28);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.28);
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #mobile-quick-actions svg { width: 100%; height: 100%; fill: currentColor; }
+  #mobile-quick-actions button:active { background: rgba(255,255,255,.2); }
+}

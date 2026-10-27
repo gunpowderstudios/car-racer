@@ -322,6 +322,11 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
   b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); if (cogMenuOnly) setSoundPop(false); });
 }
+for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-boom', 'boom']]) {
+  const b = $(id); if (!b) continue;
+  b.addEventListener('pointerdown', (e) => e.preventDefault());
+  b.addEventListener('click', () => { if (mode === 'drive') controlActions[act](); b.blur(); });
+}
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
