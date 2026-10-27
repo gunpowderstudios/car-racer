@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.423 — Buckle Up race-mode fix
+- Fixed an old saved **Demolition** mode leaking into **Buckle up!** after the Options simplification.
+- Buckle up now always starts a normal **1-lap race** on a random circuit.
+- **Deep Pan Pizza / Demolition Day** still forces Last One Standing from the arena track itself.
+
 ## v17.422 — Podium car colours
 - Solo AI podium cars now keep the same paint colour they used during the race.
 - Wacky Racing podiums continue to use each rival's actual vehicle as well as its race colour.

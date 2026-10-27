@@ -66,6 +66,7 @@ const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
 const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 opts.handling = 'arcade';    // one handling model throughout: old saved Standard settings are intentionally ignored
+if (opts.mode !== 'race' && opts.mode !== 'jamboree') opts.mode = 'jamboree';   // migrate old saved Demolition mode out of the simplified Options
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // (5 repairs was the default for a while)
 if (!opts.repairs3) { opts.repairs3 = true; if (opts.repairs === 5) opts.repairs = 3; }      // 3 repairs per race is the new default (a choice of 10 or Unlimited stays)
 if (!opts.jamDefault) { opts.jamDefault = true; if (opts.mode === 'race') opts.mode = 'jamboree'; }      // Jamboree became the default race: people who had never picked another mode move across once
@@ -1362,7 +1363,7 @@ function bindMenu() {
     sw.appendChild(b);
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
-  $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; startDriving(d); };
+  $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; startDriving(d); };
   $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
