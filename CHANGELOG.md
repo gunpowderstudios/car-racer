@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.417 — Podium after race finish
+- Solo race finish/win message now remains readable for a full **5 seconds**.
+- After those 5 seconds, the podium appears automatically using the actual finishing order and vehicles from that race.
+- The podium now says **You came 1st!** when the local player wins.
+
 ## v17.416 — Wacky Racing label
 - Renamed the game-mode option to **Wacky Racing - a mix of vehicles**.
 

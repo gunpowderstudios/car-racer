@@ -2,6 +2,7 @@
 // A wrecked rival's replacement inherits the same persistent race slot, so respawning never removes
 // that competitor from the standings or creates an extra finishing place.
 import { getCurrentMultiplayer } from './multiplayer.js';
+import { selectedVehicle, vehicleById } from './vehicleChoice.js';
 
 function raceLaps() { return window.__raceLaps?.get?.() || 1; }
 function ordinal(n) {
@@ -113,6 +114,7 @@ function getSoloField(game) {
 
 let finishShown = false;
 let finishTimer = null;
+let podiumTimer = null;
 let lastPlace = 1;
 let lastTotal = 1;
 let lastField = null;
@@ -125,6 +127,26 @@ function finishOrder(field) {
   return all;
 }
 
+function soloPodiumList(order) {
+  const game = window.__game;
+  const derby = game?.derby;
+  if (!derby || !Array.isArray(order) || !order.length) return [];
+  const bySlot = new Map();
+  for (const f of derby.rivals || []) {
+    const slot = Number.isInteger(f?.raceSlot) ? f.raceSlot : f?.id;
+    if (!Number.isInteger(slot) || bySlot.has(slot)) continue;
+    const vehicleId = f.vehicleId || selectedVehicle().id;
+    bySlot.set(slot, { id: 'slot-' + slot, name: vehicleById(vehicleId).name || ('Rival ' + slot), hue: f.hue ?? 0, vehicleId });
+  }
+  return order.map((slot) => {
+    if (slot === 0) {
+      const mine = selectedVehicle();
+      return { id: 'player', name: 'You', hue: null, vehicleId: mine.id };
+    }
+    return bySlot.get(slot) || { id: 'slot-' + slot, name: 'Rival ' + slot, hue: 0, vehicleId: selectedVehicle().id };
+  });
+}
+
 function showFinish(place, total) {
   const box = document.getElementById('solo-race-finish');
   const title = document.getElementById('solo-finish-title');
@@ -134,12 +156,23 @@ function showFinish(place, total) {
   sub.textContent = place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`;
   box.hidden = false;
 
-  const detail = { mode: 'solo', place, total, laps: raceLaps(), order: finishOrder(lastField) };
+  const order = finishOrder(lastField);
+  const detail = { mode: 'solo', place, total, laps: raceLaps(), order };
   window.dispatchEvent(new CustomEvent('carracer-player-finish', { detail }));
   if (place === 1) window.dispatchEvent(new CustomEvent('carracer-player-win', { detail }));
 
   clearTimeout(finishTimer);
-  finishTimer = setTimeout(() => { box.hidden = true; }, 4500);
+  finishTimer = setTimeout(() => { box.hidden = true; }, 5000);
+
+  // Give the finish message a full five seconds, then reveal the existing podium using this race's order.
+  clearTimeout(podiumTimer);
+  const list = soloPodiumList(order);
+  podiumTimer = setTimeout(() => {
+    const game = window.__game;
+    if (!getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
+      window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: 'player', derby: false } }));
+    }
+  }, 5000);
 }
 
 function update() {
@@ -154,6 +187,7 @@ function update() {
   if (!hudVisible || isMp) {
     if (!isMp) row.hidden = true;
     if (finish) finish.hidden = true;
+    clearTimeout(podiumTimer); podiumTimer = null;
     finishShown = false;
     return;
   }
@@ -179,6 +213,7 @@ function update() {
     finishShown = true;
     showFinish(lastPlace, lastTotal);
   } else if (!finished) {
+    clearTimeout(podiumTimer); podiumTimer = null;
     finishShown = false;
   }
 }

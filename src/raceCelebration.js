@@ -98,7 +98,7 @@ function celebrate(result = {}) {
   hideTimer = setTimeout(() => {
     wrap.hidden = true;
     document.documentElement.classList.remove('race-finish-active');
-  }, 4500);
+  }, 5000);
 }
 
 window.addEventListener('carracer-player-finish', (e) => celebrate(e.detail));
