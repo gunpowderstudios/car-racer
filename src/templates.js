@@ -396,6 +396,17 @@ const RAW = {
     handles: figureEight(),
     autoBank: false,
   },
+  apple: {
+    name: 'Apple Crumple', width: 26, defaultLaps: 1, assaultCourse: true,
+    handles: [
+      { x: 0, z: -220, y: .65 }, { x: 150, z: -215, y: .65 }, { x: 290, z: -145, y: .65 },
+      { x: 335, z: -20, y: 2.2 }, { x: 285, z: 120, y: .65 }, { x: 160, z: 205, y: .65 },
+      { x: 0, z: 225, y: .65 }, { x: -155, z: 205, y: .65 }, { x: -285, z: 125, y: .65 },
+      { x: -330, z: 0, y: 3.0, gap: 10, kick: 5, lip: .8 }, { x: -275, z: -135, y: .65 },
+      { x: -145, z: -210, y: .65 },
+    ],
+    autoBank: true, bankMax: 8,
+  },
 };
 
 /** Templates as ready-to-use track definitions (banking applied). */
@@ -478,6 +489,19 @@ export function makeTemplate(key) {
   if (raw.sky) { def = normalizeTrack({ ...def, ...thinScatter(def) }); }
   if (raw.dirt) { def = normalizeTrack(steepBanks(def)); const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
   if (raw.barrelRun) def = normalizeTrack({ ...def, props: barrelRunProps(def) });
+  if (raw.assaultCourse) {
+    const t = new Track(def), hammerF = [0.13, 0.24, 0.43, 0.66, 0.78], rollerF = [0.33, 0.55, 0.86];
+    const hammers = hammerF.map((u, i) => ({ s: Math.round(t.length * u), phase: i * 1.35, speed: 0.9 + (i % 3) * 0.18, reach: 8.5, r: 2.25 }));
+    const rollers = rollerF.map((u, i) => {
+      const f = t.frameAt(t.length * u), side = i % 2 ? -1 : 1, off = f.hw + 10;
+      return { x: f.x + f.lx * off * side, z: f.z + f.lz * off * side, r: 2.3 + (i === 1 ? .2 : 0), dx: -f.lx * side, dz: -f.lz * side };
+    });
+    const props = [0.49,0.505,0.52,0.59,0.605,0.62,0.91,0.925].map((u, i) => {
+      const f = t.frameAt(t.length * u), off = ((i % 3) - 1) * Math.min(5.5, f.hw * .45);
+      return placeProp(t, f.x + f.lx * off, f.z + f.lz * off);
+    }).map((p) => ({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) }));
+    def = normalizeTrack({ ...def, assaultCourse: true, hammers, rollers, props });
+  }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', ...ovalLumps(def) }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }
@@ -489,6 +513,7 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
+  apple: 'Solo timed assault course - swinging hammers, rolling rocks, barrels and a jump',
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
   thin: 'A thin road high in the sky: no walls, banks, jumps and barrels, then a huge dip down into the water and back up',

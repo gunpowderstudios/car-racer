@@ -152,8 +152,12 @@ function showFinish(place, total) {
   const title = document.getElementById('solo-finish-title');
   const sub = document.getElementById('solo-finish-sub');
   if (!box || !title || !sub) return;
-  title.textContent = place === 1 ? 'You won!' : `Finished ${ordinal(place)}`;
-  sub.textContent = place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`;
+  const assault = !!window.__game?.track?.def?.assaultCourse;
+  const courseTime = window.__game?.race?.lastTime;
+  title.textContent = assault ? 'Course complete!' : (place === 1 ? 'You won!' : `Finished ${ordinal(place)}`);
+  sub.textContent = assault
+    ? (Number.isFinite(courseTime) ? `Apple Crumple · ${courseTime.toFixed(1)} seconds` : 'Apple Crumple complete')
+    : (place === 1 ? `${raceLaps()}-lap race winner` : `${place} of ${total}`);
   box.hidden = false;
 
   const order = finishOrder(lastField);
@@ -170,7 +174,7 @@ function showFinish(place, total) {
   podiumTimer = setTimeout(() => {
     const game = window.__game;
     // Race Day has its own championship/stage-results flow. Never cover it with the generic solo podium.
-    if (!window.__story?.active && !getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
+    if (!window.__story?.active && !game?.track?.def?.assaultCourse && !getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
       window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: 'player', derby: false } }));
     }
   }, 5000);

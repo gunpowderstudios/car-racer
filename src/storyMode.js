@@ -197,7 +197,7 @@ function openSetup() {
 #story-setup .sp-btns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}#story-setup p{margin:4px 0 0;font-size:16px;opacity:.85}`;
     document.head.appendChild(st);
     ov = document.createElement('div'); ov.id = 'story-setup'; ov.hidden = true;
-    const tracks = TEMPLATE_KEYS.filter((k) => k !== 'random' && k !== 'oval').map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
+    const tracks = TEMPLATE_KEYS.filter((k) => k !== 'apple').filter((k) => k !== 'random' && k !== 'oval').map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
     ov.innerHTML = `<div class="sp-card"><h2>Race Day</h2><p>Race eight named rivals for points: a four-circuit championship, or one race on a track of your choice.</p>
 <label>Track<select id="sp-track"><option value="champ">The championship (all four circuits)</option>${tracks}</select></label>
 <label>Laps<select id="sp-laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option></select></label>

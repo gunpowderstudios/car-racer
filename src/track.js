@@ -229,6 +229,8 @@ export function normalizeTrack(input) {
   };
   if (src.defaultLaps) out.defaultLaps = clamp(Math.round(Number(src.defaultLaps)) || 1, 1, 3);      // how many laps this track starts with, until the player picks a number of laps themselves
   if (src.quickRace) out.quickRace = true;                      // Buckle up!: always a fast one-lap race
+  if (src.assaultCourse) out.assaultCourse = true;                // Apple Crumple: solo timed obstacle course
+  if (Array.isArray(src.hammers)) out.hammers = src.hammers.slice(0, 10).map((h) => ({ s: Math.max(0, Number(h.s) || 0), phase: Number(h.phase) || 0, speed: Math.max(0.4, Math.min(2.2, Number(h.speed) || 1)), reach: Math.max(4, Math.min(12, Number(h.reach) || 8)), r: Math.max(1.5, Math.min(3, Number(h.r) || 2.2)) }));
   if (src.lowCam) out.lowCam = true;             // roads stacked above each other: the game uses a low tail camera so the road above cannot hide the car
   if (src.dirt) {                                // a loose-surface rally stage: dirt road, no kerbs, less grip
     out.dirt = true;
@@ -238,6 +240,7 @@ export function normalizeTrack(input) {
     const rough = normalizeRough(src.rough); if (rough.length) out.rough = rough;
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
+  if (src.assaultCourse && !out.rollers) { const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers; }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins

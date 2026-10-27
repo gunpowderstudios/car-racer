@@ -182,6 +182,7 @@ let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
 let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
+let appleHammerHit = new Map(), appleHud = null;
 let hornVoice = null, frozen = false;
 const hornOn = () => opts.horn !== false;      // the cog's Horn option
 let throttleNow = 0, wallSpot = null;
@@ -494,6 +495,21 @@ function stepPhysics(dt) {
     }
     if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
     if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car], net ? (i) => net.sendRoll(i) : null, net ? mpWatchers() : null);                  // boulders waiting by the road roll out when a car comes near
+    if (track.def.assaultCourse && track.def.hammers) {
+      for (let hi = 0; hi < track.def.hammers.length; hi++) {
+        const h = track.def.hammers[hi], f = track.frameAt(h.s), ang = simTime * h.speed + h.phase, off = Math.sin(ang) * h.reach, L = 7.2;
+        const drop = Math.sqrt(Math.max(1, L * L - Math.min(L - .1, Math.abs(off)) ** 2));
+        const hx = f.x + f.lx * off, hz = f.z + f.lz * off, hy = f.y + 8.5 - drop;
+        const dx = car.pos.x - hx, dy = car.pos.y - hy, dz = car.pos.z - hz, R = h.r + 1.55;
+        if (dx*dx + dy*dy + dz*dz < R*R && simTime - (appleHammerHit.get(hi) ?? -99) > .7) {
+          appleHammerHit.set(hi, simTime);
+          const vside = Math.cos(ang) * h.reach * h.speed, nx = Math.abs(vside) > .2 ? Math.sign(vside) * f.lx : (dx || 1), nz = Math.abs(vside) > .2 ? Math.sign(vside) * f.lz : dz;
+          const nl = Math.hypot(nx,nz) || 1, punch = Math.max(12, Math.min(30, Math.abs(vside) * 2.4));
+          car.vel.x += nx / nl * punch; car.vel.z += nz / nl * punch; car.vel.y += 2.5; car.angVel.y += (dx * nz - dz * nx) * .18;
+          mpDentAt(hx, hy, hz, Math.min(52, 12 + punch)); car.events.push({ type:'wall', speed:punch, x:hx, y:hy, z:hz });
+        }
+      }
+    }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -554,10 +570,11 @@ function caravanEvent(e) {
 // ------------------------------------------------------- destruction derby
 let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is a Jamboree on a computer; a phone or tablet keeps it plain, so it does not load a dozen models before anyone has pressed start
 function derbyStart() {
+  const assault = !!track?.def?.assaultCourse;
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  derby.enabled = !net && !testDrive && (opts.rivals > 0 || demoDay); derby.brutal = demoDay;
+  derby.enabled = !assault && !net && !testDrive && (opts.rivals > 0 || demoDay); derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const mixedKinds = derby.enabled && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
   const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
@@ -922,7 +939,7 @@ function frame(now) {
       if (replay().state.skip && replay().state.realtime) return;          // a film with sound is made at real speed: a screen frame that is not a film frame is not drawn at all, which leaves the page free to keep the sound unbroken
       propsView.update(props);
       if (f) drawPos.set(f.x, f.y, f.z);
-      stage.update(drawPos, camera.position); stage.updateRollers();
+      stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(simTime); stage.updateAssault(simTime);
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
       if (tierName === 'high' && !device.touch && adapt.scale >= 0.8 && replay().state.camMode === 'TV') {      // (only the trackside TV camera gets the blur: Chase and Top stay sharp)
         if (!replayDof.on) replayDof.enable();
@@ -957,7 +974,12 @@ function frame(now) {
     mpSpecLabel(spec);
     if (!paused) effects(dt);
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
+
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
+    if (appleHud && !appleHud.hidden) {
+      const elapsed = race.lapStart != null ? Math.max(0, simTime - race.lapStart) : 0, left = 90 - elapsed;
+      appleHud.querySelector('span').textContent = race.lapStart == null ? 'GET READY' : left >= 0 ? `BEAT THE CLOCK · ${left.toFixed(1)}s` : `OVERTIME · +${(-left).toFixed(1)}s`;
+    }
     if (derby.damageEnabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setRepairs(derby.repairs, derby.repairsMax);
@@ -1039,7 +1061,7 @@ function setMode(m) {
   input.enabled = m === 'drive';
   menuMusic();
 }
-function showMenu() { mpTeardown(); setMode('menu'); renderMenu(); }
+function showMenu() { mpTeardown(); if (appleHud) appleHud.hidden = true; setMode('menu'); renderMenu(); }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
@@ -1275,7 +1297,7 @@ function renderMenu() {
     row(d.name, info, '', [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
-  group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
+  group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'apple', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
   group('Driving Tests', 'Coming soon...');
   if (Object.keys(userTracks()).length) group('My tracks');
@@ -1786,7 +1808,7 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
+  $('mp-track').innerHTML = TEMPLATE_KEYS.filter((k) => k !== 'apple').map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
   $('mp-track').value = 'random';
   // the same track and laps choice up on the first multiplayer screen, so the host sets the game up before creating the room
   $('mp-home-track').innerHTML = $('mp-track').innerHTML;
