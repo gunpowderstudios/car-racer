@@ -1299,7 +1299,6 @@ function renderMenu() {
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
-  group('Driving Tests'); addTemplate('apple');
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
