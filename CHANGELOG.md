@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.426-apple-test — Apple Crumple prototype (branch only)
+- Added **Apple Crumple** under Wacky Racing as a solo one-lap assault course.
+- Added deterministic swinging demolition hammers with real car impacts and denting.
+- Added three triggered rolling boulder crossings, barrel slaloms and a jump.
+- Added a 90-second target clock; overtime is allowed so a run is never simply thrown away.
+- Apple Crumple is excluded from multiplayer and Race Day for this first prototype.
+- Normal race podium is suppressed; finishing shows **Course complete!** and your run time.
+
 ## v17.425 — More visible crumple damage
 - Increased visual dent depth and radius by roughly **25–30%**.
 - Smaller genuine impacts can now leave a visible dent.
