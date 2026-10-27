@@ -169,7 +169,8 @@ function showFinish(place, total) {
   const list = soloPodiumList(order);
   podiumTimer = setTimeout(() => {
     const game = window.__game;
-    if (!getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
+    // Race Day has its own championship/stage-results flow. Never cover it with the generic solo podium.
+    if (!window.__story?.active && !getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
       window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: 'player', derby: false } }));
     }
   }, 5000);

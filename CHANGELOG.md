@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.424 — Race Day stage-flow fix
+- Race Day no longer opens the generic solo podium after each championship stage.
+- The finish message remains visible for about **5 seconds**, then the Race Day results panel appears.
+- Championship stages can now continue normally via **Next stage** instead of being covered by the podium.
+
 ## v17.423 — Buckle Up race-mode fix
 - Fixed an old saved **Demolition** mode leaking into **Buckle up!** after the Options simplification.
 - Buckle up now always starts a normal **1-lap race** on a random circuit.
