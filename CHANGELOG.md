@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.416 — Wacky Racing label
+- Renamed the game-mode option to **Wacky Racing - a mix of vehicles**.
+
 ## v17.415 — Mobile icon spacing
 - Increased the vertical spacing between the small mobile quick-action icons.
 - Moved the camera-cycle icon slightly higher above Boost for clearer separation.
