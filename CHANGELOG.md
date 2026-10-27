@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.428 — Apple Crumple moved to Driving Tests
+- Moved **Apple Crumple** out of Wacky Racing and into **Driving Tests**.
+- Driving Tests is now a real section rather than showing only “Coming soon…”.
+
 ## v17.427 — Apple Crumple startup fix
 - Fixed the game-wide startup crash introduced by Apple Crumple.
 - The obstacle-course barrel generator now rounds coordinates directly instead of calling an out-of-scope helper.
