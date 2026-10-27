@@ -949,3 +949,26 @@ body:not(.mode-menu) #gp-credit { display: none; }
     visibility: hidden;
   }
 }
+
+
+@media (max-width: 1024px) and (pointer: coarse) {
+  #mobile-screen-notice .mobile-screen-try {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    margin: 12px auto 2px;
+    padding: 14px 28px;
+    border: 2px solid #9eea43;
+    border-radius: 999px;
+    background: #9eea43;
+    color: #111;
+    font: 800 clamp(18px, 3.1vw, 23px)/1 var(--body, Barlow), system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  html.mobile-try-anyway #mobile-screen-notice { display: none; }
+  html.mobile-try-anyway body > :not(#mobile-screen-notice):not(noscript) { visibility: visible; }
+}

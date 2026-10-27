@@ -144,9 +144,25 @@ html.invite-loading #invite-loading {
     <h1 id="mobile-screen-title">Bangers &amp; Smash is so much more fun on a bigger screen!</h1>
     <p>Multiplayer, record and playback your races, build tracks &mdash; and the crashes are much more spectacular!</p>
     <p>We&rsquo;re working on the mobile and tablet version, but for now please switch to your <strong>laptop or desktop</strong>.</p>
+    <button id="mobile-try-anyway" class="mobile-screen-try" type="button">Try it anyway&hellip;</button>
     <p class="mobile-screen-url">www.bangersandsmash.co.uk</p>
   </div>
 </div>
+<script>
+(() => {
+  const KEY = 'bs.mobileTryAnyway';
+  const reveal = () => document.documentElement.classList.add('mobile-try-anyway');
+  try { if (sessionStorage.getItem(KEY) === '1') reveal(); } catch { /* session storage is optional */ }
+  addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('mobile-try-anyway');
+    if (!button) return;
+    button.addEventListener('click', () => {
+      try { sessionStorage.setItem(KEY, '1'); } catch { /* still reveal it */ }
+      reveal();
+    });
+  }, { once: true });
+})();
+</script>
 <noscript><p style="padding:24px;font:18px/1.5 system-ui,sans-serif;color:#f6d9b0;background:#1b1233">Bangers and Smash! is a free destruction derby racing game that runs in your browser. Please turn on JavaScript to play: no download, no login.</p></noscript>
 <div id="invite-loading" role="status" aria-live="polite">
   <div class="invite-card">
