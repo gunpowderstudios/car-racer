@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.419 — Deep Pan Pizza previews
+- The large editor map now shows Deep Pan Pizza with its crust, dark sauce, olive humps and cheese dips instead of a plain arena disc.
+- The editor 3D preview now uses a pizza texture generated from the same bump/topping data as the playable arena.
+- The home-page track preview uses that same 3D preview renderer, so selecting Deep Pan Pizza now shows the pizza there too.
+
 ## v17.418 — Deep Pan Pizza visual tune
 - Darkened the red tomato sauce base.
 - Increased the cheese circles/dips by **30%**.

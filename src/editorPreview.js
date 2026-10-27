@@ -7,6 +7,32 @@ import { arenaInfo, arenaOutline } from './arena.js';
 
 const INK = 0xeaf6ff, AMBER = 0xffc857, PAPER = 0x10335f, LINE = 0x7fb8e6, RED = 0xff6b5e;
 
+function pizzaPreviewTexture(track, A) {
+  const size = 512, cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const c = cv.getContext('2d'), R = Math.max(A.ax, A.az), k = size / (2 * R);
+  const px = (x, z) => [(x - A.cx + R) * k, (z - A.cz + R) * k];
+  c.fillStyle = '#d5b97f'; c.fillRect(0, 0, size, size);
+  c.fillStyle = '#7f2424'; c.beginPath(); c.arc(size / 2, size / 2, A.ax * 0.8 * k, 0, Math.PI * 2); c.fill();
+  for (const b of (track.bumps || [])) {
+    const [X, Z] = px(b.x, b.z), r = b.r * k;
+    const halo = c.createRadialGradient(X, Z, r * 0.8, X, Z, r * 1.28);
+    halo.addColorStop(0, 'rgba(40,0,0,.45)'); halo.addColorStop(1, 'rgba(40,0,0,0)');
+    c.fillStyle = halo; c.beginPath(); c.arc(X, Z, r * 1.28, 0, Math.PI * 2); c.fill();
+    if (b.h > 0) {
+      c.fillStyle = '#1f1e1c'; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#4b463d'; c.beginPath(); c.arc(X, Z, r * 0.67, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(X + r * .3, Z - r * .3, r * .12, 0, Math.PI * 2); c.fill();
+    } else {
+      const deep = c.createRadialGradient(X, Z, 0, X, Z, r);
+      deep.addColorStop(0, '#8a5612'); deep.addColorStop(.45, '#b9822a'); deep.addColorStop(.8, '#e2b844'); deep.addColorStop(1, '#f8d762');
+      c.fillStyle = deep; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(70,35,0,.5)'; c.lineWidth = Math.max(2, r * .1); c.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; return tex;
+}
+
+
 export class EditorPreview {
   constructor(canvas) {
     this.canvas = canvas;
@@ -133,11 +159,20 @@ export class EditorPreview {
     if (arena) {
       // An arena is one flat floor: a single fan of triangles from the middle (so nothing overlaps and flickers) and its edge line.
       const A = arenaInfo(t), ring = arenaOutline(A, A.hw, 96), y = (A.y + 0.05) * ex;
-      const fp = [A.cx, y, A.cz], fi = [];
-      ring.forEach((p, k) => { fp.push(p.x, y, p.z); if (k) fi.push(0, k, k + 1); });
+      const fp = [A.cx, y, A.cz], fi = [], uv = [0.5, 0.5];
+      const uvR = Math.max(A.ax, A.az);
+      ring.forEach((p, k) => {
+        fp.push(p.x, y, p.z);
+        uv.push((p.x - A.cx + uvR) / (2 * uvR), (p.z - A.cz + uvR) / (2 * uvR));
+        if (k) fi.push(0, k, k + 1);
+      });
       const fg = new THREE.BufferGeometry();
-      fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); fg.setIndex(fi); fg.computeVertexNormals();
-      this.group.add(new THREE.Mesh(fg, new THREE.MeshLambertMaterial({ color: 0xd9a066, side: THREE.DoubleSide })));
+      fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); fg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); fg.setIndex(fi); fg.computeVertexNormals();
+      const pizza = t.def.name === 'Deep Pan Pizza';
+      const mat = pizza
+        ? new THREE.MeshLambertMaterial({ map: pizzaPreviewTexture(t, A), side: THREE.DoubleSide })
+        : new THREE.MeshLambertMaterial({ color: 0xd9a066, side: THREE.DoubleSide });
+      this.group.add(new THREE.Mesh(fg, mat));
       const ep = []; ring.forEach((p) => ep.push(p.x, y + 0.2, p.z));
       const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
       this.group.add(new THREE.Line(eg, this.edgeMat));

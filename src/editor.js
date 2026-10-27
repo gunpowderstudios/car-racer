@@ -179,9 +179,31 @@ export class Editor {
     const arena = t.def.mode === 'lastStanding';                    // an arena is one floor, not a road: draw its outline once
     g.fillStyle = 'rgba(234,246,255,.16)'; g.strokeStyle = 'rgba(234,246,255,.85)'; g.lineWidth = 1.4; g.lineJoin = 'round';
     if (arena) {
+      const A = arenaInfo(t), pizza = t.def.name === 'Deep Pan Pizza';
+      const ring = arenaOutline(A, A.hw, 96);
       g.beginPath();
-      arenaOutline(arenaInfo(t), arenaInfo(t).hw, 96).forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); k ? g.lineTo(x, y) : g.moveTo(x, y); });
-      g.closePath(); g.fill(); g.stroke();
+      ring.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); k ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.closePath();
+      if (pizza) {
+        g.fillStyle = '#d5b97f'; g.fill();                                            // crust
+        const [cx, cy] = this.toScreen(A.cx, A.cz), sauceR = A.ax * 0.8 * S;
+        g.fillStyle = '#7f2424'; g.beginPath(); g.arc(cx, cy, sauceR, 0, Math.PI * 2); g.fill();
+        for (const b of (t.bumps || [])) {
+          const [bx, by] = this.toScreen(b.x, b.z), rr = Math.max(2, b.r * S);
+          if (b.h > 0) {
+            g.fillStyle = '#1f1e1c'; g.beginPath(); g.arc(bx, by, rr, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#514b42'; g.beginPath(); g.arc(bx, by, rr * 0.62, 0, Math.PI * 2); g.fill();
+          } else {
+            const gr = g.createRadialGradient(bx, by, rr * 0.15, bx, by, rr);
+            gr.addColorStop(0, '#9a621c'); gr.addColorStop(0.55, '#d6a83d'); gr.addColorStop(1, '#f8d762');
+            g.fillStyle = gr; g.beginPath(); g.arc(bx, by, rr, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = 'rgba(70,35,0,.55)'; g.lineWidth = Math.max(1, rr * 0.1); g.stroke();
+          }
+        }
+        g.strokeStyle = 'rgba(234,246,255,.85)'; g.lineWidth = 1.4; g.stroke();
+      } else {
+        g.fillStyle = 'rgba(234,246,255,.16)'; g.fill(); g.stroke();
+      }
     } else if (!hasGap) {
       g.beginPath();
       for (const sg of [1, -1]) {
