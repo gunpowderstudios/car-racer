@@ -3,10 +3,10 @@
 // metres; the shader gets them converted to the model's own units.
 
 export const DENT = {
-  minHp: 2,            // a hit that takes off fewer hit points than this leaves no mark
-  fullHp: 56,          // a hit this hard makes the biggest single dent (cars are 20% weaker, so they crumple sooner)
-  depthMin: 0.10, depthMax: 0.30,      // metres a dent can be pushed in (one hit, and all hits piled together)
-  radiusMin: 0.42, radiusMax: 0.85,    // metres across the bowl, centre to edge
+  minHp: 1.5,          // even a modest proper knock should leave a visible mark
+  fullHp: 44,           // reach the biggest visual crumple sooner; health/damage strength is unchanged
+  depthMin: 0.12, depthMax: 0.39,      // deeper folds so battered cars read clearly at racing distance
+  radiusMin: 0.48, radiusMax: 1.05,    // broader crumple zones, still local enough to keep the car's silhouette
   mergeFrac: 0.55,     // a new hit this close (share of the dent's radius) deepens the old dent instead of starting another
   burstSeconds: 0.15,  // hits closer together than this are one crash felt over several physics steps, not several crashes
 };
@@ -18,7 +18,7 @@ export const DENT = {
 export function dentSize(hp) {
   if (!(hp >= DENT.minHp)) return null;
   const k = Math.min(1, (hp - DENT.minHp) / (DENT.fullHp - DENT.minHp));
-  return { depth: DENT.depthMin + (DENT.depthMax - DENT.depthMin) * 0.8 * Math.sqrt(k), radius: DENT.radiusMin + (DENT.radiusMax - DENT.radiusMin) * Math.sqrt(k) };
+  return { depth: DENT.depthMin + (DENT.depthMax - DENT.depthMin) * 0.9 * Math.sqrt(k), radius: DENT.radiusMin + (DENT.radiusMax - DENT.radiusMin) * Math.sqrt(k) };
 }
 
 /**

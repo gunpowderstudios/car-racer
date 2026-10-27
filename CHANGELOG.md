@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.425 — More visible crumple damage
+- Increased visual dent depth and radius by roughly **25–30%**.
+- Smaller genuine impacts can now leave a visible dent.
+- Bigger impacts reach strong crumple deformation sooner.
+- This is **visual only**: car HP, crash damage and wrecking strength are unchanged.
+
 ## v17.424 — Race Day stage-flow fix
 - Race Day no longer opens the generic solo podium after each championship stage.
 - The finish message remains visible for about **5 seconds**, then the Race Day results panel appears.
