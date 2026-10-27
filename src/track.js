@@ -228,6 +228,7 @@ export function normalizeTrack(input) {
     props: normalizeProps(src.props),
   };
   if (src.defaultLaps) out.defaultLaps = clamp(Math.round(Number(src.defaultLaps)) || 1, 1, 3);      // how many laps this track starts with, until the player picks a number of laps themselves
+  if (src.quickRace) out.quickRace = true;                      // Buckle up!: always a fast one-lap race
   if (src.lowCam) out.lowCam = true;             // roads stacked above each other: the game uses a low tail camera so the road above cannot hide the car
   if (src.dirt) {                                // a loose-surface rally stage: dirt road, no kerbs, less grip
     out.dirt = true;

@@ -64,7 +64,8 @@ const device = probeDevice();
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', handling: 'arcade', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+opts.handling = 'arcade';    // one handling model throughout: old saved Standard settings are intentionally ignored
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // (5 repairs was the default for a while)
 if (!opts.repairs3) { opts.repairs3 = true; if (opts.repairs === 5) opts.repairs = 3; }      // 3 repairs per race is the new default (a choice of 10 or Unlimited stays)
 if (!opts.jamDefault) { opts.jamDefault = true; if (opts.mode === 'race') opts.mode = 'jamboree'; }      // Jamboree became the default race: people who had never picked another mode move across once
@@ -354,7 +355,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
   const h = car.restHeight + 0.08;
   car.reset(new V3(f.x + f.lx * offset + f.nx * h, f.y + f.ly * offset + f.ny * h, f.z + f.lz * offset + f.nz * h),
     new V3(f.fx, f.fy, f.fz), new V3(f.nx, f.ny, f.nz), speed);
-  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = opts.handling === 'standard' ? 0 : 1;
+  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = 1;
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
   race.lastS = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
   if (keepRace) {
@@ -376,7 +377,7 @@ function placeCar(s, offset = 0, speed = 0, keepRace = false) {
 function placeCarInArena(away) {
   const A = arenaInfo(track), p = away ? arenaClearSpot(A, away) : arenaPlayerStart(A);
   car.reset(new V3(p.x, A.y + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
-  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = opts.handling === 'standard' ? 0 : 1;
+  car.opts.assist = opts.assist ? 0.7 : 0; car.opts.stability = 1;
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ);
   race.lastS = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
   safe.s = race.lastS; safe.off = 0; safe.t = 0;
@@ -1296,13 +1297,13 @@ function bindMenu() {
   }
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
   const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';
-  hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = opts.handling === 'standard' ? 0 : 1; store.set('cr.opts', opts); };
+  hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = 1; store.set('cr.opts', opts); };
   const SKILL = { easy: 0.2, normal: 0.6, hard: 1.12, expert: 1.28 };
   const skillOf = (v) => (v in SKILL ? v : 'hard');
   const sk = $('opt-skill'); sk.value = skillOf(opts.skill); derby.skill = SKILL[sk.value];
   sk.onchange = () => { opts.skill = skillOf(sk.value); derby.skill = SKILL[opts.skill]; store.set('cr.opts', opts); toast('Rivals: ' + sk.options[sk.selectedIndex].text.split(' - ')[0]); sk.blur(); };
-  const md = $('opt-mode'); md.value = ['demolition', 'jamboree'].includes(opts.mode) ? opts.mode : 'race';
-  md.onchange = () => { opts.mode = ['demolition', 'jamboree'].includes(md.value) ? md.value : 'race'; store.set('cr.opts', opts); if (track) derbyStart(); };
+  const md = $('opt-mode'); md.value = opts.mode === 'race' ? 'race' : 'jamboree';
+  md.onchange = () => { opts.mode = md.value === 'race' ? 'race' : 'jamboree'; store.set('cr.opts', opts); if (track) derbyStart(); };
   const rv = $('opt-rivals'); rv.value = String(opts.rivals);
   rv.onchange = () => { opts.rivals = +rv.value; store.set('cr.opts', opts); if (track) derbyStart(); };
   $('go-again').onclick = () => { hud.hideGameOver(); restartRace(); };
@@ -1363,8 +1364,8 @@ function bindMenu() {
     sw.appendChild(b);
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
-  $('btn-play-now').onclick = () => startDriving(makeRandomTrack());
-  $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: straight into the Bed Pan
+  $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; startDriving(d); };
+  $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
   $('import-file').onchange = async (e) => {

@@ -12,11 +12,13 @@ function readOpts() {
 
 // The player's own choice wins; until they make one, a track can bring its own number of laps (Speedway Gonzales runs 3), else 1.
 function getLaps(def) {
+  const trackDef = def || window.__game?.track?.def;
+  if (trackDef?.quickRace) return 1;                             // Buckle up! is deliberately always one lap
   const gameLaps = window.__game?.opts?.laps;
   if (Number.isFinite(+gameLaps)) return clampLaps(gameLaps);
   const saved = readOpts().laps;
   if (saved !== undefined && saved !== null) return clampLaps(saved);
-  const own = Number((def || window.__game?.track?.def)?.defaultLaps);
+  const own = Number(trackDef?.defaultLaps);
   return clampLaps(Number.isFinite(own) && own > 0 ? own : DEFAULT_LAPS);
 }
 

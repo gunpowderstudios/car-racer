@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.420 — Simplified game setup
+- **Buckle up!** is now always a quick **1-lap random race**.
+- Buckle up respects the optional **Vehicles** choice below: **Mixed vehicles** or **Same vehicle, different colours**.
+- Removed Demolition from the Options selector; **Demolition Day** is the dedicated Last One Standing experience and still launches Deep Pan Pizza.
+- **Race Day** is unchanged.
+- Removed the Handling selector and forced **Arcade handling throughout**, including for players with an old Standard setting saved.
+
 ## v17.419 — Deep Pan Pizza previews
 - The large editor map now shows Deep Pan Pizza with its crust, dark sauce, olive humps and cheese dips instead of a plain arena disc.
 - The editor 3D preview now uses a pizza texture generated from the same bump/topping data as the playable arena.
