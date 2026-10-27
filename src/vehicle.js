@@ -520,6 +520,7 @@ export class Vehicle {
     if (this.rpm > e.limiter) torque = 0;
     if (this.shiftTimer > 0.14) torque *= 0.25;
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
+    force *= Math.max(0.1, this.aiEngineMul || 1);   // arcade race AI equaliser; players and demolition rivals stay at 1
     force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
     // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can climb any hill, and keep moving:

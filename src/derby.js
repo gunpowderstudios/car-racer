@@ -192,6 +192,21 @@ export function collideVanVan(a, b, out) {
 }
 
 /** Put a car on the road at arc length s, `offset` metres left of the centreline, moving at `speed`. */
+
+/** Arcade race equaliser: match a rival's straight-line potential to the player's current vehicle
+ *  without changing its mass, grip, steering or crash behaviour. Destruction modes leave real vehicle
+ *  performance differences alone. The exponent softens extremes so oddball vehicles still keep character. */
+function raceEngineEqualizer(playerSpec, rivalSpec) {
+  if (!playerSpec || !rivalSpec) return 1;
+  const pPW = Math.max(0.01, (playerSpec.engine?.peakTorque || 1) / Math.max(1, playerSpec.mass || 1));
+  const rPW = Math.max(0.01, (rivalSpec.engine?.peakTorque || 1) / Math.max(1, rivalSpec.mass || 1));
+  const pDrag = Math.max(0.1, playerSpec.aero?.drag || 0.55);
+  const rDrag = Math.max(0.1, rivalSpec.aero?.drag || 0.55);
+  return Math.max(0.70, Math.min(2.35,
+    Math.pow(pPW / rPW, 0.80) * Math.pow(rDrag / pDrag, 0.25)
+  ));
+}
+
 export function placeOnRoad(car, track, s, offset = 0, speed = 0) {
   const f = track.frameAt(track.restartS(s)), h = car.restHeight + 0.08;
   car.reset(new V3(f.x + f.lx * offset + f.nx * h, f.y + f.ly * offset + f.ny * h, f.z + f.lz * offset + f.nz * h),
@@ -353,6 +368,9 @@ export class Derby {
   /** Add a rival that `driver` (see ai.js) pedals, or that just coasts if there is none. Used by _spawn and the tests.
    *  `raceSlot` is the persistent grid identity; replacement cars inherit the slot of the wreck they replace. */
   add(car, driver = null, raceSlot = null, kind = null) {
+    // In races, performance follows the player's chosen vehicle closely enough that a quirky slow rival
+    // cannot simply be left behind on the straights. It still keeps its own handling, weight and damage.
+    car.aiEngineMul = this.demolition ? 1 : raceEngineEqualizer(this.player?.car?.spec, car.spec);
     const f = {
       id: this._id++, raceSlot: Number.isInteger(raceSlot) ? raceSlot : null,
       isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: kind ? kindSpec(kind) : SPECS.rival, vehicleId: kind ? kind.id : null,
