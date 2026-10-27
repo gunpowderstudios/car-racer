@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { vehicleById, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
-import { tidyGltfMaterial, RIVAL_LOOKS } from './carVisual.js';
+import { tidyGltfMaterial, RIVAL_LOOKS, recolour } from './carVisual.js';
 const hueCss = (hue) => (hue != null && RIVAL_LOOKS[hue] ? '#' + RIVAL_LOOKS[hue].tint.toString(16).padStart(6, '0') : '#f6d9b0');
 
 const ORD = ['1st', '2nd', '3rd'];
@@ -37,11 +37,25 @@ function build() {
 }
 function hide() { if (stop) { stop(); stop = null; } if (overlay) overlay.hidden = true; }
 
-function loadCar(id) {
-  const v = vehicleById(id);
+function loadCar(id, hue = null) {
+  const v = vehicleById(id), look = Number.isInteger(hue) ? RIVAL_LOOKS[hue] : null;
   return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(assetUrl(modelUrl(v.url))).then((g) => {
     const m = g.scene;
-    m.traverse((o) => { if (o.isMesh) for (const x of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(x); });
+    m.traverse((o) => {
+      if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      const painted = mats.map((src) => {
+        const x = src.clone(); tidyGltfMaterial(x);
+        if (!look) return x;
+        if (x.map) {
+          if (v.neutralBody) x.map.userData.neutralBody = true;
+          const tex = recolour(x.map, look);
+          if (tex) x.map = tex; else x.color.set(look.tint);
+        } else x.color.set(look.tint);
+        return x;
+      });
+      o.material = Array.isArray(o.material) ? painted : painted[0];
+    });
     const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3());
     m.scale.setScalar(2.7 / Math.max(sz.x, sz.z));
     m.updateMatrixWorld(true);
@@ -82,7 +96,7 @@ export function showPodium(list, selfId, derby = false) {
     label.querySelector('b').textContent = ORD[slot.place];
     const sp = label.querySelector('span'); sp.textContent = who.id === selfId ? `${who.name} (you)` : who.name; sp.style.color = hueCss(who.hue);
     names.appendChild(label);
-    loadCar(who.vehicleId).then((car) => { if (!car || !overlay || overlay.hidden) return; car.position.set(slot.x, slot.h, 0); scene.add(car); spinners.push(car); });
+    loadCar(who.vehicleId, who.hue).then((car) => { if (!car || !overlay || overlay.hidden) return; car.position.set(slot.x, slot.h, 0); scene.add(car); spinners.push(car); });
   }
   let raf = 0, last = performance.now(), alive = true;
   const frame = (now) => {

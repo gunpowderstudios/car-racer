@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.422 — Podium car colours
+- Solo AI podium cars now keep the same paint colour they used during the race.
+- Wacky Racing podiums continue to use each rival's actual vehicle as well as its race colour.
+- Multiplayer podiums use each player's transmitted name, chosen vehicle and colour.
+- Added the same special recolouring path used by pale/neutral-body vehicles so podium paint matches the race more closely.
+
 ## v17.421 — Arcade-only cleanup
 - Removed the final obsolete code that still referenced the old Handling dropdown.
 - Prevents a menu error now that Handling has been removed from Options.
