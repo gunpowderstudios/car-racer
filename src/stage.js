@@ -5,6 +5,7 @@ import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTextu
 import { buildTrackGeometry } from './trackGeometry.js';
 import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
+import { AssaultView } from './assaultView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
 const SKY_TOP = 0x1f3a72, SKY_MID = 0xc2557a, SKY_LOW = 0xffa45c, FOG = 0xe39a6a;
@@ -96,20 +97,8 @@ export class Stage {
     t.offset.set(camPos.x / 9000 * 400, -camPos.z / 9000 * 400);
   }
 
-  /** Animate Apple Crumple's pendulum hammers from the same deterministic clock used by collision. */
-  updateAssault(t = 0) {
-    if (!this.hammerMeshes?.length) return;
-    const up = new THREE.Vector3(0,1,0), a = new THREE.Vector3(), b = new THREE.Vector3(), mid = new THREE.Vector3(), q = new THREE.Quaternion();
-    for (const grp of this.hammerMeshes) {
-      const h = grp.userData.hammer, f = grp.userData.frame, off = Math.sin(t * h.speed + h.phase) * h.reach, L = 7.2;
-      const drop = Math.sqrt(Math.max(1, L * L - Math.min(L - .1, Math.abs(off)) ** 2));
-      const hx = f.x + f.lx * off, hz = f.z + f.lz * off, hy = f.py - drop;
-      grp.userData.head.position.set(hx, hy, hz);
-      a.set(f.x, f.py, f.z); b.set(hx, hy, hz); mid.copy(a).add(b).multiplyScalar(.5);
-      grp.userData.rod.position.copy(mid); grp.userData.rod.scale.set(1, a.distanceTo(b), 1);
-      q.setFromUnitVectors(up, b.clone().sub(a).normalize()); grp.userData.rod.quaternion.copy(q);
-    }
-  }
+  /** Apple Crumple: put every hazard where its clock says it is (`a` is the Assault run). */
+  updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
 
   /** Put each rolling boulder where the simulation has it, turning as it rolls. */
   updateRollers() {
@@ -162,7 +151,7 @@ export class Stage {
   }
 
   clearTrack() {
-    this.fish = null;
+    this.fish = null; this.assaultView = null;
     if (!this.trackGroup) return;
     this.scene.remove(this.trackGroup);
     this.trackGroup.traverse((o) => {
@@ -256,7 +245,7 @@ export class Stage {
     }
 
     // boulders beside a rally stage: one lumpy grey rock shape, stretched and turned a different way for each
-    this.rollerMeshes = []; this.hammerMeshes = [];
+    this.rollerMeshes = [];
     if (track.rocks) {
       const rg = rockGeometry(), rm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: true });
       const still = track.rocks.filter((r) => !r.roller);
@@ -273,26 +262,6 @@ export class Stage {
         const m = new THREE.Mesh(rg, rm.clone()); m.material.color.setRGB(0.5, 0.49, 0.47);
         m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.scale.set(rk.r, rk.r * 0.95, rk.r);
         m.userData.rock = rk; g.add(m); this.rollerMeshes.push(m);
-      }
-    }
-
-    // Apple Crumple: giant pendulum hammers spanning the road. Physics uses the same formula in main.js.
-    if (track.def.assaultCourse && track.def.hammers?.length) {
-      const steel = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: .42, metalness: .5 });
-      const red = new THREE.MeshStandardMaterial({ color: 0xb52b25, roughness: .55, metalness: .18 });
-      for (const h of track.def.hammers) {
-        const f = track.frameAt(h.s), span = f.hw + 3, py = f.y + 8.5;
-        const grp = new THREE.Group(), postGeo = new THREE.BoxGeometry(.55, 8.5, .55);
-        for (const sg of [-1,1]) {
-          const p = new THREE.Mesh(postGeo, steel); p.position.set(f.x + f.lx * span * sg, f.y + 4.25, f.z + f.lz * span * sg); p.castShadow = true; grp.add(p);
-        }
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(span * 2, .5, .65), steel);
-        beam.position.set(f.x, py, f.z); beam.rotation.y = Math.atan2(f.lz, f.lx); beam.castShadow = true; grp.add(beam);
-        const rod = new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1,10), steel);
-        const head = new THREE.Mesh(new THREE.BoxGeometry(h.r * 2.4, h.r * 1.35, h.r * 1.8), red);
-        rod.castShadow = head.castShadow = true; grp.add(rod, head);
-        grp.userData.hammer = h; grp.userData.frame = { x:f.x, y:f.y, z:f.z, lx:f.lx, lz:f.lz, py }; grp.userData.rod = rod; grp.userData.head = head;
-        g.add(grp); this.hammerMeshes.push(grp);
       }
     }
 
@@ -326,6 +295,7 @@ export class Stage {
 
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
+    if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;
     return geo;

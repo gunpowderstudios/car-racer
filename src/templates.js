@@ -398,6 +398,42 @@ const RAW = {
   },
 };
 
+// ----- Apple Crumple: the solo obstacle course (rules and hazards in assault.js)
+const CRUMPLE = { L: 230, R: 80, width: 18 };
+function crumpleHandles() {
+  const { L, R } = CRUMPLE, out = [], P = (x, z, y = 0.65, extra) => out.push({ x, y, z, ...(extra || {}) });
+  const JUMP = { gap: 20, kick: 8, lip: 1.5 }, TOP = 9, SHOULDER = 5;                      // the jump is the crest of a hill
+  P(0, -R); P(L / 2, -R); P(L, -R);
+  for (const a of [-45, 0, 45]) P(L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R);
+  P(L, R); P(L / 2, R, SHOULDER); P(0, R, TOP, JUMP); P(-L / 2, R, SHOULDER); P(-L, R);
+  for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R);
+  P(-L, -R); P(-L / 2, -R);
+  return out;
+}
+/** The hazards, laid along the road by distance from the start line (the road is about 1.4 km). Easy first, a gauntlet last. */
+function crumpleCourse(def) {
+  const t = new Track(def), jumpS = t.handleS[def.handles.findIndex((h) => h.gap)], at = (s) => Math.min(s, t.length - 20);
+  const assault = {
+    limit: 160,
+    checkpoints: [205, jumpS - 140, jumpS + 170, t.length - 232].map(Math.round),
+    hammers: [{ s: 100, phase: 0, speed: 0.8 }, { s: t.length - 160, phase: 1.7, speed: 1.0 }],
+    boulders: [{ s: 300, phase: 0, side: 1 }, { s: jumpS + 285, phase: 0, side: 1 }, { s: jumpS + 345, phase: 2.4, side: -1 }, { s: t.length - 70, phase: 1.1, side: -1 }],
+    arms: [{ s: jumpS - 175, speed: 0.8, dir: 1 }, { s: t.length - 110, speed: 0.95, dir: -1 }],
+    presses: [{ s: jumpS + 420, phase: 0 }, { s: t.length - 200, phase: 0.9 }],
+    signs: [{ s: jumpS - 100, kind: 'jump' }, { s: jumpS + 60, kind: 'barrels' }, { s: t.length - 255, kind: 'gauntlet' }],
+  };
+  const r2 = (v) => Math.round(v * 100) / 100, props = [];
+  const patch = (s0, n, gap) => {                              // a staggered field of barrels across the road, always with a way through
+    const lanes = [-0.55, 0.1, 0.6, -0.15, 0.45, -0.6, 0.0, 0.55];
+    for (let i = 0; i < n; i++) {
+      const f = t.frameAt(at(s0 + i * gap)), off = lanes[i % lanes.length] * (f.hw - 3), p = placeProp(t, f.x + f.lx * off, f.z + f.lz * off);
+      props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) });
+    }
+  };
+  patch(jumpS + 70, 8, 7); patch(t.length - 38, 4, 6);
+  return { ...def, assault, props };
+}
+
 /** Templates as ready-to-use track definitions (banking applied). */
 /** A different circuit every call: a wobbly loop with rolling hills, the odd big peak, one or two jumps, banked
  *  corners, and a scatter of barrels. Fully random by default; pass a seed to reproduce one. Retries
@@ -467,6 +503,10 @@ function buildRandomTrack(seed) {
 }
 
 export function makeTemplate(key) {
+  if (key === 'apple') {                                   // Apple Crumple: its own course, not one of the race tracks (so it is left out of TEMPLATE_KEYS)
+    const base = normalizeTrack({ name: 'Apple Crumple', width: CRUMPLE.width, defaultLaps: 1, handles: crumpleHandles(), walls: true });
+    return normalizeTrack(crumpleCourse(base));
+  }
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];
   if (!raw) throw new Error('Unknown template ' + key);
@@ -478,25 +518,13 @@ export function makeTemplate(key) {
   if (raw.sky) { def = normalizeTrack({ ...def, ...thinScatter(def) }); }
   if (raw.dirt) { def = normalizeTrack(steepBanks(def)); const sc = rallyScatter(def); def = normalizeTrack({ ...def, ...sc }); }
   if (raw.barrelRun) def = normalizeTrack({ ...def, props: barrelRunProps(def) });
-  if (raw.assaultCourse) {
-    const t = new Track(def), hammerF = [0.13, 0.24, 0.43, 0.66, 0.78], rollerF = [0.33, 0.55, 0.86];
-    const hammers = hammerF.map((u, i) => ({ s: Math.round(t.length * u), phase: i * 1.35, speed: 0.9 + (i % 3) * 0.18, reach: 8.5, r: 2.25 }));
-    const rollers = rollerF.map((u, i) => {
-      const f = t.frameAt(t.length * u), side = i % 2 ? -1 : 1, off = f.hw + 10;
-      return { x: f.x + f.lx * off * side, z: f.z + f.lz * off * side, r: 2.3 + (i === 1 ? .2 : 0), dx: -f.lx * side, dz: -f.lz * side };
-    });
-    const props = [0.49,0.505,0.52,0.59,0.605,0.62,0.91,0.925].map((u, i) => {
-      const f = t.frameAt(t.length * u), off = ((i % 3) - 1) * Math.min(5.5, f.hw * .45);
-      return placeProp(t, f.x + f.lx * off, f.z + f.lz * off);
-    }).map((p) => ({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }));
-    def = normalizeTrack({ ...def, assaultCourse: true, hammers, rollers, props });
-  }
   if (raw.arena) { def = normalizeTrack({ ...def, mode: 'lastStanding', ...ovalLumps(def) }); def = normalizeTrack({ ...def, props: arenaProps(def) }); }
   return def;
 }
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
+  apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, a jump and a final gauntlet. Beat the clock!',
   speedway: 'A fast 1.6 km banked Nascar-style paint-scraping, head rush',
   oval: 'A cheesy pizza-shaped pile up of olives and exploding peppers!',
   technical: 'Tight and twisty, lots of braking',

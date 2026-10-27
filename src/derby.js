@@ -579,6 +579,14 @@ export class Derby {
     this.events.push({ type: 'respawn', id: f.id, isPlayer: true });
   }
 
+  /** Apple Crumple checkpoint: the pit crew patch the player's car up to full health (and restart a stalled engine). */
+  repairPlayer() {
+    const f = this.player;
+    if (!f || f.wrecked || !this.damageEnabled) return;
+    f.health = new Health(SPECS.player.hp); f.flash = 0; f.car.engineOff = false;
+    this.events.push({ type: 'repaired', id: f.id, isPlayer: true });
+  }
+
   _win() {
     this.award('winner', 1, 'Last one standing');
     this.over = true; this.won = true;

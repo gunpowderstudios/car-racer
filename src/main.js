@@ -20,6 +20,9 @@ import { WheelFlyers } from './wheelDebris.js';
 import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual.js';
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
+import { Assault, COURSE } from './assault.js';
+import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
+import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound } from './audio.js';
@@ -182,7 +185,6 @@ let paused = false;
 const prevPos = new THREE.Vector3(), curPos = new THREE.Vector3(), prevQ = new THREE.Quaternion(), curQ = new THREE.Quaternion();
 const drawPos = new THREE.Vector3(), drawQ = new THREE.Quaternion(), velV = new THREE.Vector3();
 let acc = 0, last = performance.now(), simTime = 0, fps = 60, orbit = 0, frameNo = 0;
-let appleHammerHit = new Map(), appleHud = null;
 let hornVoice = null, frozen = false;
 const hornOn = () => opts.horn !== false;      // the cog's Horn option
 let throttleNow = 0, wallSpot = null;
@@ -333,6 +335,7 @@ for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-bo
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
+let assault = null;     // Apple Crumple: the solo obstacle course (assault.js) - null on every other track
 let testDrive = false, pendingTest = false;      // Test Drive from the editor: just your own car on the track, no rivals (any other way of loading a track clears it)
 function loadTrack(newDef) {
   testDrive = pendingTest; pendingTest = false;
@@ -341,6 +344,8 @@ function loadTrack(newDef) {
   track = new Track(def); window.__raceLaps?.syncFor?.(def);
   chase.low = !!def.lowCam;      // (see pickStartCamera)
   stage.setTrack(track);
+  assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
+  document.body.classList.toggle('course', !!assault);
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
   props.load(track, def.props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 3 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 1.5 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 0.75 : 1); propsView.build(props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza');      // (the pizza's drums are green, like peppers)
@@ -348,7 +353,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, get arena() { return track?.def?.mode === 'lastStanding'; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, get assault() { return assault; }, get arena() { return track?.def?.mode === 'lastStanding'; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -394,18 +399,66 @@ function restartRace() {
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
+  if (assault) { assaultCountdown(); return; }
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
+}
+
+// ------------------------------------------------------- Apple Crumple (the solo obstacle course, see assault.js)
+/** Three red lights and Go! with the car held still; the clock starts when you cross the line. */
+function assaultCountdown() {
+  assault.reset(); assaultHudShow(true); hideResult(); skid.clear();
+  props.reset(); derby.repairPlayer?.();
+  frozen = true; hud.banner('Apple Crumple - beat the clock!', 1800);
+  startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
+}
+/** Back on the road at your last checkpoint (or the start). `why`: 'wreck' (the +10 s was charged when it blew up), 'fall' or 'reset' (+5 s). */
+function assaultRespawn(why) {
+  if (why !== 'wreck' && assault.state === 'running') {
+    const s = assault.penalise(why === 'fall' ? 'fall' : 'reset');
+    assaultPop(`+${s}s ${why === 'fall' ? 'Fell off' : 'Reset'}`, 1500);
+  }
+  const L = track.length;
+  placeCar(((assault.cpS % L) + L) % L, 0, 0, true);
+  race.reverseT = 0;
+  if (assault.state === 'running') hud.banner(assault.next ? `Back at checkpoint ${assault.next}` : 'Back at the start', 1200);
+}
+const assaultBest = () => store.get('cr.apple', {}).best ?? null;
+/** What the course did this step: hits, checkpoints, penalties, the finish. */
+function assaultEvents() {
+  for (const e of assault.events) {
+    if (e.type === 'start') { hud.banner('Go!', 800); sound.beep(880, 0.3, 0.3); }
+    else if (e.type === 'checkpoint') {
+      derby.repairPlayer(); sound.beep(660, 0.15, 0.3); setTimeout(() => sound.beep(990, 0.25, 0.3), 140);
+      assaultPop(`Checkpoint ${e.index}/${e.of} - repaired!`, 1800);
+    } else if (e.type === 'penalty') {
+      if (e.why === 'wreck') assaultPop(`+${e.seconds}s Wrecked!`, 2200);
+    } else if (e.type === 'hit') {
+      const sp = Math.max(6, e.speed);
+      sound.hit(sp, 'car'); chase.impact(sp * 1.4); recHit(e.x, e.y, e.z, sp, 'car');
+      for (let i = 0; i < Math.min(12, 4 + sp * 0.5); i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 8, 2 + Math.random() * 4, (Math.random() - 0.5) * 8);
+      crashDebris(e.x, e.y, e.z, sp, PAINTS[opts.paint][1]);
+      if (e.kind === 'press') particles.blast(e.x, e.y - 0.4, e.z, 0.8);
+    } else if (e.type === 'finished' || e.type === 'timeout') {
+      const r = e.result, all = store.get('cr.apple', {}), prev = all.best ?? null, isBest = r.state === 'finished' && (prev == null || r.time < prev);
+      if (isBest) { all.best = r.time; store.set('cr.apple', all); }
+      hud.banner(r.state === 'finished' ? 'Finished!' : 'Out of time!', 1800);
+      setTimeout(() => { if (assault && !assault.active) showResult(r, isBest ? r.time : prev, isBest, restartRace, showMenu); }, 1600);
+    }
+  }
+  assault.events.length = 0;
 }
 
 /** The player asked to be put back on the road (B or the pad's Y): it costs a spanner while there are any left. (A recovery the game does by itself is free.) */
 function backOnRoad() {
+  if (assault && !assault.active) return;
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;
   const costs = derby.enabled && Number.isFinite(derby.repairsMax) && derby.repairs > 0;
   respawn();
   if (costs) { derby.repairs--; hud.setRepairs(derby.repairs, derby.repairsMax); hud.banner(`Back on the road - spanner used, ${derby.repairs} left`, 1500); }
 }
-function respawn() {
+function respawn(why = 'reset') {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
+  if (assault) { assaultRespawn(why); return; }
   if (track.def.mode === 'lastStanding') { placeCarInArena(derby.rivals.filter((f) => !f.wrecked).map((f) => f.car.pos)); race.reverseT = 0; return; }      // the arena has no road: back on a clear patch of floor, away from the rivals (the road's own line runs over the humps)
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
@@ -445,7 +498,7 @@ function updateRace(dt) {
   race.lastS = s;
   if (race.unwrapped > race.max) race.max = race.unwrapped;
   const idx = lapped ? Math.floor(race.max / L) : race.index;    // laps only count on a circuit; an arena stays at its start index
-  if (idx > race.index) {
+  if (!assault && idx > race.index) {
     race.index = idx;
     if (idx === 0) { race.lapStart = simTime; race.laps = 1; if (net) mpRaceStart = simTime; hud.banner('Go!', 900); }
     else if (idx > 0 && race.lapStart != null) {
@@ -474,14 +527,14 @@ function updateRace(dt) {
   const q2 = track.query(car.pos.x, car.pos.y + 0.5, car.pos.z, undefined, 1.2);
   trouble.lost = q2.surface === SURF.BASE && car.pos.y < 2 ? trouble.lost + dt : 0;
   if (trouble.flipped > 2) respawn();
-  else if (trouble.lost > 1.4 || car.pos.y < -30) respawn();
+  else if (trouble.lost > 1.4 || car.pos.y < -30) respawn('fall');
 }
 
 // ------------------------------------------------------------------ physics
 function stepPhysics(dt) {
   if (frozen || paused) return;                                            // the story-mode results panel is up: hold the race still
   const raw = input.read();
-  const inp = derby.over || (derby.enabled && derby.player?.wrecked) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
+  const inp = derby.over || (derby.enabled && derby.player?.wrecked) || (assault && !assault.active && assault.state !== 'ready') ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   if (raw.horn && !hornVoice && hornOn()) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true, veh: selectedVehicle().id }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
@@ -495,21 +548,7 @@ function stepPhysics(dt) {
     }
     if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
     if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car], net ? (i) => net.sendRoll(i) : null, net ? mpWatchers() : null);                  // boulders waiting by the road roll out when a car comes near
-    if (track.def.assaultCourse && track.def.hammers) {
-      for (let hi = 0; hi < track.def.hammers.length; hi++) {
-        const h = track.def.hammers[hi], f = track.frameAt(h.s), ang = simTime * h.speed + h.phase, off = Math.sin(ang) * h.reach, L = 7.2;
-        const drop = Math.sqrt(Math.max(1, L * L - Math.min(L - .1, Math.abs(off)) ** 2));
-        const hx = f.x + f.lx * off, hz = f.z + f.lz * off, hy = f.y + 8.5 - drop;
-        const dx = car.pos.x - hx, dy = car.pos.y - hy, dz = car.pos.z - hz, R = h.r + 1.55;
-        if (dx*dx + dy*dy + dz*dz < R*R && simTime - (appleHammerHit.get(hi) ?? -99) > .7) {
-          appleHammerHit.set(hi, simTime);
-          const vside = Math.cos(ang) * h.reach * h.speed, nx = Math.abs(vside) > .2 ? Math.sign(vside) * f.lx : (dx || 1), nz = Math.abs(vside) > .2 ? Math.sign(vside) * f.lz : dz;
-          const nl = Math.hypot(nx,nz) || 1, punch = Math.max(12, Math.min(30, Math.abs(vside) * 2.4));
-          car.vel.x += nx / nl * punch; car.vel.z += nz / nl * punch; car.vel.y += 2.5; car.angVel.y += (dx * nz - dz * nx) * .18;
-          mpDentAt(hx, hy, hz, Math.min(52, 12 + punch)); car.events.push({ type:'wall', speed:punch, x:hx, y:hy, z:hz });
-        }
-      }
-    }
+    if (assault) { assault.step(DT, car, race.unwrapped, derby); if (assault.events.length) assaultEvents(); }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
@@ -570,27 +609,28 @@ function caravanEvent(e) {
 // ------------------------------------------------------- destruction derby
 let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is a Jamboree on a computer; a phone or tablet keeps it plain, so it does not load a dozen models before anyone has pressed start
 function derbyStart() {
-  const assault = !!track?.def?.assaultCourse;
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  derby.enabled = !assault && !net && !testDrive && (opts.rivals > 0 || demoDay); derby.brutal = demoDay;
+  const solo = !!assault;                       // Apple Crumple: no rivals, but the car takes real damage and is wrecked and respawned like any race
+  derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const mixedKinds = derby.enabled && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
+  const mixedKinds = derby.enabled && !solo && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
   const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
   derby.pool = mixedKinds ? jamboreePoolForRace() : null;                               // Wacky Racing and Demolition: every rival is a different vehicle
-  derby.towing = derby.enabled && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
-  const field = Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
+  derby.towing = derby.enabled && !solo && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
+  const field = solo ? 0 : Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
-  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
-  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree ? 'race' : opts.mode); else derby.stop();
+  derby.repairsMax = derby.enabled && !solo && !arena && !window.__story?.active ? (opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
+  if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
   replayRec.reset(); replayRec.off = !!net;                                              // a new race: a new replay (and none at all in multiplayer)
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
+  if (solo) hud.d.score.hidden = true;                                                    // (no rivals to score against: just the damage chart)
   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
 }
 
@@ -609,6 +649,7 @@ function derbyEvents() {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
       if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); replayRec.event(simTime, { type: 'dent', id: e.isPlayer ? 'p' : e.id, lx: e.lx, ly: e.ly, lz: e.lz, hp: e.dentHp ?? e.hp }); }   // a visible dent where it hit
     } else if (e.type === 'wreck') {
+      if (e.isPlayer && assault) { assault.penalise('wreck'); }
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
@@ -619,13 +660,15 @@ function derbyEvents() {
         replayRec.event(simTime, { type: 'wreck', id: e.isPlayer ? 'p' : e.id, x: e.x, y: e.y, z: e.z, isPlayer: !!e.isPlayer, vx: wf ? wf.car.vel.x : 0, vz: wf ? wf.car.vel.z : 0 }); }
       props.shock(e.x, e.y, e.z, 8);                  // a burning car sets off drums beside it
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
+    } else if (e.type === 'repaired') {
+      visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
     } else if (e.type === 'award') {
       hud.feed(`+${e.points} ${e.label}`);
     } else if (e.type === 'honk') {
       sound.honk(e.dist, e.pitch);
       { const hf = derby.fighters.find((x) => x.id === e.id); if (hf) replayRec.event(simTime, { type: 'honk', x: hf.car.pos.x, y: hf.car.pos.y, z: hf.car.pos.z, pitch: e.pitch }); }
     } else if (e.type === 'respawn') {
-      respawn(); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
+      respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
@@ -939,7 +982,7 @@ function frame(now) {
       if (replay().state.skip && replay().state.realtime) return;          // a film with sound is made at real speed: a screen frame that is not a film frame is not drawn at all, which leaves the page free to keep the sound unbroken
       propsView.update(props);
       if (f) drawPos.set(f.x, f.y, f.z);
-      stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(simTime); stage.updateAssault(simTime);
+      stage.update(drawPos, camera.position); stage.updateRollers();
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
       if (tierName === 'high' && !device.touch && adapt.scale >= 0.8 && replay().state.camMode === 'TV') {      // (only the trackside TV camera gets the blur: Chase and Top stay sharp)
         if (!replayDof.on) replayDof.enable();
@@ -976,10 +1019,7 @@ function frame(now) {
     hud.update(car, { lap: race.laps, time: race.lapStart != null ? simTime - race.lapStart : null, best: race.best,
 
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
-    if (appleHud && !appleHud.hidden) {
-      const elapsed = race.lapStart != null ? Math.max(0, simTime - race.lapStart) : 0, left = 90 - elapsed;
-      appleHud.querySelector('span').textContent = race.lapStart == null ? 'GET READY' : left >= 0 ? `BEAT THE CLOCK · ${left.toFixed(1)}s` : `OVERTIME · +${(-left).toFixed(1)}s`;
-    }
+    if (assault) assaultHudUpdate(assault);
     if (derby.damageEnabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setRepairs(derby.repairs, derby.repairsMax);
@@ -1020,7 +1060,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
-  stage.update(drawPos, camera.position); stage.updateRollers();
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);
@@ -1055,13 +1095,13 @@ function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
   setPaused(false);
   if (m !== 'drive') setSoundPop(false);
-  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '');
+  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '');
   $('hud').hidden = m !== 'drive';
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
   menuMusic();
 }
-function showMenu() { mpTeardown(); if (appleHud) appleHud.hidden = true; setMode('menu'); renderMenu(); }
+function showMenu() { mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false); setMode('menu'); renderMenu(); }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
@@ -1220,6 +1260,7 @@ function startDriving(newDef) {
 }
 function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
+  if (assault) { assaultCountdown(); return; }
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
 }
 function openEditor(d) {
@@ -1294,11 +1335,12 @@ function renderMenu() {
   const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
     const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
-    row(d.name, info, '', [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);
+    row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);      // (the obstacle course is not editable)
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
+  group('Driving Tests'); addTemplate('apple');
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
@@ -1807,7 +1849,7 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('mp-track').innerHTML = TEMPLATE_KEYS.filter((k) => k !== 'apple').map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
+  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
   $('mp-track').value = 'random';
   // the same track and laps choice up on the first multiplayer screen, so the host sets the game up before creating the room
   $('mp-home-track').innerHTML = $('mp-track').innerHTML;

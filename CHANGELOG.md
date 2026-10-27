@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.430 — Apple Crumple, the obstacle course (feature branch)
+- New solo timed obstacle course in **Driving Tests**: swinging hammers, rolling boulders, a spinning arm, crushing presses, exploding barrels, a big jump and a final gauntlet.
+- Beat the clock: start lights, a countdown timer, four checkpoints that repair your car and act as restart points, and a finish line with a result card, medals and best time.
+- Wrecks cost +10 s, falling off or resetting +5 s; you restart at your last checkpoint.
+- Every hazard is real: it touches your car, shoves it and takes hit points off the zone it hit. Warning signs and hazard stripes come before each one.
+
 ## v17.428 — Apple Crumple moved to Driving Tests
 - Moved **Apple Crumple** out of Wacky Racing and into **Driving Tests**.
 - Driving Tests is now a real section rather than showing only “Coming soon…”.

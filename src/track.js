@@ -61,6 +61,23 @@ export function takeoffRamp(h) {
 export const PROP_TYPES = ['barrel'];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 400;
 
+/** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
+export function normalizeAssault(a) {
+  if (!a || typeof a !== 'object') return null;
+  const num = (v, d, lo, hi) => (Number.isFinite(+v) && v !== null && v !== '' ? clamp(+v, lo, hi) : d);
+  const list = (arr, max, f) => (Array.isArray(arr) ? arr.slice(0, max).filter((x) => x && Number.isFinite(+x.s)).map(f) : []);
+  const out = {
+    limit: num(a.limit, 160, 30, 600),
+    checkpoints: (Array.isArray(a.checkpoints) ? a.checkpoints : []).map(Number).filter((v) => Number.isFinite(v) && v > 0).sort((x, y) => x - y).slice(0, 12),
+    hammers: list(a.hammers, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), speed: num(h.speed, 1, 0.4, 2.2), reach: num(h.reach, 7.2, 3, 9) })),
+    arms: list(a.arms, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), speed: num(h.speed, 0.85, 0.3, 2), dir: h.dir < 0 ? -1 : 1, len: num(h.len, 6.4, 3, 9) })),
+    presses: list(a.presses, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), width: num(h.width, 14, 6, 30) })),
+    boulders: list(a.boulders, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), side: h.side < 0 ? -1 : 1 })),
+    signs: list(a.signs, 24, (h) => ({ s: +h.s, kind: ['barrels', 'jump', 'gauntlet'].includes(h.kind) ? h.kind : 'barrels' })),
+  };
+  return out;
+}
+
 export function normalizeProps(list) {
   const out = [];
   if (!Array.isArray(list)) return out;
@@ -227,10 +244,9 @@ export function normalizeTrack(input) {
     handles,
     props: normalizeProps(src.props),
   };
+  if (src.assault) { const as = normalizeAssault(src.assault); if (as) out.assault = as; }       // Apple Crumple: a solo timed obstacle course
   if (src.defaultLaps) out.defaultLaps = clamp(Math.round(Number(src.defaultLaps)) || 1, 1, 3);      // how many laps this track starts with, until the player picks a number of laps themselves
   if (src.quickRace) out.quickRace = true;                      // Buckle up!: always a fast one-lap race
-  if (src.assaultCourse) out.assaultCourse = true;                // Apple Crumple: solo timed obstacle course
-  if (Array.isArray(src.hammers)) out.hammers = src.hammers.slice(0, 10).map((h) => ({ s: Math.max(0, Number(h.s) || 0), phase: Number(h.phase) || 0, speed: Math.max(0.4, Math.min(2.2, Number(h.speed) || 1)), reach: Math.max(4, Math.min(12, Number(h.reach) || 8)), r: Math.max(1.5, Math.min(3, Number(h.r) || 2.2)) }));
   if (src.lowCam) out.lowCam = true;             // roads stacked above each other: the game uses a low tail camera so the road above cannot hide the car
   if (src.dirt) {                                // a loose-surface rally stage: dirt road, no kerbs, less grip
     out.dirt = true;
@@ -240,7 +256,6 @@ export function normalizeTrack(input) {
     const rough = normalizeRough(src.rough); if (rough.length) out.rough = rough;
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
-  if (src.assaultCourse && !out.rollers) { const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers; }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
