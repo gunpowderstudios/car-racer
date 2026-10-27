@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.421 — Arcade-only cleanup
+- Removed the final obsolete code that still referenced the old Handling dropdown.
+- Prevents a menu error now that Handling has been removed from Options.
+
 ## v17.420 — Simplified game setup
 - **Buckle up!** is now always a quick **1-lap random race**.
 - Buckle up respects the optional **Vehicles** choice below: **Mixed vehicles** or **Same vehicle, different colours**.

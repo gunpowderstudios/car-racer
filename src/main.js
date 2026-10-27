@@ -1296,8 +1296,6 @@ function bindMenu() {
     cb.onchange = () => { opts.caravan = cb.checked; store.set('cr.opts', opts); syncCaravan(); if (track) derbyStart(); toast(cb.checked ? 'Caravan hitched up!' : 'Caravan unhitched.'); };
   }
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
-  const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';
-  hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = 1; store.set('cr.opts', opts); };
   const SKILL = { easy: 0.2, normal: 0.6, hard: 1.12, expert: 1.28 };
   const skillOf = (v) => (v in SKILL ? v : 'hard');
   const sk = $('opt-skill'); sk.value = skillOf(opts.skill); derby.skill = SKILL[sk.value];
