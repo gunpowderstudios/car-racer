@@ -1,12 +1,13 @@
 // A tougher field: rivals corner harder, carry more speed, use their nitro on straights and get a stronger but still physics-based catch-up.
-// Measured on the built-in tracks: a driver with nitro and 14 m/s² cornering is about 12% quicker than Hard rivals used to be. These numbers make Hard and Expert about 6% quicker a lap, and any more cornering grip than this starts to put rivals off the road.
+// Stage 4: Hard should now make a clean player work for the win, while Expert remains the full challenge.
+// The extra pace is still only a target for the normal Vehicle physics: no teleporting, hidden grip or fake position changes.
 import { AI } from './ai.js';
 
-AI.cruiseMin = 38;      // ~85 mph
-AI.cruiseMax = 50;      // ~112 mph
-AI.huntMax = 56;        // ~125 mph
-AI.aLatCruise = 10.5;
-AI.aLatHunt = 12.5;
-AI.catchupStart = 35;
-AI.catchupFull = 190;
-AI.catchupSpeed = 0.22; // up to +22% chosen target speed when genuinely behind
+AI.cruiseMin = 40;      // ~89 mph
+AI.cruiseMax = 53;      // ~119 mph
+AI.huntMax = 60;        // ~134 mph
+AI.aLatCruise = 11.25;
+AI.aLatHunt = 13.4;
+AI.catchupStart = 20;
+AI.catchupFull = 165;
+AI.catchupSpeed = 0.28; // stronger only while genuinely behind; still driven through normal car physics
