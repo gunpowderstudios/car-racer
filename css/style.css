@@ -972,3 +972,36 @@ body:not(.mode-menu) #gp-credit { display: none; }
   html.mobile-try-anyway #mobile-screen-notice { display: none; }
   html.mobile-try-anyway body > :not(#mobile-screen-notice):not(noscript) { visibility: visible; }
 }
+
+
+/* User music upload sits beside the Music checkbox in Options. */
+.music-upload {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.music-upload input[type="file"] {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.music-upload > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  font-weight: 700;
+}
+.music-upload small {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: .72;
+}

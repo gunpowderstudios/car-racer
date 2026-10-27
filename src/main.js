@@ -23,6 +23,7 @@ import { Props } from './props.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound } from './audio.js';
+import { saveCustomMusic, getCustomMusic } from './customMusic.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
 import { EditorPreview } from './editorPreview.js';
@@ -1071,14 +1072,16 @@ function musicWanted() { return mode === 'menu' && sound.musicOn && !sound.ready
 function menuMusic() { if (musicWanted()) loungeOn(); else loungeOff(); }
 let resumeAt = null;                                                             // (where the tune had got to before the vehicle-change reload; read once, as the Audio may be made more than once)
 try { resumeAt = JSON.parse(sessionStorage.getItem('cr.musicpos') || 'null'); } catch { /* none */ }
-function loungeOn() {
+async function loungeOn() {
   if (!musicWanted()) return;
   if (document.readyState !== 'complete') {                       // (let the page itself finish loading before the tune starts to download)
     if (!loungeWait) { loungeWait = true; addEventListener('load', () => setTimeout(() => { loungeWait = false; loungeOn(); }, 400), { once: true }); }
     return;
   }
   try {
-    const url = assetUrl(sound.trackUrl());
+    const rawUrl = await sound.trackUrl();
+    if (!rawUrl) return;
+    const url = rawUrl.startsWith('blob:') ? rawUrl : assetUrl(rawUrl);
     if (lounge && lounge._url !== url) { lounge.pause(); lounge = null; }
     if (!lounge) {
       lounge = new Audio(url); lounge._url = url; lounge.loop = true; lounge.onerror = () => { lounge = null; };
@@ -1100,7 +1103,44 @@ addEventListener('pagehide', () => { try { if (lounge && !lounge.paused) session
 {
   const retry = () => { if (mode === 'menu') loungeOn(); };
   addEventListener('pointerdown', retry, true); addEventListener('keydown', retry, true);
-  for (const id of ['hud-track', 'opt-track']) { const el = $(id); if (el) { el.value = sound.track; el.addEventListener('change', (e) => { sound.setTrack(e.target.value); for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = e.target.value; if (lounge) { lounge.pause(); lounge = null; } menuMusic(); e.target.blur(); }); } }
+  for (const id of ['hud-track', 'opt-track']) { const el = $(id); if (el) { el.value = sound.track; el.addEventListener('change', async (e) => {
+    let choice = e.target.value;
+    if (choice === 'custom') {
+      try { if (!(await getCustomMusic())?.blob) choice = 'lounge'; } catch { choice = 'lounge'; }
+    }
+    await sound.setTrack(choice);
+    for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = choice;
+    if (lounge) { lounge.pause(); lounge = null; }
+    menuMusic(); e.target.blur();
+  }); } }
+
+  const fileInput = $('opt-music-file'), fileName = $('custom-music-name');
+  const showCustomName = async () => {
+    try { const item = await getCustomMusic(); fileName.textContent = item?.name ? item.name : ''; }
+    catch { fileName.textContent = ''; }
+  };
+  showCustomName();
+  if (fileInput) fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) { toast('Please choose an audio file'); fileInput.value = ''; return; }
+    try {
+      await saveCustomMusic(file);
+      fileName.textContent = file.name;
+      await sound.setTrack('custom');
+      sound.setEnabled('music', true);
+      for (const o of ['hud-track', 'opt-track']) if ($(o)) $(o).value = 'custom';
+      if ($('opt-music')) $('opt-music').checked = true;
+      if ($('hud-music')) $('hud-music').checked = true;
+      if (lounge) { lounge.pause(); lounge = null; }
+      menuMusic();
+      syncSoundUI();
+      toast('Custom music saved on this device');
+    } catch {
+      toast('Could not save that music file');
+    }
+    fileInput.value = '';
+  });
 }
 function pollWait(now) {
   if (!pendingStart && !waitInit) return;

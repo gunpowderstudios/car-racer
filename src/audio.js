@@ -1,6 +1,7 @@
 // WebAudio: engine (pitch follows RPM), tyre squeal, impacts, scrape and music.
+import { getCustomMusic } from './customMusic.js';
 // Uses the sound files in /sounds; falls back to a synthesised engine if they are missing.
-export const TRACKS = ['lounge', 'fairground', 'rock'];       // the music to pick from: sounds/<name>-music.mp3
+export const TRACKS = ['lounge', 'fairground', 'rock', 'custom'];       // built-ins plus one user-supplied track kept in IndexedDB
 export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
@@ -28,8 +29,9 @@ export class Sound {
       load('engine', ['sounds/engine-loop-loud.ogg', 'sounds/engine-loop-loud.mp3']), load('screech', 'sounds/tyre-screech.mp3'),
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'),
-      load('music', `sounds/${this.track}-music.mp3`), load('engineStart', 'sounds/engine-start.mp3'),
+      load('engineStart', 'sounds/engine-start.mp3'),
     ]);
+    await this._loadMusicBuffer(this.track);
     this.engine = this._loop('engine', this.sfx, 0);
     this.screech = this._loop('screech', this.sfx, 0);
     this.scrape = this._loop('scrape', this.sfx, 0);
@@ -40,7 +42,32 @@ export class Sound {
   }
 
   /** The music file for the chosen track (the loading screen plays it before the sound system exists). */
-  trackUrl() { return `sounds/${this.track}-music.mp3`; }
+  async trackUrl() {
+    if (this.track !== 'custom') return `sounds/${this.track}-music.mp3`;
+    try {
+      const item = await getCustomMusic();
+      if (!item?.blob) return null;
+      if (this._customObjectUrl) URL.revokeObjectURL(this._customObjectUrl);
+      this._customObjectUrl = URL.createObjectURL(item.blob);
+      return this._customObjectUrl;
+    } catch { return null; }
+  }
+
+  async _loadMusicBuffer(name) {
+    try {
+      let data;
+      if (name === 'custom') {
+        const item = await getCustomMusic();
+        if (!item?.blob) return false;
+        data = await item.blob.arrayBuffer();
+      } else {
+        const r = await fetch(`sounds/${name}-music.mp3`);
+        data = await r.arrayBuffer();
+      }
+      this.buf.music = await this.ctx.decodeAudioData(data);
+      return true;
+    } catch { return false; }
+  }
   /** Pick the music: it is remembered, and swapped in at once if the game's sound is already running. */
   async setTrack(name) {
     if (!TRACKS.includes(name) || name === this.track) return;
@@ -53,7 +80,16 @@ export class Sound {
   async _swapMusic(name) {
     this._want = name;
     try {
-      const r = await fetch(`sounds/${name}-music.mp3`); const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
+      let data;
+      if (name === 'custom') {
+        const item = await getCustomMusic();
+        if (!item?.blob) return;
+        data = await item.blob.arrayBuffer();
+      } else {
+        const r = await fetch(`sounds/${name}-music.mp3`);
+        data = await r.arrayBuffer();
+      }
+      const buf = await this.ctx.decodeAudioData(data);
       if (this._want !== name) return;                                    // (changed again while it loaded)
       try { this.musicLoop && this.musicLoop.src.stop(); } catch { /* already stopped */ }
       this.buf.music = buf; this.musicLoop = this._loop('music', this.music, 1, false);
