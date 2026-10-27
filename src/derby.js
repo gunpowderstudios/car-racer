@@ -40,7 +40,7 @@ export const DERBY = {
   grace: 3,              // seconds after the start before anything can hurt you
   spawnGrace: 1.5,       // and before a fresh rival can be hurt
   credit: 6,             // seconds after your hit in which a wreck still counts as yours
-  repairsDemolition: 1,  // in a Demolition derby you get just the one spanner
+  repairsDemolition: 0,  // Last One Standing: one wreck and the player is out
   brutalArmour: 0.6,     // Demolition Day: rivals take just this share of every hit, and drive at full (Expert) skill
   rivalClash: 0.4,       // Demolition: rivals hitting each other take just this share of the damage, so they don't wreck one another before you get to them
   repairs: 3,            // every car, yours and each rival, can be repaired this many times; the next wreck is scrap and stays on the track, burnt out
