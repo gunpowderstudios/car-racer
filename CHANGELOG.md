@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.413 — Mobile camera button
+- Added a small white camera-cycle icon directly above Boost on phones.
+- It uses the same camera switching behaviour as the existing C/LB camera control.
+
 ## v17.412 — Mobile Auto performance
 - Auto graphics now starts **phones at Medium** instead of High.
 - Auto keeps **tablets at High**.

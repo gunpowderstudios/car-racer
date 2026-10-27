@@ -1026,3 +1026,29 @@ body:not(.mode-menu) #gp-credit { display: none; }
   cursor: pointer;
 }
 .music-clear[hidden] { display: none; }
+
+
+/* Mobile camera-cycle button: compact white icon tucked immediately above Boost. */
+#t-camera { display: none; }
+@media (pointer: coarse) and (max-width: 760px) {
+  #touch .t-right { position: relative; }
+  #t-camera {
+    display: grid;
+    position: absolute;
+    right: 17px;
+    bottom: 142px;
+    place-items: center;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px;
+    padding: 6px;
+    border: 1.5px solid rgba(255,255,255,.9) !important;
+    border-radius: 50%;
+    background: rgba(0,0,0,.28) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.28);
+    z-index: 2;
+  }
+  #t-camera svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+  #t-camera:active { background: rgba(255,255,255,.2) !important; }
+}

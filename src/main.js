@@ -1384,6 +1384,8 @@ function mpSpecStep(dir) {
   mpSpecId = list[i][0]; return list[i][1];
 }
 function cameraKey() { if (net && life.out && mpSpectatables().length > 1) mpSpecStep(1); else hud.banner(chase.cycle() + ' camera', 900); }
+const touchCamera = $('t-camera');
+if (touchCamera) touchCamera.addEventListener('pointerdown', (e) => { e.preventDefault(); cameraKey(); touchCamera.blur(); });
 function mpSpecLabel(p) {
   let el = $('mp-spectate');
   if (!el) {
