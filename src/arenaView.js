@@ -47,7 +47,7 @@ export function buildArena(track, aniso = 8) {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const px = (x, z) => [(x - cx + R) * k, (z - cz + R) * k];
   c.fillStyle = '#d5b97f'; c.fillRect(0, 0, SIZE, SIZE);                                      // dough
-  c.fillStyle = '#b93330'; c.beginPath();                                                      // sauce: the edge wanders in and out, never closer in than 0.8 of the way out (the lumps stay on it)
+  c.fillStyle = '#7f2424'; c.beginPath();                                                      // sauce: the edge wanders in and out, never closer in than 0.8 of the way out (the lumps stay on it)
   for (let i = 0; i <= 180; i++) {
     const th = i / 180 * Math.PI * 2, rr = playR * (0.87 + 0.03 * Math.sin(3 * th + 1) + 0.025 * Math.sin(5 * th + 2) + 0.015 * Math.sin(8 * th)), [X, Z] = px(cx + Math.cos(th) * rr, cz + Math.sin(th) * rr);
     i ? c.lineTo(X, Z) : c.moveTo(X, Z);

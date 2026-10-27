@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.418 — Deep Pan Pizza visual tune
+- Darkened the red tomato sauce base.
+- Increased the cheese circles/dips by **30%**.
+- Increased spacing between pizza toppings so the arena looks less tightly patterned and more like a real pizza.
+
 ## v17.417 — Podium after race finish
 - Solo race finish/win message now remains readable for a full **5 seconds**.
 - After those 5 seconds, the podium appears automatically using the actual finishing order and vehicles from that race.

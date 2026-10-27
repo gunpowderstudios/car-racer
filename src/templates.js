@@ -93,7 +93,7 @@ function figureEight() {
 const OVAL_A = 36, OVAL_B = 36, OVAL_FLOOR = 118;       // metres: centreline half-length / half-width (equal: a small circle), and full floor width (59 m each side of it, so the floor is one solid round pizza 190 m across, with no hole in the middle)
 
 /** The Deep Pan Pizza's floor, a plain margherita: dough crust round the edge (the outer fifth of the radius), red sauce inside it, black olive HUMPS and yellow cheese DIPS.
- *  Each dip is exactly a hump turned upside down (same width, same depth). Always the same, and kept off the crust, the player's start, the respawn spots and the ring where the rivals line up. */
+ *  Cheese dips are 30% broader than the olive humps, with the same depth profile. Always the same, and kept off the crust, the player's start, the respawn spots and the ring where the rivals line up. */
 function ovalLumps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261024), r2 = (v) => Math.round(v * 100) / 100;
   const sauce = A.ax * 0.8;                                                                   // the sauce ends here; the crust is the rest
@@ -101,16 +101,17 @@ function ovalLumps(def) {
   const onRing = (x, z, m) => { const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62)); return Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < m; };
   const bumps = [], shapes = [];
   for (let k = 0; k < 8; k++) shapes.push({ r: 5.5 + rnd() * 2.5, h: 0.45 + rnd() * 0.5 });
-  for (const gap of [12, 10, 8, 6, 4, 3]) {                                                   // as far apart as will fit: try the whole set at each spacing, and only squeeze closer if it won't all go in
+  for (const gap of [16, 14, 12, 10, 8, 6]) {                                                  // roomier topping layout: only tighten if the full set will not fit
     bumps.length = 0; let all = true;
     for (const sg of [1, -1]) {                                                               // first the olives (humps), then the cheese (dips) with the very same sizes
       for (const sh of shapes) {
+        const rr = sh.r * (sg < 0 ? 1.3 : 1);                                                  // cheese dips are 30% broader; olives keep their old size
         let ok = false;
         for (let guard = 0; guard < 4000 && !ok; guard++) {
           const x = A.cx + (rnd() * 2 - 1) * sauce, z = A.cz + (rnd() * 2 - 1) * sauce;
-          if (Math.hypot(x - A.cx, z - A.cz) > sauce - sh.r - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < sh.r + 9) || onRing(x, z, sh.r + 1.5)) continue;
-          if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + sh.r + gap)) continue;
-          bumps.push({ x: r2(x), z: r2(z), r: r2(sh.r), h: r2(sg * sh.h) }); ok = true;
+          if (Math.hypot(x - A.cx, z - A.cz) > sauce - rr - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < rr + 9) || onRing(x, z, rr + 1.5)) continue;
+          if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + rr + gap)) continue;
+          bumps.push({ x: r2(x), z: r2(z), r: r2(rr), h: r2(sg * sh.h) }); ok = true;
         }
         if (!ok) all = false;
       }
