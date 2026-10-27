@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.414';
-export const NOTE = 'Phones now have a vertical quick-action stack above the speedometer for Mirror, Back on road and Explode.';
+export const VERSION = '17.415';
+export const NOTE = 'Mobile quick-action icons now have a little more vertical breathing room, including the camera button above Boost.';

@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.415 — Mobile icon spacing
+- Increased the vertical spacing between the small mobile quick-action icons.
+- Moved the camera-cycle icon slightly higher above Boost for clearer separation.
+
 ## v17.414 — Mobile quick actions
 - Added three small white vertical buttons above the phone speedometer: Mirror, Back on road and Explode.
 - Each uses the existing game action so behaviour matches the desktop/cog controls.
