@@ -68,7 +68,8 @@ const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, pain
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // (5 repairs was the default for a while)
 if (!opts.repairs3) { opts.repairs3 = true; if (opts.repairs === 5) opts.repairs = 3; }      // 3 repairs per race is the new default (a choice of 10 or Unlimited stays)
 if (!opts.jamDefault) { opts.jamDefault = true; if (opts.mode === 'race') opts.mode = 'jamboree'; }      // Jamboree became the default race: people who had never picked another mode move across once
-DT = 1 / tier.physicsHz;
+const physicsHz = device.touch && tierName === 'medium' ? 60 : tier.physicsHz;   // Medium touch: same tested handling at half the CPU step rate
+DT = 1 / physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
 CarVisual.texMax = tierName === 'high' ? 0 : 1024;          // phones: car textures at 1024px instead of 2048
@@ -220,7 +221,7 @@ function perfUpdate(now) {
   perf.el.textContent = `${tierName}  ${fps.toFixed(0)} fps  res ${(baseRatio * adapt.scale).toFixed(2)}x  ${physicsLabel}\n` +
     `car load ${visual.loadMs ?? '-'} ms  ` + `calls ${i.render.calls}  tris ${(i.render.triangles / 1000).toFixed(0)}k  geo ${i.memory.geometries}  tex ${i.memory.textures}`;
 }
-const physicsLabel = `${tier.physicsHz}Hz`;
+const physicsLabel = `${physicsHz}Hz`;
 
 const input = new Input({
   onReset: () => mode === 'drive' && backOnRoad(),
@@ -1339,7 +1340,7 @@ function bindMenu() {
   $('btn-hwtest').addEventListener('pointerdown', (e) => e.preventDefault());      // never take focus, so Space stays the handbrake
   $('btn-hwtest').onclick = () => { setSoundPop(false); openHardwareTest(() => {
     const i = renderer.info;
-    return { tier: tierName, quality: opts.quality, fps, res: baseRatio * adapt.scale, maxRes: baseRatio, physicsHz: tier.physicsHz, shadows: opts.shadow, mirror: mirror.on, rivals: derby.enabled ? derby.fighters.length - 1 : 0,
+    return { tier: tierName, quality: opts.quality, fps, res: baseRatio * adapt.scale, maxRes: baseRatio, physicsHz, shadows: opts.shadow, mirror: mirror.on, rivals: derby.enabled ? derby.fighters.length - 1 : 0,
       alive: props.alive, heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1048576 : 0, calls: i.render.calls, tris: i.render.triangles, geo: i.memory.geometries, tex: i.memory.textures, gpu: device.gpu, cores: device.cores, memory: device.memory, screen: `${innerWidth}x${innerHeight} at ${(devicePixelRatio || 1).toFixed(1)}x`, loadMs: visual.loadMs };
   }, (q) => { qsel.value = q; qsel.onchange(); }); };
   qsel.onchange = () => {

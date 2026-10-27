@@ -34,19 +34,19 @@ export const TIER_NAMES = Object.keys(TIERS);
 const OLD_GPU = /adreno[^0-9]*[2-5]\d\d\b|mali-?(4\d\d|t\d+)|powervr\s*(sgx|ge8)|\bsgx\b/i;
 
 /**
- * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Desktops start on high - the
- * adaptive resolution still protects weak laptops. Touch devices start on high and drop to low when
- * something says the phone is old or data-saving. Phones that give no hints (iPhones) start on high
- * and rely on the adaptive resolution.
+ * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Desktops and tablets start
+ * on high. Phones start on medium so they do less work before the adaptive controller has had time
+ * to react. Old/low-memory/data-saving touch devices still start on low.
  */
-export function detectTier({ forced, touch = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
+export function detectTier({ forced, touch = false, phone = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
   if (forced && TIERS[forced]) return forced;
   if (!touch) return 'high';
   if (saveData) return 'low';
   if (memory && memory <= 3) return 'low';
   if (gpu && OLD_GPU.test(gpu)) return 'low';
   if (cores && cores <= 4 && !/apple/i.test(gpu)) return 'low';     // (Safari reports few cores even on a fast iPhone, so an Apple GPU is not judged by that)
-  return 'high';                                                      // a phone from the last few years copes with everything: the adaptive resolution still protects slower ones
+  if (phone) return 'medium';                                         // modern phones: smoother start, still visually rich
+  return 'high';                                                      // tablets keep the larger-screen detail
 }
 
 /** Read the device hints from the browser. Browser-only; kept out of detectTier so that stays testable. */
@@ -63,6 +63,9 @@ export function probeDevice(win = globalThis) {
   } catch { /* no WebGL probe; the hints below still work */ }
   return {
     touch: !!(win.matchMedia && win.matchMedia('(pointer: coarse)').matches),
+    // Use the shorter CSS viewport side so an iPhone stays a phone in landscape; tablets are normally >= 700 CSS px.
+    phone: Math.min(Number(win.innerWidth) || 0, Number(win.innerHeight) || 0) > 0
+      && Math.min(Number(win.innerWidth) || 0, Number(win.innerHeight) || 0) <= 600,
     memory: nav.deviceMemory || 0,
     cores: nav.hardwareConcurrency || 0,
     saveData: !!(nav.connection && nav.connection.saveData),
