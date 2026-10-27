@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.406';
-export const NOTE = 'Options now lets players upload their own music; the audio stays on that browser/device in IndexedDB and can be reused as the Custom tune.';
+export const VERSION = '17.407';
+export const NOTE = 'All scenery trees now have solid trunk physics, so cars that leave the track collide, bounce and spin instead of passing through them.';

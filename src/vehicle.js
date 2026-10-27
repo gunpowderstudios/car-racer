@@ -256,6 +256,7 @@ export class Vehicle {
     // --- walls
     this._walls(track, dt);
     if (track.rocks) this._rocks(track);
+    if (track.trees) this._trees(track);
 
     // --- integrate pose
     const vl = this.vel.length();
@@ -722,6 +723,34 @@ export class Vehicle {
       }
     }
     if (pen > 0) { this.pos.x += nx * Math.min(pen, 0.5) * 0.7; this.pos.z += nz * Math.min(pen, 0.5) * 0.7; }
+    if (worstV > 0) this.scraping = true;
+    if (worstV > 1.5) this.events.push({ type: 'wall', speed: worstV, x: wx, y: wy, z: wz });
+  }
+  /** Scenery trees: solid upright trunk cylinders. They use the same rigid-body impulse response as
+   *  boulders, so flying off the road and clipping a tree can stop, spin or bounce the car naturally. */
+  _trees(track) {
+    const hull = this.spec.hull;
+    let worstV = 0, wx = 0, wy = 0, wz = 0, nx = 0, nz = 0, pen = 0;
+    for (const tr of track.trees) {
+      const ddx = this.pos.x - tr.x, ddz = this.pos.z - tr.z, reach = tr.r + 4;
+      if (ddx * ddx + ddz * ddz > reach * reach || this.pos.y > tr.y + tr.h + 3) continue;
+      const R = tr.r;
+      for (let i = 0; i < hull.length; i++) {
+        const p = this.toWorld(hull[i], this.hullWorld[i]);
+        if (p.y > tr.y + tr.h || p.y < tr.y - 1.2) continue;
+        const dx = p.x - tr.x, dz = p.z - tr.z, d = Math.hypot(dx, dz);
+        if (d >= R) continue;
+        const n = tmpE.set(d > 1e-4 ? dx / d : 1, 0, d > 1e-4 ? dz / d : 0);
+        const r = tmpC.copy(p).sub(this.pos), v = this._velAt(r, tmpD), vn = v.dot(n);
+        if (R - d > pen) { pen = R - d; nx = n.x; nz = n.z; }
+        if (vn >= 0) continue;
+        const rr = r.clone(), nn = n.clone();
+        const e = this.spec.wallBounce * clamp((-vn - 0.5) / 2.5, 0, 0.45);   // trees give a little, but remain solid
+        this._impulse(nn, -(1 + e) * vn / this._kAt(rr, nn), rr);
+        if (-vn > worstV) { worstV = -vn; wx = p.x; wy = p.y; wz = p.z; }
+      }
+    }
+    if (pen > 0) { this.pos.x += nx * Math.min(pen, 0.45) * 0.8; this.pos.z += nz * Math.min(pen, 0.45) * 0.8; }
     if (worstV > 0) this.scraping = true;
     if (worstV > 1.5) this.events.push({ type: 'wall', speed: worstV, x: wx, y: wy, z: wz });
   }

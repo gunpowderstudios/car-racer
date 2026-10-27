@@ -352,6 +352,9 @@ export class Stage {
       if (nearRoad(x, z, clear)) continue;
       trees.push([x, z, 0.8 + rnd() * 1.1]);
     }
+    // Share the exact visible tree positions with vehicle physics. The trunk collider matches the
+    // cylinder artwork closely enough to feel solid without making the broad crown an invisible wall.
+    track.trees = trees.map(([x, z, sc]) => ({ x, z, y: 0, r: 0.35 * sc, h: 3 * sc }));
     if (trees.length) {
       const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.35, 3, 6), new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 1 }), trees.length);
       const crown = new THREE.InstancedMesh(new THREE.ConeGeometry(2.2, 8, 7), new THREE.MeshStandardMaterial({ color: 0x27452f, roughness: 1 }), trees.length);
