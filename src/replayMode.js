@@ -165,7 +165,8 @@ export function createReplayMode(d) {
   // ---- optional 1970s TV set around the video: the game picture is cropped to fill the screen cut-out of tv/tv-frame.webp
   const TV = { w: 1536, h: 1024, sx: 172, sy: 122, sw: 908, sh: 674 };   // the screen opening in the 1536x1024 picture (a little oversize, so the frame covers the edge)
   let tvImg = null;
-  const musicClip = () => (d.sound.musicOn && d.sound.buf && d.sound.buf.music ? { buffer: d.sound.buf.music, vol: 0.7 } : null);      // music only if it is switched on for the race
+  const musicClip = () => (d.sound.musicOn && d.sound._film && d.sound._film !== 'off' && d.sound._film !== 'custom' && d.sound.buf && d.sound.buf.music
+    ? { buffer: d.sound.buf.music, vol: 0.7 } : null);      // exported movies only use an explicitly selected approved built-in soundtrack
   async function makeFilm() {                    // the whole race, with its sound
     if (!desktop || R.saving || R.making) return;
     R.making = true;
@@ -278,7 +279,8 @@ export function createReplayMode(d) {
   function applyReplaySound() { d.sound.filmTrack?.(el.track ? el.track.value : 'off', !el.fx || el.fx.checked); }
   if (el.track) {                                              // the film's soundtrack: one of the music tracks, or off (starts on the game's own choice)
     let saved = null; try { saved = localStorage.getItem('cr.filmtrack'); } catch { /* none */ }
-    el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? d.sound.track : 'off');
+    const currentFilmTrack = d.sound.track === 'custom' ? 'off' : d.sound.track;
+    el.track.value = [...el.track.options].some((o) => o.value === saved) ? saved : (d.sound.musicOn ? currentFilmTrack : 'off');
     el.track.onchange = () => { applyReplaySound(); try { localStorage.setItem('cr.filmtrack', el.track.value); } catch { /* storage unavailable */ } el.track.blur(); };
     if (el.size) { try { el.size.value = localStorage.getItem('cr.filmsize') === 'small' ? 'small' : 'best'; } catch { /* none */ } }
     const syncShape = () => { if (el.tvset) { el.tvset.disabled = !!(el.shape && el.shape.value === 'tall'); } };

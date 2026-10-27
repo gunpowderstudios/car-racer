@@ -98,6 +98,7 @@ export class Sound {
   /** The soundtrack of a film being made: a track name or 'off'; null puts the game's own music back. */
   async filmTrack(choice, fx = true) {
     if (!this.ctx || !this.ready) return;
+    if (choice === 'custom') choice = 'off';                    // user-uploaded audio is for gameplay only, never movie export
     if (choice === null) {
       if (!this._film) return;
       this._film = null; this.music.gain.value = this.musicOn ? 0.22 * this.musicVol : 0; this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0;
