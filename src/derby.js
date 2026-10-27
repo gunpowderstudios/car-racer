@@ -371,6 +371,7 @@ export class Derby {
     // In races, performance follows the player's chosen vehicle closely enough that a quirky slow rival
     // cannot simply be left behind on the straights. It still keeps its own handling, weight and damage.
     car.aiEngineMul = this.demolition ? 1 : raceEngineEqualizer(this.player?.car?.spec, car.spec);
+    car.aiRollGuard = this.demolition ? 0.48 : 0.72;          // AI-only stability: keep rivals racing instead of repeatedly rolling over
     const f = {
       id: this._id++, raceSlot: Number.isInteger(raceSlot) ? raceSlot : null,
       isPlayer: false, car, driver, health: new Health(SPECS.rival.hp), spec: kind ? kindSpec(kind) : SPECS.rival, vehicleId: kind ? kind.id : null,

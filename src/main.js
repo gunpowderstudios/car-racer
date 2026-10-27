@@ -1228,7 +1228,7 @@ function bindMenu() {
   bindOpt('opt-assist', 'assist', (v) => { opts.assist = v; car.opts.assist = v ? 0.7 : 0; });
   const hd = $('opt-handling'); hd.value = opts.handling === 'standard' ? 'standard' : 'arcade';
   hd.onchange = () => { opts.handling = hd.value === 'standard' ? 'standard' : 'arcade'; car.opts.stability = opts.handling === 'standard' ? 0 : 1; store.set('cr.opts', opts); };
-  const SKILL = { easy: 0.2, normal: 0.55, hard: 1.0, expert: 1.15 };
+  const SKILL = { easy: 0.2, normal: 0.6, hard: 1.12, expert: 1.28 };
   const skillOf = (v) => (v in SKILL ? v : 'hard');
   const sk = $('opt-skill'); sk.value = skillOf(opts.skill); derby.skill = SKILL[sk.value];
   sk.onchange = () => { opts.skill = skillOf(sk.value); derby.skill = SKILL[opts.skill]; store.set('cr.opts', opts); toast('Rivals: ' + sk.options[sk.selectedIndex].text.split(' - ')[0]); sk.blur(); };

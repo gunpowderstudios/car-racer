@@ -30,7 +30,7 @@ export const AI = {
 };
 
 /** Rival skill 0..1 (Easy .2, Normal .5 = the original behaviour, Hard .75, Expert 1). One number, a handful of knobs. */
-export function skillOf(ctx) { return clamp(ctx && ctx.skill != null ? ctx.skill : 0.5, 0, 1.15); }
+export function skillOf(ctx) { return clamp(ctx && ctx.skill != null ? ctx.skill : 0.5, 0, 1.3); }
 
 /** Largest corner curvature in the next `span` metres. */
 function curvAhead(track, s, span = 130) {
@@ -175,8 +175,8 @@ export class Driver {
     // still only a target speed: the rival must achieve it with its own tyres, gearbox and physics.
     if (ctx.racePace && P && pRoad && playerLead > 5) {
       const pressure = clamp((playerLead - 5) / 80, 0, 1);
-      const paceMul = 0.96 + 0.11 * sk;                       // Hard ~107%, Expert ~109%
-      const chaseTarget = P.speed * paceMul + pressure * (2 + 4 * sk);
+      const paceMul = 0.98 + 0.13 * sk;                       // Hard ~112%, Expert ~115%
+      const chaseTarget = P.speed * paceMul + pressure * (3 + 5 * sk);
       vT = Math.max(vT, Math.min(AI.raceMax, chaseTarget));
     }
 

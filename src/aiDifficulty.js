@@ -3,12 +3,12 @@
 // The extra pace is still only a target for the normal Vehicle physics: no teleporting, hidden grip or fake position changes.
 import { AI } from './ai.js';
 
-AI.cruiseMin = 40;      // ~89 mph
-AI.cruiseMax = 53;      // ~119 mph
-AI.huntMax = 60;        // ~134 mph
-AI.aLatCruise = 11.25;
-AI.aLatHunt = 13.4;
-AI.catchupStart = 20;
-AI.catchupFull = 165;
-AI.catchupSpeed = 0.36; // stronger only while genuinely behind; still driven through normal car physics
-AI.raceMax = 74;          // allow a fast player to pull the field up to arcade-racing speeds
+AI.cruiseMin = 43;      // ~96 mph
+AI.cruiseMax = 57;      // ~128 mph
+AI.huntMax = 64;        // ~143 mph
+AI.aLatCruise = 10.9;   // slightly less lateral demand: faster overall without tipping as often
+AI.aLatHunt = 12.9;
+AI.catchupStart = 8;
+AI.catchupFull = 125;
+AI.catchupSpeed = 0.44; // harder default catch-up, still entirely through normal vehicle physics
+AI.raceMax = 80;          // let a fast player pull the field up to serious arcade-racing speeds
