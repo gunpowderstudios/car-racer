@@ -34,7 +34,8 @@ export function cancelRaceLights() {
 }
 
 /** Run the sequence, then call `go` as the lights go out. `beep(freq, dur)` is optional. */
-export function startRaceLights(go, beep) {
+/** `hold` (0..1, optional) fixes the last red's random wait, so everyone in a multiplayer race sees the lights go out together. */
+export function startRaceLights(go, beep, hold01 = Math.random()) {
   const el = ensure();
   if (!el) { go(); return; }
   clear(); onDone = go;
@@ -44,7 +45,7 @@ export function startRaceLights(go, beep) {
   cols.forEach((c) => c.classList.remove('green'));
   const reds = cols.length - 1;                                   // Red, Red, then Green
   cols.slice(0, reds).forEach((c, i) => timers.push(setTimeout(() => { c.classList.add('on'); beep?.(440, 0.2); }, 600 + i * step)));
-  const hold = 500 + Math.random() * 1100;                       // the last red holds for a random moment: no jumping the start
+  const hold = 500 + Math.min(1, Math.max(0, +hold01 || 0)) * 1100;                       // the last red holds for a random moment: no jumping the start
   timers.push(setTimeout(() => {
     cols.forEach((c) => c.classList.remove('on')); cols[reds].classList.add('green'); msg.textContent = 'Go!'; beep?.(880, 0.5, 0.35);
     const f = onDone; onDone = null; f?.();

@@ -1794,6 +1794,8 @@ function mpBeginDrive(trackDef) {
   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
   mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
+  frozen = true;                                                    // held on the grid until the lights go out, same as Race Day
+  startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g), trackDef?.lightHold);
 }
 /** Give each human player their own spot on the starting grid, same idea as the AI rivals' grid:
  *  a couple of cars per row, side by side. The order is sorted by peer id so every client computes

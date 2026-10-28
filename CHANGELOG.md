@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.459 — Start lights in multiplayer
+- Multiplayer races now begin with the Red, Red, Green! start lights, like Race Day. Everyone is held on the grid and the lights go out at the same moment for all players.
+
 ## v17.458 — Join chime
 - A two-note chime plays in the multiplayer lobby whenever someone joins the room.
 

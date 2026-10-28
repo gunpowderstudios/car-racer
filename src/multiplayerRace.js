@@ -148,7 +148,7 @@ Multiplayer.prototype.startGame = function raceStartGame(trackDef) {
   this._raceFinishReported = false;
   this._podiumSent = false; clearTimeout(this._podiumTimer);
   this._outOrder = []; this._derbyStart = this.players.size; clearTimeout(this._derbyEndTimer); this._derbyEndTimer = 0;
-  return originalStartGame.call(this, trackDef);
+  return originalStartGame.call(this, trackDef && typeof trackDef === 'object' ? { ...trackDef, lightHold: Math.random() } : trackDef);   // (the host picks how long the last red holds, so everyone's lights go out together)
 };
 
 const originalLeave = Multiplayer.prototype.leave;
