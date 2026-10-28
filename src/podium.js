@@ -77,7 +77,9 @@ export function showPodium(list, selfId, derby = false) {
   ov.querySelector('#podium-title').textContent = derby ? (top[0].id === selfId ? 'You are the last one standing!' : `${top[0].name} is the last one standing!`) : (top[0].id === selfId ? 'You came 1st!' : `${top[0].name} came 1st!`);
   ov.querySelector('#podium-rest').textContent = list.length > 3 ? list.slice(3).map((p, i) => `${i + 4}th ${p.name}`).join(' · ') : '';
   ov.hidden = false;
-  const canvas = ov.querySelector('#podium-canvas'), names = ov.querySelector('#podium-names');
+  const oldCanvas = ov.querySelector('#podium-canvas'), canvas = oldCanvas.cloneNode(false);
+  oldCanvas.replaceWith(canvas);                                  // a fresh canvas each time: the last one's WebGL context was released, and a canvas cannot get a new one (it came back as a blank white box)
+  const names = ov.querySelector('#podium-names');
   names.innerHTML = '';
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); } catch { return; }

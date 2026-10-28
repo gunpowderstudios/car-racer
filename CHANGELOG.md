@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.456 — Podium comes back properly
+- Coming back to the podium after watching a replay (or making a movie) showed a blank white box instead of the podium; it now gets a fresh drawing surface each time and shows the cars again.
+
 ## v17.455 — Race Day: 1 lap
 - Race Day now starts on 1 lap (it remembers what you pick afterwards) and the lap choice goes up to 5 laps, both on the Race Day screen and in Settings. The Race Day button's sub-title is now "Jump in and put your foot down!". (Multiplayer races stay at up to 3 laps.)
 
