@@ -45,6 +45,7 @@ test('the course is a clean one-lap route with a drivable jump and a way through
   assert.ok(drivable(def), 'the jump can be cleared (by the AI and the bot checks)');
   const jump = def.handles.find((h) => h.gap);
   assert.ok(jump && jump.gap >= 12 && jump.y >= 5, 'a real gap, on a hill at least 5 m high');
+  assert.equal(def.handles.filter((h) => h.gap).length, 2, 'and a second jump for the finale');
   const d = def.assault;
   assert.ok(d.hammers.length >= 2 && d.boulders.length >= 3 && d.arms.length >= 2 && d.presses.length >= 2, 'every kind of hazard is on the course');
   assert.ok(d.checkpoints.length >= 4);
@@ -55,10 +56,10 @@ test('the course is a clean one-lap route with a drivable jump and a way through
   const first = Math.min(...['hammers', 'arms', 'boulders', 'presses'].map((k) => d[k][0].s));
   assert.equal(first, d.hammers[0].s); assert.ok(d.hammers[0].speed <= 0.9);
   const gauntlet = d.checkpoints[d.checkpoints.length - 1];
-  const kinds = ['hammers', 'arms', 'boulders', 'presses'].filter((k) => d[k].some((h) => h.s > gauntlet));
-  assert.equal(kinds.length, 4, 'the final gauntlet has a hammer, an arm, a boulder and a press');
-  assert.ok(def.props.some((p) => { const s = track.progressAt(p.x, p.y, p.z); return s > gauntlet; }), 'with barrels in it');
-  assert.ok(d.signs.some((s) => s.kind === 'jump') && d.signs.some((s) => s.kind === 'barrels') && d.signs.some((s) => s.kind === 'gauntlet'), 'warning signs');
+  const kinds = ['hammers', 'arms', 'presses'].filter((k) => d[k].some((h) => h.s > gauntlet));
+  assert.equal(kinds.length, 3, 'the final gauntlet has a hammer, an arm and a press');
+  assert.ok(d.hoop && d.hoop.s > gauntlet && d.hoop.s < track.length, 'the flaming hoop is the end of the gauntlet');
+  assert.ok(d.signs.some((s) => s.kind === 'jump') && d.signs.some((s) => s.kind === 'barrels') && d.signs.some((s) => s.kind === 'gauntlet') && d.signs.some((s) => s.kind === 'hoop'), 'warning signs');
 });
 
 test('the course survives normalizeTrack (share links, saves) and junk is thrown away', () => {
@@ -284,6 +285,7 @@ test('the clock starts when you cross the line, not before', () => {
 
 test('checkpoints are reached in order, repair-point updated, and cannot be skipped', () => {
   const { car, run, derby, def } = course(), cp = def.assault.checkpoints;
+  run.def = { ...def.assault, hoop: undefined };
   run.step(0.1, car, 1, derby);
   run.step(0.1, car, cp[1] + 5, derby);                                      // jumped straight past the first two (a shortcut)
   assert.equal(run.next, 2, 'all the ones you passed count in order');
@@ -293,20 +295,23 @@ test('checkpoints are reached in order, repair-point updated, and cannot be skip
   assert.equal(run.next, cp.length); assert.equal(run.state, 'finished');
 });
 
-test('you cannot finish without every checkpoint, and the finish is the end of the lap', () => {
+test('you cannot finish without every checkpoint, and the finish is crossing the finish line (the hoop)', () => {
   const { car, run, derby, track, def } = course();
-  run.def = { ...def.assault, checkpoints: [10, 20, track.length + 500] };
+  run.def = { ...def.assault, hoop: undefined, checkpoints: [10, 20, track.length + 500] };
   run.step(0.1, car, 1, derby); run.step(0.1, car, track.length + 1, derby);
   assert.equal(run.state, 'running', 'a missed checkpoint means no finish');
-  run.step(0.1, car, track.length + 501, derby); assert.equal(run.state, 'finished');
+  const r2 = course(); r2.run.def = { ...def.assault, hoop: undefined, checkpoints: [10, 20, track.length - 500] };
+  r2.run.step(0.1, r2.car, 1, r2.derby); r2.run.step(0.1, r2.car, track.length - 400, r2.derby);
+  assert.equal(r2.run.state, 'running', 'all the checkpoints but not the line yet');
+  r2.run.step(0.1, r2.car, track.length + 1, r2.derby); assert.equal(r2.run.state, 'finished');
 });
 
-test('penalties: a wreck is +10 s, a fall and a reset +5 s, and they come off the clock', () => {
+test('penalties: a wreck is +5 s, a fall and a reset +3 s, and they come off the stage clock', () => {
   const { car, run, derby } = course();
   run.step(0.1, car, 1, derby);
-  assert.equal(run.penalise('wreck'), 10); assert.equal(run.penalise('fall'), 5); assert.equal(run.penalise('reset'), 5);
-  assert.equal(run.penalty, 20); assert.equal(run.wrecks, 1);
-  assert.ok(Math.abs(run.remaining - (run.limit - run.elapsed - 20)) < 1e-9);
+  assert.equal(run.penalise('wreck'), 5); assert.equal(run.penalise('fall'), 3); assert.equal(run.penalise('reset'), 3);
+  assert.equal(run.penalty, 11); assert.equal(run.wrecks, 1);
+  assert.ok(Math.abs(run.remaining - (run.limit - run.elapsed - 11)) < 1e-9);
   assert.deepEqual(run.events.filter((e) => e.type === 'penalty').map((e) => e.why), ['wreck', 'fall', 'reset']);
 });
 
@@ -321,14 +326,14 @@ test('the clock running out ends the run; later events change nothing', () => {
 test('a finish gives a time with penalties included, and a medal', () => {
   const finishAt = (secs, pen) => {
     const { car, run, derby, track } = course(); run.step(0.01, car, 1, derby);
-    run.def = { ...run.def, checkpoints: [] }; for (let i = 0; i < pen; i++) run.penalise('wreck');
+    run.def = { ...run.def, hoop: undefined, checkpoints: [] }; for (let i = 0; i < pen; i++) run.penalise('wreck');
     run.step(secs, car, track.length + 1, derby); return run.result;
   };
-  let r = finishAt(70, 0); assert.equal(r.state, 'finished'); assert.equal(r.medal, 'gold'); assert.ok(Math.abs(r.time - 70.01) < 0.02 || r.time < 71);
-  r = finishAt(70, 1); assert.equal(r.medal, 'gold'); assert.ok(r.time > 79.9 && r.time < 81, 'the wreck added 10 s');
-  r = finishAt(85, 1); assert.equal(r.medal, 'silver'); assert.equal(r.penalty, 10);
-  r = finishAt(105, 1); assert.equal(r.medal, 'bronze');
-  r = finishAt(130, 1); assert.equal(r.medal, null);
+  let r = finishAt(50, 0); assert.equal(r.state, 'finished'); assert.equal(r.medal, 'gold'); assert.ok(r.time < 51);
+  r = finishAt(50, 1); assert.equal(r.medal, 'gold'); assert.ok(r.time > 54.9 && r.time < 56, 'the wreck added 5 s');
+  r = finishAt(62, 1); assert.equal(r.medal, 'silver'); assert.equal(r.penalty, 5);
+  r = finishAt(72, 1); assert.equal(r.medal, 'bronze');
+  r = finishAt(90, 1); assert.equal(r.medal, null);
 });
 
 test('reset puts the run back at the start', () => {
@@ -425,7 +430,7 @@ test('the drawn hazards sit exactly where the collisions put them', { skip: !THR
   globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx, style: {} }) };
   const { AssaultView } = await import('../src/assaultView.js');
   const { track } = course(), g = new THREE.Group(), v = new AssaultView(track, g), a = new Assault(track), w = new THREE.Vector3();
-  assert.equal(v.hammers.length, 2); assert.equal(v.arms.length, 2); assert.equal(v.boulders.length, 4); assert.equal(v.presses.length, 2); assert.equal(v.gates.length, 4);
+  assert.equal(v.hammers.length, 2); assert.equal(v.arms.length, 2); assert.equal(v.boulders.length, 3); assert.equal(v.presses.length, 2); assert.equal(v.gates.length, 4);
   for (const t of [0.7, 1.9, 3.3, 5.1]) {
     a.t = t; v.update(a); g.updateMatrixWorld(true);
     for (const o of v.hammers) {
@@ -438,7 +443,7 @@ test('the drawn hazards sit exactly where the collisions put them', { skip: !THR
     }
     for (const o of v.arms) {
       w.set(5, 0, 0); o.bar.localToWorld(w); const f = track.frameAt(o.a.s), ang = armAngle(o.a, t);
-      assert.ok(Math.hypot(w.x - (f.x + f.fx * Math.cos(ang) * 5 + f.lx * Math.sin(ang) * 5), w.z - (f.z + f.fz * Math.cos(ang) * 5 + f.lz * Math.sin(ang) * 5)) < 0.01, 'arm tip');
+      assert.ok(Math.hypot(w.x - (f.x + f.fx * Math.cos(ang) * 5 + f.lx * Math.sin(ang) * 5), w.z - (f.z + f.fz * Math.cos(ang) * 5 + f.lz * Math.sin(ang) * 5)) < 0.1, 'arm tip');       // (a little looser: on the finale's ramp the road's tangent is not quite flat)
     }
     for (const o of v.presses) assert.ok(Math.abs(o.block.position.y - COURSE.press.thick / 2 - pressAt(o.p, t).y) < 1e-9, 'press block');
   }
@@ -453,7 +458,8 @@ test('the course has rolling hills, none too steep to drive', () => {
   assert.ok(hills >= 7, `${hills} hill handles`);
   let steepest = 0;
   const jumpS = track.handleS[def.handles.findIndex((h) => h.gap)];
-  for (let s = 0; s < track.length - 3; s += 3) { if (Math.abs(s - jumpS) < 45) continue; const a = track.frameAt(s), b = track.frameAt(s + 3); steepest = Math.max(steepest, Math.abs(b.y - a.y) / 3); }
+  const jumps = def.handles.map((h, i) => (h.gap ? track.handleS[i] : null)).filter((x) => x !== null); void jumpS;
+  for (let s = 0; s < track.length - 3; s += 3) { if (jumps.some((j) => Math.abs(s - j) < 45)) continue; const a = track.frameAt(s), b = track.frameAt(s + 3); steepest = Math.max(steepest, Math.abs(b.y - a.y) / 3); }
   assert.ok(steepest < 0.12, `steepest grade ${(steepest * 100).toFixed(1)}%`);
   assert.ok(drivable(def), 'and the jump still works');
 });
@@ -507,4 +513,88 @@ test('Apple Crumple asks for a password (custard) until it is ready, and remembe
   assert.match(main, /if \(newDef\?\.assault && !appleUnlocked\(\)\) return;/, 'starting it any way round asks');
   assert.match(main, /k === 'apple' \? \[\['Choose', \(\) => \{ if \(appleUnlocked\(\)\) chooseTrack/, 'and so does the menu button');
   assert.match(main, /store\.set\('cr\.appleOK', true\)/);
+});
+
+// ---------------------------------------------------------------------------------------------- stages, the hoop, fireworks, sounds
+test('each stage has its own clock: 20 s, then 2 s less for each stage after', () => {
+  const { car, run, derby, def } = course(), cp = def.assault.checkpoints;
+  assert.deepEqual([0, 1, 2, 3, 4].map((i) => run.stageTime(i)), [20, 18, 16, 14, 12]);
+  assert.equal(run.stages, 5);
+  assert.equal(run.limit, 20, 'the first stage is 20 s');
+  run.step(0.1, car, 1, derby); run.step(7, car, 100, derby);
+  assert.ok(Math.abs(run.remaining - 13) < 1e-6, 'it counts down');
+  run.step(0.5, car, cp[0] + 1, derby);                                   // checkpoint 1: the next stage's clock starts afresh
+  assert.equal(run.limit, 18); assert.ok(Math.abs(run.remaining - 18) < 1e-6, 'a full 18 s, nothing carried over');
+  run.penalise('wreck'); assert.ok(Math.abs(run.remaining - 13) < 1e-6, 'a wreck takes 5 s off this stage');
+  run.step(13.2, car, cp[0] + 50, derby); assert.equal(run.state, 'timeout', 'out of time in a stage ends the run');
+});
+
+test('the finish is a flaming hoop over the finale jump, and the run ends when you fly through it', () => {
+  const { def, track } = course(), H = def.assault.hoop, jumps = def.handles.map((h, i) => (h.gap ? i : -1)).filter((i) => i >= 0), crest = track.handleS[jumps[1]];
+  assert.ok(H.s > crest && H.s < crest + def.handles[jumps[1]].gap, 'the hoop hangs over the gap of the second jump');
+  for (const speed of [26, 32, 40]) {
+    const car = new Vehicle(), run = new Assault(track), derby = null; put(car, track, crest - 70, 0, speed);       // (no hazards touch it: this is about the flight)
+    run.state = 'running'; run.started = 0; run.next = run.checkpoints.length;
+    for (let i = 0; i < 6 / DT && run.active; i++) {
+      car.step(DT, { throttle: Math.hypot(car.vel.x, car.vel.z) < speed ? 1 : 0, brake: 0, steer: 0 }, track);
+      run.step(DT, car, track.progressAt(car.pos.x, car.pos.y, car.pos.z), derby);
+    }
+    assert.equal(run.state, 'finished', `at ${speed} m/s the jump carries the car to the hoop`);
+    assert.ok(run.hoop.through, `at ${speed} m/s the car goes through the ring (lat ${run.hoop.lat.toFixed(1)}, h ${run.hoop.h.toFixed(1)})`);
+    assert.equal(run.penalty, 0);
+    assert.ok(run.events.some((e) => e.type === 'hoop' && e.through));
+  }
+});
+
+test('missing the hoop costs 10 s but the run still finishes', () => {
+  const { car, run, derby, def, track } = course(), H = def.assault.hoop, f = track.frameAt(H.s);
+  run.state = 'running'; run.started = 0; run.next = run.checkpoints.length;
+  car.pos.set(f.x - f.fx * 2, f.y - 3, f.z - f.fz * 2); run.step(0.1, car, H.s - 2, derby);       // just before the plane...
+  car.pos.set(f.x + f.fx * 2, f.y - 3, f.z + f.fz * 2); run.step(0.1, car, H.s + 1, derby);       // ...and well below the ring on the far side
+  assert.equal(run.state, 'finished'); assert.equal(run.hoop.through, false); assert.equal(run.penalty, 10);
+  assert.ok(run.events.some((e) => e.type === 'hoop' && !e.through));
+});
+
+test('hammers, crushers and flames give out sound cues, with the distance to the car', () => {
+  const { car, run, derby, def, track } = course();
+  const f = track.frameAt(def.assault.hammers[0].s); put(car, track, def.assault.hammers[0].s - 20, 0, 0);
+  run.step(0.1, car, 1, derby);
+  const names = new Set(); let near = Infinity;
+  for (let i = 0; i < 12 / DT; i++) {
+    run.step(DT, car, 1, null);
+    for (const e of run.events) if (e.type === 'sfx') { names.add(e.name); if (e.name === 'hammer') near = Math.min(near, e.dist); }
+    run.events.length = 0;
+  }
+  assert.ok(names.has('hammer') && names.has('flame'), 'heard: ' + [...names]);
+  assert.ok(near < 40, 'the hammer is close by: ' + near); void f;
+});
+
+test('the sound files are wired in: hammer, crusher, flame and fireworks', () => {
+  const audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  for (const n of ['crusher', 'flame', 'hammer', 'fireworks']) assert.match(audio, new RegExp(`load\\('${n}', 'sounds/${n}\\.mp3'\\)`));
+  assert.match(audio, /cue\(name, gain = 1, dist = 0\)/);
+  assert.match(main, /e\.type === 'sfx'[\s\S]{0,80}sound\.cue\(e\.name/);
+  assert.match(main, /sound\.cue\('fireworks'/);
+});
+
+test('hazard stripes and the checkpoint strips lie on the road, and the finish has a hoop and fireworks', { skip: !THREE && 'three.js is not installed' }, async () => {
+  const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => ({ addColorStop() {} })), set: (t, k, v) => { t[k] = v; return true; } });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx, style: {} }) };
+  const { AssaultView } = await import('../src/assaultView.js');
+  const { track } = course(), g = new THREE.Group(), v = new AssaultView(track, g), q = Track.newQuery(), w = new THREE.Vector3();
+  g.updateMatrixWorld(true);
+  let patches = 0, worst = 0;
+  g.traverse((o) => {
+    if (!o.userData.drape) return; patches++;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i += 3) { w.fromBufferAttribute(pos, i); o.localToWorld(w); track.query(w.x, w.y + 1, w.z, q, 3); worst = Math.max(worst, Math.abs(w.y - q.y - 0.07)); }
+  });
+  assert.ok(patches >= 8, 'stripes before every hazard and a strip at each checkpoint: ' + patches);
+  assert.ok(worst < 0.1, 'every stripe is within 10 cm of the road surface: ' + worst);
+  assert.ok(v.hoopG && v.flames.length >= 30, 'a ring wreathed in flames');
+  const a = new Assault(track); a.t = 5; v.update(a); assert.ok(!v.fw || !v.fw.pts.visible, 'no fireworks before the finish');
+  a.state = 'finished'; a.finishT = 5; a.t = 8; v.update(a);
+  const pa = v.fw.pts.geometry.attributes.position; let up = 0; for (let i = 0; i < pa.count; i++) if (pa.getY(i) > 5) up++;
+  assert.ok(v.fw.pts.visible && up > 100, 'sparks in the sky: ' + up);
+  a.state = 'ready'; v.update(a); assert.ok(!v.fw.pts.visible, 'and gone again when you try again');
 });

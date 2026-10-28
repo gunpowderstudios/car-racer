@@ -429,7 +429,11 @@ function assaultEvents() {
     if (e.type === 'start') { hud.banner('Go!', 800); sound.beep(880, 0.3, 0.3); }
     else if (e.type === 'checkpoint') {
       derby.repairPlayer(); sound.beep(660, 0.15, 0.3); setTimeout(() => sound.beep(990, 0.25, 0.3), 140);
-      assaultPop(`Checkpoint ${e.index}/${e.of} - repaired!`, 1800);
+      assaultPop(`Checkpoint ${e.index}/${e.of} - repaired! Next stage ${assault.limit}s`, 1900);
+    } else if (e.type === 'sfx') {
+      sound.cue(e.name, e.name === 'hammer' ? 0.9 : 1, e.dist);
+    } else if (e.type === 'hoop') {
+      if (e.through) assaultPop('THROUGH THE HOOP!', 2200); else assaultPop('Missed the hoop! +10s', 2200);
     } else if (e.type === 'penalty') {
       if (e.why === 'wreck') assaultPop(`+${e.seconds}s Wrecked!`, 2200);
     } else if (e.type === 'hit') {
@@ -442,6 +446,7 @@ function assaultEvents() {
       const r = e.result, all = store.get('cr.apple', {}), prev = all.best ?? null, isBest = r.state === 'finished' && (prev == null || r.time < prev);
       if (isBest) { all.best = r.time; store.set('cr.apple', all); }
       hud.banner(r.state === 'finished' ? 'Finished!' : 'Out of time!', 1800);
+      if (r.state === 'finished') sound.cue('fireworks', 1, 0);
       setTimeout(() => { if (assault && !assault.active) showResult(r, isBest ? r.time : prev, isBest, restartRace, showMenu); }, 1600);
     }
   }

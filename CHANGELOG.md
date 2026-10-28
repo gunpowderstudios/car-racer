@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.435 — Apple Crumple: stages, flaming hoop, fireworks
+- The yellow hazard stripes and checkpoint strips now lie flat on the road (they used to hover on hills and banks).
+- Every stage (the road between checkpoints) now has its own clock: 20 s for the first, then 18, 16, 14 and 12. Reaching a checkpoint starts the next stage's clock afresh; run out of time in a stage and the run is over. A wreck now costs 5 s, a fall or reset 3 s.
+- A new finale: a long ramp up to a second jump, with a flaming hoop hanging over the gap. Fly through it to finish (miss it and you still finish, with +10 s), then enjoy the fireworks. Medal times are now gold 58 s, silver 68 s, bronze 80 s.
+- Sounds wired in: hammer.mp3 (each swing), crusher.mp3 (each slam), flame.mp3 (each burst of fire) and fireworks.mp3 (at the finish), quieter with distance. Drop the files into the sounds folder; the game just stays silent for any that are missing.
+
 ## v17.434 — Bigger pizza toppings, smarter rivals round drums
 - Deep Pan Pizza: the olive humps are 50% higher and the cheese dips 50% deeper.
 - Rival cars now see explosive drums much earlier, slow down for the ones in their path, and swerve round them (using nearly the whole road, and not drifting back through them). On the road tracks the rivals set off roughly half as many drums as before - far fewer on the thin road - and in the arena the rivals steer round drums too, even while charging at a target.

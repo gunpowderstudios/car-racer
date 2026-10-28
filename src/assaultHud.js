@@ -50,11 +50,11 @@ export function assaultHudShow(on) {
 export function assaultHudUpdate(a) {
   const el = ensure(); if (!el || el.hidden) return;
   const t = el.querySelector('.as-time'), sub = el.querySelector('.as-sub');
-  if (a.state === 'ready') { t.textContent = fmt(a.limit); sub.textContent = 'Get ready - the clock starts at the line'; el.classList.remove('low'); return; }
+  if (a.state === 'ready') { t.textContent = fmt(a.limit); sub.textContent = `Stage 1/${a.stages} - the clock starts at the line`; el.classList.remove('low'); return; }
   const left = a.remaining;
-  t.textContent = fmt(left); el.classList.toggle('low', left < 15 && a.state === 'running');
+  t.textContent = fmt(left); el.classList.toggle('low', left < 5 && a.state === 'running');
   const cp = Math.min(a.next, a.checkpoints.length);
-  sub.innerHTML = `Checkpoint ${cp}/${a.checkpoints.length}` + (a.penalty ? ` <span class="as-pen">+${a.penalty}s penalties</span>` : '');
+  sub.innerHTML = `Stage ${Math.min(a.next + 1, a.stages)}/${a.stages} - Checkpoint ${cp}/${a.checkpoints.length}` + (a.penalty ? ` <span class="as-pen">+${a.penalty}s penalties</span>` : '');
 }
 
 /** A big word in the middle of the screen for a moment ("Checkpoint 2/4", "+10s Wrecked"). */
@@ -75,8 +75,9 @@ export function showResult(res, best, isBest, onAgain, onMenu) {
   ensure(); if (!card) return;
   const fin = res.state === 'finished', m = res.medal && MEDAL[res.medal];
   card.innerHTML = `<h2>${fin ? 'Course complete!' : res.state === 'scrapped' ? 'Car scrapped!' : 'Out of time!'}</h2>`
-    + (fin ? `<div class="as-big">${fmt(res.time)}</div>` : `<div class="as-line">${res.state === 'scrapped' ? 'No spanners left - the car is wrecked for good' : 'The clock ran out before the finish line'}</div>`)
+    + (fin ? `<div class="as-big">${fmt(res.time)}</div>` : `<div class="as-line">${res.state === 'scrapped' ? 'No spanners left - the car is wrecked for good' : 'The stage clock ran out'}</div>`)
     + (fin && m ? `<div class="as-medal" style="color:${m[1]}">${m[0]} MEDAL</div>` : '')
+    + (fin && res.hoop ? `<div class="as-line">${res.hoop.through ? 'Through the flaming hoop!' : 'Missed the hoop (+10s)'}</div>` : '')
     + (fin ? `<div class="as-line">Driving ${fmt(res.clean)}${res.penalty ? ` + ${res.penalty}s penalties (${res.wrecks} wreck${res.wrecks === 1 ? '' : 's'})` : ' - no penalties!'}</div>` : '')
     + (best != null ? `<div class="as-line">${isBest && fin ? 'New best time!' : 'Best'} ${fmt(best)}</div>` : '')
     + '<div class="as-btns"><button class="again">Try again (Enter)</button><button class="alt menu">Menu (Esc)</button></div>';

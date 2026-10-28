@@ -67,15 +67,16 @@ export function normalizeAssault(a) {
   const num = (v, d, lo, hi) => (Number.isFinite(+v) && v !== null && v !== '' ? clamp(+v, lo, hi) : d);
   const list = (arr, max, f) => (Array.isArray(arr) ? arr.slice(0, max).filter((x) => x && Number.isFinite(+x.s)).map(f) : []);
   const out = {
-    limit: num(a.limit, 160, 30, 600),
+    stage: { time: num(a.stage && a.stage.time, 20, 5, 120), step: num(a.stage && a.stage.step, 2, 0, 10), min: 6 },
     checkpoints: (Array.isArray(a.checkpoints) ? a.checkpoints : []).map(Number).filter((v) => Number.isFinite(v) && v > 0).sort((x, y) => x - y).slice(0, 12),
     hammers: list(a.hammers, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), speed: num(h.speed, 1, 0.4, 2.2), reach: num(h.reach, 7.2, 3, 9) })),
     arms: list(a.arms, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), speed: num(h.speed, 0.85, 0.3, 2), dir: h.dir < 0 ? -1 : 1, len: num(h.len, 6.4, 3, 9) })),
     presses: list(a.presses, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), width: num(h.width, 14, 6, 30) })),
     boulders: list(a.boulders, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), side: h.side < 0 ? -1 : 1 })),
     fires: list(a.fires, 16, (h) => ({ s: +h.s, lat: num(h.lat, 0, -12, 12), seed: num(h.seed, 0, 0, 1000), period: num(h.period, 5.5, 3, 12), phase: num(h.phase, 0, 0, 100) })),
-    signs: list(a.signs, 24, (h) => ({ s: +h.s, kind: ['barrels', 'jump', 'gauntlet', 'fire'].includes(h.kind) ? h.kind : 'barrels' })),
+    signs: list(a.signs, 24, (h) => ({ s: +h.s, kind: ['barrels', 'jump', 'gauntlet', 'fire', 'hoop'].includes(h.kind) ? h.kind : 'barrels' })),
   };
+  if (a.hoop && Number.isFinite(+a.hoop.s)) out.hoop = { s: +a.hoop.s, h: num(a.hoop.h, 3.2, 0, 12), r: num(a.hoop.r, 4.2, 2, 8) };      // the flaming hoop at the finish
   return out;
 }
 

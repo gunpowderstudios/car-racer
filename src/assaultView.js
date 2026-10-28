@@ -1,6 +1,7 @@
 // What Apple Crumple looks like: gantries, hammers, boulders, spinning arms, presses, signs and checkpoint gates.
 // Everything moves from the same clock the collisions use (assault.js), so what you see is what hits you.
 import * as THREE from 'three';
+import { Track } from './track.js';
 import { COURSE, hammerHead, boulderAt, armAngle, pressAt, fireAt } from './assault.js';
 
 const RED = 0xc0281f, GREEN = 0x5aa02c, YELLOW = 0xffc21a, STEEL = 0xc9ccd2, CONCRETE = 0x9b9a93, DARK = 0x23222a;
@@ -29,14 +30,14 @@ const gateTex = (text) => canvasTex(512, 96, (g, w, h) => {
 
 const SIGNS = {
   hammer: ['HAMMERS', 'TIME YOUR RUN'], boulder: ['ROLLING ROCKS', 'WATCH THE SIDES'], arm: ['SPINNER', 'FIND THE GAP'],
-  press: ['CRUSHER', 'GREEN = GO'], barrels: ['BARRELS', 'EXPLOSIVE'], fire: ['FIRE PITS', 'KEEP CLEAR'], jump: ['BIG JUMP', 'KEEP YOUR SPEED UP'], gauntlet: ['GAUNTLET', 'EVERYTHING AT ONCE'],
+  press: ['CRUSHER', 'GREEN = GO'], barrels: ['BARRELS', 'EXPLOSIVE'], fire: ['FIRE PITS', 'KEEP CLEAR'], jump: ['BIG JUMP', 'KEEP YOUR SPEED UP'], gauntlet: ['GAUNTLET', 'EVERYTHING AT ONCE'], hoop: ['FLAMING HOOP', 'JUMP THROUGH IT'],
 };
 
 export class AssaultView {
   /** `group` is the track's mesh group (it is disposed with the track). */
   constructor(track, group) {
     this.track = track; this.def = track.def.assault; this.group = group;
-    this.fires = []; this.hammers = []; this.arms = []; this.boulders = []; this.presses = []; this.gates = [];
+    this.fw = null; this.hoopG = null; this.flames = []; this.fires = []; this.hammers = []; this.arms = []; this.boulders = []; this.presses = []; this.gates = [];
     const m = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.15, ...o });
     this.mat = { steel: m(STEEL, { metalness: 0.6, roughness: 0.4 }), red: m(RED), green: m(GREEN), dark: m(DARK), concrete: m(CONCRETE, { roughness: 0.9 }), yellow: m(YELLOW) };
     const st = stripeTex(); this.mat.stripe = new THREE.MeshStandardMaterial({ map: st, roughness: 0.7 });
@@ -50,6 +51,7 @@ export class AssaultView {
     d.checkpoints.forEach((s, i) => this._gate(s, i + 1));
     this._signs();
     this._finish();
+    if (d.hoop) this._hoop(d.hoop);
   }
 
   /** A group standing on the road at distance s, facing along it. `sx` turns a lateral offset into the group's own x. */
@@ -61,10 +63,25 @@ export class AssaultView {
   }
   _box(g, mat, w, h, d, x, y, z, cast = true) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(x, y, z); b.castShadow = cast; b.receiveShadow = true; b.frustumCulled = false; g.add(b); return b; }
 
-  _stripes(g, hw) {                                  // hazard stripes across the road, a little before the danger
+  /** A flat patch lying ON the road (not just at the height of the road's middle): a grid that follows the surface up hills and round banks. `zc` is where along the road (group-local), `mat` its material. */
+  _drape(g, width, depth, zc, mat, lift = 0.06) {
+    const nx = Math.max(2, Math.ceil(width / 2)), nz = Math.max(2, Math.ceil(depth / 0.6)), pos = [], uv = [], idx = [], q = Track.newQuery();
+    const c = Math.cos(g.rotation.y), sn = Math.sin(g.rotation.y), base = g.position.y;
+    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+      const lx = (i / nx - 0.5) * width, lz = zc + (j / nz - 0.5) * depth;
+      const wx = g.position.x + lx * c + lz * sn, wz = g.position.z - lx * sn + lz * c;
+      this.track.query(wx, base + 2.5, wz, q, 3);
+      pos.push(lx, (q.idx >= 0 ? q.y : base) - base + lift, lz); uv.push(i / nx, 1 - j / nz);
+    }
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b = a + 1, d = a + nx + 1, e = d + 1; idx.push(a, d, b, b, d, e); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.receiveShadow = true; m.userData.drape = true; g.add(m); return m;
+  }
+
+  _stripes(g, hw) {                                  // hazard stripes across the road, a little before the danger (laid flat on the road surface)
     const tex = this.stripeTex.clone(); tex.needsUpdate = true; tex.repeat.set(hw * 2 / 3, 1);
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 0.6, 2.2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
-    p.rotation.x = -Math.PI / 2; p.position.set(0, 0.07, -16); p.frustumCulled = false; g.add(p);
+    this._drape(g, hw * 2 - 0.6, 2.2, -16, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
   }
 
   _hammer(h) {
@@ -142,8 +159,7 @@ export class AssaultView {
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 1.9), new THREE.MeshBasicMaterial({ map: gateTex(`CHECKPOINT ${n}`) }));
     sign.position.set(0, 6.0, -0.45); sign.rotation.y = Math.PI; g.add(sign);
     const sign2 = sign.clone(); sign2.position.z = 0.45; sign2.rotation.y = 0; g.add(sign2);
-    const strip = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 0.6, 1.2), new THREE.MeshBasicMaterial({ color: 0xffb31f, transparent: true, opacity: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
-    strip.rotation.x = -Math.PI / 2; strip.position.y = 0.08; g.add(strip);
+    const strip = this._drape(g, hw * 2 - 0.6, 1.2, 0, new THREE.MeshBasicMaterial({ color: 0xffb31f, transparent: true, opacity: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), 0.08);
     this.gates.push({ n, g, mat, strip, bar });
   }
 
@@ -160,7 +176,7 @@ export class AssaultView {
     for (const a of d.arms) { make('arm', a.s - 60, 1, true); make('arm', a.s - 22, -1); }
     for (const b of d.boulders) { make('boulder', b.s - 55, 1, true); make('boulder', b.s - 22, -1); }
     for (const p of d.presses) { make('press', p.s - 60, 1, true); make('press', p.s - 22, -1); }
-    for (const z of d.signs) { make(z.kind, z.s, 1, true); make(z.kind, z.s + 28, -1); }
+    for (const z of d.signs) { make(z.kind, z.s, 1, true); if (z.kind !== 'hoop') make(z.kind, z.s + 28, -1); }
   }
 
   _finish() {                                          // the finish: giant apples either side of the start/finish arch (the arch itself is drawn with the track)
@@ -173,6 +189,68 @@ export class AssaultView {
       g.add(apple);
     }
     this.finishGroup = g; void T;
+  }
+
+  /** The flaming hoop that hangs over the finale jump: a steel ring wreathed in flame, with a banner, and the fireworks that go up when you finish. */
+  _hoop(H) {
+    const g = this._at(H.s); this.hoopG = g;
+    const ring = new THREE.Group(); ring.position.set(0, H.h, 0); g.add(ring);
+    const R = H.r + 0.55;
+    const tube = new THREE.Mesh(new THREE.TorusGeometry(R, 0.5, 14, 48), new THREE.MeshStandardMaterial({ color: 0xff7a18, emissive: 0xff4a0a, emissiveIntensity: 1.1, roughness: 0.5 }));
+    tube.castShadow = false; tube.frustumCulled = false; ring.add(tube); this.hoopTube = tube;
+    const n = 36;
+    for (let i = 0; i < n; i++) {                                        // tongues of flame all round the ring
+      const a = (i / n) * Math.PI * 2, big = i % 2 === 0;
+      const fl = new THREE.Group(); fl.position.set(Math.cos(a) * R, Math.sin(a) * R, 0); fl.rotation.z = a - Math.PI / 2;
+      for (const [k, col, op] of [[1, 0xff4a0a, 0.8], [0.62, 0xffa31a, 0.9], [0.32, 0xffe98a, 0.95]]) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.55 * k, (big ? 2.6 : 1.7) * k, 8, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+        cone.position.y = (big ? 1.3 : 0.85) * k; cone.frustumCulled = false; fl.add(cone);
+      }
+      ring.add(fl); this.flames.push({ fl, ph: i * 1.9, base: big ? 1 : 0.8 });
+    }
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(H.r, 32), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.frustumCulled = false; ring.add(glow);
+    for (const sg of [1, -1]) {                                          // the finish banner, both ways round, above the ring
+      const bn = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.2), new THREE.MeshBasicMaterial({ map: gateTex('FINISH!'), side: THREE.FrontSide }));
+      bn.position.set(0, H.h + R + 3.4, 0.05 * sg); bn.rotation.y = sg > 0 ? 0 : Math.PI; bn.frustumCulled = false; g.add(bn);
+    }
+  }
+
+  /** Fireworks over the finish: bursts of coloured sparks, launched one after another for a few seconds after the finish. */
+  _fireworks(a) {
+    const g = this.hoopG; if (!g) return;
+    const B = 34, N = 80, total = B * N, t0 = a.finishT;
+    if (!this.fw) {
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(total * 3), 3)); geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(total * 3), 3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.6, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+      pts.frustumCulled = false; g.add(pts);
+      const bursts = [], palette = [[1, 0.25, 0.2], [1, 0.8, 0.2], [0.3, 0.9, 0.4], [0.3, 0.6, 1], [1, 0.4, 0.9], [1, 1, 1]];
+      let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      for (let k = 0; k < B; k++) {
+        const col = palette[Math.floor(rnd() * palette.length)], col2 = palette[Math.floor(rnd() * palette.length)];
+        const parts = []; const sp = 13 + rnd() * 9;
+        for (let i = 0; i < N; i++) {                                    // a sphere of sparks (some in a second colour)
+          const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, r = Math.sqrt(1 - u * u), v = sp * (0.55 + 0.45 * rnd());
+          parts.push({ vx: r * Math.cos(th) * v, vy: u * v, vz: r * Math.sin(th) * v, c: i % 3 === 0 ? col2 : col });
+        }
+        bursts.push({ at: 0.25 + k * 0.38 + rnd() * 0.2, x: (rnd() - 0.5) * 70, y: 16 + rnd() * 26, z: 8 + rnd() * 55, life: 2.2 + rnd() * 0.8, parts });
+      }
+      this.fw = { pts, bursts, total };
+    }
+    const { pts, bursts } = this.fw, pa = pts.geometry.attributes.position, ca = pts.geometry.attributes.color, age0 = a.t - t0;
+    pts.visible = true;
+    for (let k = 0; k < bursts.length; k++) {
+      const b = bursts[k], age = age0 - b.at;
+      for (let i = 0; i < N; i++) {
+        const o = (k * N + i), p = b.parts[i];
+        if (age < 0 || age > b.life) { pa.setXYZ(o, 0, -999, 0); continue; }
+        const drag = 1 - Math.exp(-2.2 * age), d = drag / 2.2;           // sparks slow down as they fly out, then fall
+        pa.setXYZ(o, b.x + p.vx * d, b.y + p.vy * d - 4.5 * age * age, b.z + p.vz * d);
+        const f = Math.max(0, 1 - age / b.life) * (0.65 + 0.35 * Math.sin(age * 40 + i));
+        ca.setXYZ(o, p.c[0] * f, p.c[1] * f, p.c[2] * f);
+      }
+    }
+    pa.needsUpdate = true; ca.needsUpdate = true;
   }
 
   /** Put every hazard where the clock says it is. `a` is the Assault run. */
@@ -206,6 +284,11 @@ export class AssaultView {
         o.layers.forEach((m, i) => { m.scale.y = Math.max(0.1, h * (1 - i * 0.15)); m.scale.x = m.scale.z = (0.85 + 0.15 * Math.sin(t * 25 + i * 2)) * (1 - i * 0.05); m.position.y = m.scale.y / 2; });
       }
     }
+    if (this.hoopG) {
+      for (const o of this.flames) { const k = o.base * (0.75 + 0.35 * Math.sin(t * 17 + o.ph) + 0.15 * Math.sin(t * 31 + o.ph * 2)); o.fl.scale.set(1 + 0.15 * Math.sin(t * 23 + o.ph), Math.max(0.4, k), 1); }
+      if (this.hoopTube) this.hoopTube.material.emissiveIntensity = 0.9 + 0.3 * Math.sin(t * 12);
+    }
+    if (a.state === 'finished' && a.finishT != null) this._fireworks(a); else if (this.fw) this.fw.pts.visible = false;
     for (const gt of this.gates) {
       const done = a.next >= gt.n, nextOne = a.next === gt.n - 1, col = done ? 0x32d74b : nextOne ? 0xffb31f : 0x6f6f86;
       if (gt._col !== col) { gt._col = col; gt.mat.color.setHex(col); gt.mat.emissive.setHex(done || nextOne ? col : 0); gt.mat.emissiveIntensity = 0.45; gt.strip.material.color.setHex(col); gt.strip.visible = true; }

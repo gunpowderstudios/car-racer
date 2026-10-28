@@ -4,18 +4,19 @@
 // exactly what hits you. Contact is real: a hazard that touches the car's body shoves it with an impulse (car.impulseAt) and
 // takes hit points off the zone it struck through the derby's damage model. Nothing here is decoration.
 //
-//   def.assault = { limit, checkpoints: [s], hammers: [{ s, phase, speed, reach }], arms: [{ s, speed, len }],
+//   def.assault = { stage: { time, step }, hoop: { s, h, r }, checkpoints: [s], hammers: [{ s, phase, speed, reach }], arms: [{ s, speed, len }],
 //                   presses: [{ s, phase }], boulders: [{ s, phase, side }], signs: [{ s, kind }] }
 //
-// `s` is metres along the road from the start line.  The run: the clock starts as you cross the line, a checkpoint repairs the
-// car and becomes your restart point, a wreck (+10 s), a fall (+5 s) or a reset (+5 s) costs time, and the countdown ends the run.
+// `s` is metres along the road from the start line.  The run: the clock starts as you cross the line and each STAGE (the road between
+// two checkpoints) has its own countdown - 20 s for the first, 2 s less for each one after. A checkpoint repairs the car, becomes your
+// restart point and starts the next stage's clock; a wreck, a fall or a reset costs time; the finish is a flaming hoop you jump through.
 
 import { zoneAt } from './damage.js';
 
 export const COURSE = {
-  limit: 160,                 // seconds on the clock (penalties are taken off it)
-  penalty: { wreck: 10, fall: 5, reset: 5 },
-  medals: { gold: 90, silver: 110, bronze: 135 },     // finishing times (penalties included) that earn each medal
+  stage: { time: 20, step: 2, min: 6 },     // the first stage's clock, how much shorter each later stage's is, and the shortest allowed
+  penalty: { wreck: 5, fall: 3, reset: 3, hoop: 10 },     // seconds off the stage clock (the hoop one is added to your finishing time)
+  medals: { gold: 58, silver: 68, bronze: 80 },     // finishing times (penalties included) that earn each medal
   // pendulum hammer: a gantry across the road, a rod, and a heavy head swinging side to side
   hammer: { pivot: 13.6, rod: 12.8, r: 1.55, reach: 7.2, speed: 1.0, hp: 9999, punch: 12 },      // (a hammer blow, a crush or a burst of fire is a wreck: hp 9999 is more than any zone has)
   // rolling boulder: waits beside the road, then rolls across it
@@ -116,16 +117,20 @@ export class Assault {
   reset() {
     this.t = 0;                         // the hazard clock
     this.state = 'ready';               // ready (before the line), running, finished, timeout
-    this.started = null; this.elapsed = 0; this.penalty = 0; this.penalties = [];
+    this.started = null; this.elapsed = 0; this.penalty = 0; this.penalties = []; this.stageBase = 0; this.finishT = null; this.hoop = null; this._prevU = null; this._prevAlong = null; this._seen = new Map();
     this.next = 0;                      // the checkpoint to reach next
     this.cpS = -12;                     // where you restart from (metres along the road; the start is just behind the line)
     this.result = null; this.hits = 0; this.wrecks = 0;
     this._cool.clear(); this._crushed.clear(); this.events.length = 0;
   }
 
-  get limit() { return this.def.limit || COURSE.limit; }
+  /** Seconds on the clock for stage `i` (0 = the road to the first checkpoint). */
+  stageTime(i) { const S = this.def.stage || COURSE.stage; return Math.max(S.min ?? 6, S.time - S.step * i); }
+  get limit() { return this.stageTime(Math.min(this.next, this.checkpoints.length)); }          // this stage's allowance
+  get stages() { return this.checkpoints.length + 1; }
   get total() { return this.elapsed + this.penalty; }
-  get remaining() { return this.limit - this.total; }
+  get remaining() { return this.limit - (this.total - this.stageBase); }
+  get finishS() { return this.def.hoop ? this.def.hoop.s : this.track.length; }
   get checkpoints() { return this.def.checkpoints; }
   get active() { return this.state === 'ready' || this.state === 'running'; }
 
@@ -147,22 +152,59 @@ export class Assault {
     if (this.state === 'running') {
       this.elapsed = this.t - this.started;
       while (this.next < this.checkpoints.length && u >= this.checkpoints[this.next]) {
-        this.cpS = this.checkpoints[this.next]; this.next++;
+        this.cpS = this.checkpoints[this.next]; this.next++; this.stageBase = this.total;
         this.events.push({ type: 'checkpoint', index: this.next, of: this.checkpoints.length, s: this.cpS });
       }
-      if (u >= this.track.length && this.next >= this.checkpoints.length) { this._end('finished'); return; }
+      if (this.next >= this.checkpoints.length && this._crossedFinish(car, u)) { this._finish(car); return; }
       if (this.remaining <= 0) { this._end('timeout'); return; }
     }
     if (derby && derby.enabled && derby.player && !derby.player.wrecked && !derby.over) this._contacts(car, derby);
+    if (this.state === 'running') this._sounds(car);
+  }
+
+  /** Has the car just gone across the finish? With a hoop: through the flat plane the ring hangs in (the road's `u` stands still in mid-air over a gap, so it is the car's own position that counts). */
+  _crossedFinish(car, u) {
+    const H = this.def.hoop;
+    if (!H) { const was = this._prevU; this._prevU = u; return (was === null || was < this.track.length) && u >= this.track.length; }
+    const f = this.track.frameAt(H.s), dx = car.pos.x - f.x, dz = car.pos.z - f.z;
+    const along = dx * f.fx + dz * f.fz, was = this._prevAlong; this._prevAlong = along;
+    if (was === undefined || was === null || !(was < 0 && along >= 0)) return false;
+    return Math.hypot(dx * f.lx + dz * f.lz, car.pos.y - f.y) < 30;                   // (not some other road that happens to cross the same line)
+  }
+
+  /** The car crosses the finish. With a hoop, it must be inside the ring as it goes through (or it costs time). */
+  _finish(car) {
+    const H = this.def.hoop;
+    if (H) {
+      const f = this.track.frameAt(H.s), lat = (car.pos.x - f.x) * f.lx + (car.pos.z - f.z) * f.lz, h = car.pos.y - (f.y + H.h);
+      const through = Math.hypot(lat, h) <= H.r;
+      this.hoop = { through, lat, h };
+      this.events.push({ type: 'hoop', through });
+      if (!through) { this.penalty += COURSE.penalty.hoop; this.penalties.push({ why: 'hoop', s: COURSE.penalty.hoop, at: this.elapsed }); }
+    }
+    this._end('finished');
+  }
+
+  /** Sound cues from the hazards (hammer swing, crusher slam, flame burst): one event each time, with how far away the car is. */
+  _sounds(car) {
+    const d = this.def, t = this.t, seen = this._seen;
+    const cue = (key, val, name, f, y = 0) => {                      // `val` changes (or turns true) when the thing happens; the first look only sets the baseline
+      const was = seen.get(key); seen.set(key, val);
+      if (was === undefined || was === val || val === false) return;
+      this.events.push({ type: 'sfx', name, dist: Math.hypot(car.pos.x - f.x, car.pos.z - f.z, (car.pos.y - f.y - y) * 0.5) });
+    };
+    for (let i = 0; i < (d.hammers || []).length; i++) { const h = d.hammers[i]; cue('h' + i, Math.floor((t * h.speed + h.phase) / Math.PI), 'hammer', this.track.frameAt(h.s), COURSE.hammer.r); }
+    for (let i = 0; i < (d.presses || []).length; i++) { const p = d.presses[i], st = pressAt(p, t); cue('p' + i, st.state === 'slam', 'crusher', this.track.frameAt(p.s)); }
+    for (let i = 0; i < (d.fires || []).length; i++) { const p = d.fires[i], st = fireAt(p, t); cue('f' + i, st.state === 'burst', 'flame', this.track.frameAt(p.s)); }
   }
 
   /** The car is scrap (the spanners ran out): the run is over. */
   scrap() { if (this.active) this._end('scrapped'); }
 
   _end(state) {
-    this.state = state;
+    this.state = state; this.finishT = this.t;
     const total = this.total, m = COURSE.medals;
-    this.result = { state, time: total, clean: this.elapsed, penalty: this.penalty, wrecks: this.wrecks, medal: state === 'finished' ? (total <= m.gold ? 'gold' : total <= m.silver ? 'silver' : total <= m.bronze ? 'bronze' : null) : null };
+    this.result = { state, time: total, clean: this.elapsed, penalty: this.penalty, wrecks: this.wrecks, hoop: this.hoop, medal: state === 'finished' ? (total <= m.gold ? 'gold' : total <= m.silver ? 'silver' : total <= m.bronze ? 'bronze' : null) : null };
     this.events.push({ type: state, result: this.result });
   }
 

@@ -30,6 +30,7 @@ export class Sound {
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'),
       load('engineStart', 'sounds/engine-start.mp3'),
+      load('crusher', 'sounds/crusher.mp3'), load('flame', 'sounds/flame.mp3'), load('hammer', 'sounds/hammer.mp3'), load('fireworks', 'sounds/fireworks.mp3'),      // (Apple Crumple's hazards and the finish; the game just goes without if a file is missing)
     ]);
     await this._loadMusicBuffer(this.track);
     this.engine = this._loop('engine', this.sfx, 0);
@@ -250,6 +251,8 @@ export class Sound {
     if (cut) gn.gain.setTargetAtTime(0, t + cut, cut * 0.35);
     s.connect(gn).connect(this.sfx); s.start(t); if (cut) s.stop(t + cut * 2.5);
   }
+  /** A named sound effect from the loaded files (Apple Crumple's hammer / crusher / flame / fireworks), `dist` metres away. */
+  cue(name, gain = 1, dist = 0) { this._shot(name, gain, 1, dist); }
   /** A barrel going off. */
   explode(dist = 0) { this._shot('explosion', 1, 0.92 + Math.random() * 0.16, dist); }
   /** A drum being knocked about: a clang whose loudness follows how hard it was hit. */

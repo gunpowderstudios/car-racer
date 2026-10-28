@@ -410,21 +410,22 @@ function crumpleHandles() {
   [-45, 0, 45].forEach((a, i) => P(L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R, [HILL[1], HILL[2], HILL[3]][i]));
   P(L, R); P(L / 2, R, SHOULDER); P(0, R, TOP, JUMP); P(-L / 2, R, SHOULDER); P(-L, R);
   [135, 180, 225].forEach((a, i) => P(-L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R, [3, 7, 3][i]));
-  P(-L, -R); P(-L / 2, -R, 4);
+  P(-L, -R, 2.5); P(-L / 2, -R, TOP, { ...JUMP });                 // the finale: a long ramp up to a second jump, and the flaming hoop hangs over its gap
   return out;
 }
 /** The hazards, laid along the road by distance from the start line (the road is about 1.4 km). Easy first, a gauntlet last. */
 function crumpleCourse(def) {
-  const t = new Track(def), jumpS = t.handleS[def.handles.findIndex((h) => h.gap)], at = (s) => Math.min(s, t.length - 20);
+  const t = new Track(def), gaps = def.handles.map((h, i) => (h.gap ? i : -1)).filter((i) => i >= 0), jumpS = t.handleS[gaps[0]], endS = t.handleS[gaps[gaps.length - 1]], at = (s) => Math.min(s, t.length - 20);
   const assault = {
-    limit: 160,
-    checkpoints: [205, jumpS - 140, jumpS + 170, t.length - 232].map(Math.round),
-    hammers: [{ s: 100, phase: 0, speed: 0.8 }, { s: t.length - 160, phase: 1.7, speed: 1.0 }],
-    boulders: [{ s: 300, phase: 0, side: 1 }, { s: jumpS + 285, phase: 0, side: 1 }, { s: jumpS + 345, phase: 2.4, side: -1 }, { s: t.length - 70, phase: 1.1, side: -1 }],
-    arms: [{ s: jumpS - 175, speed: 0.8, dir: 1 }, { s: t.length - 110, speed: 0.95, dir: -1 }],
-    presses: [{ s: jumpS + 420, phase: 0 }, { s: t.length - 200, phase: 0.9 }],
+    stage: { time: 20, step: 2 },                              // each stage's clock: 20 s, then 18, 16, 14, 12
+    hoop: { s: Math.round(endS + 10), h: 3.2, r: 4.2 },        // the flaming hoop hangs over the finale jump's gap: that is the finish line
+    checkpoints: [205, jumpS - 140, jumpS + 170, endS - 150].map(Math.round),
+    hammers: [{ s: 100, phase: 0, speed: 0.8 }, { s: Math.round(endS - 95), phase: 1.7, speed: 1.0 }],
+    boulders: [{ s: 300, phase: 0, side: 1 }, { s: jumpS + 285, phase: 0, side: 1 }, { s: jumpS + 345, phase: 2.4, side: -1 }],
+    arms: [{ s: jumpS - 175, speed: 0.8, dir: 1 }, { s: Math.round(endS - 65), speed: 0.95, dir: -1 }],
+    presses: [{ s: jumpS + 420, phase: 0 }, { s: Math.round(endS - 125), phase: 0.9 }],
     fires: [165, 345, 450, 640, 905, 945, 1160].map((s, i) => ({ s, lat: [-3, 3.5, 0, -4, 4, -1, 2.5][i], seed: i + 1, period: 4.6 + (i % 4) * 0.9, phase: i * 1.7 })),
-    signs: [{ s: 135, kind: 'fire' }, { s: 925, kind: 'fire' }, { s: jumpS - 100, kind: 'jump' }, { s: jumpS + 60, kind: 'barrels' }, { s: t.length - 255, kind: 'gauntlet' }],
+    signs: [{ s: 135, kind: 'fire' }, { s: 925, kind: 'fire' }, { s: jumpS - 100, kind: 'jump' }, { s: jumpS + 60, kind: 'barrels' }, { s: Math.round(endS - 150), kind: 'gauntlet' }, { s: Math.round(endS - 38), kind: 'hoop' }],
   };
   const r2 = (v) => Math.round(v * 100) / 100, props = [];
   const patch = (s0, n, gap) => {                              // a staggered field of barrels across the road, always with a way through
@@ -434,7 +435,7 @@ function crumpleCourse(def) {
       props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y) });
     }
   };
-  patch(jumpS + 70, 8, 7); patch(t.length - 38, 4, 6);
+  patch(jumpS + 70, 8, 7); patch(Math.round(endS - 215), 4, 6);
   return { ...def, assault, props };
 }
 
@@ -528,7 +529,7 @@ export function makeTemplate(key) {
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
-  apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, a jump and a final gauntlet. Beat the clock!',
+  apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, fire pits, a jump and a final gauntlet - then fly through the flaming hoop. Every stage has its own clock!',
   speedway: 'A fast 1.6 km banked Nascar-style paint-scraping, head rush',
   oval: 'A cheesy pizza-shaped pile up of olives and exploding peppers!',
   technical: 'Tight and twisty, lots of braking',
