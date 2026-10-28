@@ -218,8 +218,11 @@ export class Debris {
   constructor(scene, cap = 0) {
     this.cap = cap; this.i = 0; this.live = 0;
     if (!cap) return;
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    this.mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), cap);
+    // A ragged shard, not a box: a flat, uneven polygon with a spike or two (the pieces then differ again in size and proportion, see burst()).
+    const pts = [[0.5, 0.0], [0.28, 0.42], [-0.12, 0.5], [-0.5, 0.18], [-0.34, -0.2], [-0.5, -0.5], [0.05, -0.34], [0.38, -0.46]];
+    const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z)));
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false }); geo.rotateX(-Math.PI / 2); geo.translate(0, -0.5, 0);
+    this.mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), cap);
     this.mesh.frustumCulled = false; this.mesh.count = cap;
     this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
     scene.add(this.mesh);
@@ -247,8 +250,9 @@ export class Debris {
       this.v[k * 3] = Math.cos(a) * h + bx * 0.5; this.v[k * 3 + 1] = (1.5 + R() * 5) * (0.5 + power); this.v[k * 3 + 2] = Math.sin(a) * h + bz * 0.5;
       this.r[k * 3] = R() * 6.28; this.r[k * 3 + 1] = R() * 6.28; this.r[k * 3 + 2] = R() * 6.28;
       this.w[k * 3] = (R() - 0.5) * 22; this.w[k * 3 + 1] = (R() - 0.5) * 22; this.w[k * 3 + 2] = (R() - 0.5) * 22;
-      const big = R() < 0.18;                                                 // the odd large panel among the shards
-      this.sz[k * 3] = (big ? 0.4 : 0.16) + R() * (big ? 0.25 : 0.2); this.sz[k * 3 + 1] = 0.03 + R() * 0.03; this.sz[k * 3 + 2] = (big ? 0.3 : 0.1) + R() * (big ? 0.2 : 0.16);
+      const big = R() < 0.18, tiny = !big && R() < 0.4;                        // a few large panels, lots of small chips, the rest in between
+      const base = big ? 0.4 + R() * 0.3 : tiny ? 0.1 + R() * 0.1 : 0.2 + R() * 0.25, aspect = 0.35 + R() * 1.1;       // (long slivers as well as chunky bits)
+      this.sz[k * 3] = base * (0.8 + R() * 0.7); this.sz[k * 3 + 1] = 0.025 + R() * 0.05 + (tiny ? 0.02 : 0); this.sz[k * 3 + 2] = base * aspect;
       this.life[k] = 4 + R() * 3; this.rest[k] = 0;
       c.setHex(R() < 0.55 ? paint : DEBRIS_GREY[(R() * DEBRIS_GREY.length) | 0]);
       this.mesh.setColorAt(k, c);

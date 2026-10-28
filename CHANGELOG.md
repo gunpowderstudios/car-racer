@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.449 — Ragged debris
+- Crash debris is no longer square: the pieces are ragged, uneven shards in a mix of sizes — small chips, mid-size bits, long slivers and the odd large panel.
+
 ## v17.448 — Several small holes
 - Holy Moley: a deep crumple now tears two or three small holes scattered over it instead of one big one.
 
