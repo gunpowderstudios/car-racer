@@ -231,3 +231,13 @@ test('Film shape: a tall 9:16 option for Shorts and TikTok, plain picture with t
   assert.match(src, /out\.width = tall \? 1080 : 1920; out\.height = tall \? 1920/);
   assert.match(src, /const inTv = !R\.tall && /);
 });
+
+test('the replay remembers the clock of the moving hazards (Apple Crumple) and gives it back at any time', async () => {
+  const { ReplayRecorder, ReplayPlayer } = await import('../src/replay.js');
+  const rec = new ReplayRecorder(), ent = [{ id: 'p', hue: 0, isPlayer: true, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 }];
+  rec.record(10, ent, 2); rec.record(10.05, ent, 2.05); rec.record(10.1, ent, 2.1);
+  const p = new ReplayPlayer(rec);
+  assert.ok(Math.abs(p.hazardAt(10.075) - 2.075) < 1e-9);
+  const plain = new ReplayRecorder(); plain.record(1, ent); plain.record(1.05, ent);
+  assert.equal(new ReplayPlayer(plain).hazardAt(1.02), null, 'no hazards on an ordinary track');
+});

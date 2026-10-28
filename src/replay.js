@@ -28,7 +28,7 @@ export class ReplayRecorder {
 
   /** Note the cars at game time `t` (seconds). Returns false when it is too soon after the last note. `ents` is a list of
    *  { id, hue, isPlayer, x, y, z, qx, qy, qz, qw, steer, spin: [4], health, wrecked, van: [9] | null }. */
-  record(t, ents) {
+  record(t, ents, hazard) {
     if (t < this.lastT) { this.reset(); }                                    // the clock went backwards: a new race
     if (t - this.lastT < 1 / this.hz - 1e-6) return false;
     this.lastT = t;
@@ -44,7 +44,7 @@ export class ReplayRecorder {
       if (e.van) { a[o + 15] = 1; for (let i = 0; i < 9; i++) a[o + 16 + i] = e.van[i]; }
       a[o + 25] = e.rpm || 0; a[o + 26] = e.thr || 0; a[o + 27] = e.skid || 0; a[o + 28] = e.boost | 0;
     }
-    this.frames.push({ t, a });
+    this.frames.push(hazard === undefined ? { t, a } : { t, a, h: hazard });             // (h: the clock of the track's moving hazards, Apple Crumple)
     // keep a rolling window: forget what is older than maxSeconds
     while (this.frames.length - this.head > 2 && t - this.frames[this.head].t > this.maxSeconds) this.head++;
     if (this.head > 1500) { this.frames.splice(0, this.head); this.head = 0; }
@@ -77,6 +77,16 @@ export class ReplayPlayer {
     let lo = lo0, hi = F.length - 1;
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (F[mid].t <= t) lo = mid; else hi = mid; }
     return lo;
+  }
+
+  /** The clock of the track's moving hazards (Apple Crumple's hammers, spinners, rocks and presses) at replay time t, or null if none was recorded. */
+  hazardAt(t) {
+    const rec = this.rec, F = rec.frames;
+    if (rec.empty) return null;
+    const i = this._find(t), A = F[i], B = F[Math.min(F.length - 1, i + 1)];
+    if (A.h === undefined) return null;
+    if (B.h === undefined || B.t <= A.t) return A.h;
+    return A.h + (B.h - A.h) * clamp((t - A.t) / (B.t - A.t), 0, 1);
   }
 
   /** The cars at time t, blended between the two nearest notes. The returned objects are reused: copy what you keep. */

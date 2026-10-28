@@ -947,7 +947,7 @@ function recordReplay() {
   rpFill(rpEnt(n++), 'p', 0, true, car, derby.damageEnabled ? derby.player.health.worst : 1, !!(derby.enabled && derby.player.wrecked));
   if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; rpFill(rpEnt(n++), f.id, f.hue, false, f.car, f.health.worst, !!f.wrecked); }
   rpEnts.length = n;
-  replayRec.record(simTime, rpEnts);
+  replayRec.record(simTime, rpEnts, assault ? assault.t : undefined);          // (Apple Crumple: and where its hammers and spinners were)
 }
 const replayDof = new ReplayDof(renderer);
 // Sounds in the replay: knocks and landings, the van's knocks, barrels, honks. A knock the live game reports twice (derby and car) is logged once.
@@ -1037,6 +1037,7 @@ function frame(now) {
       propsView.update(props);
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();
+      if (assault) { const at = replay().state.player?.hazardAt(replay().state.t); if (at != null) stage.updateAssault(Object.assign(Object.create(assault), { t: at })); }      // the hammers, spinners, rocks and presses move as they did in the run
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
       if (tierName === 'high' && !device.touch && adapt.scale >= 0.8 && replay().state.camMode === 'TV') {      // (only the trackside TV camera gets the blur: Chase and Top stay sharp)
         if (!replayDof.on) replayDof.enable();

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.467 — Hazards move in the replay
+- Apple Crumple: the hammers, spinners, rolling rocks and presses now move in the replay (and in made movies) exactly as they did in your run; they used to stand frozen.
+
 ## v17.466 — Solid spinners
 - Apple Crumple: the spinning bars (and their poles) are now properly solid. Before, they only gave you a knock and you could carry on through; now you are stopped, pushed out and bounced off, with the same damage as before.
 
