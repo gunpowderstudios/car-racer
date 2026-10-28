@@ -73,7 +73,8 @@ export function normalizeAssault(a) {
     arms: list(a.arms, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), speed: num(h.speed, 0.85, 0.3, 2), dir: h.dir < 0 ? -1 : 1, len: num(h.len, 6.4, 3, 9) })),
     presses: list(a.presses, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), width: num(h.width, 14, 6, 30) })),
     boulders: list(a.boulders, 12, (h) => ({ s: +h.s, phase: num(h.phase, 0, -100, 100), side: h.side < 0 ? -1 : 1 })),
-    signs: list(a.signs, 24, (h) => ({ s: +h.s, kind: ['barrels', 'jump', 'gauntlet'].includes(h.kind) ? h.kind : 'barrels' })),
+    fires: list(a.fires, 16, (h) => ({ s: +h.s, lat: num(h.lat, 0, -12, 12), seed: num(h.seed, 0, 0, 1000), period: num(h.period, 5.5, 3, 12), phase: num(h.phase, 0, 0, 100) })),
+    signs: list(a.signs, 24, (h) => ({ s: +h.s, kind: ['barrels', 'jump', 'gauntlet', 'fire'].includes(h.kind) ? h.kind : 'barrels' })),
   };
   return out;
 }

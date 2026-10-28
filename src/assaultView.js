@@ -1,7 +1,7 @@
 // What Apple Crumple looks like: gantries, hammers, boulders, spinning arms, presses, signs and checkpoint gates.
 // Everything moves from the same clock the collisions use (assault.js), so what you see is what hits you.
 import * as THREE from 'three';
-import { COURSE, hammerHead, boulderAt, armAngle, pressAt } from './assault.js';
+import { COURSE, hammerHead, boulderAt, armAngle, pressAt, fireAt } from './assault.js';
 
 const RED = 0xc0281f, GREEN = 0x5aa02c, YELLOW = 0xffc21a, STEEL = 0xc9ccd2, CONCRETE = 0x9b9a93, DARK = 0x23222a;
 
@@ -29,14 +29,14 @@ const gateTex = (text) => canvasTex(512, 96, (g, w, h) => {
 
 const SIGNS = {
   hammer: ['HAMMERS', 'TIME YOUR RUN'], boulder: ['ROLLING ROCKS', 'WATCH THE SIDES'], arm: ['SPINNER', 'FIND THE GAP'],
-  press: ['CRUSHER', 'GREEN = GO'], barrels: ['BARRELS', 'EXPLOSIVE'], jump: ['BIG JUMP', 'KEEP YOUR SPEED UP'], gauntlet: ['GAUNTLET', 'EVERYTHING AT ONCE'],
+  press: ['CRUSHER', 'GREEN = GO'], barrels: ['BARRELS', 'EXPLOSIVE'], fire: ['FIRE PITS', 'KEEP CLEAR'], jump: ['BIG JUMP', 'KEEP YOUR SPEED UP'], gauntlet: ['GAUNTLET', 'EVERYTHING AT ONCE'],
 };
 
 export class AssaultView {
   /** `group` is the track's mesh group (it is disposed with the track). */
   constructor(track, group) {
     this.track = track; this.def = track.def.assault; this.group = group;
-    this.hammers = []; this.arms = []; this.boulders = []; this.presses = []; this.gates = [];
+    this.fires = []; this.hammers = []; this.arms = []; this.boulders = []; this.presses = []; this.gates = [];
     const m = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.15, ...o });
     this.mat = { steel: m(STEEL, { metalness: 0.6, roughness: 0.4 }), red: m(RED), green: m(GREEN), dark: m(DARK), concrete: m(CONCRETE, { roughness: 0.9 }), yellow: m(YELLOW) };
     const st = stripeTex(); this.mat.stripe = new THREE.MeshStandardMaterial({ map: st, roughness: 0.7 });
@@ -46,6 +46,7 @@ export class AssaultView {
     for (const a of d.arms) this._arm(a);
     for (const b of d.boulders) this._boulder(b);
     for (const p of d.presses) this._press(p);
+    for (const p of d.fires || []) this._fire(p);
     d.checkpoints.forEach((s, i) => this._gate(s, i + 1));
     this._signs();
     this._finish();
@@ -101,7 +102,6 @@ export class AssaultView {
     }
     geo.computeVertexNormals();
     const rock = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x8b8680, roughness: 0.95, flatShading: true })); rock.castShadow = true; rock.frustumCulled = false;
-    const moss = new THREE.Mesh(new THREE.IcosahedronGeometry(B.r * 0.62, 1), new THREE.MeshStandardMaterial({ color: GREEN, roughness: 1, flatShading: true })); moss.position.set(0.5, B.r * 0.75, 0.3); rock.add(moss);
     this._stripes(g, g.userData.hw);
     g.add(rock); this.boulders.push({ b, g, rock });
   }
@@ -120,6 +120,19 @@ export class AssaultView {
     const block = new THREE.Mesh(new THREE.BoxGeometry(width, C.thick, C.depth), [this.mat.concrete, this.mat.concrete, this.mat.dark, this.mat.dark, new THREE.MeshStandardMaterial({ map: tex }), new THREE.MeshStandardMaterial({ map: tex })]);
     block.castShadow = true; block.receiveShadow = true; block.frustumCulled = false; g.add(block);
     this.presses.push({ p, g, block, lights });
+  }
+
+  _fire(p) {                                           // a scorched pit with glowing embers; a column of flame shoots up out of it
+    const g = this._at(p.s), sx = g.userData.sx, F = COURSE.fire, x = sx * (p.lat || 0);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(F.r * 0.85, F.r * 0.95, 0.35, 20), this.mat.dark); rim.position.set(x, 0.12, 0); rim.receiveShadow = true; rim.frustumCulled = false;
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x551100 });
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(F.r * 0.72, 20), glowMat); glow.rotation.x = -Math.PI / 2; glow.position.set(x, 0.32, 0); glow.frustumCulled = false;
+    const flame = new THREE.Group(); flame.position.set(x, 0.3, 0); flame.visible = false;
+    const layers = [[1.0, 0xff4a0a, 0.85], [0.68, 0xff9d1a, 0.9], [0.38, 0xffe27a, 0.95]].map(([k, c, o]) => {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(F.r * k, 1, 14, 1, true), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+      m.position.y = 0.5; m.frustumCulled = false; flame.add(m); return m;
+    });
+    g.add(rim, glow, flame); this.fires.push({ p, g, glow, flame, layers });
   }
 
   _gate(s, n) {
@@ -182,6 +195,16 @@ export class AssaultView {
       o.block.position.y = st.y + C.thick / 2;
       const col = st.light === 'green' ? 0x00cc33 : st.light === 'amber' ? 0xffaa00 : 0xff2200;
       for (const l of o.lights) { l.material.color.setHex(col); l.material.emissive.setHex(col); }
+    }
+    for (const o of this.fires) {
+      const st = fireAt(o.p, t), F = COURSE.fire;
+      o.glow.material.color.setHex(st.state === 'warn' ? (Math.sin(t * 40) > 0 ? 0xff6a10 : 0xaa2200) : st.state === 'burst' ? 0xffd060 : 0x551100);
+      o.flame.visible = st.state !== 'idle';
+      if (st.state === 'warn') { const h = 0.8 + st.k * 1.6; o.layers.forEach((m, i) => { m.scale.y = h * (1 - i * 0.2); m.scale.x = m.scale.z = 0.6 + 0.25 * Math.sin(t * 30 + i); m.position.y = m.scale.y / 2; }); }
+      else if (st.state === 'burst') {
+        const rise = Math.min(1, st.k * 4), fall = st.k > 0.7 ? 1 - (st.k - 0.7) / 0.3 : 1, h = F.height * rise * (0.3 + 0.7 * fall);
+        o.layers.forEach((m, i) => { m.scale.y = Math.max(0.1, h * (1 - i * 0.15)); m.scale.x = m.scale.z = (0.85 + 0.15 * Math.sin(t * 25 + i * 2)) * (1 - i * 0.05); m.position.y = m.scale.y / 2; });
+      }
     }
     for (const gt of this.gates) {
       const done = a.next >= gt.n, nextOne = a.next === gt.n - 1, col = done ? 0x32d74b : nextOne ? 0xffb31f : 0x6f6f86;

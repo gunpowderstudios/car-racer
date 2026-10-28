@@ -7,7 +7,7 @@ import { Track, normalizeTrack, analyzeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { makeTemplate, TEMPLATE_KEYS, TEMPLATE_INFO, drivable } from '../src/templates.js';
 import { Derby } from '../src/derby.js';
-import { Assault, COURSE, hammerHead, boulderAt, pressAt, armAngle, nearestOnCar } from '../src/assault.js';
+import { Assault, COURSE, hammerHead, boulderAt, pressAt, armAngle, nearestOnCar, fireAt } from '../src/assault.js';
 import { placeOnTrack, DT, bot } from './harness.mjs';
 import { V3 } from '../src/math.js';
 
@@ -234,7 +234,7 @@ test('every hazard can be passed cleanly, and each really does hit if you ignore
   const { track, car, def } = course(), sp = spy();
   const pass = (kind, idx, speed, lane, t0) => {
     const A = new Assault(track), h = def.assault[kind][idx];
-    A.def = { hammers: [], arms: [], boulders: [], presses: [], checkpoints: [], [kind]: [h] }; A.t = t0; sp.hits.length = 0;
+    A.def = { hammers: [], arms: [], boulders: [], presses: [], fires: [], checkpoints: [], [kind]: [h] }; A.t = t0; sp.hits.length = 0;
     const s0 = h.s - 40, n = Math.ceil(80 / speed / DT);
     for (let i = 0; i < n; i++) {
       const f = track.frameAt(s0 + speed * i * DT);
@@ -244,12 +244,12 @@ test('every hazard can be passed cleanly, and each really does hit if you ignore
     }
     return true;
   };
-  for (const [kind, n] of [['hammers', def.assault.hammers.length], ['arms', def.assault.arms.length], ['boulders', def.assault.boulders.length], ['presses', def.assault.presses.length]]) {
+  for (const [kind, n] of [['hammers', def.assault.hammers.length], ['arms', def.assault.arms.length], ['boulders', def.assault.boulders.length], ['presses', def.assault.presses.length], ['fires', def.assault.fires.length]]) {
     for (let idx = 0; idx < n; idx++) {
       let anyLaneClean = 0, centreHit = 0, N = 0;
       for (let t0 = 0; t0 < 9; t0 += 0.5) {
         N++; if ([-6, -3, 0, 3, 6].some((l) => pass(kind, idx, 22, l, t0))) anyLaneClean++;
-        if (!pass(kind, idx, 22, 0, t0)) centreHit++;
+        if (!pass(kind, idx, 22, def.assault[kind][idx].lat || 0, t0)) centreHit++;
       }
       assert.ok(anyLaneClean / N >= 0.4, `${kind} ${idx}: there is a way through ${(anyLaneClean / N * 100).toFixed(0)}% of the time`);
       assert.ok(centreHit / N >= 0.1, `${kind} ${idx}: driving straight at it hurts (${(centreHit / N * 100).toFixed(0)}%)`);
@@ -335,7 +335,7 @@ test('a checkpoint patches the car up to full health', () => {
 // ---------------------------------------------------------------------------------------------- the whole course
 test('the whole course can be driven from the start line to the finish in the real physics (jump, checkpoints and all)', () => {
   const { car, track, derby, run, def } = course();
-  run.def = { ...def.assault, hammers: [], arms: [], boulders: [], presses: [] };                // (a bot cannot time the hazards: this is the road and the jump)
+  run.def = { ...def.assault, hammers: [], arms: [], boulders: [], presses: [], fires: [] };                // (a bot cannot time the hazards: this is the road and the jump)
   const drv = bot({ speed: 26 }), L = track.length;
   let u = -12, last = track.progressAt(car.pos.x, car.pos.y, car.pos.z), t = 0;
   for (; t < 150 && run.active; t += DT) {
@@ -426,4 +426,67 @@ test('the drawn hazards sit exactly where the collisions put them', { skip: !THR
   }
   a.next = 2; v.update(a);
   assert.equal(v.gates[0]._col, 0x32d74b); assert.equal(v.gates[2]._col, 0xffb31f); assert.equal(v.gates[3]._col, 0x6f6f86, 'passed green, next amber, later grey');
+});
+
+// ---------------------------------------------------------------------------------------------- the second round of changes
+test('the course has rolling hills, none too steep to drive', () => {
+  const { def, track } = course();
+  const ys = def.handles.map((h) => h.y), hills = ys.filter((y) => y >= 3).length;
+  assert.ok(hills >= 7, `${hills} hill handles`);
+  let steepest = 0;
+  const jumpS = track.handleS[def.handles.findIndex((h) => h.gap)];
+  for (let s = 0; s < track.length - 3; s += 3) { if (Math.abs(s - jumpS) < 45) continue; const a = track.frameAt(s), b = track.frameAt(s + 3); steepest = Math.max(steepest, Math.abs(b.y - a.y) / 3); }
+  assert.ok(steepest < 0.12, `steepest grade ${(steepest * 100).toFixed(1)}%`);
+  assert.ok(drivable(def), 'and the jump still works');
+});
+
+test('boulders are plain rocks: no leaves or moss', () => {
+  const view = readFileSync(new URL('../src/assaultView.js', import.meta.url), 'utf8');
+  const boulder = view.slice(view.indexOf('_boulder(b) {'), view.indexOf('_press(p) {'));
+  assert.doesNotMatch(boulder, /moss|GREEN|leaf/);
+});
+
+test('fire pits erupt at random moments, the same for the view and the collisions', () => {
+  const p = { s: 100, seed: 3, period: 5, phase: 0 }, starts = [];
+  for (let cycle = 0; cycle < 12; cycle++) { let first = null; for (let t = cycle * 5; t < cycle * 5 + 5; t += 0.02) if (fireAt(p, t).state === 'warn') { first = t - cycle * 5; break; } starts.push(first); }
+  assert.ok(starts.every((v) => v != null && v >= 0.15 && v < 5), 'every cycle has a warning then a burst');
+  assert.ok(new Set(starts.map((v) => v.toFixed(1))).size >= 6, 'the timing differs from cycle to cycle: ' + starts.map((v) => v.toFixed(1)));
+  assert.deepEqual(fireAt(p, 7.3), fireAt(p, 7.3), 'deterministic');
+  const order = []; for (let t = 0; t < 5; t += 0.02) { const st = fireAt(p, t).state; if (order[order.length - 1] !== st) order.push(st); }
+  assert.deepEqual(order, ['idle', 'warn', 'burst', 'idle']);
+});
+
+test('a fire pit throws a car above it into the air and burns it; a car beside it, or before it goes off, is fine', () => {
+  const { track, car, def, derby, run } = course(), p = def.assault.fires[0], f = track.frameAt(p.s);
+  const burst = findT((t) => fireAt(p, t).state === 'burst' && fireAt(p, t).k > 0.3), idle = findT((t) => fireAt(p, t).state === 'idle' && t > 1);
+  const sp = spy(); put(car, track, p.s, p.lat, 0); run.t = burst; run._contacts(car, sp);
+  assert.equal(sp.hits.length, 1); assert.ok(sp.hits[0].hp >= 20);
+  assert.ok(car.vel.y > 5, 'thrown into the air: ' + car.vel.y.toFixed(1));
+  assert.ok(run.events.some((e) => e.type === 'hit' && e.kind === 'fire'));
+  const sp2 = spy(), r2 = new Assault(track); put(car, track, p.s, p.lat, 0); r2.t = idle; r2._contacts(car, sp2); assert.equal(sp2.hits.length, 0, 'dormant');
+  const sp3 = spy(), r3 = new Assault(track); put(car, track, p.s, p.lat + 6, 0); r3.t = burst; r3._contacts(car, sp3); assert.equal(sp3.hits.length, 0, 'a car beside the pit');
+  const r4 = new Assault(track); put(car, track, p.s, p.lat, 0); derby.time = 10; r4.t = burst; r4._contacts(car, derby);
+  assert.ok(derby.events.some((e) => e.type === 'damage'), 'real damage through the derby'); void f;
+});
+
+test('there are fire pits spread right round the course, with a warning sign', () => {
+  const { def, track } = course(), fires = def.assault.fires;
+  assert.ok(fires.length >= 6 && fires.every((p) => Math.abs(p.lat) < track.frameAt(p.s).hw - 2));
+  assert.ok(fires[0].s < 300 && fires[fires.length - 1].s > track.length * 0.7, 'from early on to late');
+  assert.ok(def.assault.signs.some((s) => s.kind === 'fire'));
+  assert.equal(normalizeTrack(JSON.parse(JSON.stringify(def))).assault.fires.length, fires.length, 'kept by normalizeTrack');
+});
+
+test('the result card can be clicked (the HUD lets clicks through, the card takes them) and has keys', () => {
+  const hud = readFileSync(new URL('../src/assaultHud.js', import.meta.url), 'utf8');
+  assert.match(hud, /#assault-card\{pointer-events:auto/);
+  assert.match(hud, /e\.key === 'Enter'/); assert.match(hud, /e\.key === 'Escape'/);
+  assert.match(readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), /#hud \{[^}]*pointer-events: none/, 'which is why the card needs its own pointer-events');
+});
+
+test('Apple Crumple asks for a password (custard) until it is ready, and remembers a right answer', () => {
+  assert.match(main, /APPLE_PASSWORD = 'custard'/);
+  assert.match(main, /if \(newDef\?\.assault && !appleUnlocked\(\)\) return;/, 'starting it any way round asks');
+  assert.match(main, /k === 'apple' \? \[\['Choose', \(\) => \{ if \(appleUnlocked\(\)\) chooseTrack/, 'and so does the menu button');
+  assert.match(main, /store\.set\('cr\.appleOK', true\)/);
 });

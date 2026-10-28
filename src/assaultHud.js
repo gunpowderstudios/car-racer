@@ -20,7 +20,7 @@ function ensure() {
 #assault-hud .as-pen{color:#ff8a80}
 #assault-pop{position:absolute;left:50%;top:26%;transform:translateX(-50%);z-index:31;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(28px,5vw,54px);color:#ffb31f;text-shadow:0 3px 8px #000c;pointer-events:none;text-transform:uppercase;text-align:center}
 #assault-pop[hidden]{display:none}
-#assault-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;min-width:min(86vw,380px);padding:22px 26px;background:#1b1230f2;border:4px solid #ffb31f;border-radius:16px;text-align:center;color:#fff;font-family:"Big Shoulders Display",Impact,sans-serif}
+#assault-card{pointer-events:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;min-width:min(86vw,380px);padding:22px 26px;background:#1b1230f2;border:4px solid #ffb31f;border-radius:16px;text-align:center;color:#fff;font-family:"Big Shoulders Display",Impact,sans-serif}
 #assault-card[hidden]{display:none}
 #assault-card h2{margin:0 0 4px;font-size:44px;text-transform:uppercase;color:#ffb31f}
 #assault-card .as-big{font-size:64px;font-weight:900;line-height:1}
@@ -65,6 +65,9 @@ export function assaultPop(text, ms = 1600) {
 
 export function hideResult() { if (card) card.hidden = true; }
 
+// Enter or Space is "Try again" while the result card is up (the buttons work with the mouse, a finger and the keyboard)
+let keyHandler = null;
+
 const MEDAL = { gold: ['GOLD', '#ffd24a'], silver: ['SILVER', '#d5dbe6'], bronze: ['BRONZE', '#d98b4e'] };
 
 /** The result card. `res` is Assault.result; `best` the best finishing time so far (seconds) and `isBest` whether this run set it. */
@@ -76,8 +79,15 @@ export function showResult(res, best, isBest, onAgain, onMenu) {
     + (fin && m ? `<div class="as-medal" style="color:${m[1]}">${m[0]} MEDAL</div>` : '')
     + (fin ? `<div class="as-line">Driving ${fmt(res.clean)}${res.penalty ? ` + ${res.penalty}s penalties (${res.wrecks} wreck${res.wrecks === 1 ? '' : 's'})` : ' - no penalties!'}</div>` : '')
     + (best != null ? `<div class="as-line">${isBest && fin ? 'New best time!' : 'Best'} ${fmt(best)}</div>` : '')
-    + '<div class="as-btns"><button class="again">Try again</button><button class="alt menu">Menu</button></div>';
+    + '<div class="as-btns"><button class="again">Try again (Enter)</button><button class="alt menu">Menu (Esc)</button></div>';
   card.querySelector('.again').onclick = () => { card.hidden = true; onAgain(); };
   card.querySelector('.menu').onclick = () => { card.hidden = true; onMenu(); };
   card.hidden = false;
+  if (keyHandler) document.removeEventListener('keydown', keyHandler);
+  keyHandler = (e) => {
+    if (card.hidden) { document.removeEventListener('keydown', keyHandler); keyHandler = null; return; }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.hidden = true; onAgain(); }
+    else if (e.key === 'Escape') { e.preventDefault(); card.hidden = true; onMenu(); }
+  };
+  document.addEventListener('keydown', keyHandler);
 }

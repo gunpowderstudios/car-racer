@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.431 — Apple Crumple tweaks
+- Fixed: the "Try again" and "Menu" buttons on the result card could not be clicked (Enter and Esc work too).
+- More hills round the course.
+- Boulders are now plain rocks.
+- New hazard: random fire pits that shoot a column of flame into the air, burning and throwing any car above them.
+- Apple Crumple asks for a password until it is ready.
+
 ## v17.430 — Apple Crumple, the obstacle course (feature branch)
 - New solo timed obstacle course in **Driving Tests**: swinging hammers, rolling boulders, a spinning arm, crushing presses, exploding barrels, a big jump and a final gauntlet.
 - Beat the clock: start lights, a countdown timer, four checkpoints that repair your car and act as restart points, and a finish line with a result card, medals and best time.

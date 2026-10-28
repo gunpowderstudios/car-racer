@@ -25,6 +25,8 @@ export const COURSE = {
   // crushing press: a block of concrete hanging over the road (green light: safe; amber: it is about to drop; it slams, stays down, rises)
   press: { period: 4.4, safe: 2.5, warn: 0.75, slam: 0.2, down: 0.55, up: 4.6, thick: 3, depth: 6.5, hp: 78 },
   car: { hx: 0.95, hy: 0.55, hz: 2.4, cy: 0.18 },   // the car's body as a box about its centre of mass
+  // fire pit: a pit in the road that, at random moments (a warning glow first), shoots a column of flame into the air and throws a car above it
+  fire: { r: 2.3, height: 13, warn: 0.9, burst: 1.1, hp: 30, launch: 10 },
   cooldown: 0.55,             // seconds before the same hazard can hurt you again
 };
 
@@ -60,6 +62,16 @@ export function pressAt(p, t, C = COURSE.press) {
   if (u < t3) { const k = (u - t2) / C.slam; return { y: C.up * (1 - k * k), state: 'slam', light: 'red', cycle }; }
   if (u < t4) return { y: 0, state: 'down', light: 'red', cycle };
   const k = (u - t4) / (C.period - t4); return { y: C.up * k, state: 'rise', light: 'red', cycle };
+}
+
+/** A fire pit's state at time t. The moment it erupts is random in each cycle, but the same for the view and the collisions (it is a hash of the pit and the cycle). */
+export function fireAt(p, t, C = COURSE.fire) {
+  const period = p.period || 5.5, u = t + (p.phase || 0), cycle = Math.floor(u / period), x = Math.sin(cycle * 12.9898 + (p.seed || 0) * 78.233) * 43758.5453;
+  const slack = Math.max(0.1, period - C.warn - C.burst - 0.4), start = 0.2 + (x - Math.floor(x)) * slack, v = u - cycle * period;
+  if (v < start) return { state: 'idle', k: 0, cycle };
+  if (v < start + C.warn) return { state: 'warn', k: (v - start) / C.warn, cycle };
+  if (v < start + C.warn + C.burst) return { state: 'burst', k: (v - start - C.warn) / C.burst, cycle };
+  return { state: 'idle', k: 0, cycle };
 }
 
 // ------------------------------------------------------------------ contact with the car
@@ -211,6 +223,17 @@ export class Assault {
       const cx = f.x + f.lx * bo.lat + f.nx * B.r, cy = f.y + f.ny * B.r, cz = f.z + f.lz * bo.lat + f.nz * B.r;
       const dist = nearestOnCar(car, cx, cy, cz);
       if (dist < B.r) this._hit('b' + i, 'boulder', car, derby, B.hp, P, f.lx * bo.dir, 0.18, f.lz * bo.dir, B.punch, B.speed + 4);
+    }
+    const FI = COURSE.fire;
+    if (d.fires) for (let i = 0; i < d.fires.length; i++) {
+      const p = d.fires[i], f = T.frameAt(p.s);
+      if (Math.abs(car.pos.x - f.x) + Math.abs(car.pos.z - f.z) > 30) continue;
+      const st = fireAt(p, t);
+      if (st.state !== 'burst') continue;
+      const cx = f.x + f.lx * (p.lat || 0), cz = f.z + f.lz * (p.lat || 0), top = FI.height * Math.min(1, st.k * 4);
+      // the column of flame: a car whose body is inside the circle and below the top of the flames is caught
+      const dist = nearestOnCar(car, cx, f.y + 0.5 + Math.min(top, 3) * 0.5, cz);
+      if (dist < FI.r) this._hit('f' + i, 'fire', car, derby, FI.hp, P, 0, 1, 0, FI.launch, 12);
     }
     const C = COURSE.press;
     if (d.presses) for (let i = 0; i < d.presses.length; i++) {

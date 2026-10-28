@@ -403,11 +403,12 @@ const CRUMPLE = { L: 230, R: 80, width: 18 };
 function crumpleHandles() {
   const { L, R } = CRUMPLE, out = [], P = (x, z, y = 0.65, extra) => out.push({ x, y, z, ...(extra || {}) });
   const JUMP = { gap: 20, kick: 8, lip: 1.5 }, TOP = 9, SHOULDER = 5;                      // the jump is the crest of a hill
-  P(0, -R); P(L / 2, -R); P(L, -R);
-  for (const a of [-45, 0, 45]) P(L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R);
+  const HILL = [3.5, 3, 6.5, 3];                               // rolling hills round the course, gentler than the jump hill
+  P(0, -R); P(L / 2, -R, HILL[0]); P(L, -R);
+  [-45, 0, 45].forEach((a, i) => P(L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R, [HILL[1], HILL[2], HILL[3]][i]));
   P(L, R); P(L / 2, R, SHOULDER); P(0, R, TOP, JUMP); P(-L / 2, R, SHOULDER); P(-L, R);
-  for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R);
-  P(-L, -R); P(-L / 2, -R);
+  [135, 180, 225].forEach((a, i) => P(-L + Math.cos(a * Math.PI / 180) * R, Math.sin(a * Math.PI / 180) * R, [3, 7, 3][i]));
+  P(-L, -R); P(-L / 2, -R, 4);
   return out;
 }
 /** The hazards, laid along the road by distance from the start line (the road is about 1.4 km). Easy first, a gauntlet last. */
@@ -420,7 +421,8 @@ function crumpleCourse(def) {
     boulders: [{ s: 300, phase: 0, side: 1 }, { s: jumpS + 285, phase: 0, side: 1 }, { s: jumpS + 345, phase: 2.4, side: -1 }, { s: t.length - 70, phase: 1.1, side: -1 }],
     arms: [{ s: jumpS - 175, speed: 0.8, dir: 1 }, { s: t.length - 110, speed: 0.95, dir: -1 }],
     presses: [{ s: jumpS + 420, phase: 0 }, { s: t.length - 200, phase: 0.9 }],
-    signs: [{ s: jumpS - 100, kind: 'jump' }, { s: jumpS + 60, kind: 'barrels' }, { s: t.length - 255, kind: 'gauntlet' }],
+    fires: [165, 345, 450, 640, 905, 945, 1160].map((s, i) => ({ s, lat: [-3, 3.5, 0, -4, 4, -1, 2.5][i], seed: i + 1, period: 4.6 + (i % 4) * 0.9, phase: i * 1.7 })),
+    signs: [{ s: 135, kind: 'fire' }, { s: 925, kind: 'fire' }, { s: jumpS - 100, kind: 'jump' }, { s: jumpS + 60, kind: 'barrels' }, { s: t.length - 255, kind: 'gauntlet' }],
   };
   const r2 = (v) => Math.round(v * 100) / 100, props = [];
   const patch = (s0, n, gap) => {                              // a staggered field of barrels across the road, always with a way through

@@ -1249,8 +1249,18 @@ function pollWait(now) {
   $('rw-n').textContent = `${done}/${total}`;
   if (now - waitSince > 250) { if (el.hidden) loungeOn(); el.hidden = false; document.body.classList.add('waiting'); }      // (a cached game is ready in a blink: no flash of a bar)
 }
+/** Apple Crumple is behind a password until it is ready (the check is in the page, so it keeps the curious out; it is not real security). The right answer is remembered on this device. */
+const APPLE_PASSWORD = 'custard';
+function appleUnlocked() {
+  if (store.get('cr.appleOK', false)) return true;
+  const a = window.prompt('Apple Crumple is not open yet. Password?');
+  if (a == null) return false;
+  if (a.trim().toLowerCase() === APPLE_PASSWORD) { store.set('cr.appleOK', true); return true; }
+  toast('Wrong password.'); return false;
+}
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
+  if (newDef?.assault && !appleUnlocked()) return;
   if (pendingStart) return;
   if (newDef) loadTrack(newDef);
   else if (!hasPlayed && derby.enabled && (opts.mode === 'jamboree' || opts.mode === 'demolition') && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
@@ -1335,7 +1345,7 @@ function renderMenu() {
   const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
     const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
-    row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);      // (the obstacle course is not editable)
+    row(d.name, info, '', k === 'apple' ? [['Choose', () => { if (appleUnlocked()) chooseTrack(d, info); }]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);      // (the obstacle course is not editable)
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
