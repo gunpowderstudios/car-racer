@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.460 — Fair and square multiplayer
+- In multiplayer every car now pulls and tops out at the same speed, whatever it is (weight, handling and crash damage still differ).
+- Other players now show up as the car they actually chose, instead of everyone looking like the first car.
+- The lethal black barrels lose their yellow stripes and get a yellow skull and crossbones instead.
+
 ## v17.459 — Start lights in multiplayer
 - Multiplayer races now begin with the Red, Red, Green! start lights, like Race Day. Everyone is held on the grid and the lights go out at the same moment for all players.
 

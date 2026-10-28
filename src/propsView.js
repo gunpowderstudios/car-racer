@@ -20,21 +20,33 @@ function drumGeometry() {
   return g;
 }
 
-/** The black-and-yellow lethal drum: the same shape, with hazard stripes (a canvas texture mapped round the body by angle and height). */
+/** The black lethal drum: the same shape, matt black with a yellow skull and crossbones (three of them round the drum - a canvas texture mapped by angle and height). */
 function hazardMaterial() {
   let map = null;
   try {
-    const c = document.createElement('canvas'); c.width = c.height = 128;
-    const g = c.getContext('2d'); g.fillStyle = '#0c0c0e'; g.fillRect(0, 0, 128, 128);
-    g.fillStyle = '#f2c200';
-    for (const o of [-128, 0, 128]) { g.beginPath(); g.moveTo(o, 128); g.lineTo(o + 32, 128); g.lineTo(o + 160, 0); g.lineTo(o + 128, 0); g.closePath(); g.fill(); }      // two diagonal bands per tile
-    map = new THREE.CanvasTexture(c); map.wrapS = map.wrapT = THREE.RepeatWrapping; map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
+    const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d'); g.fillStyle = '#0c0c0e'; g.fillRect(0, 0, N, N);
+    const Y = '#f2c200', cx = N / 2, cy = N * 0.5;
+    g.strokeStyle = Y; g.fillStyle = Y; g.lineCap = 'round';
+    g.lineWidth = N * 0.07;                                                           // the crossbones, behind the skull
+    for (const sgn of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx - sgn * N * 0.3, cy - N * 0.26); g.lineTo(cx + sgn * N * 0.3, cy + N * 0.3); g.stroke();
+      for (const e of [[cx - sgn * N * 0.3, cy - N * 0.26], [cx + sgn * N * 0.3, cy + N * 0.3]]) for (const d of [-1, 1]) { g.beginPath(); g.arc(e[0] + d * N * 0.035, e[1] + (e[1] < cy ? -1 : 1) * N * 0.03, N * 0.045, 0, 7); g.fill(); }
+    }
+    g.beginPath(); g.arc(cx, cy - N * 0.07, N * 0.2, 0, 7); g.fill();                  // cranium
+    g.fillRect(cx - N * 0.12, cy + N * 0.05, N * 0.24, N * 0.15);                      // jaw
+    g.fillStyle = '#0c0c0e';
+    for (const sgn of [-1, 1]) { g.beginPath(); g.arc(cx + sgn * N * 0.08, cy - N * 0.06, N * 0.05, 0, 7); g.fill(); }   // eye sockets
+    g.beginPath(); g.moveTo(cx, cy + N * 0.0); g.lineTo(cx - N * 0.025, cy + N * 0.05); g.lineTo(cx + N * 0.025, cy + N * 0.05); g.fill();   // nose
+    g.lineWidth = N * 0.012; g.strokeStyle = '#0c0c0e';
+    for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(cx + k * N * 0.04, cy + N * 0.12); g.lineTo(cx + k * N * 0.04, cy + N * 0.2); g.stroke(); }   // teeth
+    map = new THREE.CanvasTexture(c); map.wrapS = THREE.RepeatWrapping; map.wrapT = THREE.ClampToEdgeWrapping; map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
   } catch { /* no canvas (a test): plain black */ }
   return new THREE.MeshStandardMaterial({ vertexColors: true, map, color: map ? 0xffffff : 0x111111, roughness: 0.5, metalness: 0.3 });
 }
 function lethalGeometry(base) {
   const g = base.clone(), pos = g.attributes.position, uv = new Float32Array(pos.count * 2), h = BARREL.height / 2;
-  for (let i = 0; i < pos.count; i++) { uv[i * 2] = Math.atan2(pos.getZ(i), pos.getX(i)) / (Math.PI * 2) * 3 + 0.5; uv[i * 2 + 1] = (pos.getY(i) + h) / BARREL.height * 1.2; }
+  for (let i = 0; i < pos.count; i++) { uv[i * 2] = Math.atan2(pos.getZ(i), pos.getX(i)) / (Math.PI * 2) * 3 + 0.5; uv[i * 2 + 1] = (pos.getY(i) + h) / BARREL.height; }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return g;
 }

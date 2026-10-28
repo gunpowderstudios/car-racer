@@ -1309,6 +1309,7 @@ function appleUnlocked() {
 }
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
+  car.mpEqual = false;                                                    // (multiplayer turns it back on in mpBeginDrive)
   if (newDef?.assault && !appleUnlocked()) return;
   if (pendingStart) return;
   if (newDef) loadTrack(newDef);
@@ -1652,16 +1653,17 @@ function mpVanContacts() {
     carHitsRemoteVan(car, c.van, caravan.spec, mine);
   }
 }
-function mpMakeView(hue) {
-  let v = (mpViewPool[hue] || (mpViewPool[hue] = [])).pop();
-  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; }
+function mpMakeView(hue, vid) {
+  const key = hue + ':' + vid;                                   // a spare view only goes back to a player with the same car (and colour)
+  let v = (mpViewPool[key] || (mpViewPool[key] = [])).pop();
+  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; v.poolKey = key; }
   v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   return v;
 }
 function mpDropVan(p) { if (p.vanView) { p.vanView.root.removeFromParent(); p.vanView = null; } }
 function mpReleasePlayer(p) {
   mpDropVan(p);
-  if (p.view) { p.view.root.visible = false; (mpViewPool[p.view.hue] || (mpViewPool[p.view.hue] = [])).push(p.view); p.view = null; }
+  if (p.view) { p.view.root.visible = false; (mpViewPool[p.view.poolKey] || (mpViewPool[p.view.poolKey] = [])).push(p.view); p.view = null; }
   if (p.label) { p.label.remove(); p.label = null; }
 }
 function mpTeardown() {
@@ -1672,6 +1674,7 @@ function mpTeardown() {
   remotePlayers.clear();
   if (net) { net.leave(); net = null; mpLobbyIds = null; }
   visual.setOwnLook(null);                                    // back to your own paint
+  car.mpEqual = false;
 }
 /** What the others need to draw our caravan: where it is, how it is turned and rocking, its wheel angle and health (a fraction). */
 const r3 = (v) => Math.round(v * 1000) / 1000;
@@ -1696,10 +1699,15 @@ function mpSyncVan(p, a0, a1, rt, k) {
 /** Move each remote player's car towards its latest reported state and keep its name label placed. */
 function mpSyncRemote() {
   const now = performance.now();
-  for (const p of remotePlayers.values()) {
+  for (const [pid, p] of remotePlayers) {
     if (!p.cur || !p.buf || !p.buf.length) continue;
-    if (!p.view) p.view = mpMakeView(p.hue);
-    if (!p.view.loaded && visual.loaded) p.view.adopt(visual, RIVAL_LOOKS[p.hue]);
+    const vid = vehicleById(net?.players.get(pid)?.vehicleId).id;        // the car THEY chose, not ours
+    if (!p.view) p.view = mpMakeView(p.hue, vid);
+    if (!p.view.loaded) {
+      const look = { ...RIVAL_LOOKS[p.hue], vehicleId: vid };
+      if (vid === selectedVehicle().id) { if (visual.loaded) p.view.adopt(visual, look); }
+      else { const src = kindSource(vid); if (src.loaded) p.view.adopt(src, look); }      // each other kind is loaded once and cloned, as in Jamboree
+    }
     const c = p.cur, b = p.buf;
     // Draw the car a little in the past (MP_DELAY), between two real reports, so a late or bunched-up packet doesn't make it jump:
     // the sender's clock is mapped onto ours with p.off (the quickest the packets have been getting here).
@@ -1790,6 +1798,7 @@ function mpBeginDrive(trackDef) {
   life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
   startDriving(trackDef || makeTemplate('speedway'));
+  car.mpEqual = true;                                               // every car pulls and tops out the same in multiplayer (MP_EQUAL, vehicle.js)
   life.elimination = track.def.mode === 'lastStanding'; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out
   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
   mpPlaceOnGrid();

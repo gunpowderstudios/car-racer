@@ -25,6 +25,8 @@ export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
+/** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
+export const MP_EQUAL = { accel: 7.5, top: 52 };
 export const CAR = {
   mass: 1450,
   wheelbase: 2.77,
@@ -525,6 +527,10 @@ export class Vehicle {
     if (this.shiftTimer > 0.14) torque *= 0.25;
     let force = torque * Math.abs(ratio) * e.efficiency / this.spec.wheelRadius * Math.sign(ratio);
     force *= Math.max(0.1, this.aiEngineMul || 1);   // arcade race AI equaliser; players and demolition rivals stay at 1
+    if (this.mpEqual && this.gear > 0 && drive > 0.05) {      // multiplayer: every car pulls exactly the same (see MP_EQUAL), whatever its engine
+      const vv = Math.max(0, fwd), m = this.mass + (this.tow && !this.tow.wrecked ? this.tow.spec.mass : 0);
+      force = Math.max(0, m * MP_EQUAL.accel * (1 - (vv / MP_EQUAL.top) ** 2)) * drive + this.spec.aero.drag * vv * vv;     // (plus back what this car's own air drag takes off)
+    }
     force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
     if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
     // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can climb any hill, and keep moving:
