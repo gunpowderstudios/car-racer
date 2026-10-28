@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.442 — Smaller holes
+- Holy Moley holes are about 40% smaller.
+
 ## v17.441 — Black holes
 - Holy Moley: the inside seen through a torn hole is now plain black (no lighting or reflections), instead of showing the inside of the model.
 
