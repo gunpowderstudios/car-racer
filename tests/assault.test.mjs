@@ -616,3 +616,11 @@ test('the boulder rumble plays for Apple Crumple and for Bluebell Woods rolling 
   for (let i = 0; i < 20 / DT && !heard; i++) { run.step(DT, car, 1, null); heard = run.events.some((e) => e.type === 'sfx' && e.name === 'boulder'); run.events.length = 0; }
   assert.ok(heard, 'a boulder starting to roll is heard');
 });
+
+test('a track a friend sends can be driven solo or with other cars', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="shared-drive"[^>]*>Drive it with other cars</); assert.match(html, /id="shared-solo"[^>]*>Drive it solo</);
+  assert.match(main, /\$\('shared-solo'\)\.onclick = \(\) => driveIt\(true\)/);
+  assert.match(main, /pendingTest = !!solo;/);
+  assert.match(main, /cr\.shareSolo/, 'the choice survives the reload for a different car');
+});

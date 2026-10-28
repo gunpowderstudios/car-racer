@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.438 — Shared tracks: solo or with other cars
+- When a friend sends you a track link, you can now choose "Drive it solo" (just your car on the track) or "Drive it with other cars" (the usual rivals).
+
 ## v17.437 — Boulder rumble
 - boulder.mp3 plays when a rolling boulder sets off, on Apple Crumple and on Bluebell Woods (and any other track with rolling rocks), quieter with distance.
 

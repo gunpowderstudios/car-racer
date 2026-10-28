@@ -2003,17 +2003,20 @@ async function openSharedTrack(packed) {
   const km = (new Track(d).length / 1000).toFixed(2);
   $('shared-title').textContent = d.name; $('shared-info').textContent = `${km} km lap${want ? ` \u00b7 ${want.name}${wantVan && TOW_CARS.includes(want.id) && !caravanBlocked() ? ' + caravan' : ''}` : ''}`;
   $('shared-edit').hidden = matchMedia('(pointer: coarse)').matches;            // the editor needs a desktop computer
-  $('shared-drive').onclick = () => {
+  const driveIt = (solo) => {
     close();
     if (want) {
       opts.caravan = wantVan && TOW_CARS.includes(want.id) && !caravanBlocked(); store.set('cr.opts', opts);
       if (want.id !== selectedVehicle().id) {                                       // a new car needs a fresh start: remember the track and drive it straight away after the reload
-        try { sessionStorage.setItem('cr.shareDrive', packed); localStorage.setItem('cr.vehicle', want.id); location.reload(); return; } catch { /* storage unavailable: drive with the current car */ }
+        try { sessionStorage.setItem('cr.shareDrive', packed); if (solo) sessionStorage.setItem('cr.shareSolo', '1'); localStorage.setItem('cr.vehicle', want.id); location.reload(); return; } catch { /* storage unavailable: drive with the current car */ }
       }
       syncCaravan();
     }
+    pendingTest = !!solo;                                                         // solo: just your own car on the track, like a Test Drive from the editor
     startDriving(d);
   };
+  $('shared-drive').onclick = () => driveIt(false);
+  $('shared-solo').onclick = () => driveIt(true);
   $('shared-edit').onclick = () => { close(); openEditor(d); };
   $('shared-save').onclick = () => {
     const all = userTracks(); let name = d.name, n = 2;
@@ -2035,11 +2038,11 @@ async function openSharedTrack(packed) {
   };
   $('shared-close').onclick = close;
   box.hidden = false;
-  if (autoDrive) $('shared-drive').click();
+  if (autoDrive) $(autoSolo ? 'shared-solo' : 'shared-drive').click();
 }
-let autoDrive = false;
+let autoDrive = false, autoSolo = false;
 {
-  let again = null; try { again = sessionStorage.getItem('cr.shareDrive'); sessionStorage.removeItem('cr.shareDrive'); } catch { /* storage unavailable */ }
+  let again = null; try { again = sessionStorage.getItem('cr.shareDrive'); sessionStorage.removeItem('cr.shareDrive'); autoSolo = sessionStorage.getItem('cr.shareSolo') === '1'; sessionStorage.removeItem('cr.shareSolo'); } catch { /* storage unavailable */ }
   const packed = again || packedFromHash(location.hash);
   if (packed) { autoDrive = !!again; openSharedTrack(packed); }
 }
