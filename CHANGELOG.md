@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.444 — Rival bell and siren
+- When rival cars honk as you approach, a rival bus now rings its bell and a rival police car sounds its siren (also in the replay), instead of the normal horn.
+
 ## v17.443 — Tyres not black
 - Holy Moley: the black inside a hole no longer spreads to the tyres (they now have their own material instead of sharing the body's).
 

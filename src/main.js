@@ -685,8 +685,9 @@ function derbyEvents() {
     } else if (e.type === 'award') {
       hud.feed(`+${e.points} ${e.label}`);
     } else if (e.type === 'honk') {
-      sound.honk(e.dist, e.pitch);
-      { const hf = derby.fighters.find((x) => x.id === e.id); if (hf) replayRec.event(simTime, { type: 'honk', x: hf.car.pos.x, y: hf.car.pos.y, z: hf.car.pos.z, pitch: e.pitch }); }
+      const hf = derby.fighters.find((x) => x.id === e.id), veh = hf ? hf.vehicleId : undefined;      // (a rival bus rings its bell and a rival police car wails its siren, not a horn)
+      sound.honk(e.dist, e.pitch, veh);
+      if (hf) replayRec.event(simTime, { type: 'honk', x: hf.car.pos.x, y: hf.car.pos.y, z: hf.car.pos.z, pitch: e.pitch, veh });
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
