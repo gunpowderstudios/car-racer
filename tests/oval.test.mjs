@@ -85,7 +85,7 @@ test('the field starts spread round the floor, standing still, every rival spoil
 
 test('vehicles are 20% weaker than the original, and each type has its own toughness', () => {
   assert.equal(TOUGHNESS, 0.8);
-  assert.equal(DENT.fullHp, 56);
+  assert.equal(DENT.fullHp, 44, 'crumples show sooner (v17.425)');
 });
 
 test('rivals pick the nearest running car as their target, not just you', () => {
@@ -263,7 +263,10 @@ test('The Deep Pan Pizza has olive humps and cheese dips (each dip a hump upside
   const hills = def.bumps.filter((b) => b.h > 0), dips = def.bumps.filter((b) => b.h < 0);
   assert.ok(hills.length >= 6 && hills.length <= 10, 'olives: ' + hills.length);
   assert.equal(dips.length, hills.length, 'one dip for every hump');
-  assert.deepEqual(dips.map((b) => [b.r, -b.h]).sort(), hills.map((b) => [b.r, b.h]).sort(), 'the same widths and depths');
+  assert.deepEqual(dips.map((b) => -b.h).sort(), hills.map((b) => b.h).sort(), 'the same depths');
+  const dr = dips.map((b) => b.r).sort((x, y) => x - y), hr = hills.map((b) => b.r * 1.3).sort((x, y) => x - y);
+  assert.ok(dr.every((r, i) => Math.abs(r - hr[i]) < 0.05), 'and the cheese dips are 30% broader');
+  const all = def.bumps; for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) assert.ok(Math.hypot(all[i].x - all[j].x, all[i].z - all[j].z) >= all[i].r + all[j].r + 6, 'toppings are spaced out');
   assert.deepEqual(makeTemplate('oval').bumps, def.bumps, 'always the same lumps');
   assert.ok(!def.puddles, 'a plain margherita: no puddles');
   for (const b of def.bumps) {
@@ -455,7 +458,7 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
 test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>A random race<\/small>/);
+  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>Quick 1-lap random race<\/small>/);
   assert.match(html, /Race Day <small>What do points mean\?<\/small>/);
   assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
   assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);
@@ -608,7 +611,7 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
 test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>A random race<\/small>/);
+  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>Quick 1-lap random race<\/small>/);
   assert.match(html, /Race Day <small>What do points mean\?<\/small>/);
   assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
   assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);
@@ -700,7 +703,7 @@ test('Deep Pan Pizza is a round floor painted as a margherita; the editor guards
   const def = makeTemplate('oval'), A = arenaInfo(new Track(def));
   assert.ok(Math.abs(A.a - A.b) < 0.01 && Math.abs(A.ax - A.az) < 0.01, 'a circle, not an oval');
   const view = readFileSync(new URL('../src/arenaView.js', import.meta.url), 'utf8');
-  assert.match(view, /#1f1e1c/, 'olives are black'); assert.match(view, /#f8d762/, 'cheese is yellow'); assert.match(view, /#b93330/, 'sauce is red'); assert.match(view, /#d5b97f/, 'dough is dirt coloured');
+  assert.match(view, /#1f1e1c/, 'olives are black'); assert.match(view, /#f8d762/, 'cheese is yellow'); assert.match(view, /#7f2424/, 'sauce is red'); assert.match(view, /#d5b97f/, 'dough is dirt coloured');
   assert.doesNotMatch(view, /for \(const b of bumps\) \{[^}]*new THREE\.Mesh/, 'no mesh per hump');
   const ed = readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
   assert.match(ed, /cr\.autosave/); assert.match(ed, /performance\.memory/); assert.match(ed, /_show3d\(false\)/);

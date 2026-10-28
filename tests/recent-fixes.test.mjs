@@ -243,7 +243,7 @@ test('desktop Drift no longer brakes when Shift is pressed before steering', () 
 test('race AI stays full-size and supports a zero-rival lap-time mode', () => {
   const derbyFile = readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
   assert.match(indexHtml, /option value="0">0 — Lap time only<\/option>/);
-  assert.match(main, /derby\.enabled = !net && !testDrive && \(opts\.rivals > 0 \|\| demoDay\)/);
+  assert.match(main, /derby\.enabled = !net && \(\(!testDrive && \(opts\.rivals > 0 \|\| demoDay\)\) \|\| solo\)/);
   assert.match(main, /derby\.damageEnabled = derby\.enabled;/);
   assert.match(main, /v\.root\.scale\.setScalar\(1\)/);
   assert.doesNotMatch(main, /f\.expire\) k = 1 - f\.expireT/);
@@ -323,10 +323,10 @@ test('laps count on a circuit (and only there): the lap index follows race.max o
   assert.match(main, /const idx = lapped \? Math\.floor\(race\.max \/ L\) : race\.index;/);
 });
 
-test('Handling option: Arcade (default) turns the stability layer on, Standard is the raw physics', () => {
-  assert.match(indexHtml, /id="opt-handling"/);
-  assert.match(main, /handling: 'arcade'/);
-  assert.match(main, /car\.opts\.stability = opts\.handling === 'standard' \? 0 : 1/);
+test('Handling: there is one model, Arcade (the stability layer is always on); the old Standard option is gone', () => {
+  assert.doesNotMatch(indexHtml, /id="opt-handling"/);
+  assert.match(main, /opts\.handling = 'arcade';/);
+  assert.match(main, /car\.opts\.stability = 1;/);
 });
 
 test('the bus and the motorhome start every race on the High camera', async () => {
@@ -353,7 +353,7 @@ test('Test my hardware: the cog has the button and the verdict is plain English'
 test('Test Drive from the editor has no rivals, and the replay blur is for the TV camera only', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="ed-drive"[^>]*>Test Drive</);
-  assert.match(main, /derby\.enabled = !net && !testDrive/);
+  assert.match(main, /derby\.enabled = !net && \(\(!testDrive/);
   assert.match(main, /pendingTest = true; startDriving\(d\)/);
   assert.match(main, /replay\(\)\.state\.camMode === 'TV'/);
   assert.match(readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /R\.camMode = mode/);

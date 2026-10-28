@@ -355,6 +355,7 @@ test('a hunting rival still steers gently through a jump gap instead of yanking 
 
 test('rivals drive every track without flipping, getting lost or crashing about', () => {
   for (const key of TEMPLATE_KEYS) {
+    if (key === 'oval') continue;                      // (The Oval is a bowl with no road to follow: its rivals use the arena driver, tested in oval.test.mjs)
     const track = new Track(makeTemplate(key)), car = new Vehicle();
     placeOnRoad(car, track, 30, 0, 20);
     const drv = new Driver(mulberry(11), 0.5), ctx = { player: null, cars: [car] };
@@ -524,7 +525,7 @@ test('a hungry field hunts you more, from further away and for longer', () => {
 
 test('rival skill: higher skill laps faster, and the default (no skill) is unchanged Normal', async () => {
   const { skillOf } = await import('../src/ai.js');
-  assert.equal(skillOf({}), 0.5); assert.equal(skillOf(null), 0.5); assert.equal(skillOf({ skill: 9 }), 1);
+  assert.equal(skillOf({}), 0.5); assert.equal(skillOf(null), 0.5); assert.equal(skillOf({ skill: 9 }), 1.3, 'the top of the scale is Expert, 1.3');
   const track = new Track(makeTemplate('speedway'));
   const lap = (skill) => {
     const car = new Vehicle(); car.opts.assist = 0.7;
@@ -759,17 +760,13 @@ test('a rival is repaired and comes back three times; the fourth wreck is scrap 
   assert.equal(a.derby.count, 0);
 });
 
-test('Demolition: you get just the one spanner - one comeback, then the car is scrap', () => {
+test('Last One Standing is single-life: the first wreck ends your round (no spanners, no comeback)', () => {
   const a = arena(-300, 0, 'demolition'); a.derby.repairsMax = DERBY.repairsDemolition; a.derby.start(a.track, a.car, 0, 7, 'demolition'); a.derby.time = DERBY.grace + 1;
+  assert.equal(DERBY.repairsDemolition, 0);
   const P = a.derby.player;
   a.derby._damage(P, 'front', 5000, null);
-  assert.equal(a.derby.over, false, 'first wreck: repaired');
-  assert.equal(a.derby.repairs, 0);
-  a.derby.time = P.respawnAt + 0.01; a.derby.step(DT);
-  assert.equal(P.wrecked, false, 'back in the fight');
-  a.derby.time += DERBY.respawnGrace + 1;
-  a.derby._damage(P, 'front', 5000, null);
-  assert.equal(a.derby.over, true, 'second wreck: scrap');
+  assert.equal(a.derby.over, true, 'first wreck: out');
+  assert.ok(a.derby.events.some((e) => e.type === 'over' && e.scrap));
 });
 
 test('a rival that was wrecked comes back behind its wreck - never ahead of where it died, or ahead of a player who is past it', () => {
@@ -805,7 +802,7 @@ test('Demolition Day: a home button starts the Bed Pan with 8 rivals, each a dif
   assert.match(css, /#menu #btn-demo \{ background: #9f5212/);
   assert.match(main, /\$\('btn-demo'\)\.onclick = \(\) => \{ const d = makeTemplate\('oval'\); d\.demoDay = true; startDriving\(d\)/);
   assert.match(main, /demoDay \? 8 : opts\.rivals \* 2/);
-  assert.match(main, /derby\.enabled = !net && !testDrive && \(opts\.rivals > 0 \|\| demoDay\)/);
+  assert.match(main, /derby\.enabled = !net && \(\(!testDrive && \(opts\.rivals > 0 \|\| demoDay\)\) \|\| solo\)/);
 });
 
 test('Demolition Day: rivals are tougher and drive at full skill; every other game is untouched', () => {

@@ -197,7 +197,7 @@ test('Make my movie: one tap, a tick box for the TV set, off by default, music o
   assert.ok(!existsSync(new URL('../src/filmEditor.js', import.meta.url)), 'the film editor is gone');
   assert.ok(!html.includes('id="film"') && !html.includes('rp-film-edit'));
   assert.match(src, /el\.save\.onclick = \(\) => \{ if \(R\.saving\) stopSave\(false\); else makeFilm\(\); \}/);
-  assert.match(src, /d\.sound\.musicOn && d\.sound\.buf && d\.sound\.buf\.music/);
+  assert.match(src, /d\.sound\.musicOn && d\.sound\._film[^]*?d\.sound\.buf && d\.sound\.buf\.music/);
   assert.match(src, /pickBestBit\(R\.player, 1e9\)[^]*?startSave\(inTv \? tvImg : null, hl/); assert.match(src, /audio: realtime, music: clip/);
   assert.match(src, /if \(!desktop\) el\.save\.hidden = true/);
   assert.match(mp4, /lay the sound track/);

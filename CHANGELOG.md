@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.433 — Bug sweep
+- Fixed Deep Pan Pizza: two of the cheese dips were silently missing (eight olive humps but only six dips). It now has six humps and six dips, properly spaced out, none close to where you start.
+- Brought the automated tests up to date with earlier deliberate changes (single-life Last One Standing, Expert skill 1.3, Arcade-only handling, new button wording, pizza sauce colour, movie soundtrack rule); the test suite is now fully green.
+
 ## v17.432 — Apple Crumple is deadlier
 - The hammers, the crushing presses and the fire pits now wreck your car outright (boulders and the spinning arm still just knock you about).
 - You have 3 spanners (lives) on the course: each wreck uses one (and costs +10 s), and when they run out the car is scrapped and the run ends.

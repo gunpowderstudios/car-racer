@@ -97,19 +97,21 @@ const OVAL_A = 36, OVAL_B = 36, OVAL_FLOOR = 118;       // metres: centreline ha
 function ovalLumps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261024), r2 = (v) => Math.round(v * 100) / 100;
   const sauce = A.ax * 0.8;                                                                   // the sauce ends here; the crust is the rest
-  const keep = [arenaPlayerStart(A), ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([i, j]) => ({ x: A.cx + i * (A.ax - 26), z: A.cz + j * (A.az - 26) }))];
+  const keep = [{ ...arenaPlayerStart(A), m: 14 }, ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([i, j]) => ({ x: A.cx + i * (A.ax - 26), z: A.cz + j * (A.az - 26) }))];
   const onRing = (x, z, m) => { const th = Math.atan2((z - A.cz) / (A.az * 0.6), (x - A.cx) / (A.ax * 0.62)); return Math.hypot(x - (A.cx + A.ax * 0.62 * Math.cos(th)), z - (A.cz + A.az * 0.6 * Math.sin(th))) < m; };
   const bumps = [], shapes = [];
   for (let k = 0; k < 8; k++) shapes.push({ r: 5.5 + rnd() * 2.5, h: 0.45 + rnd() * 0.5 });
-  for (const gap of [16, 14, 12, 10, 8, 6]) {                                                  // roomier topping layout: only tighten if the full set will not fit
+  // roomy layout first: eight olives and eight dips with at least 8 m between toppings; if they will not fit, fewer toppings (never fewer than six of each) rather than squeezing them together
+  const tries = [[8, 16], [8, 14], [8, 12], [8, 10], [8, 8], [7, 16], [7, 14], [7, 12], [7, 10], [7, 8], [6, 16], [6, 14], [6, 12], [6, 10], [6, 8], [6, 6], [6, 4], [6, 2], [6, 0]];
+  for (const [count, gap] of tries) {
     bumps.length = 0; let all = true;
     for (const sg of [1, -1]) {                                                               // first the olives (humps), then the cheese (dips) with the very same sizes
-      for (const sh of shapes) {
+      for (const sh of shapes.slice(0, count)) {
         const rr = sh.r * (sg < 0 ? 1.3 : 1);                                                  // cheese dips are 30% broader; olives keep their old size
         let ok = false;
         for (let guard = 0; guard < 4000 && !ok; guard++) {
           const x = A.cx + (rnd() * 2 - 1) * sauce, z = A.cz + (rnd() * 2 - 1) * sauce;
-          if (Math.hypot(x - A.cx, z - A.cz) > sauce - rr - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < rr + 9) || onRing(x, z, rr + 1.5)) continue;
+          if (Math.hypot(x - A.cx, z - A.cz) > sauce - rr - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < rr + (k.m || 9)) || onRing(x, z, rr + 1.5)) continue;
           if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + rr + gap)) continue;
           bumps.push({ x: r2(x), z: r2(z), r: r2(rr), h: r2(sg * sh.h) }); ok = true;
         }
