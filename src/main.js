@@ -1612,32 +1612,30 @@ function mpCollideLocal() {
     car.pos.x += nx * overlap * myShare;
     car.pos.z += nz * overlap * myShare;
 
-    // Relative closing speed uses both cars' network velocities. This means a stationary target
-    // still recognises a fast incoming ram instead of relying on the attacker's client to report it.
-    const rvx = car.vel.x - (+p.cur.vx || 0);
-    const rvz = car.vel.z - (+p.cur.vz || 0);
-    const vn = rvx * nx + rvz * nz;
-    const closing = Math.max(0, -vn);
+    // A proper two-body impulse, like the solo game: we treat their car as a point of its real mass moving at its reported
+    // velocity, and apply our half at the contact point (so an off-centre hit spins us). They do the same to theirs on their screen.
+    mpP.set((car.pos.x + c.x) / 2, car.pos.y + 0.1, (car.pos.z + c.z) / 2); mpN.set(nx, 0, nz);
+    car.velocityAt(mpP, mpV);
+    const closing = Math.max(0, -((mpV.x - (+c.vx || 0)) * nx + (mpV.z - (+c.vz || 0)) * nz));
     if (closing > 0) {
-      const mu = mine.mass * theirs.mass / totalMass;
-      const restitution = closing > 2 ? 0.18 : 0;
-      const impulse = (1 + restitution) * closing * mu;
-      const myDv = Math.min(18, impulse / mine.mass);
-      car.vel.x += nx * myDv;
-      car.vel.z += nz * myDv;
-    }
-
-    if (net && closing > 1 && now - (p.lastHitSent || 0) > 250) {
-      net.sendHit(id, {
-        nx: -nx, nz: -nz,
-        overlap: overlap * theirShare,
-        speed: Math.min(30, closing),
-        attackerVehicleId: mine.id,
-      });
-      p.lastHitSent = now;
-      mpImpactFx((car.pos.x + p.cur.x) / 2, car.pos.y + 0.6, (car.pos.z + p.cur.z) / 2, closing);
+      const mu = 1 / (car.invMassAt(mpN, mpP) + 1 / theirs.mass);
+      const e = closing > 2 ? 0.25 : 0;
+      car.impulseAt(mpN, (1 + e) * closing * mu, mpP);
+      if (closing > 1 && now - (p.lastHitSent || 0) > 250) {
+        p.lastHitSent = p.ownContactAt = now;
+        const rawHp = crashDamage(mu, closing);
+        mpCarHitDamage(rawHp, closing, mine, car.pos.x - nx, car.pos.z - nz, mpP.x, mpP.y + 0.5, mpP.z);
+        net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * theirShare, speed: Math.min(30, closing), attackerVehicleId: mine.id });
+      }
     }
   }
+}
+const mpP = new V3(), mpN = new V3(), mpV = new V3();
+/** What a car-to-car knock does to the local player: a dent where it landed, health off the bar, then sound, sparks and debris. */
+function mpCarHitDamage(rawHp, speed, spec, dentX, dentZ, fx, fy, fz) {
+  const amount = Math.min(MP_MAX_HIT_DAMAGE, (rawHp / MP_DAMAGE_HP_SCALE) * spec.damageMul);
+  mpDentAt(dentX, car.pos.y + 0.15, dentZ, rawHp);
+  if (!mpTakeDamage(amount)) mpImpactFx(fx, fy, fz, speed);
 }
 
 /** Caravans and other players' cars (see mpVanContacts.js): each side moves only what it owns. */
@@ -1879,6 +1877,8 @@ const mpHandlers = {
   onRoll: (fromId, i) => track && track.rollerGo(i),
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
+    const from = remotePlayers.get(fromId);
+    if (from && performance.now() - (from.ownContactAt || 0) < 400) return;     // we felt this knock ourselves already (see mpCollideLocal)
     const speed = Math.min(30, Math.max(0, +d.speed || 0)), overlap = Math.max(0, +d.overlap || 0);
     const victim = multiplayerVehicleSpec(selectedVehicle().id);
     const attackerInfo = net?.players.get(fromId);
