@@ -7,20 +7,33 @@
 import * as THREE from 'three';
 import { DENT, DentStore, dentSize, faceOf } from './dentMath.js';
 
+// Holy Moley (real damage): a deep enough dent tears a hole through the body and the pieces fly off. One switch for every car.
+const HOLES = { value: 0 };
+const HOLE_DEPTH = 0.26, HOLE_RANGE = 0.13;                 // metres: a dent this deep starts to tear; this much deeper it is a full hole
+const holey = new Set();
+/** Turn holes in damaged cars on or off. */
+export function setHoles(on) {
+  HOLES.value = on ? 1 : 0;
+  for (const h of holey) h.mat.side = on ? THREE.DoubleSide : h.side;          // (double sided only while it is on: through a hole you see the inside of the far panel)
+}
+export const holesOn = () => HOLES.value > 0;
+
 const GLSL_COMMON = (n) => `
-uniform vec4 uDent[${n}]; uniform vec4 uDentDir[${n}]; uniform int uDentN; varying float vDentW;
+uniform vec4 uDent[${n}]; uniform vec4 uDentDir[${n}]; uniform int uDentN; uniform vec2 uHoleDepth; varying float vDentW; varying float vHole; varying vec3 vDentObj;
 float dh3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float dnoise(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(dh3(i), dh3(i + vec3(1,0,0)), f.x), mix(dh3(i + vec3(0,1,0)), dh3(i + vec3(1,1,0)), f.x), f.y),
              mix(mix(dh3(i + vec3(0,0,1)), dh3(i + vec3(1,0,1)), f.x), mix(dh3(i + vec3(0,1,1)), dh3(i + vec3(1,1,1)), f.x), f.y), f.z); }
 // total push at p, the slope it gives the surface, and how scuffed the paint is there
-void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff) {
-  push = vec3(0.0); tilt = vec3(0.0); scuff = 0.0;
+void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff, out float hole) {
+  push = vec3(0.0); tilt = vec3(0.0); scuff = 0.0; hole = -1.0;
   for (int i = 0; i < ${n}; i++) {
     if (i >= uDentN) break;
     float r = uDent[i].w; vec3 dir = uDentDir[i].xyz; float depth = uDentDir[i].w;
     vec3 rel = p - uDent[i].xyz; float d = length(rel);
     scuff = max(scuff, (1.0 - smoothstep(0.0, r * 1.3, d)) * clamp(depth / r * 3.5, 0.3, 1.0));
+    float hh = clamp((depth - uHoleDepth.x) / uHoleDepth.y, 0.0, 1.0);          // a crumple deep enough to tear right through (Holy Moley)
+    if (hh > 0.0) { float hr = r * (0.3 + 0.35 * hh); hole = max(hole, 1.0 - d * (0.7 + 0.6 * dnoise(p / (r * 0.16))) / hr); }
     if (d >= r) continue;
     float t = 1.0 - d / r, w = t * t * (3.0 - 2.0 * t);                       // smooth bowl, deepest in the middle
     float crinkle = 0.55 + 0.9 * dnoise(p / (r * 0.28));                      // uneven crumple, not a perfect dish
@@ -30,19 +43,26 @@ void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff) {
   }
 }`;
 
-function patchMaterial(mat, n, dents, dirs, count) {
+function patchMaterial(mat, n, dents, dirs, count, holeDepth) {
   mat.onBeforeCompile = (sh) => {
-    sh.uniforms.uDent = { value: dents }; sh.uniforms.uDentDir = { value: dirs }; sh.uniforms.uDentN = count;
+    sh.uniforms.uDent = { value: dents }; sh.uniforms.uDentDir = { value: dirs }; sh.uniforms.uDentN = count; sh.uniforms.uHoleDepth = holeDepth; sh.uniforms.uHoles = HOLES;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\n${GLSL_COMMON(n)}`)
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
-        vec3 dPush, dTilt; float dScuff; dentField(position, dPush, dTilt, dScuff);
+        vec3 dPush, dTilt; float dScuff, dHole; dentField(position, dPush, dTilt, dScuff, dHole);
         objectNormal = normalize(objectNormal - dTilt);`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        transformed += dPush; vDentW = dScuff;`);
+        transformed += dPush; vDentW = dScuff; vHole = dHole; vDentObj = position;`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vDentW;')
+      .replace('#include <common>', '#include <common>\nvarying float vDentW; varying float vHole; varying vec3 vDentObj; uniform float uHoles;\nfloat hn3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }')
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        float holeV = vHole + (hn3(floor(vDentObj * 160.0)) - 0.5) * 0.5;        // a ragged edge
+        if (uHoles > 0.5 && holeV > 0.0) discard;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
+        if (uHoles > 0.5) {
+          if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.02);                       // the dark inside of the car, seen through a hole
+          else if (holeV > -0.22) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.05, 0.04), 0.85);   // scorched, torn metal round the rim
+        }
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.34, 0.30, 0.28), clamp(vDentW * 1.2, 0.0, 0.8));`);
   };
   mat.customProgramCacheKey = () => 'dent' + n;
@@ -77,14 +97,16 @@ export function makeDentable(root, model, max, avoid = null) {
   const dirs = Array.from({ length: max }, () => new THREE.Vector4());
   const count = { value: 0 };
   const store = new DentStore(max);
-  patchMaterial(mat, max, dents, dirs, count);
+  const holeDepth = { value: new THREE.Vector2(HOLE_DEPTH, HOLE_RANGE) };
+  patchMaterial(mat, max, dents, dirs, count, holeDepth);
+  const hEntry = { mat, side: mat.side }; holey.add(hEntry); if (HOLES.value) mat.side = THREE.DoubleSide;
 
   let rel = null, relInv = null, mpu = 1, box = null;       // root <- mesh transform, worked out on first use (the car is fitted after loading)
   const prep = () => {
     rel = new THREE.Matrix4();
     for (let o = mesh; o && o !== root; o = o.parent) { o.updateMatrix(); rel.premultiply(o.matrix); }
     relInv = rel.clone().invert();
-    mpu = new THREE.Vector3().setFromMatrixScale(rel).x;
+    mpu = new THREE.Vector3().setFromMatrixScale(rel).x; holeDepth.value.set(HOLE_DEPTH / mpu, HOLE_RANGE / mpu);
     mesh.geometry.computeBoundingBox();
     box = mesh.geometry.boundingBox.clone().applyMatrix4(rel);
   };
@@ -99,10 +121,13 @@ export function makeDentable(root, model, max, avoid = null) {
     count.value = store.length;
   };
 
+  const tore = (e, x, y, z) => {                              // a dent has just torn through: tell the car so pieces can fly off (once per hole)
+    if (e && e.depth >= HOLE_DEPTH && !e.holed) { e.holed = true; if (HOLES.value) ctl.burst = { x, y, z, size: e.radius }; }
+  };
   const ctl = {
-    mesh, material: mat, store,
+    mesh, material: mat, store, burst: null,
     get count() { return store.length; },
-    clear() { last = null; store.clear(); for (const v of dents) v.set(0, 0, 0, 0); for (const v of dirs) v.set(0, 0, 0, 0); count.value = 0; },
+    clear() { last = null; ctl.burst = null; store.clear(); for (const v of dents) v.set(0, 0, 0, 0); for (const v of dirs) v.set(0, 0, 0, 0); count.value = 0; },
     /** Dent the car where a crash of `hp` hit points happened at (x, y, z), in the car's own space. Returns true if it left a mark. */
     add(x, y, z, hp, now = performance.now() / 1000) {
       const size = dentSize(hp); if (!size) return false;
@@ -116,7 +141,7 @@ export function makeDentable(root, model, max, avoid = null) {
       const lc = last;
       if (lc && lc.k === k && lc.sg === sg && now - lc.t < DENT.burstSeconds && Math.hypot(x - lc.x, y - lc.y, z - lc.z) < 0.3) {
         lc.t = now;
-        store.add({ x: lc.cx, y: lc.cy, z: lc.cz, dx: lc.ox, dy: lc.oy, dz: lc.oz, radius: size.radius, depth: size.depth }, mpu, now);
+        tore(store.add({ x: lc.cx, y: lc.cy, z: lc.cz, dx: lc.ox, dy: lc.oy, dz: lc.oz, radius: size.radius, depth: size.depth }, mpu, now), x, y, z);
         upload();
         return true;
       }
@@ -139,7 +164,7 @@ export function makeDentable(root, model, max, avoid = null) {
       }
       const out = new THREE.Vector3(); out.setComponent(k, -sg);   // push into the car
       out.transformDirection(relInv);
-      store.add({ x: centre.x, y: centre.y, z: centre.z, dx: out.x, dy: out.y, dz: out.z, radius: size.radius, depth: size.depth }, mpu, now);
+      tore(store.add({ x: centre.x, y: centre.y, z: centre.z, dx: out.x, dy: out.y, dz: out.z, radius: size.radius, depth: size.depth }, mpu, now), x, y, z);
       last = { k, sg, x, y, z, t: now, cx: centre.x, cy: centre.y, cz: centre.z, ox: out.x, oy: out.y, oz: out.z };
       upload();
       return true;

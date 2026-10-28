@@ -17,6 +17,7 @@ import { V3, lerp } from './math.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS, TEMPLATE_INFO } from './templates.js';
 import { Stage } from './stage.js';
 import { WheelFlyers } from './wheelDebris.js';
+import { setHoles } from './dents.js';
 import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual.js';
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
@@ -67,7 +68,7 @@ const device = probeDevice();
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, holes: false, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
 opts.handling = 'arcade';    // one handling model throughout: old saved Standard settings are intentionally ignored
 if (opts.mode !== 'race' && opts.mode !== 'jamboree') opts.mode = 'jamboree';   // migrate old saved Demolition mode out of the simplified Options
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // (5 repairs was the default for a while)
@@ -77,6 +78,13 @@ const physicsHz = device.touch && tierName === 'medium' ? 60 : tier.physicsHz;  
 DT = 1 / physicsHz;
 CarVisual.aniso = tier.aniso;
 CarVisual.dentMax = tier.dentMax;
+setHoles(!!opts.holes);                                  // Holy Moley (real damage): deep dents tear holes in the body, and pieces fly off
+CarVisual.onHole = (v, b) => {
+  const w = new THREE.Vector3(b.x, b.y, b.z); v.root.localToWorld(w);
+  const paint = v === visual ? PAINTS[opts.paint][1] : rivalPaint();
+  debris.burst(w.x, w.y, w.z, 0, 0, 0.9, paint, 7 + Math.round(b.size * 6));             // panel pieces thrown off
+  for (let i = 0; i < 8; i++) particles.spark(w.x, w.y, w.z, (Math.random() - 0.5) * 9, 2 + Math.random() * 5, (Math.random() - 0.5) * 9);
+};
 CarVisual.texMax = tierName === 'high' ? 0 : 1024;          // phones: car textures at 1024px instead of 2048
 const userTracks = () => store.get('cr.tracks', {});
 const bestKey = (t) => `${t.def.name}|${Math.round(t.length)}`;
@@ -1423,6 +1431,7 @@ function bindMenu() {
       last.textContent = i.connected ? (on.length ? 'Pressed now: ' + on.map((n) => `button ${n} (${NAMES[n] || '?'})`).join(', ') : i.last >= 0 ? `Last pressed: button ${i.last} (${NAMES[i.last] || '?'})` : 'Press a button...') + (i.axes.length ? ' | axes: ' + i.axes.map((a) => a.toFixed(1)).join(' ') : '') : '';
     }, 120);
   }
+  bindOpt('opt-holes', 'holes', (v) => { opts.holes = v; setHoles(v); });
   bindOpt('opt-horn', 'horn', (v) => { opts.horn = v; sound.hornOn = v; if (!v) { hornVoice?.stop?.(); hornVoice = null; } });
   bindOpt('opt-kmh', 'kmh', (v) => { opts.kmh = v; hud.setUnits(v); });
   bindOpt('opt-shadow', 'shadow', (v) => { opts.shadow = v; stage.setShadows(v); });

@@ -390,7 +390,12 @@ export class CarVisual {
   // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.
   _initDents() { this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null; }
   /** Dent the body where a crash of `hp` hit points landed at (x, y, z) in the car's own space (x right, y up, z forward, metres). */
-  addDent(x, y, z, hp) { return this.dents ? this.dents.add(x, y, z, hp) : false; }
+  addDent(x, y, z, hp) {
+    if (!this.dents) return false;
+    const r = this.dents.add(x, y, z, hp), b = this.dents.burst;
+    if (b) { this.dents.burst = null; if (CarVisual.onHole) CarVisual.onHole(this, b); }        // (a hole tore through: main throws the pieces)
+    return r;
+  }
   clearDents() { if (this.dents) this.dents.clear(); this.restoreWheels(); }   // (every respawn clears the dents, so it puts the wheels back too)
 
   /**

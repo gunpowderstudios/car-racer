@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.439 — Holy Moley (real damage)
+- New setting, off by default: Holy Moley (real damage). When it is on, a hard enough crash tears a ragged hole right through the bodywork (dark, scorched edges, the dark inside of the car showing through) and pieces of panel and sparks fly off. It uses the existing dents, so it costs almost nothing, and only the shader switches on - the car models are untouched.
+
 ## v17.438 — Shared tracks: solo or with other cars
 - When a friend sends you a track link, you can now choose "Drive it solo" (just your car on the track) or "Drive it with other cars" (the usual rivals).
 
