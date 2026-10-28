@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.448 — Several small holes
+- Holy Moley: a deep crumple now tears two or three small holes scattered over it instead of one big one.
+
 ## v17.447 — Holy Moley on by default
 - Holy Moley (real damage) is now on by default, including for players who had the old default saved. Switching it off in settings still sticks.
 

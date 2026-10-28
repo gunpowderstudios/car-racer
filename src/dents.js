@@ -33,7 +33,17 @@ void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff, out float 
     vec3 rel = p - uDent[i].xyz; float d = length(rel);
     float hh = clamp((depth - uHoleDepth.x) / uHoleDepth.y, 0.0, 1.0);          // a crumple deep enough to tear right through (Holy Moley)
     scuff = max(scuff, (1.0 - smoothstep(0.0, r * 1.3, d)) * clamp(depth / r * 3.5, 0.3, 1.0) * (1.0 - 0.75 * hh));      // (a torn panel is burnt only at the tear, not smudged all round)
-    if (hh > 0.0) { float hr = r * (0.18 + 0.2 * hh); hole = max(hole, (1.0 - d * (0.8 + 0.4 * dnoise(p / (r * 0.16))) / hr) * 6.0); }       // steep: a crisp edge, not a fade
+    if (hh > 0.0) {                                                            // Holy Moley: not one big hole but two or three small ones, scattered over the crumple
+      float sd = dh3(uDent[i].xyz * 31.7), a0 = sd * 6.2832;
+      vec3 t1 = normalize(cross(dir, abs(dir.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(dir, t1);
+      for (int k = 0; k < 3; k++) {
+        if (k == 2 && sd < 0.4) break;                                         // (some get only two)
+        float a = a0 + float(k) * 2.2 + dh3(vec3(sd, float(k), 3.0)) * 0.9, off = r * (0.3 + 0.12 * dh3(vec3(float(k), sd, 7.0)));
+        vec3 c = uDent[i].xyz + (t1 * cos(a) + t2 * sin(a)) * off;
+        float hr = r * (0.065 + 0.065 * hh) * (0.8 + 0.5 * dh3(vec3(sd, 5.0, float(k))));
+        hole = max(hole, (1.0 - length(p - c) * (0.8 + 0.4 * dnoise(p / (r * 0.16))) / hr) * 6.0);      // steep: a crisp edge, not a fade
+      }
+    }
     if (d >= r) continue;
     float t = 1.0 - d / r, w = t * t * (3.0 - 2.0 * t), dw = 6.0 * t * (1.0 - t);          // smooth bowl, deepest in the middle
     if (hh > 0.0) {                                                           // a torn panel: steep walls and a flat floor, like folded sheet metal
