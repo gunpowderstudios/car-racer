@@ -8,6 +8,7 @@
 import { clamp } from './math.js';
 import { Track } from './track.js';
 import { skillOf } from './ai.js';
+import { BARREL } from './props.js';
 
 /** The arena's measurements: centre, the centreline ellipse (a, b), floor half-width hw, overall half-sizes ax / az, floor height y. */
 export function arenaInfo(track) {
@@ -114,6 +115,26 @@ export class ArenaDriver {
         ax = car.pos.x + fx * reach + car.ax.x * sgn * clear * 1.15; az = car.pos.z + fz * reach + car.ax.z * sgn * clear * 1.15;
         dx = ax - car.pos.x; dz = az - car.pos.z;
         if (ahead < b.r + 14) vT = Math.min(vT, Math.abs(b.h) > 0.6 ? 12 : 15);
+      }
+    }
+
+    // Drums: a fight is no reason to drive into one (it goes off and takes the car with it). Steer round the nearest drum in the way and ease off as it nears.
+    if (ctx.barrels) {
+      let pick = null, pickAhead = 1e9;
+      const reach = 2.8 + BARREL.reach, sight = 12 + car.speed * 1.2;
+      for (const b of ctx.barrels) {
+        if (!b.alive) continue;
+        const rx = b.pos.x - car.pos.x, rz = b.pos.z - car.pos.z;
+        const ahead = rx * fx + rz * fz, side = rx * car.ax.x + rz * car.ax.z;
+        if (ahead < 0 || ahead > sight || Math.abs(side) > reach || Math.abs(b.pos.y - car.pos.y) > 2.5) continue;
+        if (ahead < pickAhead) { pickAhead = ahead; pick = { ahead, side }; }
+      }
+      if (pick) {
+        const sgn = Math.abs(pick.side) < 0.6 ? (dx * car.ax.x + dz * car.ax.z >= 0 ? -1 : 1) : (pick.side > 0 ? -1 : 1);
+        const at = Math.max(pick.ahead, 7);
+        ax = car.pos.x + fx * at + car.ax.x * sgn * reach * 1.2; az = car.pos.z + fz * at + car.ax.z * sgn * reach * 1.2;
+        dx = ax - car.pos.x; dz = az - car.pos.z;
+        if (pick.ahead < 16) vT = Math.min(vT, 13);
       }
     }
 

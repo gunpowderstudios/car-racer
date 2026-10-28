@@ -93,7 +93,7 @@ function figureEight() {
 const OVAL_A = 36, OVAL_B = 36, OVAL_FLOOR = 118;       // metres: centreline half-length / half-width (equal: a small circle), and full floor width (59 m each side of it, so the floor is one solid round pizza 190 m across, with no hole in the middle)
 
 /** The Deep Pan Pizza's floor, a plain margherita: dough crust round the edge (the outer fifth of the radius), red sauce inside it, black olive HUMPS and yellow cheese DIPS.
- *  Cheese dips are 30% broader than the olive humps, with the same depth profile. Always the same, and kept off the crust, the player's start, the respawn spots and the ring where the rivals line up. */
+ *  Cheese dips are 30% broader than the olive humps; both are 50% taller / deeper than they were (v17.434). Always the same, and kept off the crust, the player's start, the respawn spots and the ring where the rivals line up. */
 function ovalLumps(def) {
   const track = new Track(def), A = arenaInfo(track), rnd = mulberry(20261024), r2 = (v) => Math.round(v * 100) / 100;
   const sauce = A.ax * 0.8;                                                                   // the sauce ends here; the crust is the rest
@@ -113,7 +113,7 @@ function ovalLumps(def) {
           const x = A.cx + (rnd() * 2 - 1) * sauce, z = A.cz + (rnd() * 2 - 1) * sauce;
           if (Math.hypot(x - A.cx, z - A.cz) > sauce - rr - 2 || keep.some((k) => Math.hypot(x - k.x, z - k.z) < rr + (k.m || 9)) || onRing(x, z, rr + 1.5)) continue;
           if (bumps.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + rr + gap)) continue;
-          bumps.push({ x: r2(x), z: r2(z), r: r2(rr), h: r2(sg * sh.h) }); ok = true;
+          bumps.push({ x: r2(x), z: r2(z), r: r2(rr), h: r2(sg * sh.h * 1.5) }); ok = true;
         }
         if (!ok) all = false;
       }

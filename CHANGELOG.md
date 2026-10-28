@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.434 — Bigger pizza toppings, smarter rivals round drums
+- Deep Pan Pizza: the olive humps are 50% higher and the cheese dips 50% deeper.
+- Rival cars now see explosive drums much earlier, slow down for the ones in their path, and swerve round them (using nearly the whole road, and not drifting back through them). On the road tracks the rivals set off roughly half as many drums as before - far fewer on the thin road - and in the arena the rivals steer round drums too, even while charging at a target.
+
 ## v17.433 — Bug sweep
 - Fixed Deep Pan Pizza: two of the cheese dips were silently missing (eight olive humps but only six dips). It now has six humps and six dips, properly spaced out, none close to where you start.
 - Brought the automated tests up to date with earlier deliberate changes (single-life Last One Standing, Expert skill 1.3, Arcade-only handling, new button wording, pizza sauce colour, movie soundtrack rule); the test suite is now fully green.

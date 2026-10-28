@@ -156,6 +156,7 @@ for (const key of TEMPLATE_KEYS) {
   test(`bot completes a lap of "${key}" cleanly`, () => {
     const { track, car } = makeSim(key);
     if (track.rocks) track.rocks = track.rocks.filter((r) => !r.roller && Math.abs(track.query(r.x, r.y + 1, r.z).d) > track.hw[0] + r.r + 1.5);   // (this driver just follows the line: boulders in the road are for the rivals' dodging test)
+    if (track.bumps && key === 'oval') track.bumps = null;   // (same for the pizza's olives and cheese: this driver cannot steer round them - 'the pizza toppings are safe to drive over' below covers them)
     const b = bot({ speed: key === 'speedway' ? 45 : 36, aLat: 8 });
     let prog = 0, last = null, walls = 0, minUp = 1, done = null;
     run(car, track, 200, (t, c, tr) => {
@@ -326,5 +327,18 @@ test('a rolling boulder is set off so that it crosses the middle of the road jus
     assert.ok(b.tC > 1.5 && b.tC < 4 && b.reach > 8, 'time to the road centre ' + b.tC);
     const px = b.x0 + b.dx * b.reach, pz = b.z0 + b.dz * b.reach, q = track.query(px, 40, pz, undefined, 3);
     assert.ok(Math.abs(q.d) < 2.5, 'it is aimed at the middle of the road: ' + q.d);
+  }
+});
+
+test('the pizza toppings are safe to drive over: straight across every olive and cheese dip, at any speed, the car stays on its wheels', () => {
+  const lumps = makeSim('oval').track.def.bumps;
+  assert.ok(lumps.some((b) => b.h > 0) && lumps.some((b) => b.h < 0));
+  assert.ok(Math.max(...lumps.map((b) => Math.abs(b.h))) > 0.9 && Math.max(...lumps.filter((b) => b.h < 0).map((b) => -b.h)) > 0.9, 'olives and cheese are 50% bigger than before');
+  for (const b of lumps) for (const sp of [12, 38]) {
+    const { track, car } = makeSim('oval');
+    car.pos.x = b.x - 40; car.pos.z = b.z; car.pos.y = 3;
+    let minUp = 1;
+    run(car, track, 4, (t, c) => { minUp = Math.min(minUp, c.ay.y); return { steer: 0, throttle: Math.hypot(c.vel.x, c.vel.z) < sp ? 1 : 0, brake: 0 }; });
+    assert.ok(minUp > 0.8, `rolled over a ${b.h > 0 ? 'olive' : 'cheese dip'} (${b.h}) at ${sp}: ${minUp}`);
   }
 });
