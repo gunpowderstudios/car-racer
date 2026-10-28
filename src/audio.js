@@ -1,6 +1,10 @@
 // WebAudio: engine (pitch follows RPM), tyre squeal, impacts, scrape and music.
 import { getCustomMusic } from './customMusic.js';
 // Uses the sound files in /sounds; falls back to a synthesised engine if they are missing.
+// Every tune is brought to the same loudness (measured, EBU R128: lounge -18.3, fairground -16.1, rock -19.3, lift -17.6 LUFS; relative to the quietest), and the music as a whole sits a little under the sound effects.
+export const MUSIC_BASE = 0.17;
+export const TRACK_GAIN = { lounge: 0.89, fairground: 0.63, rock: 1, editing: 0.83, custom: 1 };
+export const musicGain = (name) => MUSIC_BASE * (TRACK_GAIN[name] ?? 1);
 export const TRACKS = ['lounge', 'fairground', 'rock', 'editing', 'custom'];       // built-ins plus one user-supplied track kept in IndexedDB
 export class Sound {
   constructor() {
@@ -22,7 +26,7 @@ export class Sound {
     this.analyser = c.createAnalyser(); this.analyser.fftSize = 64; this.analyser.smoothingTimeConstant = 0.7; this.master.connect(this.analyser);   // (feeds the little equaliser)
     this.tapNode = null;
     this.sfx = c.createGain(); this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0; this.sfx.connect(this.master);
-    this.music = c.createGain(); this.music.gain.value = this.musicOn ? 0.22 * this.musicVol : 0; this.music.connect(this.master);
+    this.music = c.createGain(); this.music.gain.value = this.musicOn ? musicGain(this.track) * this.musicVol : 0; this.music.connect(this.master);
     // (a url can be a list: the first one this browser can decode wins - older Safari cannot play Ogg, so the engine loop also comes as an MP3)
     const load = async (name, url) => { for (const u of [].concat(url)) { try { const r = await fetch(u); this.buf[name] = await c.decodeAudioData(await r.arrayBuffer()); return; } catch { /* try the next, or go without */ } } };
     await Promise.all([
@@ -75,6 +79,7 @@ export class Sound {
     this.track = name;
     try { localStorage.setItem('cr.musictrack', name); } catch { /* storage unavailable */ }
     if (!this.ctx || !this.ready || this._film) return;                   // (a film in the making has its own soundtrack; the choice is picked up when it ends)
+    if (!this._film && this.music) this.music.gain.value = this.musicOn ? musicGain(name) * this.musicVol : 0;
     await this._swapMusic(name);
   }
   /** Decode a music file and loop it in place of the current one. */
@@ -102,13 +107,13 @@ export class Sound {
     if (choice === 'custom') choice = 'off';                    // user-uploaded audio is for gameplay only, never movie export
     if (choice === null) {
       if (!this._film) return;
-      this._film = null; this.music.gain.value = this.musicOn ? 0.22 * this.musicVol : 0; this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0;
+      this._film = null; this.music.gain.value = this.musicOn ? musicGain(this.track) * this.musicVol : 0; this.sfx.gain.value = this.sfxOn ? this.sfxVol : 0;
       if (this._want !== this.track) await this._swapMusic(this.track);
       return;
     }
     this._film = choice; this.sfx.gain.value = fx ? 0.5 : 0;      // (effects can be left out of the film; in a film they are at 50%)
     if (choice === 'off') { this.music.gain.value = 0; return; }
-    this.music.gain.value = 0.22 * 0.8;                                    // (a film's soundtrack is at 80%, whatever the in-game music slider says)
+    this.music.gain.value = musicGain(choice) * 0.8;                       // (a film's soundtrack is at 80%, whatever the in-game music slider says)
     await this._swapMusic(choice);                                        // (from the top, so the tune starts with the film)
   }
 
@@ -184,7 +189,7 @@ export class Sound {
 
   setEnabled(kind, on) {
     localStorage.setItem(kind === 'music' ? 'cr.music' : 'cr.sfx', on ? '1' : '0');
-    if (kind === 'music') { this.musicOn = on; if (this.music && !this._film) this.music.gain.value = on ? 0.22 * this.musicVol : 0; }
+    if (kind === 'music') { this.musicOn = on; if (this.music && !this._film) this.music.gain.value = on ? musicGain(this.track) * this.musicVol : 0; }
     else { this.sfxOn = on; if (this.sfx && !this._film) this.sfx.gain.value = on ? this.sfxVol : 0; }
   }
 
@@ -192,7 +197,7 @@ export class Sound {
   setVolume(kind, v) {
     v = Math.max(0, Math.min(1, +v || 0));
     try { localStorage.setItem(kind === 'music' ? 'cr.musicvol' : 'cr.sfxvol', String(v)); } catch { /* storage unavailable */ }
-    if (kind === 'music') { this.musicVol = v; if (this.music && !this._film) this.music.gain.value = this.musicOn ? 0.22 * v : 0; }
+    if (kind === 'music') { this.musicVol = v; if (this.music && !this._film) this.music.gain.value = this.musicOn ? musicGain(this.track) * v : 0; }
     else { this.sfxVol = v; if (this.sfx && !this._film) this.sfx.gain.value = this.sfxOn ? v : 0; }
   }
 

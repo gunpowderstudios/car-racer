@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.446 — Even music levels
+- All the tunes now play at the same loudness (each was measured and levelled: the fairground tune was much louder than the rock one), and the music as a whole sits a little lower than the sound effects. Applies to the menu, in-game and movie soundtracks.
+
 ## v17.445 — In the lift
 - New tune "In the lift" (the movie-editing music) in the Tune choices (menu, settings and in-game) and as a movie soundtrack.
 

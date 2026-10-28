@@ -26,7 +26,7 @@ import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } 
 import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
-import { Sound } from './audio.js';
+import { Sound, musicGain } from './audio.js';
 import { saveCustomMusic, getCustomMusic, clearCustomMusic } from './customMusic.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
@@ -1185,7 +1185,7 @@ async function loungeOn() {
         a.addEventListener('loadedmetadata', () => { if (a.duration > 1) a.currentTime = at % a.duration; }, { once: true });
       }
     }
-    lounge.volume = Math.min(1, 0.2 * sound.musicVol);   // (the same loudness as the in-game music: 0.22 x master 0.9 x the music slider)
+    lounge.volume = Math.min(1, 0.9 * musicGain(sound.track) * sound.musicVol);   // (the same loudness as the in-game music: its level x master 0.9 x the music slider)
      if (lounge.paused) lounge.play().catch(() => {});
   } catch { /* no sound available */ }
 }
