@@ -164,12 +164,11 @@ function bluebell() {
   return out;
 }
 
-/** The few tightest corners of a dirt stage get steep banks (up to about 17 degrees). */
+/** Every corner of a dirt stage is banked into the turn, up to the most the track allows (20 degrees) on the tighter ones. Not at the start or beside a jump. */
 function steepBanks(def) {
-  const banks = suggestBanks(new Track(def), 17), n = def.handles.length;
+  const banks = suggestBanks(new Track(def), 20, 1800), n = def.handles.length;
   const nearJump = (i) => [-1, 0, 1].some((o) => def.handles[(i + o + n) % n].gap);
-  const order = banks.map((b, i) => [Math.abs(b), i]).filter(([, i]) => i > 1 && !nearJump(i)).sort((a, b) => b[0] - a[0]).slice(0, 7).map(([, i]) => i);
-  return { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: order.includes(i) ? banks[i] : 0 })) };
+  return { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: i > 1 && !nearJump(i) ? banks[i] : 0 })) };
 }
 
 /** Humps and puddles scattered along a dirt stage at fixed random spots (never near the start or a jump, nor on top of each other). */

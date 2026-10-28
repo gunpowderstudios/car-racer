@@ -717,12 +717,12 @@ function segIntersect(x1, z1, x2, z2, x3, z3, x4, z4) {
 }
 
 /** Bank angles (deg) that lean each handle into its corner. Positive lifts the left edge. */
-export function suggestBanks(track, maxDeg = 12) {
+export function suggestBanks(track, maxDeg = 12, gain = 700) {
   return track.def.handles.map((_, hi) => {
     const i = Math.round(track.handleS[hi] / track.ds) % track.n;
     let k = 0;
     for (let o = -6; o <= 6; o++) k += track.curv[(i + o + track.n) % track.n];
     k /= 13;
-    return Math.round(clamp(-k * 700, -maxDeg, maxDeg) * 2) / 2;
+    return Math.round(clamp(-k * gain, -maxDeg, maxDeg) * 2) / 2;
   });
 }

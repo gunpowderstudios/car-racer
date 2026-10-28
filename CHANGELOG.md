@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.450 — Merged holes, banked Bluebell
+- Holy Moley: when the same spot is hit again and again, its small holes run together into one bigger hole.
+- Bluebell Woods: every corner now banks into the turn, up to the maximum 20 degrees on the tighter ones (not at the start or beside a jump).
+
 ## v17.449 — Ragged debris
 - Crash debris is no longer square: the pieces are ragged, uneven shards in a mix of sizes — small chips, mid-size bits, long slivers and the odd large panel.
 
