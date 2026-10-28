@@ -67,7 +67,9 @@ function patchMaterial(mat, n, dents, dirs, count, holeDepth) {
           if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.02);                       // the dark inside of the car, seen through a hole
           else if (holeV > -0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.05, 0.04), 0.9);   // a thin band of scorched, torn metal right at the edge
         }
-        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.34, 0.30, 0.28), clamp(vDentW * 1.2, 0.0, 0.8));`);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.34, 0.30, 0.28), clamp(vDentW * 1.2, 0.0, 0.8));`)
+      .replace('#include <opaque_fragment>', `if (uHoles > 0.5 && !gl_FrontFacing) outgoingLight = vec3(0.0);       // the inside seen through a hole is plain black: no lighting, no reflections
+        #include <opaque_fragment>`);
   };
   mat.customProgramCacheKey = () => 'dent' + n;
   mat.needsUpdate = true;

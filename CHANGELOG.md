@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.441 — Black holes
+- Holy Moley: the inside seen through a torn hole is now plain black (no lighting or reflections), instead of showing the inside of the model.
+
 ## v17.440 — Sharper holes
 - Holy Moley holes now look like torn sheet metal: a crisp jagged edge with only a thin burnt rim (no more graduated dark fade), steep walls and a flat floor, and no paint smudging round the tear.
 
