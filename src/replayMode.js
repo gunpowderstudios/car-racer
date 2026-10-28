@@ -70,7 +70,7 @@ export function createReplayMode(d) {
     if (v.loaded && !v._rpReady) { v._rpReady = true; R.fresh = true; }          // a car that has only just been built (or finished loading): it needs its dents so far
     v.root.visible = true; v.root.position.set(ent.x, ent.y, ent.z); v.root.quaternion.set(ent.qx, ent.qy, ent.qz, ent.qw); v.root.scale.setScalar(1);
     fakeCar.steerAngle = ent.steer; for (let i = 0; i < 4; i++) fakeCar.wheels[i].spin = ent.spin[i];
-    v.setWheels(fakeCar);
+    v.setWheels(fakeCar); v.updateFlaps();
     if (v.loaded) {
       const dx = ent.x - d.camera.position.x, dz = ent.z - d.camera.position.z, d2 = dx * dx + dz * dz;
       if (!ent.isPlayer) { v.root.visible = d2 < 300 * 300; const lod = (d.derby.lastStanding ? d.tier.arenaLod : d.tier.lodDist) * 2.5; if (lod) v.setFar(d2 > (v._far ? lod * 0.7 : lod) ** 2); }
