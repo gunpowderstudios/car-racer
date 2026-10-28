@@ -605,3 +605,14 @@ test('the result card has a Watch replay button that opens the replay, and the c
   assert.match(main, /showResult\(\.\.\.assaultCard, restartRace, showMenu, startReplay\)/);
   assert.match(main, /back from the replay: the result card is still there/);
 });
+
+test('the boulder rumble plays for Apple Crumple and for Bluebell Woods rolling rocks', () => {
+  const audio = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(audio, /load\('boulder', 'sounds\/boulder\.mp3'\)/);
+  assert.match(main, /sound\.cue\('boulder'/);
+  const { car, run, derby, def, track } = course(), b = def.assault.boulders[0];
+  put(car, track, b.s - 20, 0, 0); run.step(0.1, car, 1, derby);
+  let heard = false;
+  for (let i = 0; i < 20 / DT && !heard; i++) { run.step(DT, car, 1, null); heard = run.events.some((e) => e.type === 'sfx' && e.name === 'boulder'); run.events.length = 0; }
+  assert.ok(heard, 'a boulder starting to roll is heard');
+});

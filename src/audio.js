@@ -30,7 +30,7 @@ export class Sound {
       load('crash', 'sounds/crash.mp3'), load('shunt', 'sounds/shunt.mp3'), load('scrape', 'sounds/scrape.mp3'),
       load('explosion', 'sounds/explosion.mp3'), load('busBell', 'sounds/bus-bell.mp3'), load('policeSiren', 'sounds/police-siren.mp3'), load('barrel', 'sounds/barrel.mp3'),
       load('engineStart', 'sounds/engine-start.mp3'),
-      load('crusher', 'sounds/crusher.mp3'), load('flame', 'sounds/flame.mp3'), load('hammer', 'sounds/hammer.mp3'), load('fireworks', 'sounds/fireworks.mp3'),      // (Apple Crumple's hazards and the finish; the game just goes without if a file is missing)
+      load('crusher', 'sounds/crusher.mp3'), load('flame', 'sounds/flame.mp3'), load('hammer', 'sounds/hammer.mp3'), load('fireworks', 'sounds/fireworks.mp3'), load('boulder', 'sounds/boulder.mp3'),      // (Apple Crumple's hazards and the finish; the game just goes without if a file is missing)
     ]);
     await this._loadMusicBuffer(this.track);
     this.engine = this._loop('engine', this.sfx, 0);

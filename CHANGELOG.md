@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.437 — Boulder rumble
+- boulder.mp3 plays when a rolling boulder sets off, on Apple Crumple and on Bluebell Woods (and any other track with rolling rocks), quieter with distance.
+
 ## v17.436 — Apple Crumple replay
 - The result card at the end of Apple Crumple has a Watch replay button; when the replay ends the card is back so you can try again. (The hazards themselves don't animate in the replay yet.)
 - The yellow warning signs now face you with a clean front; their posts are on the back.

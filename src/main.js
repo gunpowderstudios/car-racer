@@ -556,6 +556,10 @@ function stepPhysics(dt) {
     }
     if (net) { mpCollideLocal(); mpVanContacts(); }             // soft, local-only push out of remote cars (and caravans)
     if (track.rollers) track.stepRollers(DT, derby.enabled ? derby.cars : [car], net ? (i) => net.sendRoll(i) : null, net ? mpWatchers() : null);                  // boulders waiting by the road roll out when a car comes near
+    if (track.rollers) for (const r of track.rollers) {          // a boulder starts rolling: the rumble (louder the closer it is)
+      if (r.state === 'roll' && !r.heard) { r.heard = true; sound.cue('boulder', 1, Math.hypot(r.x - car.pos.x, r.z - car.pos.z)); }
+      else if (r.state !== 'roll') r.heard = false;
+    }
     if (assault) { assault.step(DT, car, race.unwrapped, derby); if (assault.events.length) assaultEvents(); }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved

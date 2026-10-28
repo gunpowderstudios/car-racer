@@ -195,6 +195,7 @@ export class Assault {
     };
     for (let i = 0; i < (d.hammers || []).length; i++) { const h = d.hammers[i]; cue('h' + i, Math.floor((t * h.speed + h.phase) / Math.PI), 'hammer', this.track.frameAt(h.s), COURSE.hammer.r); }
     for (let i = 0; i < (d.presses || []).length; i++) { const p = d.presses[i], st = pressAt(p, t); cue('p' + i, st.state === 'slam', 'crusher', this.track.frameAt(p.s)); }
+    for (let i = 0; i < (d.boulders || []).length; i++) { const b = d.boulders[i], f = this.track.frameAt(b.s), bo = boulderAt(b, f.hw, t); cue('b' + i, bo.rolling, 'boulder', f, COURSE.boulder.r); }
     for (let i = 0; i < (d.fires || []).length; i++) { const p = d.fires[i], st = fireAt(p, t); cue('f' + i, st.state === 'burst', 'flame', this.track.frameAt(p.s)); }
   }
 
