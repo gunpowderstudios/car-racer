@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.466 — Solid spinners
+- Apple Crumple: the spinning bars (and their poles) are now properly solid. Before, they only gave you a knock and you could carry on through; now you are stopped, pushed out and bounced off, with the same damage as before.
+
 ## v17.465 — Tidier phone replay
 - The Film shape and In a TV set choices are gone from the replay on a phone.
 

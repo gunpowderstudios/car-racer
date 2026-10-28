@@ -163,6 +163,19 @@ test('the spinning arm sweeps the car aside, and the pole in the middle is solid
   void f;
 });
 
+test('the spinning arm is solid: a car driving flat out into the bar or the pole is stopped, not driven through', () => {
+  const { track, car, def } = course(), a = def.assault.arms[0], f = track.frameAt(a.s);
+  const tAcross = findT((t) => Math.abs(Math.cos(armAngle(a, t))) < 0.02);       // the bar is straight across the road
+  const fwd = () => car.vel.x * f.fx + car.vel.z * f.fz;
+  for (const lane of [0, 3, -3]) {
+    const run = new Assault(track), sp = spy(); put(car, track, a.s - 2.9, lane, 25); run.t = tAcross;
+    for (let i = 0; i < 40 && fwd() > -5; i++) { car.step(1 / 120, { throttle: 1, brake: 0, steer: 0, handbrake: false }, track); car.refreshFrame(); run._contacts(car, sp); }
+    assert.ok(fwd() < 8, `lane ${lane}: still doing ${fwd().toFixed(1)} m/s along the road after hitting the bar`);
+    const along = (car.pos.x - f.x) * f.fx + (car.pos.z - f.z) * f.fz;
+    assert.ok(along < 1.5, `lane ${lane}: got through the bar (${along.toFixed(1)} m past it)`);
+  }
+});
+
 test('a press that drops on the car crushes its roof, once per drop; a car that gets through is fine', () => {
   const { track, car, def, run } = course(), p = def.assault.presses[0], sp = spy();
   const down = findT((t) => pressAt(p, t).state === 'slam' && pressAt(p, t).y < 1.2);

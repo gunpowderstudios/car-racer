@@ -12,6 +12,7 @@
 // restart point and starts the next stage's clock; a wreck, a fall or a reset costs time; the finish is a flaming hoop you jump through.
 
 import { zoneAt } from './damage.js';
+import { V3 } from './math.js';
 
 export const COURSE = {
   stage: { time: 20, step: 2, min: 6 },     // the first stage's clock, how much shorter each later stage's is, and the shortest allowed
@@ -78,6 +79,7 @@ export function fireAt(p, t, C = COURSE.fire) {
 // ------------------------------------------------------------------ contact with the car
 
 const P = { x: 0, y: 0, z: 0 };
+const armN = new V3(), armP = new V3(), armV = new V3();
 
 /** Closest point of the car's body box to world point c, and how far c is from it (negative inside). Needs car.ax/ay/az current. */
 export function nearestOnCar(car, cx, cy, cz, out = P) {
@@ -247,18 +249,27 @@ export class Assault {
       if (Math.abs(car.pos.x - f.x) + Math.abs(car.pos.z - f.z) > 30) continue;
       const ang = armAngle(a, t), ca = Math.cos(ang), sa = Math.sin(ang), dir = a.dir || 1, w = a.speed * dir;
       // the arm is a line of spheres from the pole out to each tip (the second half of the line is the other end of the bar)
+      // and it is SOLID: every step the car is pushed out of the bar and loses the speed it was driving into it (the bar is far too heavy to give way)
+      let struck = null, strikeSp = 0, strikeVn = 0;
       for (let k = -9; k <= 9; k++) {
         const rr = (k / 9) * (a.len || A.len);
         const along = ca * rr, lat = sa * rr;     // angle 0 = along the road
         const cx = f.x + f.fx * along + f.lx * lat, cz = f.z + f.fz * along + f.lz * lat, cy = f.y + A.y;
-        const dist = nearestOnCar(car, cx, cy, cz);
-        if (dist < A.r + (k === 0 ? A.pole - A.r : 0)) {
-          const vx = (-sa * f.fx + ca * f.lx) * w * (rr || 0.0001), vz = (-sa * f.fz + ca * f.lz) * w * (rr || 0.0001), sp = Math.hypot(vx, vz);
-          const ux = sp > 0.3 ? vx : P.x - cx, uz = sp > 0.3 ? vz : P.z - cz;
-          this._hit('a' + i, 'arm', car, derby, A.hp + sp * 1.4, P, ux, 0.12, uz, A.punch + sp * 0.9, sp + 3);
-          break;
-        }
+        const dist = nearestOnCar(car, cx, cy, cz), rad = A.r + (k === 0 ? A.pole - A.r : 0);
+        if (dist >= rad) continue;
+        const vx = (-sa * f.fx + ca * f.lx) * w * (rr || 0.0001), vz = (-sa * f.fz + ca * f.lz) * w * (rr || 0.0001), sp = Math.hypot(vx, vz);
+        let nx = P.x - cx, nz = P.z - cz, nl = Math.hypot(nx, nz);                 // from the bar towards the car, flat on the ground
+        if (nl < 1e-4) { nx = car.pos.x - cx; nz = car.pos.z - cz; nl = Math.hypot(nx, nz) || 1; }
+        nx /= nl; nz /= nl;
+        const pen = Math.min(0.35, rad - dist);
+        car.pos.x += nx * pen; car.pos.z += nz * pen;                               // out of the bar
+        armN.set(nx, 0, nz); armP.set(P.x, P.y, P.z); car.velocityAt(armP, armV);
+        const vn = (armV.x - vx) * nx + (armV.z - vz) * nz;                         // the car's speed into the bar, relative to the bar
+        if (-vn > strikeVn) strikeVn = -vn;
+        if (vn < 0) { const inv = car.invMassAt(armN, armP); if (inv > 0) car.impulseAt(armN, -(1 + (-vn > 2 ? 0.25 : 0)) * vn / inv, armP); }
+        if (!struck || sp > strikeSp) { struck = { x: P.x, y: P.y, z: P.z, ux: sp > 0.3 ? vx : nx, uz: sp > 0.3 ? vz : nz }; strikeSp = sp; }
       }
+      if (struck) this._hit('a' + i, 'arm', car, derby, A.hp + strikeSp * 1.4, struck, struck.ux, 0.12, struck.uz, 0, strikeSp + 3 + strikeVn);
     }
     const B = COURSE.boulder;
     if (d.boulders) for (let i = 0; i < d.boulders.length; i++) {
