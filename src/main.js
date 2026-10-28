@@ -1670,7 +1670,7 @@ function mpTeardown() {
   if (!net && !remotePlayers.size) return;
   for (const p of remotePlayers.values()) mpReleasePlayer(p);
   remotePlayers.clear();
-  if (net) { net.leave(); net = null; }
+  if (net) { net.leave(); net = null; mpLobbyIds = null; }
   visual.setOwnLook(null);                                    // back to your own paint
 }
 /** What the others need to draw our caravan: where it is, how it is turned and rocking, its wheel angle and health (a fraction). */
@@ -1753,6 +1753,7 @@ function mpShow(id) {
   for (const e of ['mp-home-error', 'mp-join-error', 'mp-lobby-error']) $(e).hidden = true;
 }
 function mpErr(id, msg) { const el = $(id); el.textContent = msg; el.hidden = false; }
+let mpLobbyIds = null;       // who was in the lobby last time it updated (null until we've seen it once, so joining doesn't chime for yourself)
 function mpRenderLobby(players, hostId) {
   const ul = $('mp-players'); ul.innerHTML = '';
   let differs = false;
@@ -1847,7 +1848,12 @@ const mpHandlers = {
   version: () => VERSION,                                      // read when joining, not at load: version.js is still loading when this file runs
   onChat: (id, m) => chatUI.receive(id, m),
   onStatus: (text) => mpStatus(text),
-  onLobby: (players, hostId) => mpRenderLobby(players, hostId),
+  onLobby: (players, hostId) => {
+    const ids = new Set(players.map((p) => p.id));
+    if (mpLobbyIds && [...ids].some((id) => !mpLobbyIds.has(id))) sound.join();       // somebody new has come into the room
+    mpLobbyIds = ids;
+    mpRenderLobby(players, hostId);
+  },
   onOpts: (o) => { $('mp-track-fixed').textContent = `The host picked: ${o.track} \u00b7 ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`; },
   onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {

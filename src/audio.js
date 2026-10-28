@@ -306,6 +306,11 @@ export class Sound {
     o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.01); g.gain.setTargetAtTime(0, t + dur * 0.6, dur * 0.2);
     o.connect(g).connect(this.sfx); o.start(t); o.stop(t + dur + 0.1);
   }
+  /** A friendly two-note chime: someone has joined the multiplayer room. */
+  join() {
+    this.beep(660, 0.16, 0.3);
+    setTimeout(() => this.beep(880, 0.26, 0.3), 140);
+  }
 }
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.458 — Join chime
+- A two-note chime plays in the multiplayer lobby whenever someone joins the room.
+
 ## v17.457 — Proper bumps in multiplayer
 - Car-to-car contact in multiplayer now works like the solo game: a real two-car impact (heavier cars shove lighter ones, off-centre hits spin you), a little bounce on hard hits, and a dent, health loss, sparks, smoke, debris and crash sound on BOTH cars - not just the one that got rammed.
 
