@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.447 — Holy Moley on by default
+- Holy Moley (real damage) is now on by default, including for players who had the old default saved. Switching it off in settings still sticks.
+
 ## v17.446 — Even music levels
 - All the tunes now play at the same loudness (each was measured and levelled: the fairground tune was much louder than the rock one), and the music as a whole sits a little lower than the sound effects. Applies to the menu, in-game and movie soundtracks.
 

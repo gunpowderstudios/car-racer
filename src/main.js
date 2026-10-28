@@ -68,7 +68,8 @@ const device = probeDevice();
 const tierName = detectTier({ forced: forcedQuality, ...device });
 const tier = TIERS[tierName];
 // Shadows and rival count default from the tier until the player picks their own.
-const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, holes: false, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+const opts = Object.assign({ assist: true, kmh: false, shadow: tier.shadow, paint: 0, derby: true, holes: true, mode: 'jamboree', skill: 'hard', caravan: false, repairs: 3, horn: true, rivals: tier.rivals, quality: 'auto', chat: 'all' }, savedOpts);
+if (!savedOpts.holesOnByDefault) { opts.holes = true; opts.holesOnByDefault = true; }     // Holy Moley became the default: everyone gets it on once (a saved "off" from before then was just the old default); switching it off afterwards sticks
 opts.handling = 'arcade';    // one handling model throughout: old saved Standard settings are intentionally ignored
 if (opts.mode !== 'race' && opts.mode !== 'jamboree') opts.mode = 'jamboree';   // migrate old saved Demolition mode out of the simplified Options
 if (!opts.repairs5) { opts.repairs5 = true; if (opts.repairs === 10) opts.repairs = 5; }      // (5 repairs was the default for a while)

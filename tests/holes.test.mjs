@@ -1,4 +1,4 @@
-// Holy Moley (real damage): deep dents tear holes in the bodywork and pieces fly off. A setting, off by default.
+// Holy Moley (real damage): deep dents tear holes in the bodywork and pieces fly off. A setting, on by default.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,10 +6,10 @@ let THREE = null; try { THREE = await import('three'); } catch { /* not installe
 const skip = !THREE && 'three.js is not installed';
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 
-test('the setting exists, is off by default, and is wired to the shader switch', () => {
+test('the setting exists, is on by default, and is wired to the shader switch', () => {
   assert.match(read('index.html'), /id="opt-holes"[^>]*> Holy Moley \(real damage\)/);
   const main = read('src/main.js');
-  assert.match(main, /holes: false/); assert.match(main, /bindOpt\('opt-holes', 'holes', \(v\) => \{ opts\.holes = v; setHoles\(v\); \}\)/);
+  assert.match(main, /holes: true/); assert.match(main, /bindOpt\('opt-holes', 'holes', \(v\) => \{ opts\.holes = v; setHoles\(v\); \}\)/);
   assert.match(main, /CarVisual\.onHole = /); assert.match(main, /debris\.burst\(w\.x, w\.y, w\.z/);
   const d = read('src/dents.js');
   assert.match(d, /if \(uHoles > 0\.5 && holeV > 0\.0\) discard;/, 'the torn part of the body is not drawn');
