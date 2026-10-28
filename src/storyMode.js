@@ -200,7 +200,7 @@ function openSetup() {
     const tracks = TEMPLATE_KEYS.filter((k) => k !== 'random' && k !== 'oval').map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
     ov.innerHTML = `<div class="sp-card"><h2>Race Day</h2><p>Race eight named rivals for points: a four-circuit championship, or one race on a track of your choice.</p>
 <label>Track<select id="sp-track"><option value="champ">The championship (all four circuits)</option>${tracks}</select></label>
-<label>Laps<select id="sp-laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option></select></label>
+<label>Laps<select id="sp-laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option><option value="4">4 laps</option><option value="5">5 laps</option></select></label>
 <div class="sp-btns"><button id="sp-go" class="btn btn-play" type="button">Go!</button><button id="sp-cancel" class="btn ghost" type="button">Cancel</button></div></div>`;
     document.body.appendChild(ov);
     ov.querySelector('#sp-cancel').onclick = () => { ov.hidden = true; };
@@ -208,7 +208,7 @@ function openSetup() {
       ov.hidden = true;
       const pick = ov.querySelector('#sp-track').value;
       window.__raceLaps?.set?.(+ov.querySelector('#sp-laps').value);
-      try { localStorage.setItem('cr.storyTrack', pick); localStorage.setItem('cr.storyLaps', ov.querySelector('#sp-laps').value); } catch { /* storage unavailable */ }
+      try { localStorage.setItem('cr.storyTrack', pick); localStorage.setItem('cr.storyLaps1', ov.querySelector('#sp-laps').value); } catch { /* storage unavailable */ }
       if (pick !== 'champ') { state.single = pick; startStory(0); return; }
       state.single = null;
       const c = store.get().champ;
@@ -219,8 +219,8 @@ function openSetup() {
   }
   let saved = 'champ'; try { saved = localStorage.getItem('cr.storyTrack') || 'champ'; } catch { /* storage unavailable */ }
   const sel = ov.querySelector('#sp-track'); sel.value = [...sel.options].some((o) => o.value === saved) ? saved : 'champ';
-  let dayLaps = '2'; try { dayLaps = localStorage.getItem('cr.storyLaps') || '2'; } catch { /* storage unavailable */ }      // Race Day starts on 2 laps (then remembers what you picked last)
-  ov.querySelector('#sp-laps').value = ['1', '2', '3'].includes(dayLaps) ? dayLaps : '1';
+  let dayLaps = '1'; try { dayLaps = localStorage.getItem('cr.storyLaps1') || '1'; } catch { /* storage unavailable */ }      // Race Day starts on 1 lap (then remembers what you picked last; up to 5)
+  ov.querySelector('#sp-laps').value = ['1', '2', '3', '4', '5'].includes(dayLaps) ? dayLaps : '1';
   ov.hidden = false;
 }
 

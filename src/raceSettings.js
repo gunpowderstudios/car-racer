@@ -4,7 +4,7 @@ import { Hud } from './hud.js';
 import { Multiplayer } from './multiplayer.js';
 
 const DEFAULT_LAPS = 1;
-const clampLaps = (v) => Math.max(1, Math.min(3, Math.round(+v || DEFAULT_LAPS)));
+const clampLaps = (v) => Math.max(1, Math.min(5, Math.round(+v || DEFAULT_LAPS)));
 
 function readOpts() {
   try { return JSON.parse(localStorage.getItem('cr.opts')) || {}; } catch { return {}; }
@@ -42,7 +42,7 @@ function installLapOption() {
   if (!grid) return;
   const label = document.createElement('label');
   label.className = 'sel';
-  label.innerHTML = 'Race laps <select id="opt-laps" aria-label="Number of race laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option></select>';
+  label.innerHTML = 'Race laps <select id="opt-laps" aria-label="Number of race laps"><option value="1">1 lap</option><option value="2">2 laps</option><option value="3">3 laps</option><option value="4">4 laps</option><option value="5">5 laps</option></select>';
   const rivals = document.getElementById('opt-rivals')?.closest('label');
   if (rivals?.nextSibling) grid.insertBefore(label, rivals.nextSibling); else grid.appendChild(label);
   const sel = label.querySelector('select');

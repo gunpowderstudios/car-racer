@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.455 — Race Day: 1 lap
+- Race Day now starts on 1 lap (it remembers what you pick afterwards) and the lap choice goes up to 5 laps, both on the Race Day screen and in Settings. The Race Day button's sub-title is now "Jump in and put your foot down!". (Multiplayer races stay at up to 3 laps.)
+
 ## v17.454 — Lethal black barrels
 - New black barrels with yellow hazard stripes: they explode the instant anything touches them, and every car within about 7 m of the blast (you or the rivals) is wrecked on the spot. About one in six barrels on the Barrels track is one, scattered at random with the red ones, and a few turn up on random circuits too. (Not during the spawn grace after a start or respawn.)
 
