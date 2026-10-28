@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.462 — Lights and podium on every race
+- Every race against rivals now starts with the Red, Red, Green! lights (also when you restart). Demolition, arenas and Apple Crumple are not races, so they start as before.
+- Race Day races now finish with the podium too; the stage results come up once you close it.
+
 ## v17.461 — Site publishing fixed
 - Updates since v17.456 were not reaching the live site (a stray file stopped the site build); fixed, so everything from v17.457 on goes out together.
 

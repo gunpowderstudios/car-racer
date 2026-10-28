@@ -401,6 +401,12 @@ function placeCarInArena(away) {
   chase.snap(); trouble.flipped = trouble.lost = 0; acc = 0;
 }
 
+/** Red, Red, Green! on the grid for any race against rivals (Race Day and multiplayer run their own; Demolition, arenas and Apple Crumple are not races). */
+function raceStartLights() {
+  if (net || assault || !derby.enabled || derby.demolition || track?.def?.mode === 'lastStanding' || window.__story?.active) return;
+  frozen = true;
+  startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
+}
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
   setPaused(false);
@@ -411,6 +417,7 @@ function restartRace() {
   derbyStart();
   if (assault) { assaultCountdown(); return; }
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1400);
+  raceStartLights();
 }
 
 // ------------------------------------------------------- Apple Crumple (the solo obstacle course, see assault.js)
@@ -1322,6 +1329,7 @@ function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
   if (assault) { assaultCountdown(); return; }
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
+  raceStartLights();
 }
 function openEditor(d) {
   // the editor needs a mouse and a big screen - on touch devices just say so

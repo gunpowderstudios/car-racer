@@ -175,7 +175,13 @@ window.addEventListener('carracer-player-finish', (e) => {
   if (!g || g.track?.def?.name !== state.name) { endStory(); return; }                // you went off and started something else
   const detail = e.detail;
   clearTimeout(resultTimer);
-  resultTimer = setTimeout(() => { if (state.active) finishStage(detail); }, 5200);
+  const whenPodiumClosed = () => {                                                   // the podium comes up first; the stage results follow once it is closed
+    if (!state.active) return;
+    const pod = document.getElementById('podium');
+    if (pod && !pod.hidden) { resultTimer = setTimeout(whenPodiumClosed, 400); return; }
+    finishStage(detail);
+  };
+  resultTimer = setTimeout(whenPodiumClosed, 5200);
 });
 
 // Starting any other race from the menu quietly ends the story (and gives your own settings back).
