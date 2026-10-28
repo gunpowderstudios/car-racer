@@ -136,7 +136,10 @@ export class Driver {
     const k = curvAhead(track, s);
     const tow = (this.towing ? 0.78 : 1) * (track.def.dirt ? 0.88 : 1);     // (loose dirt: less grip, so gentler in the bends too)        // with a caravan on the back: slower, and gentle in the bends so it does not fold up
     const aLat = (hunting ? AI.aLatHunt : AI.aLatCruise) * tow * tow;
-    vT = Math.min((hunting ? AI.huntMax * (1 + 0.3 * d) : this.cruise * pace) * tow, Math.sqrt(aLat * (1 + 0.5 * d) / Math.max(k, 1e-4)));
+    // In a race the rivals cruise as fast as the player's own car has shown it can go (ctx.playerTop, so it follows whichever vehicle was chosen), not at a fixed speed:
+    // Normal ~90%, Hard ~95%, Expert 100% of that. Bends still slow them down as before.
+    const cruiseV = ctx.racePace && ctx.playerTop > 0 ? Math.max(this.cruise * pace, Math.min(AI.raceMax, ctx.playerTop * (0.8 + 0.2 * sk))) : this.cruise * pace;
+    vT = Math.min((hunting ? AI.huntMax * (1 + 0.3 * d) : cruiseV) * tow, Math.sqrt(aLat * (1 + 0.5 * d) / Math.max(k, 1e-4)));
 
     if (hunting) {
       // aim where the player will be by the time we get there

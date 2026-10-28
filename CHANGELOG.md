@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.453 — Rivals keep up with your car
+- In races the rivals now cruise at the pace of the car you chose: they follow the fastest speed your car has been showing lately (about 90% of it on Normal, 95% on Hard, 100% on Expert), instead of a fixed top speed, so a fast car can't simply leave them behind. Bends still slow them as before.
+
 ## v17.452 — Replay from the podium
 - Multiplayer races are now recorded (you and the other players' cars), and the podium has a "Watch replay" button. When the replay ends you are back on the podium.
 

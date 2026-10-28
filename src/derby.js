@@ -418,6 +418,8 @@ export class Derby {
     // -------- rivals think and drive
     const ctx = this._ctx;
     ctx.player = P.wrecked ? null : P.car; ctx.cars = this.cars; ctx.barrels = barrels;
+    this.playerTop = Math.max(P.car.speed, (this.playerTop || 0) - 0.4 * dt);       // the fastest the player's car has been going lately: the race pace for the rivals follows it
+    ctx.playerTop = this.playerTop;
     const baseSkill = this.brutal ? 1 : this.skill; ctx.skill = baseSkill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     ctx.racePace = !this.demolition;                         // race AI may pace itself against the player; demolition keeps natural vehicle performance
