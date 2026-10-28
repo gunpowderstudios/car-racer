@@ -36,6 +36,7 @@ export const DAMAGE = {
   // Explosions. `point` is what a rival loses at point blank, `radius` how far the blast reaches.
   // A player takes a fraction (the "mul" in each car's spec): the bodywork is thicker.
   barrel: { radius: 10, point: 90 },
+  lethal: { radius: 7, point: 100000 },            // a black-and-yellow barrel: anything within a few metres is wrecked on the spot
   wreck: { radius: 8, point: 60, push: 4.5 },      // a wrecked car going up hurts its neighbours too
   burnPerSecond: 16,    // a rival lying on its roof cooks itself at this rate
 };

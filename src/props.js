@@ -177,7 +177,7 @@ export class Props {
       if (d.type === 'barrel') {
         const g = this.track.groundAt(d.x, d.z, d.y + 0.5, this.gq, true);
         const b = {
-          i, alive: true, asleep: true, still: 0, fuse: -1, boom: false, clang: 0,
+          i, alive: true, asleep: true, still: 0, fuse: -1, boom: false, clang: 0, lethal: !!d.lethal,
           pos: new V3(d.x + g.nx * (BARREL.height / 2 + 0.003), g.y + g.ny * (BARREL.height / 2 + 0.003), d.z + g.nz * (BARREL.height / 2 + 0.003)),
           vel: new V3(), w: new V3(), q: new Q(), axis: new V3(0, 1, 0),
           paint: (i * 2654435761 >>> 0) % 10 < 7 ? 0 : 1,
@@ -251,6 +251,7 @@ export class Props {
       }
       if (!best) continue;
       this._wake(b);
+      if (b.lethal) b.boom = true;                                   // a black-and-yellow barrel goes off the instant anything touches it
       const n = sN.set(bnx, bny, bnz), p = sP.set(bx, by, bz);
       b.pos.addScaled(n, bp);                                        // a drum is light: it gives way
       const r = sR.copy(p).sub(b.pos);
@@ -447,7 +448,7 @@ export class Props {
     const g = T.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.6, this.bq);
     this.events.push({
       type: 'blast', i: b.i, x: b.pos.x, y: b.pos.y, z: b.pos.z, gy: g.y, nx: g.nx, ny: g.ny, nz: g.nz,
-      dist: this._carDist(b.pos.x, b.pos.y, b.pos.z), radius: BLAST.radius,
+      dist: this._carDist(b.pos.x, b.pos.y, b.pos.z), radius: BLAST.radius, lethal: !!b.lethal,
     });
 
     // scrap metal: rim and lid pieces flung out

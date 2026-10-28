@@ -88,7 +88,9 @@ export function normalizeProps(list) {
     if (!p || !PROP_TYPES.includes(p.type)) continue;
     const x = Number(p.x), z = Number(p.z);
     if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
-    out.push({ type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 });
+    const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
+    if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
+    out.push(o);
   }
   return out;
 }

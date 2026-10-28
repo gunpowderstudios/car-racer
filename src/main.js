@@ -601,7 +601,7 @@ function propEvents() {
       if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
       sound.explode(e.dist); replayRec.event(simTime, { type: 'prop', kind: 'blast', x: e.x, y: e.y, z: e.z });
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
-      if (derby.damageEnabled) derby.blast(e.x, e.y, e.z);
+      if (derby.damageEnabled) derby.blast(e.x, e.y, e.z, e.lethal ? DAMAGE.lethal : DAMAGE.barrel);
       if (net) mpBarrelBlast(e);
     } else if (e.type === 'clang') { sound.clang(e.speed, e.dist); replayRec.event(simTime, { type: 'prop', kind: 'clang', x: e.x, y: e.y, z: e.z, speed: e.speed }); }
   }
@@ -1569,7 +1569,8 @@ function mpTakeDamage(amount) {
 function mpBarrelBlast(e) {
   if (e.i != null && !mpBoomSeen.has(e.i)) { mpBoomSeen.add(e.i); net.sendBoom(e.i); }
   const d = Math.hypot(car.pos.x - e.x, car.pos.y - e.y, car.pos.z - e.z), frac = blastFraction(DAMAGE.barrel, d);
-  if (frac > 0) mpTakeDamage(MP_BARREL_DAMAGE * frac);
+  if (e.lethal && d < DAMAGE.lethal.radius - 0.5) mpTakeDamage(10);                    // a black-and-yellow barrel: wrecked outright
+  else if (frac > 0) mpTakeDamage(MP_BARREL_DAMAGE * frac);
 }
 /** A player's health has just hit zero - the same fireball, scorch mark and explosion sound a barrel gives,
  *  wherever the car actually is (yours, or a remote player's last known position). */

@@ -316,7 +316,7 @@ function barrelRunHandles() {
   for (const a of [135, 180, 225]) P(-L + Math.cos(a * Math.PI / 180) * Rr, Math.sin(a * Math.PI / 180) * Rr);
   return out;
 }
-/** Red barrels strewn at random all the way round the lap (a different scatter each time), never on a ramp, a landing or the start line: swerve or smash. */
+/** Red barrels (and a few lethal black-and-yellow ones, about one in six) strewn at random all the way round the lap (a different scatter each time), never on a ramp, a landing or the start line: swerve or smash. */
 function barrelRunProps(def) {
   const track = new Track(def), rnd = mulberry((Math.random() * 1e9) | 0), props = [], jumps = track.handleS.filter((_, i) => def.handles[i].gap);
   const dist = (a, b) => { const d = Math.abs(a - b); return Math.min(d, track.length - d); };
@@ -329,7 +329,7 @@ function barrelRunProps(def) {
     if (spots.some((p) => Math.hypot(p.x - x, p.z - z) < 5.5)) continue;                 // not touching: there is always a way through
     spots.push({ x, z });
   }
-  for (const sp of spots) { const p = placeProp(track, sp.x, sp.z); props.push({ type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }); }
+  for (const sp of spots) { const p = placeProp(track, sp.x, sp.z); const o = { type: 'barrel', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }; if (rnd() < 0.16) o.lethal = true; props.push(o); }
   return props;
 }
 
@@ -498,7 +498,8 @@ function buildRandomTrack(seed) {
       const f = track.frameAt(rnd() * track.length);
       const off = (rnd() - 0.5) * Math.max(2, f.hw - 3);
       const p = placeProp(track, f.x + f.lx * off, f.z + f.lz * off);
-      props.push({ type, x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
+      const o = { type, x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 }; if (type === 'barrel' && rnd() < 0.12) o.lethal = true;
+      props.push(o);
     }
   };
   scatter('barrel', 6 + Math.floor(rnd() * 7));   // 6-12 drums: enough to make random races lively

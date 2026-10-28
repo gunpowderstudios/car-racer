@@ -5,6 +5,7 @@ import { BARREL, barrelNeedsDraw } from './props.js';
 const PAINT = [new THREE.Color(0xb8351f), new THREE.Color(0xb8351f)];
 const PEPPER = [new THREE.Color(0x3f9e2f), new THREE.Color(0x3f9e2f)];      // the Deep Pan Pizza's drums are painted green, like peppers
 const HOT = new THREE.Color(3, 2.1, 1.4);
+const WHITE = new THREE.Color(1, 1, 1);
 
 function drumGeometry() {
   const r = BARREL.radius, h = BARREL.height / 2, k = BARREL.height / 0.9;
@@ -16,6 +17,25 @@ function drumGeometry() {
     col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = end * ring;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return g;
+}
+
+/** The black-and-yellow lethal drum: the same shape, with hazard stripes (a canvas texture mapped round the body by angle and height). */
+function hazardMaterial() {
+  let map = null;
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'); g.fillStyle = '#0c0c0e'; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = '#f2c200';
+    for (const o of [-128, 0, 128]) { g.beginPath(); g.moveTo(o, 128); g.lineTo(o + 32, 128); g.lineTo(o + 160, 0); g.lineTo(o + 128, 0); g.closePath(); g.fill(); }      // two diagonal bands per tile
+    map = new THREE.CanvasTexture(c); map.wrapS = map.wrapT = THREE.RepeatWrapping; map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
+  } catch { /* no canvas (a test): plain black */ }
+  return new THREE.MeshStandardMaterial({ vertexColors: true, map, color: map ? 0xffffff : 0x111111, roughness: 0.5, metalness: 0.3 });
+}
+function lethalGeometry(base) {
+  const g = base.clone(), pos = g.attributes.position, uv = new Float32Array(pos.count * 2), h = BARREL.height / 2;
+  for (let i = 0; i < pos.count; i++) { uv[i * 2] = Math.atan2(pos.getZ(i), pos.getX(i)) / (Math.PI * 2) * 3 + 0.5; uv[i * 2 + 1] = (pos.getY(i) + h) / BARREL.height * 1.2; }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return g;
 }
 
@@ -43,7 +63,7 @@ function mergeParts(parts) {
 export class PropsView {
   constructor(scene) {
     this.scene = scene;
-    this.drums = null; this.bits = null; this._paint = PAINT;
+    this.drums = null; this.lethal = null; this.lethalMat = null; this.lethalGeo = null; this._slot = []; this.bits = null; this._paint = PAINT;
     this.drumGeo = drumGeometry();
     this.drumMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.35 });
     this.bitGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -61,13 +81,19 @@ export class PropsView {
     this._s.set(this._size, this._size, this._size);
     if (this.drums) { this.scene.remove(this.drums); this.drums.dispose(); this.drums = null; }
     this._lastPropsTime = props.time;
-    const n = props.barrels.length;
-    if (n) {
-      const im = this.drums = new THREE.InstancedMesh(this.drumGeo, this.drumMat, n);
-      props.barrels.forEach((b, i) => im.setColorAt(i, this._paint[b.paint]));
+    if (this.lethal) { this.scene.remove(this.lethal); this.lethal.dispose(); this.lethal = null; }
+    this._slot = props.barrels.map(() => null);
+    const plain = [], deadly = [];
+    props.barrels.forEach((b, i) => (b.lethal ? deadly : plain).push(i));
+    const make = (list, geo, mat, colour) => {
+      if (!list.length) return null;
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((bi, k) => { this._slot[bi] = { im, k }; im.setColorAt(k, colour(props.barrels[bi])); });
       im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
-      this.scene.add(im);
-    }
+      this.scene.add(im); return im;
+    };
+    this.drums = make(plain, this.drumGeo, this.drumMat, (b) => this._paint[b.paint]);
+    if (deadly.length) { if (!this.lethalMat) { this.lethalGeo = lethalGeometry(this.drumGeo); this.lethalMat = hazardMaterial(); } this.lethal = make(deadly, this.lethalGeo, this.lethalMat, () => WHITE); }
     if (!this.bits) {
       const bm = this.bits = new THREE.InstancedMesh(this.bitGeo, this.bitMat, props.bits.length);
       bm.castShadow = true; bm.frustumCulled = false; bm.count = 0; this.scene.add(bm);
@@ -77,21 +103,22 @@ export class PropsView {
 
   update(props, force = false) {
     this._lastPropsTime = props.time;
-    const im = this.drums;
-    if (im) {
+    if (this.drums || this.lethal) {
       let dirty = force;
-      let paint = false;
+      const dirtyIm = new Set(), paintIm = new Set();
       props.barrels.forEach((b, i) => {
+        const sl = this._slot[i]; if (!sl) return;
+        const { im, k } = sl;
         const want = b.alive && b.fuse >= 0 && Math.floor(b.fuse * 12) % 2 === 0 ? 1 : 0;
-        if (b._col !== want) { im.setColorAt(i, want ? HOT : this._paint[b.paint]); b._col = want; paint = true; }
+        if (b._col !== want) { im.setColorAt(k, want ? HOT : b.lethal ? WHITE : this._paint[b.paint]); b._col = want; paintIm.add(im); }
         const settled = (!b.alive || b.asleep) && b.fuse < 0;
         if (!barrelNeedsDraw(b, force)) return;
-        if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(i, this._m); }
-        else im.setMatrixAt(i, this._zero);
-        b._drawn = settled; b._shown = b.alive; dirty = true;
+        if (b.alive) { this._p.set(b.pos.x, b.pos.y, b.pos.z); this._q.set(b.q.x, b.q.y, b.q.z, b.q.w); this._m.compose(this._p, this._q, this._s); im.setMatrixAt(k, this._m); }
+        else im.setMatrixAt(k, this._zero);
+        b._drawn = settled; b._shown = b.alive; dirtyIm.add(im); dirty = true;
       });
-      if (dirty) im.instanceMatrix.needsUpdate = true;
-      if (paint && im.instanceColor) im.instanceColor.needsUpdate = true;
+      if (dirty) for (const im of [this.drums, this.lethal]) if (im && (force || dirtyIm.has(im))) im.instanceMatrix.needsUpdate = true;
+      for (const im of paintIm) if (im.instanceColor) im.instanceColor.needsUpdate = true;
     }
     const bm = this.bits;
     if (bm) {

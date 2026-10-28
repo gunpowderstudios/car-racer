@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.454 — Lethal black barrels
+- New black barrels with yellow hazard stripes: they explode the instant anything touches them, and every car within about 7 m of the blast (you or the rivals) is wrecked on the spot. About one in six barrels on the Barrels track is one, scattered at random with the red ones, and a few turn up on random circuits too. (Not during the spawn grace after a start or respawn.)
+
 ## v17.453 — Rivals keep up with your car
 - In races the rivals now cruise at the pace of the car you chose: they follow the fastest speed your car has been showing lately (about 90% of it on Normal, 95% on Hard, 100% on Expert), instead of a fixed top speed, so a fast car can't simply leave them behind. Bends still slow them as before.
 
