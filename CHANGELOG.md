@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.432 — Apple Crumple is deadlier
+- The hammers, the crushing presses and the fire pits now wreck your car outright (boulders and the spinning arm still just knock you about).
+- You have 3 spanners (lives) on the course: each wreck uses one (and costs +10 s), and when they run out the car is scrapped and the run ends.
+- Resetting with B on the course costs time, not a spanner.
+
 ## v17.431 — Apple Crumple tweaks
 - Fixed: the "Try again" and "Menu" buttons on the result card could not be clicked (Enter and Esc work too).
 - More hills round the course.

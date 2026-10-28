@@ -188,38 +188,53 @@ test('a car that is wrecked or a derby that is off takes no damage from hazards'
   run.step(0, car, 100, dead); assert.equal(dead.hits.length, 0);
 });
 
-test('the damage goes through the real derby: a hammer takes hit points off a zone, enough hits wreck the car', () => {
+test('a hammer blow is a wreck: the car explodes through the real derby (and costs a spanner)', () => {
   const { track, car, def, derby, run } = course(), h = def.assault.hammers[0];
-  derby.time = 10;                                                                    // (past the opening grace)
-  run.state = 'running'; run.started = 0;
-  let wrecked = false;
-  for (let n = 0; n < 8 && !wrecked; n++) {
-    const t = findT((t) => t > run.t + 0.7 && Math.abs(hammerHead(h, t).off) < 1.2);
-    put(car, track, h.s, hammerHead(h, t).off, 0); run.t = t; run._contacts(car, derby);
-    wrecked = derby.player.wrecked;
-  }
-  assert.ok(wrecked, 'a few hammer blows wreck the car');
+  derby.time = 10; run.state = 'running'; run.started = 0;
+  const t = findT((t) => Math.abs(hammerHead(h, t).off) < 1.2);
+  put(car, track, h.s, hammerHead(h, t).off, 0); run.t = t; run._contacts(car, derby);
+  assert.equal(derby.player.wrecked, true, 'one hammer blow wrecks you');
   assert.ok(derby.events.some((e) => e.type === 'damage') && derby.events.some((e) => e.type === 'wreck'), 'with the usual damage and wreck events');
   assert.equal(derby.events.find((e) => e.type === 'wreck').isPlayer, true);
 });
 
-test('the car can take a couple of knocks: one hammer blow alone does not wreck it', () => {
-  const { track, car, def, derby, run } = course(), h = def.assault.hammers[0];
-  derby.time = 10; const t = findT((t) => Math.abs(hammerHead(h, t).off) < 1.2);
-  put(car, track, h.s, hammerHead(h, t).off, 0); run.t = t; run._contacts(car, derby);
-  assert.equal(derby.player.wrecked, false); 
-  assert.ok(derby.events.some((e) => e.type === 'damage'));
+test('a press crush and a fire burst are wrecks too; a boulder or the arm is only a knock', () => {
+  const { track, car, def, derby, run } = course();
+  const fresh = () => { const c = course(); c.derby.time = 10; c.run.state = 'running'; return c; };
+  let c = fresh(); const p = c.def.assault.presses[0];
+  put(c.car, c.track, p.s, 0, 12); c.run.t = findT((t) => pressAt(p, t).state === 'slam' && pressAt(p, t).y < 1.2); c.run._contacts(c.car, c.derby);
+  assert.equal(c.derby.player.wrecked, true, 'crushed');
+  c = fresh(); const fp = c.def.assault.fires[0];
+  put(c.car, c.track, fp.s, fp.lat, 0); c.run.t = findT((t) => fireAt(fp, t).state === 'burst' && fireAt(fp, t).k > 0.3); c.run._contacts(c.car, c.derby);
+  assert.equal(c.derby.player.wrecked, true, 'burnt');
+  c = fresh(); const b = c.def.assault.boulders[0], f = c.track.frameAt(b.s);
+  const t = findT((t) => { const q = boulderAt(b, f.hw, t); return q.rolling && Math.abs(q.lat) < 1; });
+  put(c.car, c.track, b.s, boulderAt(b, f.hw, t).lat, 0); c.run.t = t; c.run._contacts(c.car, c.derby);
+  assert.equal(c.derby.player.wrecked, false, 'a boulder knocks you about but does not wreck you');
+  assert.ok(c.derby.events.some((e) => e.type === 'damage'));
+  c = fresh(); const a = c.def.assault.arms[0];
+  put(c.car, c.track, a.s, 4.5, 0); c.run.t = findT((t) => Math.abs(Math.cos(armAngle(a, t))) < 0.05); c.run._contacts(c.car, c.derby);
+  assert.equal(c.derby.player.wrecked, false, 'the spinning arm is a knock');
+  void track; void car; void def; void derby; void run;
 });
 
-test('a crush wrecks a battered roof, and a fresh car survives one crush', () => {
-  const { track, car, def, derby, run } = course(), p = def.assault.presses[0];
-  derby.time = 10; run.state = 'running';
-  const down = findT((t) => pressAt(p, t).state === 'slam' && pressAt(p, t).y < 1.2);
-  put(car, track, p.s, 0, 12); run.t = down; run._contacts(car, derby);
-  assert.equal(derby.player.wrecked, false, 'one crush leaves you running');
-  const next = findT((t) => t > down + COURSE.press.period && pressAt(p, t).state === 'slam' && pressAt(p, t).y < 1.2, 40);
-  put(car, track, p.s, 0, 12); run.t = next; run._contacts(car, derby);
-  assert.equal(derby.player.wrecked, true, 'a second crush finishes it');
+test('you have 3 spanners (lives): each wreck uses one, and the fourth scraps the car and ends the run', () => {
+  const { track, car, def, derby, run } = course(), h = def.assault.hammers[0];
+  derby.repairsMax = 3; derby.start(track, car, 0, 7, 'race');
+  assert.equal(derby.repairs, 3);
+  run.state = 'running'; run.started = 0; let over = false;
+  for (let n = 0; n < 4; n++) {
+    derby.time += 10; derby.player.wrecked = false; derby.player.health = new (derby.player.health.constructor)(derby.player.health.max);
+    const t = findT((t) => t > run.t + 0.7 && Math.abs(hammerHead(h, t).off) < 1.2);
+    put(car, track, h.s, hammerHead(h, t).off, 0); run.t = t; run._contacts(car, derby);
+    assert.equal(derby.player.wrecked, true);
+    over = derby.events.some((e) => e.type === 'over' && e.scrap);
+    derby.events.length = 0; derby.over = false;
+    if (n < 3) assert.equal(derby.repairs, 2 - n, 'a spanner used'); 
+  }
+  assert.ok(over, 'out of spanners: the car is scrap');
+  run.scrap(); assert.equal(run.state, 'scrapped'); assert.equal(run.result.medal, null);
+  assert.ok(run.events.some((e) => e.type === 'scrapped'));
 });
 
 test('exploding barrels still hurt through the existing blast', () => {
@@ -380,6 +395,9 @@ test('main.js runs the course: no rivals but real damage, lights, checkpoints, p
   assert.match(main, /if \(!assault && idx > race\.index\)/, 'no laps are counted on the course');
   assert.match(main, /stage\.updateAssault\(assault\)/);
   assert.match(main, /e\.type === 'repaired'/);
+  assert.match(main, /\(solo \? DERBY\.repairs : opts\.mode === 'demolition'/, 'three spanners on the course');
+  assert.match(main, /e\.type === 'over' && assault\) \{\s*assault\.scrap\(\)/, 'out of spanners ends the run');
+  assert.match(main, /const costs = !assault && /, 'a reset on the course costs time, not a spanner');
   assert.match(main, /k === 'apple' \? \[\['Choose'/, 'the course has no Edit button');
   assert.match(main, /\(assault \? ' course' : ''\)/);
   assert.match(readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), /body\.course #lap-card/, 'no lap card on the course');

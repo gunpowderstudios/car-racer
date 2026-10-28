@@ -17,16 +17,16 @@ export const COURSE = {
   penalty: { wreck: 10, fall: 5, reset: 5 },
   medals: { gold: 90, silver: 110, bronze: 135 },     // finishing times (penalties included) that earn each medal
   // pendulum hammer: a gantry across the road, a rod, and a heavy head swinging side to side
-  hammer: { pivot: 13.6, rod: 12.8, r: 1.55, reach: 7.2, speed: 1.0, hp: 40, punch: 12 },
+  hammer: { pivot: 13.6, rod: 12.8, r: 1.55, reach: 7.2, speed: 1.0, hp: 9999, punch: 12 },      // (a hammer blow, a crush or a burst of fire is a wreck: hp 9999 is more than any zone has)
   // rolling boulder: waits beside the road, then rolls across it
   boulder: { r: 1.8, speed: 9.5, wait: 1.8, hp: 26, punch: 9 },
   // spinning arm: a pole in the middle of the road and a bar sweeping round it at knee height
   arm: { len: 6.4, speed: 0.85, r: 0.6, y: 0.9, hp: 11, punch: 4.5, pole: 0.8 },
   // crushing press: a block of concrete hanging over the road (green light: safe; amber: it is about to drop; it slams, stays down, rises)
-  press: { period: 4.4, safe: 2.5, warn: 0.75, slam: 0.2, down: 0.55, up: 4.6, thick: 3, depth: 6.5, hp: 78 },
+  press: { period: 4.4, safe: 2.5, warn: 0.75, slam: 0.2, down: 0.55, up: 4.6, thick: 3, depth: 6.5, hp: 9999 },
   car: { hx: 0.95, hy: 0.55, hz: 2.4, cy: 0.18 },   // the car's body as a box about its centre of mass
   // fire pit: a pit in the road that, at random moments (a warning glow first), shoots a column of flame into the air and throws a car above it
-  fire: { r: 2.3, height: 13, warn: 0.9, burst: 1.1, hp: 30, launch: 10 },
+  fire: { r: 2.3, height: 13, warn: 0.9, burst: 1.1, hp: 9999, launch: 10 },
   cooldown: 0.55,             // seconds before the same hazard can hurt you again
 };
 
@@ -156,6 +156,9 @@ export class Assault {
     if (derby && derby.enabled && derby.player && !derby.player.wrecked && !derby.over) this._contacts(car, derby);
   }
 
+  /** The car is scrap (the spanners ran out): the run is over. */
+  scrap() { if (this.active) this._end('scrapped'); }
+
   _end(state) {
     this.state = state;
     const total = this.total, m = COURSE.medals;
@@ -192,7 +195,7 @@ export class Assault {
       const dist = nearestOnCar(car, cx, cy, cz);
       if (dist < H.r) {
         const s = Math.sign(q.vOff) || 1, speed = Math.abs(q.vOff);
-        this._hit('h' + i, 'hammer', car, derby, H.hp * (0.7 + Math.min(0.6, speed / 14)), P, f.lx * s, 0.3, f.lz * s, H.punch + speed * 1.2, speed + 6);
+        this._hit('h' + i, 'hammer', car, derby, H.hp, P, f.lx * s, 0.3, f.lz * s, H.punch + speed * 1.2, speed + 6);
       }
     }
     const A = COURSE.arm;

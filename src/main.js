@@ -438,7 +438,7 @@ function assaultEvents() {
       for (let i = 0; i < Math.min(12, 4 + sp * 0.5); i++) particles.spark(e.x, e.y, e.z, (Math.random() - 0.5) * 8, 2 + Math.random() * 4, (Math.random() - 0.5) * 8);
       crashDebris(e.x, e.y, e.z, sp, PAINTS[opts.paint][1]);
       if (e.kind === 'press') particles.blast(e.x, e.y - 0.4, e.z, 0.8);
-    } else if (e.type === 'finished' || e.type === 'timeout') {
+    } else if (e.type === 'finished' || e.type === 'timeout' || e.type === 'scrapped') {
       const r = e.result, all = store.get('cr.apple', {}), prev = all.best ?? null, isBest = r.state === 'finished' && (prev == null || r.time < prev);
       if (isBest) { all.best = r.time; store.set('cr.apple', all); }
       hud.banner(r.state === 'finished' ? 'Finished!' : 'Out of time!', 1800);
@@ -452,7 +452,7 @@ function assaultEvents() {
 function backOnRoad() {
   if (assault && !assault.active) return;
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;
-  const costs = derby.enabled && Number.isFinite(derby.repairsMax) && derby.repairs > 0;
+  const costs = !assault && derby.enabled && Number.isFinite(derby.repairsMax) && derby.repairs > 0;      // (on the obstacle course a reset costs time, not a spanner)
   respawn();
   if (costs) { derby.repairs--; hud.setRepairs(derby.repairs, derby.repairsMax); hud.banner(`Back on the road - spanner used, ${derby.repairs} left`, 1500); }
 }
@@ -622,7 +622,7 @@ function derbyStart() {
   const field = solo ? 0 : Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
-  derby.repairsMax = derby.enabled && !solo && !arena && !window.__story?.active ? (opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
+  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (solo ? DERBY.repairs : opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
   if (derby.enabled) derby.start(track, car, field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (arena) placeCarInArena();
@@ -670,6 +670,8 @@ function derbyEvents() {
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
+    } else if (e.type === 'over' && assault) {
+      assault.scrap(); hud.banner('No spanners left!', 1700);                // the course ends with the car scrapped (the result card shows)
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
       if (isBest) { all[key] = e.score; store.set('cr.derby', all); }

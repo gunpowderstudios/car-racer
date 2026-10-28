@@ -74,8 +74,8 @@ const MEDAL = { gold: ['GOLD', '#ffd24a'], silver: ['SILVER', '#d5dbe6'], bronze
 export function showResult(res, best, isBest, onAgain, onMenu) {
   ensure(); if (!card) return;
   const fin = res.state === 'finished', m = res.medal && MEDAL[res.medal];
-  card.innerHTML = `<h2>${fin ? 'Course complete!' : 'Out of time!'}</h2>`
-    + (fin ? `<div class="as-big">${fmt(res.time)}</div>` : '<div class="as-line">The clock ran out before the finish line</div>')
+  card.innerHTML = `<h2>${fin ? 'Course complete!' : res.state === 'scrapped' ? 'Car scrapped!' : 'Out of time!'}</h2>`
+    + (fin ? `<div class="as-big">${fmt(res.time)}</div>` : `<div class="as-line">${res.state === 'scrapped' ? 'No spanners left - the car is wrecked for good' : 'The clock ran out before the finish line'}</div>`)
     + (fin && m ? `<div class="as-medal" style="color:${m[1]}">${m[0]} MEDAL</div>` : '')
     + (fin ? `<div class="as-line">Driving ${fmt(res.clean)}${res.penalty ? ` + ${res.penalty}s penalties (${res.wrecks} wreck${res.wrecks === 1 ? '' : 's'})` : ' - no penalties!'}</div>` : '')
     + (best != null ? `<div class="as-line">${isBest && fin ? 'New best time!' : 'Best'} ${fmt(best)}</div>` : '')
