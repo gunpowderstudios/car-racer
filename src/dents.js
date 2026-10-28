@@ -26,20 +26,24 @@ float dnoise(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * 
              mix(mix(dh3(i + vec3(0,0,1)), dh3(i + vec3(1,0,1)), f.x), mix(dh3(i + vec3(0,1,1)), dh3(i + vec3(1,1,1)), f.x), f.y), f.z); }
 // total push at p, the slope it gives the surface, and how scuffed the paint is there
 void dentField(vec3 p, out vec3 push, out vec3 tilt, out float scuff, out float hole) {
-  push = vec3(0.0); tilt = vec3(0.0); scuff = 0.0; hole = -1.0;
+  push = vec3(0.0); tilt = vec3(0.0); scuff = 0.0; hole = -10.0;
   for (int i = 0; i < ${n}; i++) {
     if (i >= uDentN) break;
     float r = uDent[i].w; vec3 dir = uDentDir[i].xyz; float depth = uDentDir[i].w;
     vec3 rel = p - uDent[i].xyz; float d = length(rel);
-    scuff = max(scuff, (1.0 - smoothstep(0.0, r * 1.3, d)) * clamp(depth / r * 3.5, 0.3, 1.0));
     float hh = clamp((depth - uHoleDepth.x) / uHoleDepth.y, 0.0, 1.0);          // a crumple deep enough to tear right through (Holy Moley)
-    if (hh > 0.0) { float hr = r * (0.3 + 0.35 * hh); hole = max(hole, 1.0 - d * (0.7 + 0.6 * dnoise(p / (r * 0.16))) / hr); }
+    scuff = max(scuff, (1.0 - smoothstep(0.0, r * 1.3, d)) * clamp(depth / r * 3.5, 0.3, 1.0) * (1.0 - 0.75 * hh));      // (a torn panel is burnt only at the tear, not smudged all round)
+    if (hh > 0.0) { float hr = r * (0.3 + 0.35 * hh); hole = max(hole, (1.0 - d * (0.8 + 0.4 * dnoise(p / (r * 0.16))) / hr) * 6.0); }       // steep: a crisp edge, not a fade
     if (d >= r) continue;
-    float t = 1.0 - d / r, w = t * t * (3.0 - 2.0 * t);                       // smooth bowl, deepest in the middle
+    float t = 1.0 - d / r, w = t * t * (3.0 - 2.0 * t), dw = 6.0 * t * (1.0 - t);          // smooth bowl, deepest in the middle
+    if (hh > 0.0) {                                                           // a torn panel: steep walls and a flat floor, like folded sheet metal
+      float u = clamp(t / 0.3, 0.0, 1.0);
+      w = mix(w, u * u * (3.0 - 2.0 * u), hh); dw = mix(dw, t < 0.3 ? 6.0 * u * (1.0 - u) / 0.3 : 0.0, hh);
+    }
     float crinkle = 0.55 + 0.9 * dnoise(p / (r * 0.28));                      // uneven crumple, not a perfect dish
     push += dir * depth * w * crinkle;
     vec3 radial = rel / max(d, 1e-5); radial -= dir * dot(radial, dir);
-    tilt += radial * depth * (6.0 * t * (1.0 - t) / r) * crinkle;
+    tilt += radial * depth * (dw / r) * crinkle;
   }
 }`;
 
@@ -56,12 +60,12 @@ function patchMaterial(mat, n, dents, dirs, count, holeDepth) {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying float vDentW; varying float vHole; varying vec3 vDentObj; uniform float uHoles;\nfloat hn3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }')
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        float holeV = vHole + (hn3(floor(vDentObj * 160.0)) - 0.5) * 0.5;        // a ragged edge
+        float holeV = vHole + (hn3(floor(vDentObj * 70.0)) - 0.5) * 0.9;        // a jagged, torn edge
         if (uHoles > 0.5 && holeV > 0.0) discard;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (uHoles > 0.5) {
           if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.02);                       // the dark inside of the car, seen through a hole
-          else if (holeV > -0.22) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.05, 0.04), 0.85);   // scorched, torn metal round the rim
+          else if (holeV > -0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.05, 0.04), 0.9);   // a thin band of scorched, torn metal right at the edge
         }
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.34, 0.30, 0.28), clamp(vDentW * 1.2, 0.0, 0.8));`);
   };
