@@ -406,7 +406,7 @@ function restartRace() {
 // ------------------------------------------------------- Apple Crumple (the solo obstacle course, see assault.js)
 /** Three red lights and Go! with the car held still; the clock starts when you cross the line. */
 function assaultCountdown() {
-  assault.reset(); assaultHudShow(true); hideResult(); skid.clear();
+  assaultCard = null; assault.reset(); assaultHudShow(true); hideResult(); skid.clear();
   props.reset(); derby.repairPlayer?.();
   frozen = true; hud.banner('Apple Crumple - beat the clock!', 1800);
   startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
@@ -422,6 +422,8 @@ function assaultRespawn(why) {
   race.reverseT = 0;
   if (assault.state === 'running') hud.banner(assault.next ? `Back at checkpoint ${assault.next}` : 'Back at the start', 1200);
 }
+let assaultCard = null;                                   // the last result card's contents (it comes back after a replay)
+function showAssaultCard() { if (assaultCard) showResult(...assaultCard, restartRace, showMenu, startReplay); }
 const assaultBest = () => store.get('cr.apple', {}).best ?? null;
 /** What the course did this step: hits, checkpoints, penalties, the finish. */
 function assaultEvents() {
@@ -447,7 +449,8 @@ function assaultEvents() {
       if (isBest) { all.best = r.time; store.set('cr.apple', all); }
       hud.banner(r.state === 'finished' ? 'Finished!' : 'Out of time!', 1800);
       if (r.state === 'finished') sound.cue('fireworks', 1, 0);
-      setTimeout(() => { if (assault && !assault.active) showResult(r, isBest ? r.time : prev, isBest, restartRace, showMenu); }, 1600);
+      assaultCard = [r, isBest ? r.time : prev, isBest];
+      setTimeout(() => { if (assault && !assault.active && mode === 'drive') showAssaultCard(); }, 1600);
     }
   }
   assault.events.length = 0;
@@ -1104,6 +1107,7 @@ function setMode(m) {
   if (m !== 'drive') setSoundPop(false);
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '');
   $('hud').hidden = m !== 'drive';
+  if (m === 'drive' && assault && !assault.active && assaultCard) showAssaultCard();       // back from the replay: the result card is still there
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
   menuMusic();

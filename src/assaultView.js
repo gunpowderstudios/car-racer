@@ -167,7 +167,7 @@ export class AssaultView {
     const make = (kind, s, side, big) => {
       const g = this._at(Math.max(5, s)), hw = g.userData.hw, sx = g.userData.sx, [t, sub] = SIGNS[kind];
       const x = side * sx * (hw + 2.4), size = big ? 3.2 : 2.5;
-      this._box(g, this.mat.steel, 0.2, 2.2 + size, 0.2, x, (2.2 + size) / 2, 0);
+      this._box(g, this.mat.steel, 0.2, 2.2 + size, 0.2, x, (2.2 + size) / 2, 0.16);          // (the post stands BEHIND the board, away from the driver)
       const pl = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: signTex(t, sub), side: THREE.DoubleSide }));
       pl.position.set(x, 2.2 + size / 2, 0); pl.rotation.y = Math.PI; pl.frustumCulled = false; g.add(pl);
     };

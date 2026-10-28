@@ -396,7 +396,7 @@ test('main.js runs the course: no rivals but real damage, lights, checkpoints, p
   assert.match(main, /respawn\('wreck'\)/);
   assert.match(main, /respawn\('fall'\)/);
   assert.match(main, /derby\.repairPlayer\(\)/);
-  assert.match(main, /showResult\(r, /);
+  assert.match(main, /showAssaultCard\(\)/);
   assert.match(main, /if \(!assault && idx > race\.index\)/, 'no laps are counted on the course');
   assert.match(main, /stage\.updateAssault\(assault\)/);
   assert.match(main, /e\.type === 'repaired'/);
@@ -597,4 +597,11 @@ test('hazard stripes and the checkpoint strips lie on the road, and the finish h
   const pa = v.fw.pts.geometry.attributes.position; let up = 0; for (let i = 0; i < pa.count; i++) if (pa.getY(i) > 5) up++;
   assert.ok(v.fw.pts.visible && up > 100, 'sparks in the sky: ' + up);
   a.state = 'ready'; v.update(a); assert.ok(!v.fw.pts.visible, 'and gone again when you try again');
+});
+
+test('the result card has a Watch replay button that opens the replay, and the card comes back afterwards', () => {
+  const hud = readFileSync(new URL('../src/assaultHud.js', import.meta.url), 'utf8');
+  assert.match(hud, /Watch replay/); assert.match(hud, /onReplay\(\)/);
+  assert.match(main, /showResult\(\.\.\.assaultCard, restartRace, showMenu, startReplay\)/);
+  assert.match(main, /back from the replay: the result card is still there/);
 });

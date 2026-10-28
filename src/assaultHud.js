@@ -26,7 +26,7 @@ function ensure() {
 #assault-card .as-big{font-size:64px;font-weight:900;line-height:1}
 #assault-card .as-line{font-size:22px;margin:4px 0;opacity:.9}
 #assault-card .as-medal{font-size:30px;font-weight:900;margin:6px 0}
-#assault-card .as-btns{display:flex;gap:12px;justify-content:center;margin-top:14px}
+#assault-card .as-btns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:14px}
 #assault-card button{font:inherit;font-size:24px;font-weight:900;padding:6px 20px;border-radius:10px;border:0;cursor:pointer;background:#ffb31f;color:#241a40;text-transform:uppercase}
 #assault-card button.alt{background:#4b3d7a;color:#fff}
 @keyframes as-pulse{from{transform:scale(1)}to{transform:scale(1.06)}}`;
@@ -71,7 +71,7 @@ let keyHandler = null;
 const MEDAL = { gold: ['GOLD', '#ffd24a'], silver: ['SILVER', '#d5dbe6'], bronze: ['BRONZE', '#d98b4e'] };
 
 /** The result card. `res` is Assault.result; `best` the best finishing time so far (seconds) and `isBest` whether this run set it. */
-export function showResult(res, best, isBest, onAgain, onMenu) {
+export function showResult(res, best, isBest, onAgain, onMenu, onReplay) {
   ensure(); if (!card) return;
   const fin = res.state === 'finished', m = res.medal && MEDAL[res.medal];
   card.innerHTML = `<h2>${fin ? 'Course complete!' : res.state === 'scrapped' ? 'Car scrapped!' : 'Out of time!'}</h2>`
@@ -80,8 +80,9 @@ export function showResult(res, best, isBest, onAgain, onMenu) {
     + (fin && res.hoop ? `<div class="as-line">${res.hoop.through ? 'Through the flaming hoop!' : 'Missed the hoop (+10s)'}</div>` : '')
     + (fin ? `<div class="as-line">Driving ${fmt(res.clean)}${res.penalty ? ` + ${res.penalty}s penalties (${res.wrecks} wreck${res.wrecks === 1 ? '' : 's'})` : ' - no penalties!'}</div>` : '')
     + (best != null ? `<div class="as-line">${isBest && fin ? 'New best time!' : 'Best'} ${fmt(best)}</div>` : '')
-    + '<div class="as-btns"><button class="again">Try again (Enter)</button><button class="alt menu">Menu (Esc)</button></div>';
+    + '<div class="as-btns"><button class="again">Try again (Enter)</button>' + (onReplay ? '<button class="alt replay">Watch replay</button>' : '') + '<button class="alt menu">Menu (Esc)</button></div>';
   card.querySelector('.again').onclick = () => { card.hidden = true; onAgain(); };
+  const rp = card.querySelector('.replay'); if (rp) rp.onclick = () => { card.hidden = true; onReplay(); };
   card.querySelector('.menu').onclick = () => { card.hidden = true; onMenu(); };
   card.hidden = false;
   if (keyHandler) document.removeEventListener('keydown', keyHandler);

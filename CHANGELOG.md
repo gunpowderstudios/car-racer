@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.436 — Apple Crumple replay
+- The result card at the end of Apple Crumple has a Watch replay button; when the replay ends the card is back so you can try again. (The hazards themselves don't animate in the replay yet.)
+- The yellow warning signs now face you with a clean front; their posts are on the back.
+- crusher.mp3 is now in the sounds folder, so all four hazard sounds are in.
+
 ## v17.435 — Apple Crumple: stages, flaming hoop, fireworks
 - The yellow hazard stripes and checkpoint strips now lie flat on the road (they used to hover on hills and banks).
 - Every stage (the road between checkpoints) now has its own clock: 20 s for the first, then 18, 16, 14 and 12. Reaching a checkpoint starts the next stage's clock afresh; run out of time in a stage and the run is over. A wreck now costs 5 s, a fall or reset 3 s.
