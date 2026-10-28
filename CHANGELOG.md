@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.445 — In the lift
+- New tune "In the lift" (the movie-editing music) in the Tune choices (menu, settings and in-game) and as a movie soundtrack.
+
 ## v17.444 — Rival bell and siren
 - When rival cars honk as you approach, a rival bus now rings its bell and a rival police car sounds its siren (also in the replay), instead of the normal horn.
 

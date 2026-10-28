@@ -201,7 +201,7 @@ html.invite-loading #invite-loading {
       <label><input id="hud-music" type="checkbox"> Music</label>
       <label class="vol">Effects volume <input id="hud-sfxvol" type="range" min="0" max="1" step="0.05" aria-label="Sound effects volume"></label>
       <label class="vol">Music volume <input id="hud-musicvol" type="range" min="0" max="1" step="0.05" aria-label="In-game music volume"></label>
-      <label class="trk">Tune <select id="hud-track" aria-label="Music"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="custom">Custom upload</option></select></label>
+      <label class="trk">Tune <select id="hud-track" aria-label="Music"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="editing">In the lift</option><option value="custom">Custom upload</option></select></label>
       <button id="btn-hwtest" class="btn ghost" type="button" title="Live speed, graphics tier and what is slowing this computer down">Test my hardware</button>
     </div>
   </div>
@@ -340,7 +340,7 @@ html.invite-loading #invite-loading {
     <button id="rp-view-btn" type="button" aria-label="Camera view">TV</button>
     <button id="rp-prev" type="button">Previous car</button>
     <button id="rp-next" type="button">Next car</button>
-    <label class="rp-track">Soundtrack <select id="rp-track" aria-label="Soundtrack for your movie"><option value="off">Off</option><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option></select></label>
+    <label class="rp-track">Soundtrack <select id="rp-track" aria-label="Soundtrack for your movie"><option value="off">Off</option><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="editing">In the lift</option></select></label>
     <p class="rp-music-note">Uploaded music is never included in exported movies, to help avoid copyright problems when you share them.</p>
     <label class="rp-track"><input id="rp-fx" type="checkbox" checked> Sound effects</label>
     <label class="rp-track">Quality <select id="rp-size" aria-label="Movie quality"><option value="best">Best quality (bigger file)</option><option value="small">Small file (WhatsApp)</option></select></label>
@@ -417,7 +417,7 @@ html.invite-loading #invite-loading {
         <label><input id="opt-sfx" type="checkbox" checked> Sound effects</label>
         <label><input id="opt-music" type="checkbox"> Music</label>
         <div class="music-upload-row"><label class="music-upload" for="opt-music-file"><input id="opt-music-file" type="file" accept="audio/*"> <span>Upload your own music</span><small id="custom-music-name"></small></label><button id="clear-custom-music" class="music-clear" type="button" hidden>Reset</button></div>
-        <label class="sel">Music tune <select id="opt-track" aria-label="Music tune"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="custom">Custom upload</option></select></label>
+        <label class="sel">Music tune <select id="opt-track" aria-label="Music tune"><option value="lounge">Lounge</option><option value="fairground">Fairground</option><option value="rock">Rock</option><option value="editing">In the lift</option><option value="custom">Custom upload</option></select></label>
         <label><input id="opt-shadow" type="checkbox" checked> Shadows</label>
         <label class="sel">Graphics <select id="opt-quality" aria-label="Graphics quality"><option value="auto">Auto</option><option value="low">Low (older phones)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
         <label class="sel">Chat <select id="opt-chat" aria-label="Multiplayer chat"><option value="all">Everything</option><option value="quick">Quick chat only</option><option value="off">Off</option></select></label>

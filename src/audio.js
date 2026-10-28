@@ -1,7 +1,7 @@
 // WebAudio: engine (pitch follows RPM), tyre squeal, impacts, scrape and music.
 import { getCustomMusic } from './customMusic.js';
 // Uses the sound files in /sounds; falls back to a synthesised engine if they are missing.
-export const TRACKS = ['lounge', 'fairground', 'rock', 'custom'];       // built-ins plus one user-supplied track kept in IndexedDB
+export const TRACKS = ['lounge', 'fairground', 'rock', 'editing', 'custom'];       // built-ins plus one user-supplied track kept in IndexedDB
 export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
