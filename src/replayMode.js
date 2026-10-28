@@ -296,6 +296,9 @@ export function createReplayMode(d) {
   el.next.onclick = () => nextCar();
   if (el.prev) el.prev.onclick = () => nextCar(null, -1);
   el.exit.onclick = () => exit();
+  const dock = $('rp-dock');                                          // a phone: the controls tuck down out of the way, a little tab brings them back (see index.html)
+  const setDocked = (on) => { document.body.classList.toggle('rp-docked', on); dock?.setAttribute('aria-expanded', on ? 'false' : 'true'); };
+  if (dock) dock.onclick = () => setDocked(!document.body.classList.contains('rp-docked'));
   const seekFromUi = () => { if (R.active) seek(R.player.t0 + (+el.seek.value / 1000) * Math.max(0.001, R.player.duration)); };
   el.seek.addEventListener('input', seekFromUi);
   el.seek.addEventListener('pointerdown', () => { R.dragging = true; });
@@ -329,6 +332,7 @@ export function createReplayMode(d) {
     rebuildTo(R.t);
     d.chase.mode = 0; d.chase.snap();
     el.bar.hidden = false; syncUi();
+    setDocked(!desktop);                                              // on a phone the replay starts with the controls tucked away
     return true;
   }
 
@@ -336,7 +340,7 @@ export function createReplayMode(d) {
     if (!R.active) return;
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
-    d.sound.filmTrack?.(null); R.active = false; el.bar.hidden = true; d.sound.update(hear, 0, false);
+    d.sound.filmTrack?.(null); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
     rebuildTo(Infinity);

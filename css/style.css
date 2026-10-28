@@ -736,6 +736,16 @@ html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !imp
 #replay-bar input[type=range] { flex: 1; min-width: 0; height: 44px; accent-color: var(--amber); cursor: pointer; }
 #replay-bar #rp-time { min-width: 92px; text-align: right; font-family: var(--cond); font-size: 18px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
 body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !important; }
+/* a phone: the controls dock down out of the way (a little tab brings them back up), so the replay gets the whole screen */
+#replay-bar #rp-dock { display: none; }
+@media (pointer: coarse) {
+  #replay-bar #rp-dock { display: block; position: fixed; left: 50%; bottom: env(safe-area-inset-bottom); transform: translateX(-50%); z-index: 31; width: 76px; height: 26px; min-height: 26px; padding: 0; border-radius: 12px 12px 0 0; background: rgba(42,29,74,.92); border-bottom: 0; }
+  #replay-bar #rp-dock span { display: block; width: 0; height: 0; margin: 0 auto; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 10px solid var(--amber); }
+  #replay-bar #rp-dock[aria-expanded="false"] span { border-top: 0; border-bottom: 10px solid var(--amber); }
+  #replay-bar { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }                 /* (room for the tab under the controls) */
+  body.rp-docked #replay-bar .rp-row, body.rp-docked #replay-bar #rp-note { display: none; }
+  body.rp-docked #replay-bar { background: none; padding: 0; }
+}
 @media (max-width: 560px) { #replay-bar .rp-top b { font-size: 22px; } #replay-bar button { padding: 0 10px; } #replay-bar #rp-time { min-width: 78px; font-size: 16px; } }
 
 #rp-logo { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; width: 273px; height: auto; pointer-events: none; overflow: visible; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }

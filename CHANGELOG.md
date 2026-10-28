@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.464 — More replay on a phone
+- On a phone the replay controls now tuck down out of the way, leaving the whole screen for the replay; tap the little tab at the bottom to bring them back up (and again to put them away).
+
 ## v17.463 — Simpler graphics quality
 - Starting quality is now just: computers on High, phones and tablets on Medium (you can still pick any level in Settings). The old special cases for older phones are gone for now, until mobile has been tested.
 
