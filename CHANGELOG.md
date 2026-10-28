@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.465 — Tidier phone replay
+- The Film shape and In a TV set choices are gone from the replay on a phone.
+
 ## v17.464 — More replay on a phone
 - On a phone the replay controls now tuck down out of the way, leaving the whole screen for the replay; tap the little tab at the bottom to bring them back up (and again to put them away).
 

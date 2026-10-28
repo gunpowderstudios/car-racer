@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.464';
-export const NOTE = 'Phone replay controls dock down with a tab to bring them back.';
+export const VERSION = '17.465';
+export const NOTE = 'No film shape or TV-set option in phone replays.';

@@ -291,6 +291,7 @@ export function createReplayMode(d) {
   el.save.onclick = () => { if (R.saving) stopSave(false); else makeFilm(); };
   if (el.editCancel) el.editCancel.onclick = () => stopSave(false);
   if (!desktop) el.save.hidden = true;
+  if (!desktop) for (const x of [el.shape, el.tvset]) { const l = x?.closest('label'); if (l) l.hidden = true; }      // (no film shape or TV-set choice on a phone: nothing to make a film with)
   el.speed.onclick = () => { if (R.saving) return; R.speed = (R.speed + 1) % SPEEDS.length; syncUi(); };
   el.view.onclick = () => cycleView();
   el.next.onclick = () => nextCar();
