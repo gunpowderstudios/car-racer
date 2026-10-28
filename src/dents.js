@@ -126,10 +126,7 @@ export function makeDentable(root, model, max, avoid = null) {
   };
 
   const tore = (e, x, y, z) => {                              // a dent has just torn through: tell the car so pieces can fly off (once per hole)
-    if (e && e.depth >= HOLE_DEPTH && !e.holed) { e.holed = true; if (HOLES.value) {
-      const c = new THREE.Vector3(e.x, e.y, e.z).applyMatrix4(rel), n = new THREE.Vector3(-e.dx, -e.dy, -e.dz).transformDirection(rel);   // hole centre and outward normal, in the car's own space (for the flapping panel)
-      ctl.burst = { x, y, z, size: e.radius, cx: c.x, cy: c.y, cz: c.z, nx: n.x, ny: n.y, nz: n.z, hr: Math.max(0.12, e.radius * 0.45) };
-    } }
+    if (e && e.depth >= HOLE_DEPTH && !e.holed) { e.holed = true; if (HOLES.value) ctl.burst = { x, y, z, size: e.radius }; }
   };
   const ctl = {
     mesh, material: mat, store, burst: null,

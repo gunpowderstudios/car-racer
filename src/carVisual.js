@@ -6,7 +6,6 @@ import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
 import { Track } from './track.js';
 import { makeDentable } from './dents.js';
-import { Flaps } from './flaps.js';
 import { findBonnet } from './bonnetCam.js';
 
 // Measurements of the current car model (model units). The model is a single mesh, 189 units long
@@ -205,7 +204,6 @@ export class CarVisual {
 
   /** Take this car out of the scene and free its models (the menu swapped to another vehicle). */
   dispose() {
-    if (this.flaps) this.flaps.clear();
     this.root.removeFromParent();
     this.root.traverse((o) => { if (o.isMesh) { o.geometry?.dispose(); for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m?.map?.dispose?.(); m?.dispose?.(); } } });
   }
@@ -353,14 +351,6 @@ export class CarVisual {
     this.wheelRest = this.wheelNodes.map((n) => ({ parent: n.parent, pos: n.position.clone(), quat: n.quaternion.clone(), scale: n.scale.clone() }));
     for (const n of this.wheelNodes) n.rotation.order = 'YZX';
   }
-  /** Holy Moley: hang a torn panel off the body at hole `b` (see flaps.js). `max` caps how many a car keeps. */
-  addFlap(b, paint, max = 3) {
-    if (!b || b.cx === undefined) return;
-    if (!this.flaps) this.flaps = new Flaps(this.root, max);
-    this.flaps.add(b, paint);
-  }
-  /** Move the hanging panels (cheap when there are none). Call each frame the car is drawn. */
-  updateFlaps(now) { if (this.flaps && this.flaps.count) this.flaps.update(now); }
   /** Turn the wheels to match the physics car: front wheels steer, all four roll. Cheap; call it every frame for cars you can see up close. */
   setWheels(car) {
     if (!this.wheelNodes || this._wheelsOff || !car || !car.wheels) return;
@@ -406,7 +396,7 @@ export class CarVisual {
     if (b) { this.dents.burst = null; if (CarVisual.onHole) CarVisual.onHole(this, b); }        // (a hole tore through: main throws the pieces)
     return r;
   }
-  clearDents() { if (this.dents) this.dents.clear(); this.restoreWheels(); if (this.flaps) this.flaps.clear(); }   // (every respawn clears the dents, so it puts the wheels back too)
+  clearDents() { if (this.dents) this.dents.clear(); this.restoreWheels(); }   // (every respawn clears the dents, so it puts the wheels back too)
 
   /**
    * Level of detail for rivals and remote players. Far away, the 190k-620k triangle model is swapped for

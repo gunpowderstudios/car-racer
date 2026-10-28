@@ -2,9 +2,6 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
-## v17.441 — Flapping panels
-- Holy Moley: when a hole tears through, a bent torn panel stays hinged to the body and flaps about — swinging with bumps and turns, blown back by the wind at speed, hanging down when the car stops. Up to 4 on your car, 2 on rivals; cleared on respawn.
-
 ## v17.440 — Sharper holes
 - Holy Moley holes now look like torn sheet metal: a crisp jagged edge with only a thin burnt rim (no more graduated dark fade), steep walls and a flat floor, and no paint smudging round the tear.
 
