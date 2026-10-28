@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.461 — Site publishing fixed
+- Updates since v17.456 were not reaching the live site (a stray file stopped the site build); fixed, so everything from v17.457 on goes out together.
+
 ## v17.460 — Fair and square multiplayer
 - In multiplayer every car now pulls and tops out at the same speed, whatever it is (weight, handling and crash damage still differ).
 - Other players now show up as the car they actually chose, instead of everyone looking like the first car.
