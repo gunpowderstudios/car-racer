@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.443 — Tyres not black
+- Holy Moley: the black inside a hole no longer spreads to the tyres (they now have their own material instead of sharing the body's).
+
 ## v17.442 — Smaller holes
 - Holy Moley holes are about 40% smaller.
 

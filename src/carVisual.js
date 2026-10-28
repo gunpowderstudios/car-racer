@@ -388,7 +388,22 @@ export class CarVisual {
   }
 
   // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.
-  _initDents() { this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null; }
+  _initDents() {
+    this.dents = CarVisual.dentMax > 0 && this.model && this.mats && this.mats.length ? makeDentable(this.root, this.model, CarVisual.dentMax, this.material) : null;
+    if (!this.dents) return;
+    // Only the body is dented and holed. A model whose wheels (or anything else) share the body's material would get the hole shading too (black tyres), so those meshes get their own copy.
+    const body = this.dents.mesh, mat = this.dents.material, own = new Map();
+    this.model.traverse((o) => {
+      if (!o.isMesh || o === body || o.material !== mat) return;
+      let m = own.get(mat);
+      if (!m) {
+        m = mat.clone(); m.userData = {}; m.userData.base = (mat.userData.base || mat.color).clone();
+        const kept = pristine.get(mat); if (kept) pristine.set(m, { map: kept.map, color: kept.color.clone() });
+        own.set(mat, m); this.mats.push(m);
+      }
+      o.material = m;
+    });
+  }
   /** Dent the body where a crash of `hp` hit points landed at (x, y, z) in the car's own space (x right, y up, z forward, metres). */
   addDent(x, y, z, hp) {
     if (!this.dents) return false;
