@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.451 — AI cars lean with banked roads
+- Rival cars were being held level with the flat ground by their anti-roll stabiliser, so on banked roads they stood upright instead of leaning with the road (and floated off it). The stabiliser now measures roll against the road under the wheels, so rivals (and the player's drift/caravan guard) bank with the track.
+
 ## v17.450 — Merged holes, banked Bluebell
 - Holy Moley: when the same spot is hit again and again, its small holes run together into one bigger hole.
 - Bluebell Woods: every corner now banks into the turn, up to the maximum 20 degrees on the tighter ones (not at the start or beside a jump).
