@@ -34,19 +34,19 @@ export const TIER_NAMES = Object.keys(TIERS);
 const OLD_GPU = /adreno[^0-9]*[2-5]\d\d\b|mali-?(4\d\d|t\d+)|powervr\s*(sgx|ge8)|\bsgx\b/i;
 
 /**
- * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Desktops and tablets start
- * on high. Phones start on medium so they do less work before the adaptive controller has had time
- * to react. Old/low-memory/data-saving touch devices still start on low.
+ * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Otherwise it is simple: a computer starts on high,
+ * any touch device (phone or tablet) on medium. (The adaptive resolution controller still backs off if the frame rate sags.)
+ * The other hints (memory, cores, GPU, data saver) are still read by probeDevice but not used yet: they are for tuning mobile later.
  */
-export function detectTier({ forced, touch = false, phone = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
+export function detectTier({ forced, touch = false } = {}) {
   if (forced && TIERS[forced]) return forced;
-  if (!touch) return 'high';
-  if (saveData) return 'low';
-  if (memory && memory <= 3) return 'low';
-  if (gpu && OLD_GPU.test(gpu)) return 'low';
-  if (cores && cores <= 4 && !/apple/i.test(gpu)) return 'low';     // (Safari reports few cores even on a fast iPhone, so an Apple GPU is not judged by that)
-  if (phone) return 'medium';                                         // modern phones: smoother start, still visually rich
-  return 'high';                                                      // tablets keep the larger-screen detail
+  return touch ? 'medium' : 'high';
+}
+
+/** An older, low-memory or data-saving touch device (used to keep the caravan off phones that cannot cope with it; no longer picks the quality tier). */
+export function isWeakDevice({ touch = false, memory = 0, cores = 0, saveData = false, gpu = '' } = {}) {
+  if (!touch) return false;
+  return !!(saveData || (memory && memory <= 3) || (gpu && OLD_GPU.test(gpu)) || (cores && cores <= 4 && !/apple/i.test(gpu)));
 }
 
 /** Read the device hints from the browser. Browser-only; kept out of detectTier so that stays testable. */

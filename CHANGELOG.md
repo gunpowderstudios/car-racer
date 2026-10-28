@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.463 — Simpler graphics quality
+- Starting quality is now just: computers on High, phones and tablets on Medium (you can still pick any level in Settings). The old special cases for older phones are gone for now, until mobile has been tested.
+
 ## v17.462 — Lights and podium on every race
 - Every race against rivals now starts with the Red, Red, Green! lights (also when you restart). Demolition, arenas and Apple Crumple are not races, so they start as before.
 - Race Day races now finish with the podium too; the stage results come up once you close it.
