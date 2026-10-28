@@ -17,12 +17,12 @@ function build() {
   if (overlay) return overlay;
   overlay = document.createElement('div');
   overlay.id = 'podium'; overlay.hidden = true;
-  overlay.innerHTML = '<div class="podium-inner"><h2 id="podium-title"></h2><div class="podium-stage"><canvas id="podium-canvas"></canvas><div id="podium-names"></div></div><p id="podium-rest" class="fine"></p><button id="podium-close" class="btn" type="button">Back to the game</button></div>';
+  overlay.innerHTML = '<div class="podium-inner"><h2 id="podium-title"></h2><div class="podium-stage"><canvas id="podium-canvas"></canvas><div id="podium-names"></div></div><p id="podium-rest" class="fine"></p><div class="podium-btns"><button id="podium-replay" class="btn" type="button">Watch replay</button><button id="podium-close" class="btn ghost" type="button">Back to the game</button></div></div>';
   const st = document.createElement('style');
   st.textContent = `
 #podium{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,rgba(60,32,100,.94),rgba(16,9,30,.97));color:#f6d9b0}
 #podium[hidden]{display:none}
-.podium-inner{width:min(900px,96vw);text-align:center}
+.podium-inner{width:min(900px,96vw);text-align:center}.podium-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 #podium-title{margin:0 0 4px;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(40px,8vw,88px);line-height:.95;text-transform:uppercase;color:#ffb31f;text-shadow:3px 3px 0 #e8392c}
 .podium-stage{position:relative;width:100%;aspect-ratio:2/1}
 #podium-canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -33,6 +33,7 @@ function build() {
   document.head.appendChild(st);
   document.body.appendChild(overlay);
   overlay.querySelector('#podium-close').onclick = hide;
+  overlay.querySelector('#podium-replay').onclick = () => { hide(); window.dispatchEvent(new CustomEvent('carracer-podium-replay')); };
   return overlay;
 }
 function hide() { if (stop) { stop(); stop = null; } if (overlay) overlay.hidden = true; }
@@ -65,8 +66,11 @@ function loadCar(id, hue = null) {
   }).catch(() => null);
 }
 
+let lastPodium = null;
+export function reshowPodium() { if (lastPodium) showPodium(lastPodium.list, lastPodium.selfId, lastPodium.derby); }
 export function showPodium(list, selfId, derby = false) {
   if (!Array.isArray(list) || !list.length) return;
+  lastPodium = { list, selfId, derby };
   hide();
   const ov = build();
   const top = list.slice(0, 3);

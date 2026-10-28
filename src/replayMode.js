@@ -344,7 +344,7 @@ export function createReplayMode(d) {
     d.camera.fov = R.savedFov; d.camera.near = 0.3; d.camera.updateProjectionMatrix();
     d.setMode('drive');
     d.resyncLive();
-    if (!d.derby.over) d.setPaused(true);               // back in the game, held still until you are ready
+    if (!d.derby.over && !d.inNet()) d.setPaused(true);               // back in the game, held still until you are ready
   }
 
   /** Called every frame while the replay is on. Returns the position the sun and shadows should follow. */

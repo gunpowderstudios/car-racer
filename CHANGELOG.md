@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.452 — Replay from the podium
+- Multiplayer races are now recorded (you and the other players' cars), and the podium has a "Watch replay" button. When the replay ends you are back on the podium.
+
 ## v17.451 — AI cars lean with banked roads
 - Rival cars were being held level with the flat ground by their anti-roll stabiliser, so on banked roads they stood upright instead of leaning with the road (and floated off it). The stabiliser now measures roll against the road under the wheels, so rivals (and the player's drift/caravan guard) bank with the track.
 

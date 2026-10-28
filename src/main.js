@@ -27,6 +27,7 @@ import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound, musicGain } from './audio.js';
+import { reshowPodium } from './podium.js';
 import { saveCustomMusic, getCustomMusic, clearCustomMusic } from './customMusic.js';
 import { Hud, fmtTime } from './hud.js';
 import { Editor } from './editor.js';
@@ -916,8 +917,25 @@ function rpFill(e, id, hue, isPlayer, c, health, wrecked) {
   const v = c.tow;
   if (v) { const a = e._van; a[0] = v.axle.x; a[1] = v.axle.y; a[2] = v.axle.z; a[3] = v.yaw; a[4] = v.pitch; a[5] = v.roll; a[6] = v.spin; a[7] = v.sway; a[8] = v.health / v.spec.hp; e.van = a; } else e.van = null;
 }
+function rpFillRemote(e, id, p, dt) {                                // another player's car in a multiplayer race, as it is drawn on our screen
+  const r = p.view.root, s = p.cur;
+  e.id = id; e.hue = p.hue || 0; e.isPlayer = false; e.x = r.position.x; e.y = r.position.y; e.z = r.position.z;
+  e.qx = r.quaternion.x; e.qy = r.quaternion.y; e.qz = r.quaternion.z; e.qw = r.quaternion.w;
+  e.steer = +s.steer || 0; p._rpSpin = ((p._rpSpin || 0) + Math.hypot(+s.vx || 0, +s.vz || 0) * dt / 0.33) % 6283;      // (the wheels turn at the speed it was going)
+  for (let i = 0; i < 4; i++) e.spin[i] = p._rpSpin;
+  e.health = Math.max(0, Math.min(1, s.health ?? 1)); e.wrecked = s.alive === false || (s.health ?? 1) <= 0; e.van = null; e.rpm = 0; e.thr = 0; e.skid = 0; e.boost = 0;
+}
 function recordReplay() {
-  if (net || paused || frozen || simTime - replayRec.lastT < 0.049) return;
+  if (paused || frozen || simTime - replayRec.lastT < 0.049) return;
+  if (net) {                                                       // multiplayer: you and everyone you can see (so the podium can offer a replay)
+    const dt = Math.max(0.02, simTime - replayRec.lastT);
+    let k = 0;
+    rpFill(rpEnt(k++), 'p', 0, true, car, 1, !!life.dead);
+    for (const [id, p] of remotePlayers) if (p.view && p.cur && p.view.loaded) rpFillRemote(rpEnt(k++), 'm' + id, p, dt);
+    rpEnts.length = k;
+    replayRec.record(simTime, rpEnts);
+    return;
+  }
   let n = 0;
   rpFill(rpEnt(n++), 'p', 0, true, car, derby.damageEnabled ? derby.player.health.worst : 1, !!(derby.enabled && derby.player.wrecked));
   if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; rpFill(rpEnt(n++), f.id, f.hue, false, f.car, f.health.worst, !!f.wrecked); }
@@ -936,7 +954,7 @@ function recHit(x, y, z, speed, kind) {
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
   $, canvas, rec: replayRec, sound, camera, chase, get visual() { return visual; }, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
-  getTrack: () => track, setMode, setPaused, toast, debrisGround,
+  getTrack: () => track, inNet: () => !!net, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
     let v = views.get(ent.id);
@@ -978,10 +996,15 @@ const replay = () => replayMode || (replayMode = createReplayMode({
   },
 }));
 function startReplay() {
-  if (mode !== 'drive' || net) return;
+  if (mode !== 'drive') return false;
+  if (net && !podiumReplay) return false;                                   // (in a multiplayer room the replay is only offered from the podium)
   hornVoice?.stop?.(); hornVoice = null;
-  if (!replay().enter()) toast('Nothing to replay yet - drive for a few seconds first.');
+  for (const p of remotePlayers.values()) if (p.view) p.view.root.visible = false;     // (the replay draws the other cars itself)
+  if (!replay().enter()) { toast('Nothing to replay yet - drive for a few seconds first.'); return false; }
+  return true;
 }
+let podiumReplay = false;                                                  // the replay was asked for on the multiplayer podium: show the podium again afterwards
+window.addEventListener('carracer-podium-replay', () => { podiumReplay = true; if (!startReplay()) { podiumReplay = false; reshowPodium(); } });
 
 // -------------------------------------------------------------------- frame
 function frame(now) {
@@ -1119,6 +1142,7 @@ function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
   setPaused(false);
   if (m !== 'drive') setSoundPop(false);
+  if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '');
   $('hud').hidden = m !== 'drive';
   if (m === 'drive' && assault && !assault.active && assaultCard) showAssaultCard();       // back from the replay: the result card is still there

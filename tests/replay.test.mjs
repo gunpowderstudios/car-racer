@@ -108,9 +108,9 @@ test('replay is wired into the game: a button, the T key, the game-over card, th
   assert.match(main, /recordReplay\(\);/);
   assert.match(main, /type: 'dent'/); assert.match(main, /type: 'wreck'/); assert.match(main, /type: 'clear'/);
   assert.match(css, /#replay-bar/); assert.match(css, /body\.mode-replay #mp-labels/);
-  // single player only: multiplayer has no replay
-  assert.match(main, /function startReplay\(\) \{\s*if \(mode !== 'drive' \|\| net\) return;/);
-  assert.match(main, /if \(net \|\| paused \|\| frozen/);
+  // multiplayer: the replay is only offered from the podium
+  assert.match(main, /function startReplay\(\) \{\s*if \(mode !== 'drive'\) return false;\s*if \(net && !podiumReplay\) return false;/);
+  assert.match(main, /if \(paused \|\| frozen \|\| simTime - replayRec.lastT/);
 });
 
 test('the engine sound data is recorded and blended: rpm, throttle, tyre skid and boost', () => {
