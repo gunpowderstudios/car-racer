@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.473 — Version joins edition label
+- The version number now sits in the top-right badge after Desktop Edition, Tablet Edition or Mobile Edition instead of appearing in the main menu.
+
 ## v17.472 — Tablet controls fixed
 - The camera, mirror, back-on-road and explode buttons now show on larger tablets too, including wide iPads.
 - The tablet damage chart is about 30% larger. Gameplay is unchanged.
