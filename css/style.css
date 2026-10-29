@@ -744,45 +744,15 @@ html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !imp
 #replay-bar input[type=range] { flex: 1; min-width: 0; height: 44px; accent-color: var(--amber); cursor: pointer; }
 #replay-bar #rp-time { min-width: 92px; text-align: right; font-family: var(--cond); font-size: 18px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
 body.mode-replay #mp-labels, body.mode-replay .mp-label { display: none !important; }
-/* Replay controls stay visible on touch devices; compact and wrap instead of docking away. */
-#replay-bar #rp-dock { display: none !important; }
+/* a phone/tablet: the controls dock down out of the way; tap the tab to bring them back */
+#replay-bar #rp-dock { display: none; }
 @media (pointer: coarse) {
-  #replay-bar {
-    gap: 5px;
-    padding: 7px 10px calc(9px + env(safe-area-inset-bottom));
-    background: linear-gradient(to top, rgba(27,18,51,.96), rgba(27,18,51,.72));
-  }
-  #replay-bar .rp-row {
-    width: min(100%, 980px);
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  #replay-bar .rp-row:first-of-type {
-    flex-wrap: nowrap;
-  }
-  #replay-bar .rp-btns {
-    gap: 6px;
-  }
-  #replay-bar button {
-    min-width: 44px;
-    min-height: 40px;
-    padding: 0 10px;
-    font-size: 15px;
-  }
-  #replay-bar .rp-track {
-    font-size: 14px;
-    gap: 4px;
-  }
-  #replay-bar .rp-track select {
-    font-size: 14px;
-    padding: 2px 4px;
-    max-width: 190px;
-  }
-  body.rp-docked #replay-bar .rp-row,
-  body.rp-docked #replay-bar #rp-note {
-    display: flex;
-  }
+  #replay-bar #rp-dock { display: block; position: fixed; left: 50%; bottom: env(safe-area-inset-bottom); transform: translateX(-50%); z-index: 31; width: 76px; height: 26px; min-height: 26px; padding: 0; border-radius: 12px 12px 0 0; background: rgba(42,29,74,.92); border-bottom: 0; }
+  #replay-bar #rp-dock span { display: block; width: 0; height: 0; margin: 0 auto; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 10px solid var(--amber); }
+  #replay-bar #rp-dock[aria-expanded="false"] span { border-top: 0; border-bottom: 10px solid var(--amber); }
+  #replay-bar { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+  body.rp-docked #replay-bar .rp-row, body.rp-docked #replay-bar #rp-note { display: none; }
+  body.rp-docked #replay-bar { background: none; padding: 0; }
 }
 @media (max-width: 560px) { #replay-bar .rp-top b { font-size: 22px; } #replay-bar button { padding: 0 10px; } #replay-bar #rp-time { min-width: 78px; font-size: 16px; } }
 
@@ -1188,52 +1158,3 @@ body:not(.mode-menu) #edition-badge { display: none; }
 }
 
 
-/* Always-visible replay exit on phones/tablets, even when the bottom replay controls are docked away. */
-#rp-exit-touch { display: none; }
-@media (pointer: coarse) {
-  #rp-exit-touch {
-    display: block;
-    position: fixed;
-    top: calc(12px + env(safe-area-inset-top));
-    right: calc(12px + env(safe-area-inset-right));
-    z-index: 34;
-    min-height: 46px;
-    padding: 0 16px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--red);
-    color: #fff;
-    font-family: var(--cond);
-    font-weight: 700;
-    font-size: 17px;
-    letter-spacing: .03em;
-    box-shadow: 0 3px 10px rgba(0,0,0,.35);
-    pointer-events: auto;
-  }
-  #rp-exit-touch:active { transform: translateY(1px); }
-}
-
-
-/* Extra-compact replay controls for narrow phones. */
-@media (pointer: coarse) and (max-width: 560px) {
-  #replay-bar {
-    padding-left: 6px;
-    padding-right: 6px;
-    gap: 4px;
-  }
-  #replay-bar .rp-row {
-    gap: 4px;
-  }
-  #replay-bar button {
-    min-height: 38px;
-    padding: 0 8px;
-    font-size: 14px;
-  }
-  #replay-bar .rp-track {
-    font-size: 13px;
-  }
-  #replay-bar .rp-track select {
-    font-size: 13px;
-    max-width: 150px;
-  }
-}

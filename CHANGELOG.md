@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.478 — Replay dock restored
+- Mobile and tablet replay controls once again slide/tuck down and return when the tab is tapped.
+- Removed the separate top-right Back to game button; Back to game remains in the replay controls.
+
 ## v17.477 — Replay controls stay visible
 - Tablet and mobile replay controls no longer tuck away behind the dock.
 - Available replay controls now stay visible and use a tighter wrapping layout so they fit smaller screens.
