@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.495 — Every cog-menu entry reachable on a phone
+- On a phone the cog menu was taller than the screen, so Replay, Share race and Menu could not be reached. It now scrolls (and is a little more compact on short screens), so every entry can be tapped.
+
 ## v17.494 — Share gives the track's own link
 - The share button now copies the short link for the track you are on (bangersandsmash.co.uk/#the-twister, #the-getaway and so on). A track you have edited, or the random one, still shares as the full track link, with your car.
 
