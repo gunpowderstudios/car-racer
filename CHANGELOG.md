@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.480 — Menu TV, open Apple Crumple
+- The TV on the main menu now sits lower, clear of the edition badge, and reads "LIVE TV Playback!" underneath instead of the cassette and "Record your greatest hit!".
+- Apple Crumple no longer asks for a password: anyone can pick it from the track list.
+
 ## v17.479 — Housekeeping
 - Fixed the asset version number that was left behind at v17.467, so the latest files and car models are always fetched fresh; tidied the v17.468 and v17.469 notes in this log.
 

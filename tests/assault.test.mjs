@@ -521,11 +521,9 @@ test('the result card can be clicked (the HUD lets clicks through, the card take
   assert.match(readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), /#hud \{[^}]*pointer-events: none/, 'which is why the card needs its own pointer-events');
 });
 
-test('Apple Crumple asks for a password (custard) until it is ready, and remembers a right answer', () => {
-  assert.match(main, /APPLE_PASSWORD = 'custard'/);
-  assert.match(main, /if \(newDef\?\.assault && !appleUnlocked\(\)\) return;/, 'starting it any way round asks');
-  assert.match(main, /k === 'apple' \? \[\['Choose', \(\) => \{ if \(appleUnlocked\(\)\) chooseTrack/, 'and so does the menu button');
-  assert.match(main, /store\.set\('cr\.appleOK', true\)/);
+test('Apple Crumple is open to everyone: no password', () => {
+  assert.doesNotMatch(main, /appleUnlocked|APPLE_PASSWORD|window\.prompt\('Apple/);
+  assert.match(main, /k === 'apple' \? \[\['Choose', \(\) => chooseTrack\(d, info\)\]\]/, 'the menu button just chooses it');
 });
 
 // ---------------------------------------------------------------------------------------------- stages, the hoop, fireworks, sounds
