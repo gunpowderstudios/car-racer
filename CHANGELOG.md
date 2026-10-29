@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.476 — Replay exit always visible on touch
+- Phones and tablets now keep a Back to game button visible in the top-right of the replay screen, even when the bottom replay controls are tucked away.
+
 ## v17.475 — Larger edition badge
 - The top-right Desktop/Tablet/Mobile Edition and version badge is now 50% larger on all devices.
 

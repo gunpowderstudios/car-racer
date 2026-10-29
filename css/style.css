@@ -1156,3 +1156,29 @@ body:not(.mode-menu) #edition-badge { display: none; }
     bottom: 162px;
   }
 }
+
+
+/* Always-visible replay exit on phones/tablets, even when the bottom replay controls are docked away. */
+#rp-exit-touch { display: none; }
+@media (pointer: coarse) {
+  #rp-exit-touch {
+    display: block;
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    z-index: 34;
+    min-height: 46px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--cond);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: .03em;
+    box-shadow: 0 3px 10px rgba(0,0,0,.35);
+    pointer-events: auto;
+  }
+  #rp-exit-touch:active { transform: translateY(1px); }
+}

@@ -15,7 +15,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), tvset: $('rp-tvset'), size: $('rp-size'), shape: $('rp-shape'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), tvset: $('rp-tvset'), size: $('rp-size'), shape: $('rp-shape'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), exitTouch: $('rp-exit-touch'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: VIEWS.indexOf('Mix'), focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -297,6 +297,7 @@ export function createReplayMode(d) {
   el.next.onclick = () => nextCar();
   if (el.prev) el.prev.onclick = () => nextCar(null, -1);
   el.exit.onclick = () => exit();
+  if (el.exitTouch) el.exitTouch.onclick = () => exit();
   const dock = $('rp-dock');                                          // a phone: the controls tuck down out of the way, a little tab brings them back (see index.html)
   const setDocked = (on) => { document.body.classList.toggle('rp-docked', on); dock?.setAttribute('aria-expanded', on ? 'false' : 'true'); };
   if (dock) dock.onclick = () => setDocked(!document.body.classList.contains('rp-docked'));
