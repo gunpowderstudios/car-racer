@@ -1039,9 +1039,9 @@ body:not(.mode-menu) #gp-credit { display: none; }
 .music-clear[hidden] { display: none; }
 
 
-/* Mobile camera-cycle button: compact white icon tucked immediately above Boost. */
+/* Mobile/tablet camera-cycle button: compact white icon tucked immediately above Boost. */
 #t-camera { display: none; }
-@media (pointer: coarse) and (max-width: 760px) {
+@media (pointer: coarse) and (max-width: 1024px) {
   #touch .t-right { position: relative; }
   #t-camera {
     display: grid;
@@ -1065,9 +1065,9 @@ body:not(.mode-menu) #gp-credit { display: none; }
 }
 
 
-/* Phone quick actions above the speedometer: mirror, back on road, explode. */
+/* Mobile/tablet quick actions above the speedometer: mirror, back on road, explode. */
 #mobile-quick-actions { display: none; }
-@media (pointer: coarse) and (max-width: 760px) {
+@media (pointer: coarse) and (max-width: 1024px) {
   body.mode-drive #mobile-quick-actions {
     position: fixed;
     left: 12px;

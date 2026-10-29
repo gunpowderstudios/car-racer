@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.471 — Tablet screen controls
+- Tablets now get the same on-screen camera and quick-action buttons as mobile: mirror, back on road and explode. This is UI-only; gameplay behaviour is unchanged.
+
 ## v17.470 — Device edition label restored
 - Restored the small top-right Desktop Edition, Tablet Edition or Mobile Edition label on the main menu. No gameplay or audio code changed.
 
