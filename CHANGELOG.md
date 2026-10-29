@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.487 — The Getaway: far safehouse, police siren
+- When the robber picks up a bag, the safehouse now moves to the far side of the map from where he is.
+- If you play the police, your siren now sounds as soon as the robber grabs a bag.
+
 ## v17.486 — The Getaway: tidier HUD, police stay on the road
 - The red satnav line is thinner and fainter, on the road and on the map.
 - The bag you are carrying is now a small icon (with the ram count) above the Bangers and Smash! TV logo, instead of a big sack over your car.

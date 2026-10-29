@@ -729,7 +729,7 @@ function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role); getawayCompass(car.az.x, car.az.z);
-  sound.sirenLoop(G.role === 'robber' && f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
+  sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z)) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;
     if (!g.over) { if (G.role === 'robber') { const b = g.robberBag ? g.safehouse : g.loose()[0]; if (b) to = { x: b.x, z: b.z }; } else if (g.alarm && f) to = { x: f.car.pos.x, z: f.car.pos.z }; }

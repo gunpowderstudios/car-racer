@@ -217,6 +217,7 @@ export class GetawayGame {
     if (!this.robberBag) {                              // the robber takes the bag that is out
       for (const b of this.bags) if (b.state === 'home' && Math.hypot(robber.x - b.x, robber.z - b.z) < T.bagR) {
         this.robberBag = b; b.state = 'robber'; this.alarm = true; this.ramCount = 0;
+        { const sp = safehouseSpots(this.L).map((p) => ({ p, d: Math.hypot(p.x - robber.x, p.z - robber.z) })).sort((u, w) => w.d - u.d), top = sp.slice(0, Math.min(3, sp.length)); this.safehouse = top[Math.floor(this.rng() * top.length)].p; }       // the safehouse is always over the far side of the map
         this.events.push({ type: 'pickup', who: 'robber', bag: b.id, x: b.x, z: b.z });
         break;
       }
