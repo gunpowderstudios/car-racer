@@ -415,6 +415,7 @@ function raceStartLights() {
 /** Back to the start line with a fresh lap and a full boost tank. */
 function restartRace() {
   setPaused(false);
+  if (getaway && getaway.game.over) return;            // the result card is up: only its buttons carry on
   if (getaway) { getawayRound(getaway.role); return; }
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
   skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();

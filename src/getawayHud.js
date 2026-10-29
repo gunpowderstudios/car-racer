@@ -19,10 +19,10 @@ function ensure() {
 #getaway-hud small{display:block;font-size:11px;letter-spacing:.1em;opacity:.7;margin-top:-2px}
 #getaway-hud .gw-pips{font-size:clamp(20px,3vw,30px);letter-spacing:.12em;line-height:1}
 #getaway-hud .gw-hint{margin-top:5px;font-size:clamp(14px,2vw,20px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#16102a99;display:inline-block;padding:1px 14px;border-radius:8px}
-#getaway-siren{position:absolute;left:50%;top:24%;transform:translateX(-50%);z-index:31;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(24px,4.4vw,48px);text-transform:uppercase;letter-spacing:.06em;padding:2px 24px;border-radius:12px;color:#fff;text-shadow:0 2px 6px #000c;animation:gw-siren .5s infinite alternate}
+#getaway-siren{position:absolute;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 124px);transform:translateX(-50%);z-index:31;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(13px,1.6vw,19px);text-transform:uppercase;letter-spacing:.06em;padding:1px 14px;border-radius:8px;color:#fff;text-shadow:0 2px 6px #000c;animation:gw-siren .5s infinite alternate}
 #getaway-siren[hidden]{display:none}
 @keyframes gw-siren{from{background:#d4231acc;box-shadow:0 0 28px #d4231a}to{background:#1f5fd6cc;box-shadow:0 0 28px #1f5fd6}}
-#getaway-pop{position:absolute;left:50%;top:34%;transform:translateX(-50%);z-index:31;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(28px,5vw,54px);color:#ffd23a;text-shadow:0 3px 8px #000c;pointer-events:none;text-transform:uppercase;text-align:center}
+#getaway-pop{position:absolute;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 156px);transform:translateX(-50%);z-index:31;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(16px,2.3vw,26px);color:#ffd23a;text-shadow:0 3px 8px #000c;pointer-events:none;text-transform:uppercase;text-align:center}
 #getaway-pop[hidden]{display:none}
 #getaway-card{pointer-events:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;min-width:min(86vw,400px);padding:22px 26px;background:#14102af2;border:4px solid #ffb31f;border-radius:16px;text-align:center;color:#fff;font-family:"Big Shoulders Display",Impact,sans-serif}
 #getaway-card[hidden]{display:none}
@@ -107,11 +107,12 @@ export function showGetawayResult(info, onAgain, onMenu, onReplay) {
   card.querySelector('.again').onclick = () => { card.hidden = true; onAgain(); };
   const rp = card.querySelector('.replay'); if (rp) rp.onclick = () => { card.hidden = true; onReplay(); };
   card.querySelector('.menu').onclick = () => { card.hidden = true; onMenu(); };
-  card.hidden = false;
+  card.hidden = false; const shownAt = performance.now();
   if (keyHandler) document.removeEventListener('keydown', keyHandler);
   keyHandler = (e) => {
     if (card.hidden) { document.removeEventListener('keydown', keyHandler); keyHandler = null; return; }
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.hidden = true; onAgain(); }
+    if (performance.now() < shownAt + 1200) return;                 // (a key still held down as the game ended must not dismiss it)
+    if (e.key === 'Enter') { e.preventDefault(); card.hidden = true; onAgain(); }
     else if (e.key === 'Escape') { e.preventDefault(); card.hidden = true; onMenu(); }
   };
   document.addEventListener('keydown', keyHandler);
@@ -147,7 +148,7 @@ export function drawGetawayMap(game, role, me, foe, t = 0, line = null, cops = n
     if (b.state === 'home' && role === 'robber') { g.fillStyle = '#ffd23a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.fillRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); g.strokeRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); }       // the robber sees where the bag is
   }
   if (line && line.length > 1) {                                   // the satnav line
-    g.strokeStyle = 'rgba(255,59,48,0.7)'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.beginPath(); line.forEach((p, i) => { if (i) g.lineTo(X(p.x), Z(p.z)); else g.moveTo(X(p.x), Z(p.z)); }); g.stroke();
+    g.strokeStyle = 'rgba(255,59,48,0.9)'; g.lineWidth = 2; g.lineCap = 'round'; g.setLineDash([0.1, 5]); g.lineJoin = 'round'; g.beginPath(); line.forEach((p, i) => { if (i) g.lineTo(X(p.x), Z(p.z)); else g.moveTo(X(p.x), Z(p.z)); }); g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
   }
   if (role === 'robber') {                                         // the safehouse
     const s = game.safehouse, x = X(s.x), y = Z(s.z);

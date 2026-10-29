@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.500 — The Getaway: steadier result card, tidier screen
+- The win/lose card now stays up until you press one of its buttons (or Enter / Esc). A key still held down as the game ends (Space for boost, say) no longer sends you into the next round, and Restart does nothing while the card is up.
+- "Robbery in progress!" / "Alarm!" and the pop-up messages are smaller and sit below the scoreboard instead of over the road.
+- The satnav line is now a plain red dotted line, on the road and on the map, with no arrows.
+
 ## v17.499 — The Getaway: a sharper robber
 - "Lose the cops!" is gone: the garage door now does that job, so the police can stop a drop only by ramming the robber or by getting into the garage first.
 - The computer robber is harder to follow: it drives about 30% faster while carrying a bag, boosts the whole way to the garage, and picks bags that are further from the police.
