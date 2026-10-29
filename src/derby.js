@@ -281,10 +281,26 @@ export class Derby {
 
   /** The Getaway: the one computer car, on the side `getawaySetup.role` ('robber' or 'police'), standing at its end of the town. */
   _spawnGetaway() {
-    const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = this._kind(), car = new Vehicle(kind?.spec);
+    const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = S.kind, car = new Vehicle(kind?.spec);
     car.reset(new V3(p.x, this.track.py[0] + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
     car.opts.assist = 0.7;
-    return this.add(car, S.makeDriver(this.rng), 1, kind);
+    const me = this.add(car, S.makeDriver(this.rng), 1, kind);
+    // ordinary traffic wandering the streets: a few cars of a few kinds (each is a car to simulate and a model to draw, so not many)
+    const spots = [];
+    for (let k = 0; k < (S.traffic || 0); k++) {
+      let n = null;
+      for (let t = 0; t < 30 && !n; t++) {
+        const c = S.L.nodes[Math.floor(this.rng() * S.L.nodes.length)];
+        if ([S.L.robberStart, S.L.policeStart, ...spots].every((q) => Math.hypot(q.x - c.x, q.z - c.z) > 45)) n = c;
+      }
+      if (!n) break;
+      spots.push(n);
+      const tk = this._kind(), tc = new Vehicle(tk?.spec), horiz = this.rng() < 0.5, dir = this.rng() < 0.5 ? 1 : -1;
+      tc.reset(new V3(n.x, this.track.py[0] + tc.restHeight + 0.08, n.z), new V3(horiz ? dir : 0, 0, horiz ? 0 : dir), new V3(0, 1, 0), 0);
+      tc.opts.assist = 0.7;
+      this.add(tc, S.makeTraffic(this.rng), k + 2, tk);
+    }
+    return me;
   }
 
   /** Rival `k` of `of` in The Oval: standing still on a ring inside the floor, facing the middle, spoiling for a fight. */
@@ -496,7 +512,7 @@ export class Derby {
       for (let j = i + 1; j < F.length; j++) {
         const b = F[j]; if (b.gone) continue;
         if (!collideCars(a.car, b.car, H)) continue;
-        if (H.closing > 1.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer);
+        if (H.closing > 1.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer, a.id, b.id);
         if (this.damageEnabled) {
           const hp = crashDamage(H.mu, H.closing) * (this.demolition && !a.isPlayer && !b.isPlayer ? DERBY.rivalClash : 1);
           if (hp > 0) {
@@ -643,10 +659,10 @@ export class Derby {
 
   _remove(f) { f.gone = true; this._refreshCars(); this.events.push({ type: 'gone', id: f.id }); }
 
-  _hitEvent(kind, speed, x, y, z, involvesPlayer = false) {
+  _hitEvent(kind, speed, x, y, z, involvesPlayer = false, a = -1, b = -1) {
     const dist = this._dist(x, y, z);
     if (dist > 110) return;
-    this.events.push({ type: 'hit', kind, speed, x, y, z, dist, player: involvesPlayer });
+    this.events.push({ type: 'hit', kind, speed, x, y, z, dist, player: involvesPlayer, a, b });
   }
 
   // --------------------------------------------------------------------- damage

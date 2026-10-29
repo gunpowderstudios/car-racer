@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.484 — The Getaway: compass, sidewalks and traffic
+- A compass beside the map (for both robbers and police) shows which way North is, turning as you drive. North is the top of the map.
+- The streets now have pavements and kerb lines.
+- Ordinary cars (taxi, Mini, Volvo, Panda and BMW) now drive about the town, keeping left. They are solid, so they get in the way, but they never knock the bag out of the robber's car: only the other player can. Fewer on phones.
+- The computer's drivers are much neater: they follow the streets in the left lane, slow down and take corners properly instead of cutting them, no longer turn round at junctions, and keep back from other cars.
+
 ## v17.483 — The Getaway: the police lose you
 - The police siren now sounds only while the robber is carrying a bag (the alarm is on). Once the bag is in the safehouse the police lose you, and the computer police go back to cruising past the banks until the next robbery.
 

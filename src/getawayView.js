@@ -61,18 +61,23 @@ function roadTex(L) {
   const S = 4, W = Math.ceil(L.W * S), D = Math.ceil(L.D * S);        // 4 pixels to the metre
   return canvasTex(W, D, (g) => {
     g.fillStyle = '#c9c5bb'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
-    const X = (x) => (x + L.W / 2) * S, Z = (z) => (z + L.D / 2) * S, st = L.T.street * S;
+    const X = (x) => (x + L.W / 2) * S, Z = (z) => (z + L.D / 2) * S, ast = (L.T.street - 5) * S, k = 0.35 * S;     // the road is 2.5 m narrower each side than the street: that is the pavement
     g.fillStyle = '#50535b';
-    for (const z of L.zs) g.fillRect(0, Z(z) - st / 2, W, st);
-    for (const x of L.xs) g.fillRect(X(x) - st / 2, 0, st, D);
+    for (const z of L.zs) g.fillRect(0, Z(z) - ast / 2, W, ast);
+    for (const x of L.xs) g.fillRect(X(x) - ast / 2, 0, ast, D);
+    g.fillStyle = '#e9e6da';                                      // a white kerb line along both edges of every street
+    for (const z of L.zs) for (const sgn of [-1, 1]) g.fillRect(0, Z(z) + sgn * ast / 2 - (sgn > 0 ? k : 0), W, k);
+    for (const x of L.xs) for (const sgn of [-1, 1]) g.fillRect(X(x) + sgn * ast / 2 - (sgn > 0 ? k : 0), 0, k, D);
+    g.fillStyle = '#50535b';                                      // (the junctions are open road: no kerb across them)
+    for (const x of L.xs) for (const z of L.zs) g.fillRect(X(x) - ast / 2 - 1, Z(z) - ast / 2 - 1, ast + 2, ast + 2);
     g.fillStyle = '#e9d36a';
     for (const z of L.zs) for (let x = 0; x < L.W; x += 8) { const near = L.xs.some((xx) => Math.abs(xx - (x - L.W / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x - L.W / 2), Z(z) - 1, 4 * S, 2); }
     for (const x of L.xs) for (let z = 0; z < L.D; z += 8) { const near = L.zs.some((zz) => Math.abs(zz - (z - L.D / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x) - 1, Z(z - L.D / 2), 2, 4 * S); }
     g.fillStyle = '#e8e8e8';                                      // zebra crossings
     for (const x of L.xs) for (const z of L.zs) {
-      for (let k = -3; k <= 3; k++) {
-        g.fillRect(X(x) + k * 2.2 * S - 0.5 * S, Z(z) - st / 2 - 3.2 * S, 1.1 * S, 2.4 * S);
-        g.fillRect(X(x) + k * 2.2 * S - 0.5 * S, Z(z) + st / 2 + 0.8 * S, 1.1 * S, 2.4 * S);
+      for (let q = -2; q <= 2; q++) {
+        g.fillRect(X(x) + q * 2.2 * S - 0.5 * S, Z(z) - ast / 2 - 3.0 * S, 1.1 * S, 2.4 * S);
+        g.fillRect(X(x) + q * 2.2 * S - 0.5 * S, Z(z) + ast / 2 + 0.6 * S, 1.1 * S, 2.4 * S);
       }
     }
   });

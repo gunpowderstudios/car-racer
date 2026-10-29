@@ -1,7 +1,7 @@
 // The Getaway's on-screen bits: the score, a hint for what to do next, the "robbery in progress" siren, a street map that shows each side only
 // what it should know, and the result card. Plain DOM, built once inside #hud the first time it is needed.
 
-let box = null, card = null, pop = null, popTimer = 0, siren = null;
+let box = null, card = null, pop = null, popTimer = 0, siren = null, compass = null;
 const canvas = () => document.getElementById('minimap');
 
 function ensure() {
@@ -31,12 +31,22 @@ function ensure() {
 #getaway-card button{font:inherit;font-size:24px;font-weight:900;padding:6px 20px;border-radius:10px;border:0;cursor:pointer;background:#ffb31f;color:#241a40;text-transform:uppercase}
 #getaway-card button.alt{background:#4b3d7a;color:#fff}
 body.getaway #minimap{border-radius:10px;width:198px;height:129px}
+#getaway-compass{position:absolute;right:244px;top:calc(max(8px,env(safe-area-inset-top)) + 52px);width:70px;height:70px;z-index:30;pointer-events:none;border-radius:50%;background:#16102acc;border:2px solid #f6d9b059;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900}
+#getaway-compass[hidden]{display:none}
+#getaway-compass .gw-dial{position:absolute;inset:0;transition:none}
+#getaway-compass .gw-dial span{position:absolute;left:50%;top:50%;width:20px;margin-left:-10px;margin-top:-10px;text-align:center;font-size:14px;line-height:20px;color:#fff9}
+#getaway-compass .gw-dial span.n{color:#ff4b3e;font-size:20px;text-shadow:0 0 6px #000}
+#getaway-compass .gw-car{position:absolute;left:50%;top:50%;width:0;height:0;margin:-9px 0 0 -6px;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:18px solid #ffb31f}
 body.getaway #lap-card{display:none}
-@media (max-width:900px){body.getaway #minimap{width:132px;height:86px}#getaway-hud .gw-side{min-width:96px;padding:1px 8px}}`;
+@media (max-width:900px){body.getaway #minimap{width:132px;height:86px}#getaway-compass{right:150px;top:calc(max(8px,env(safe-area-inset-top)) + 48px);width:54px;height:54px}#getaway-compass .gw-dial span{font-size:11px}#getaway-compass .gw-dial span.n{font-size:16px}#getaway-hud .gw-side{min-width:96px;padding:1px 8px}}`;
   document.head.appendChild(st);
   box = document.createElement('div'); box.id = 'getaway-hud'; box.hidden = true;
   box.innerHTML = '<div class="gw-row"><div class="gw-side rob"><b>Robbers</b><div class="gw-pips"></div></div><div class="gw-side pol"><b>Police</b><div class="gw-pips"></div></div></div><div class="gw-hint"></div>';
   hud.appendChild(box);
+  compass = document.createElement('div'); compass.id = 'getaway-compass'; compass.hidden = true;
+  compass.innerHTML = '<div class="gw-dial"><span class="n" data-a="0">N</span><span data-a="90">E</span><span data-a="180">S</span><span data-a="270">W</span></div><div class="gw-car"></div>';
+  compass.querySelectorAll('.gw-dial span').forEach((n) => { n.style.transform = `rotate(${n.dataset.a}deg) translateY(-24px) rotate(-${n.dataset.a}deg)`; });
+  hud.appendChild(compass);
   siren = document.createElement('div'); siren.id = 'getaway-siren'; siren.hidden = true; hud.appendChild(siren);
   pop = document.createElement('div'); pop.id = 'getaway-pop'; pop.hidden = true; hud.appendChild(pop);
   card = document.createElement('div'); card.id = 'getaway-card'; card.hidden = true; hud.appendChild(card);
@@ -46,7 +56,7 @@ body.getaway #lap-card{display:none}
 /** Show or hide the whole panel (hidden on every other track). The map canvas is made wide for the town and put back when it goes. */
 export function getawayHudShow(on) {
   const el = ensure(); if (!el) return;
-  el.hidden = !on; document.body.classList.toggle('getaway', !!on);
+  el.hidden = !on; compass.hidden = !on; document.body.classList.toggle('getaway', !!on);
   const c = canvas(); if (c) { const w = on ? 264 : 220, h = on ? 172 : 220; if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
   if (!on) { hideGetawayResult(); siren.hidden = true; pop.hidden = true; }
 }
@@ -149,4 +159,11 @@ export function drawGetawayMap(game, role, me, foe, t = 0) {
     if (foe && Math.hypot(foe.pos.x - me.pos.x, foe.pos.z - me.pos.z) < 70) { const x = X(foe.pos.x), y = Z(foe.pos.z); g.fillStyle = `rgba(80,140,255,${0.5 + 0.5 * flash})`; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.stroke(); }
     car(me, '#e8392c');
   }
+}
+
+/** The compass: the dial turns so North (the top of the map) is where it really is from the way the car faces (`fx`, `fz` = the car's forward direction). */
+export function getawayCompass(fx, fz) {
+  if (!compass || compass.hidden) return;
+  const cross = fx * -1 - fz * 0, dot = fz * -1;          // north is (0, -1): angle from the car's heading to north, clockwise
+  compass.firstChild.style.transform = `rotate(${(Math.atan2(cross, dot) * 180 / Math.PI).toFixed(1)}deg)`;
 }
