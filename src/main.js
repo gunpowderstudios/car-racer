@@ -686,7 +686,7 @@ function getawayRound(role) {
   derbyStart();
   startDriving(null);
 }
-function startGetaway(role) { store.set('cr.gwRole', role); hideTrackPreview(); startDriving(makeTemplate('getaway')); }
+function startGetaway(role) { setHash(slugOf('getaway') + '/' + role); store.set('cr.gwRole', role); hideTrackPreview(); startDriving(makeTemplate('getaway')); }
 function getawayBegin() {
   const G = getaway;
   hud.banner(G.role === 'robber' ? 'ROBBER: grab a bag, reach the safehouse!' : 'POLICE: stop the robbers!', 2400);
@@ -1287,7 +1287,7 @@ function showMenu() {
   mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false);
   sound.sirenLoop(null);
   if (getaway) { hideGetawayResult(); menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false; }      // (the town is left behind: your own car comes back, and the home screen has a plain track under it)
-  setMode('menu'); renderMenu();
+  setMode('menu'); renderMenu(); setHash('');
 }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
@@ -1492,7 +1492,7 @@ function toast(msg) {
 let trackPreview = null, chosenDef = null;
 function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; trackPreview?.stop(); }
 function chooseTrack(d, blurb) {
-  chosenDef = d; window.__raceLaps?.syncFor?.(d);
+  chosenDef = d; { const k = [...TEMPLATE_KEYS, 'apple'].find((x) => x !== 'random' && makeTemplate(x).name === d.name); if (k) setHash(slugOf(k)); else if (d.name === 'Got the hump' || /hump/i.test(d.name)) setHash('got-the-hump'); } window.__raceLaps?.syncFor?.(d);
   let t; try { t = new Track(d); } catch { toast('That track could not be read.'); return; }
   if (!trackPreview) { try { trackPreview = new EditorPreview($('menu-track-canvas')); } catch { startDriving(d); return; } }
   $('menu-track-name').textContent = d.name; $('menu-track-blurb').textContent = blurb;
@@ -1500,6 +1500,20 @@ function chooseTrack(d, blurb) {
   trackPreview.setTrack(t); trackPreview.spin = true; trackPreview.play();
   $('menu-track-preview').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
+// ---- a web address for every game: bangersandsmash.co.uk/#the-getaway (the menu opens on that track), #the-getaway/robber or /police starts it
+const slugOf = (k) => (k === 'random' ? 'got-the-hump' : makeTemplate(k).name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const setHash = (h) => { try { history.replaceState(null, '', location.pathname + location.search + (h ? '#' + h : '')); } catch { /* blocked */ } };
+function openFromHash() {
+  const h = location.hash.replace(/^#/, ''); if (!h || h.startsWith('t=') || mode !== 'menu') return;
+  const [slug, opt] = h.split('/'), li = [...document.querySelectorAll('#track-list li[data-slug]')].find((x) => x.dataset.slug === slug);
+  if (!li) return;
+  const det = li.closest('details'); if (det) det.open = true;
+  document.querySelectorAll('#track-list li.linked').forEach((x) => x.classList.remove('linked')); li.classList.add('linked');
+  li.scrollIntoView({ block: 'center' });
+  if (slug === slugOf('getaway')) { if (opt === 'robber' || opt === 'police') startGetaway(opt); return; }
+  li.querySelector('button')?.click();                         // (the same as pressing Choose: the track's preview and the vehicle picker, not a race)
+}
+addEventListener('hashchange', openFromHash);
 const menuGroupOpen = {};
 function renderMenu() {
   hideTrackPreview();
@@ -1511,7 +1525,7 @@ function renderMenu() {
     li.querySelector('.t-name').textContent = name; li.querySelector('.t-meta').textContent = meta;
     const bx = li.querySelector('.t-btns');
     for (const [label, fn, c] of buttons) { const b = document.createElement('button'); b.textContent = label; if (c) b.className = c; b.onclick = fn; bx.appendChild(b); }
-    ul.appendChild(li);
+    ul.appendChild(li); return li;
   };
   // Tracks are grouped under headings that open and close (the open ones are remembered while the menu is redrawn)
   const group = (title, note) => {
@@ -1525,13 +1539,13 @@ function renderMenu() {
   const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
     const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
-    row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]);      // (the obstacle course is not editable)
+    row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]).dataset.slug = slugOf(k);      // (the obstacle course is not editable)
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
   group('Driving Tests (beta)'); addTemplate('apple');
-  { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]); }
+  { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]).dataset.slug = slugOf('getaway'); }
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
@@ -2144,6 +2158,7 @@ menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false;
 renderMenu();
 setMode('menu');
 requestAnimationFrame(frame);
+openFromHash();
 
 const params = new URLSearchParams(location.search);
 if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {

@@ -1158,3 +1158,4 @@ body:not(.mode-menu) #edition-badge { display: none; }
 }
 
 
+#track-list li.linked { outline: 2px solid #ffb31f; outline-offset: 2px; border-radius: 6px; }

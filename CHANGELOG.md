@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.493 — A web address for every game
+- Every track and game now has its own link: bangersandsmash.co.uk/#the-twister, #the-getaway, #apple-crumple and so on (the name of the track, lower case, with dashes; #got-the-hump for the random one). Opening it takes you to that track on the menu, ready to pick your vehicle - it does not start the race.
+- #the-getaway/robber and #the-getaway/police go straight into The Getaway as that side.
+- The address bar follows you: choosing a track puts its link in the address bar to copy and share, and going back to the menu clears it.
+
 ## v17.492 — The Getaway: faster to load, no stuck cars
 - Loads faster: the town's traffic is seven cars (three on a phone) drawn from a different handful of vehicle kinds each round, instead of every model at once.
 - Cars no longer start (or get stood back up after a flip) on top of one another: police and traffic start at different junctions, and a flipped car is put upright at the nearest junction with no car on it.
