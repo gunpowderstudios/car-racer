@@ -193,6 +193,7 @@ export class GetawayGame {
     this.ramCoolUntil = 0; this.events = [];
     this.alarm = false;     // a robbery in progress: the robber has a bag
     this.copsNear = false;  // police near the safehouse: the bag cannot be hidden yet
+    this.door = null;       // the garage door that has just come down after a drop: { gx, mouth, t, moved }
     this._spawn(null, null);       // only one bag is out at a time; the rest are hidden until it is safe
   }
 
@@ -204,6 +205,14 @@ export class GetawayGame {
     b.state = 'home'; b.x = b.home.x; b.z = b.home.z; b.lockUntil = 0;
     this.events.push({ type: 'spawn', bag: b.id });
     return b;
+  }
+
+  /** How shut the garage door is after a drop, 0 (open) to 1 (shut): it comes down in 1.2 s, stays shut for a few seconds, then goes up. */
+  doorAmount() {
+    const d = this.door; if (!d) return 0;
+    const a = (this.time - d.t) / 1.2;
+    if (this.time > d.t + 8) { this.door = null; return 0; }
+    return Math.max(0, Math.min(1, a));
   }
 
   get robberCarrying() { return !!this.robberBag; }
@@ -256,6 +265,7 @@ export class GetawayGame {
       if (this.robbed >= this.goal) this._win('robber');
       else {                                         // the next bag turns up somewhere else, and the safehouse moves
         const old = this.safehouse;
+        if (old.gx !== undefined) this.door = { gx: old.gx, mouth: old.mouth, t: this.time, moved: false };       // the garage door comes down behind the robber
         this.safehouse = pickSafehouse(this.L, this.rng, 90, [robber, police], old);
         this._spawn(robber, police);
       }

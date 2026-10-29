@@ -162,6 +162,8 @@ export class GetawayView {
     const pad = new THREE.Mesh(new THREE.RingGeometry(L.T.safeR - 0.8, L.T.safeR, 48), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.85, side: THREE.DoubleSide })); pad.rotation.x = -Math.PI / 2; pad.position.set(0, 0.14, L.T.garageD * 0 + 9); sh.add(pad);
     const sbeam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 120, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0x5dff8a, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); sbeam.position.set(0, 60, 9); sh.add(sbeam);
     this.pad = pad; sh.visible = false; g.add(sh);
+    const doorTex = canvasTex(64, 64, (c, w, h) => { c.fillStyle = '#9aa1a9'; c.fillRect(0, 0, w, h); c.fillStyle = '#6f757c'; for (let y = 0; y < h; y += 8) c.fillRect(0, y, w, 2); });
+    this.door = new THREE.Mesh(new THREE.BoxGeometry(L.T.garageW, 5, 0.4), new THREE.MeshLambertMaterial({ map: doorTex })); this.door.visible = false; g.add(this.door);       // the garage door (a roller shutter that comes down after a drop)
     this.stash = [];
     for (let i = 0; i < TOWN.goal + 1; i++) { const s = new THREE.Mesh(sackGeo, sackMat); s.scale.setScalar(1); s.visible = false; g.add(s); this.stash.push(s); }
   }
@@ -204,6 +206,9 @@ export class GetawayView {
   /** Bring every bag, ring and beam up to date with the game (`game` is a GetawayGame). */
   update(game, dt = 1 / 60) {
     this.t += dt;
+    const dr = game.door, da = dr ? game.doorAmount() : 0;
+    this.door.visible = !!dr && da > 0.01;
+    if (this.door.visible) { this.door.position.set(dr.gx, this.y0 + 5 - 2.5 * da, dr.mouth - 0.1); this.door.scale.y = da; }
     if (!this._placed || this._placed !== game.safehouse) { this._placed = game.safehouse; this.place(game); }
     const pulse = 0.65 + 0.35 * Math.sin(this.t * 4);
     this.pad.material.opacity = 0.5 + 0.4 * pulse;

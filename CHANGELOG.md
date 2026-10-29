@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.498 — The Getaway: the garage door shuts
+- When the robber hides a bag, the garage door comes down behind him (solid, for a few seconds), and a moment later he reappears at a junction on the other side of the town, away from the police and the garage. No more waiting at the safehouse to follow him to the next robbery. This works whichever side you play.
+
 ## v17.497 — The track link in the address bar
 - While you race one of the game's own tracks, the address bar shows its link (bangersandsmash.co.uk/#the-twister), ready to copy and send. An edited, random or imported track shows nothing, and multiplayer is left alone.
 

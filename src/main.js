@@ -693,12 +693,30 @@ function getawayBegin() {
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
 const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
+/** After a drop the garage door comes down (solid, so nobody drives in after the robber) and the robber reappears at another junction across town. */
+function getawayDoor(G) {
+  const g = G.game, d = g.door;
+  if (!d) { if (G.doorBlock) { const i = track.blocks.indexOf(G.doorBlock); if (i >= 0) track.blocks.splice(i, 1); G.doorBlock = null; } return; }
+  const shut = g.doorAmount() >= 0.8;
+  if (shut && !G.doorBlock) { G.doorBlock = { x0: d.gx - 5, x1: d.gx + 5, z0: d.mouth - 0.4, z1: d.mouth + 0.4, kind: 'door', y: track.py[0], h: 14 }; track.blocks.push(G.doorBlock); }
+  if (!shut && G.doorBlock) { const i = track.blocks.indexOf(G.doorBlock); if (i >= 0) track.blocks.splice(i, 1); G.doorBlock = null; }
+  if (d.moved || g.time < d.t + 1.5 || g.over) return;
+  d.moved = true;
+  const me = G.role === 'robber', foe = derby.rivals[0], police = me ? foe?.car : car, rob = me ? car : foe?.car;
+  if (!rob || !police) return;
+  const cands = G.L.nodes.filter((n) => Math.hypot(n.x - police.pos.x, n.z - police.pos.z) > 90 && Math.hypot(n.x - d.gx, n.z - d.mouth) > 45);
+  const n = (cands.length ? cands : G.L.nodes)[Math.floor(Math.random() * (cands.length || G.L.nodes.length))], p = rescuePose(G.L, n.x, n.z, derby.cars.filter((c) => c !== rob));
+  if (me) placeCarInArena(null, p);
+  else { rob.reset(new V3(p.x, track.py[0] + rob.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(foe, foe.cur); derby._pose(foe, foe.prev); }
+  getawayPop(me ? 'The garage door shuts - you are away!' : 'The garage door shuts - the robber has slipped away!', 2200);
+}
 function getawayStep() {
   const G = getaway, f = derby.rivals[0]; if (!f || G.game.over) return;
   const rams = G.rams, copIds = new Set(derby.rivals.filter((x) => x.cop).map((x) => x.id)); rams.length = 0;
   for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1 || copIds.has(e.a) || copIds.has(e.b))) rams.push(e.speed);       // (only car against car, you and the other side: traffic does not knock the bag out)
   const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: f.car.pos.x, z: f.car.pos.z };
   G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams, G.role === 'robber' ? derby.rivals.filter((x) => x.cop).map((x) => ({ x: x.car.pos.x, z: x.car.pos.z })) : null);
+  getawayDoor(G);
   if (G.game.events.length) getawayEvents();
   if (car.ay.y < 0.15 && car.speed < 3) { G.flipT += DT; if (G.flipT > 2.5) { G.flipT = 0; respawn(); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
 }

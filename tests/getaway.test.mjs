@@ -122,3 +122,12 @@ test('the bag cannot be hidden while police are near the garage: lose the cops f
   g.step(0.1, { x: S.x, z: S.z }, { x: S.gx + 5, z: S.street }, [], [{ x: S.gx + 5, z: S.street }]); assert.ok(g.copsNear); assert.equal(g.robbed, 0, 'not hidden with the police at the door');
   g.step(0.1, { x: S.x, z: S.z }, far, [], [far]); assert.ok(!g.copsNear); assert.equal(g.robbed, 1, 'hidden once they are gone');
 });
+
+test('after a drop the garage door comes down behind the robber, stays shut a while, then goes up', () => {
+  const S = safehouseSpots(L)[3], g = new GetawayGame(L, { safehouse: S, rng: mulberry(3) }), a = g.loose()[0], far = { x: 1e4, z: 1e4 };
+  g.step(0.1, { x: a.x, z: a.z }, far); g.safehouse = S; g.step(0.1, { x: S.x, z: S.z }, far, [], [far]);
+  assert.ok(g.door && g.door.gx === S.gx && g.door.mouth === S.mouth, 'the door is at the garage the bag went into');
+  assert.equal(g.doorAmount(), 0); g.step(0.7, far, far, [], [far]); assert.ok(g.doorAmount() > 0.4 && g.doorAmount() < 0.7); g.step(0.7, far, far, [], [far]); assert.equal(g.doorAmount(), 1);
+  for (let k = 0; k < 90; k++) g.step(0.1, far, far, [], [far]);
+  assert.equal(g.doorAmount(), 0); assert.equal(g.door, null);
+});
