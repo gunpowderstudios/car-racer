@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.501 — M for music, black barrels, un-jamming
+- Pressing M on the home screen now turns the music on or off (as it already did during a race).
+- Apple Crumple has four black-and-yellow barrels, which go off the moment you touch them.
+- The Getaway: a computer car that had once waited for you could never push through a jam afterwards (the AI robber could sit in traffic for ever). They now work their way out of jams again.
+
 ## v17.500 — The Getaway: steadier result card, tidier screen
 - The win/lose card now stays up until you press one of its buttons (or Enter / Esc). A key still held down as the game ends (Space for boost, say) no longer sends you into the next round, and Restart does nothing while the card is up.
 - "Robbery in progress!" / "Alarm!" and the pop-up messages are smaller and sit below the scoreboard instead of over the road.

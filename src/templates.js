@@ -436,6 +436,10 @@ function crumpleCourse(def) {
     }
   };
   patch(jumpS + 70, 8, 7); patch(Math.round(endS - 215), 4, 6);
+  for (const [s0, lat] of [[240, -0.4], [600, 0.45], [870, -0.3], [1090, 0.35]]) {            // a few black-and-yellow barrels that go off the moment you touch them
+    const f = t.frameAt(at(s0)), off = lat * (f.hw - 3), p = placeProp(t, f.x + f.lx * off, f.z + f.lz * off);
+    props.push({ type: 'barrel', x: r2(p.x), z: r2(p.z), y: r2(p.y), lethal: true });
+  }
   return { ...def, assault, props };
 }
 

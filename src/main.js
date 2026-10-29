@@ -257,6 +257,12 @@ const input = new Input({
   onMirror: () => mode === 'drive' && toggleMirror(),
 });
 
+// M on the home screen turns the menu music on or off too (the driving keys only listen during a race)
+addEventListener('keydown', (e) => {
+  if (mode !== 'menu' || e.code !== 'KeyM' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable) return;
+  sound.setEnabled('music', !sound.musicOn); syncSoundUI(); menuMusic();
+});
+
 // ------------------------------------------------------------ rear-view mirror
 // A second camera looking back from just behind the car renders into a texture, which is drawn
 // left-right flipped (like a real mirror) into the #mirror frame at the top of the screen.

@@ -105,20 +105,20 @@ export class GetawayDriver {
     else if (sA && sA.kind === 'v') { const c = L.xs[sA.i], dev = px - c; ax = clamp(ax, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { ax = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
 
     // keep clear of other cars: ease off for one in the way ahead (not the one being chased, and never wait for ever in a jam)
-    let blocked = false;
+    let blocked = false, humanBlock = false;
     if (!(this.shove > 0)) {
       for (const c of ctx.cars || []) {
         if (c === car || (chase && c === foe)) continue;
         const tr = this.role === 'traffic' || !g.alarm, human = c === foe;       // traffic, and the police and robber until a robbery starts, stop for anything in the way
         const rx = c.pos.x - px, rz = c.pos.z - pz, ahead = rx * fx + rz * fz, side = Math.abs(rz * fx - rx * fz);
         if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && side < (tr ? 3.6 : 3.3) && Math.abs(c.pos.y - car.pos.y) < 3 && ((tr && human) || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
-          const gap = ahead - (tr ? 7 : 5.5); if (tr && human) this.waitT = -1e9; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
+          const gap = ahead - (tr ? 7 : 5.5); if (tr && human) humanBlock = true; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
         }
       }
     }
-    this.waitT = blocked && car.speed < 1.5 ? (this.waitT || 0) + dt : 0;
-    if (this.waitT > 3) { this.shove = 2.5; this.waitT = 0; }               // a jam: just edge forward for a moment
-    if (this.shove > 0) { this.shove -= dt; vT = Math.min(vT, 5); }
+    this.waitT = blocked && !humanBlock && car.speed < 1.5 ? (this.waitT || 0) + dt : 0;
+    if (this.waitT > 2.5) { this.shove = 3.5; this.waitT = 0; }               // a jam: just edge forward for a moment
+    if (this.shove > 0) { this.shove -= dt; vT = Math.min(vT, 6); }
 
     const dx = ax - px, dz = az - pz;
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);          // + = the aim point is on our left
@@ -140,6 +140,7 @@ export class GetawayDriver {
       if (this.stuck > 1.6) { this.reverse = 1.1; this.revSteer = steer || (this.rng() < 0.5 ? 1 : -1); }
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
 
+    this.dbg = { vT, blocked, ang, dist, kind: G.kind };
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
     inp.boost = this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
     return inp;
