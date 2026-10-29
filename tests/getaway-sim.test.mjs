@@ -18,7 +18,7 @@ function setup(aiRole, seed = 3, extra = 0) {
   const mine = aiRole === 'robber' ? 'police' : 'robber', st = mine === 'robber' ? L.robberStart : L.policeStart;
   const car = new Vehicle(); car.reset(new V3(st.x, track.py[0] + car.restHeight + 0.08, st.z), new V3(st.fx, 0, st.fz), new V3(0, 1, 0), 0);
   const derby = new Derby(); derby.enabled = true; derby.damageEnabled = false;
-  derby.getawaySetup = { L, role: aiRole, extraPolice: extra, kind: null, traffic: 5, makeTraffic: (r) => new TrafficDriver(r, game), makeDriver: (r) => new GetawayDriver(r, game, aiRole), rescue: (c) => { const p = rescuePose(L, c.pos.x, c.pos.z); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); } };
+  derby.getawaySetup = { L, role: aiRole, extraPolice: extra, kind: null, traffic: 5, makeTraffic: (r) => new TrafficDriver(r, game), makeDriver: (r) => new GetawayDriver(r, game, aiRole), rescue: (c, others) => { const p = rescuePose(L, c.pos.x, c.pos.z, others); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); } };
   derby.start(track, car, 1, 5);
   const me = new GetawayDriver(rngOf(9), game, mine); car.aiRollGuard = 0.48;
   S_rescue = derby.getawaySetup.rescue;

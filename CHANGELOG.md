@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.492 — The Getaway: faster to load, no stuck cars
+- Loads faster: the town's traffic is seven cars (three on a phone) drawn from a different handful of vehicle kinds each round, instead of every model at once.
+- Cars no longer start (or get stood back up after a flip) on top of one another: police and traffic start at different junctions, and a flipped car is put upright at the nearest junction with no car on it.
+- Police patrol at a sensible speed until a robbery starts (they were flipping into the traffic), and only go flat out once the robber has a bag.
+- Traffic only stops for cars that are coming the same way or stopped in the road (and always for you), so junctions do not lock up.
+
 ## v17.491 — Options start closed
 - The Options panel on the menu now starts closed (tap Options to open it).
 - The Getaway on a phone has one less traffic car, to keep the game running at full speed.

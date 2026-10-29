@@ -669,9 +669,9 @@ function getawaySetup() {
     L: G.L, role: G.ai,
     makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
-    traffic: device.touch ? 3 : 10, extraPolice: device.touch ? 2 : 4,
+    traffic: device.touch ? 3 : 7, extraPolice: device.touch ? 2 : 4,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),
-    rescue: (c) => { const p = rescuePose(G.L, c.pos.x, c.pos.z); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
+    rescue: (c, others) => { const p = rescuePose(G.L, c.pos.x, c.pos.z, others); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
   };
 }
 function placeGetawayCar() {
@@ -867,7 +867,8 @@ function adoptView(v, hue, vid) {
 }
 function trafficPool() {                                          // the ordinary cars, bus and so on that fill the town (never the police car or the robber's Dodge; a phone gets five kinds only)
   let list = VEHICLES.filter((v) => v.id !== 'police' && v.id !== 'car');
-  if (device.touch) { for (let i = list.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; } list = list.slice(0, 5); }
+  for (let i = list.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; }
+  list = list.slice(0, device.touch ? 3 : 7);                  // (a different handful each round: every model is a download, so not all of them at once)
   return list.map((v) => ({ id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null }));
 }
 function jamboreePoolForRace() {                                  // (a phone or tablet gets four kinds only, so it never holds a dozen models)

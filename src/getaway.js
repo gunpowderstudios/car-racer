@@ -275,7 +275,10 @@ export function onStreet(L, x, z) {
 
 
 /** Where a car that has flipped or got wedged is stood back up: the nearest junction, pointing along the street towards the middle of the town. */
-export function rescuePose(L, x, z) {
-  const n = L.nodes[nearestNode(L, x, z)], dx = -n.x, dz = -n.z;
+export function rescuePose(L, x, z, cars = null) {
+  const order = L.nodes.map((n, k) => ({ n, d: Math.hypot(n.x - x, n.z - z) })).sort((u, w) => u.d - w.d);
+  let n = order[0].n;
+  if (cars) for (const o of order) if (cars.every((c) => !c.pos || (c.pos.x === x && c.pos.z === z) || Math.hypot(c.pos.x - o.n.x, c.pos.z - o.n.z) > 12)) { n = o.n; break; }      // (not on top of another car)
+  const dx = -n.x, dz = -n.z;
   return Math.abs(dx) >= Math.abs(dz) ? { x: n.x, z: n.z, fx: Math.sign(dx) || 1, fz: 0 } : { x: n.x, z: n.z, fx: 0, fz: Math.sign(dz) || 1 };
 }

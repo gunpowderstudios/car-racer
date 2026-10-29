@@ -78,7 +78,7 @@ export class GetawayDriver {
       return inp;
     }
     this.backing = false;
-    let vT = G.kind === 'idle' ? 0 : this.cruise * (this.role === 'police' && g.alarm ? 1.12 : 1), ax = G.x, az = G.z, chase = false;
+    let vT = G.kind === 'idle' ? 0 : this.cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : 1), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
     if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = this.cruise * 1.25; }            // the last stretch of a chase: straight at him
@@ -118,7 +118,7 @@ export class GetawayDriver {
         if (c === car || (chase && c === foe)) continue;
         const tr = this.role === 'traffic' || !g.alarm, human = c === foe;       // traffic, and the police and robber until a robbery starts, stop for anything in the way
         const rx = c.pos.x - px, rz = c.pos.z - pz, ahead = rx * fx + rz * fz, side = Math.abs(rz * fx - rx * fz);
-        if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && side < (tr ? 3.6 : 3.3) && Math.abs(c.pos.y - car.pos.y) < 3 && (tr || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
+        if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && side < (tr ? 3.6 : 3.3) && Math.abs(c.pos.y - car.pos.y) < 3 && ((tr && human) || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
           const gap = ahead - (tr ? 7 : 5.5); if (tr && human) this.waitT = -1e9; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
         }
       }

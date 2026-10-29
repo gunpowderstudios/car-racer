@@ -301,7 +301,7 @@ export class Derby {
       this.add(cc, S.makeDriver(this.rng), k + 2, kind).cop = true;
     }
     // ordinary traffic wandering the streets: a few cars of a few kinds (each is a car to simulate and a model to draw, so not many)
-    const spots = [];
+    const spots = cops.slice(1);      // (not at a junction where a police car starts)
     for (let k = 0; k < (S.traffic || 0); k++) {
       let n = null;
       for (let t = 0; t < 30 && !n; t++) {
@@ -642,7 +642,7 @@ export class Derby {
     const c = f.car, T = this.track;
     if (this.getaway) {                                    // the town has no road to be put back on: a car that flips goes upright at its junction
       f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
-      if (f.flipT > 2.5 || c.pos.y < -5) { this.getawaySetup.rescue(c); f.flipT = 0; this._pose(f, f.cur); this._pose(f, f.prev); }
+      if (f.flipT > 2.5 || c.pos.y < -5) { this.getawaySetup.rescue(c, this.cars); f.flipT = 0; this._pose(f, f.cur); this._pose(f, f.prev); }
       return;
     }
     f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
