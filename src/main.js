@@ -669,7 +669,7 @@ function getawaySetup() {
     L: G.L, role: G.ai,
     makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
-    traffic: device.touch ? 4 : 10, extraPolice: device.touch ? 2 : 4,
+    traffic: device.touch ? 3 : 10, extraPolice: device.touch ? 2 : 4,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),
     rescue: (c) => { const p = rescuePose(G.L, c.pos.x, c.pos.z); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
   };

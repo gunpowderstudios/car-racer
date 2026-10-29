@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.491 — Options start closed
+- The Options panel on the menu now starts closed (tap Options to open it).
+- The Getaway on a phone has one less traffic car, to keep the game running at full speed.
+
 ## v17.490 — The Getaway: lose the cops
 - With a bag in the car, if any police car is near the safehouse garage (or right on your tail) the drop will not complete: the screen says "Lose the cops!" as you get close. Shake them off, and the bag goes in as soon as none are near.
 
