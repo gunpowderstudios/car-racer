@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.482 — The Getaway: one bag at a time
+- Bags are now small and tucked into a street corner by their bank.
+- Only one bag is out at a time. The robber sees it on the map; the police don't know where it is until the alarm goes. Drop one off and the next bag turns up at a different, random bank.
+- Every time the robber drops a bag off, the safehouse moves somewhere else.
+- The track list heading is now "Driving Tests (beta)" and The Getaway sits under it with Apple Crumple.
+- The police siren now wails through the town: faint when the police are far away, loud when they are right behind you, so the robber can hear them coming.
+
 ## v17.481 — The Getaway (cops and robbers)
 - New game under "Cops and Robbers" in the track list: **The Getaway**. A small town of 4 x 3 blocks with a bank on every block and a bag of money lying in the street outside each one.
 - Play the **Robber** (the Dodge): drive over a bag (one at a time) and take it to the safehouse, which is hidden in a different random spot each round. Three bags safe and the robbers win.

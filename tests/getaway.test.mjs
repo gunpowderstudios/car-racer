@@ -55,23 +55,30 @@ test('a moving car carries on rather than turning round at once', () => {
 
 function fresh(sh = { x: L.xs[2], z: L.zs[0] }) { return new GetawayGame(L, { safehouse: sh, rng: mulberry(3) }); }
 const far = { x: 9999, z: 9999 };
-test('the robber picks up one bag at a time and takes it to the safehouse', () => {
-  const g = fresh(), a = g.bags[0], b = g.bags[1];
+const live = (g) => g.bags.find((b) => b.state === 'home' || b.state === 'ground');
+const only = (g, k) => { for (const b of g.bags) { b.state = 'hidden'; } const b = g.bags[k]; b.state = 'home'; b.x = b.home.x; b.z = b.home.z; return b; };
+test('only one small bag is out at a time, the rest are hidden', () => {
+  const g = fresh();
+  assert.equal(g.bags.filter((b) => b.state === 'home').length, 1); assert.equal(g.bags.filter((b) => b.state === 'hidden').length, 11);
+});
+test('the robber takes the bag to the safehouse; then a new bag turns up elsewhere and the safehouse moves', () => {
+  const g = fresh(), a = live(g), old = g.safehouse;
   g.step(0.1, { x: a.x, z: a.z }, far);
   assert.equal(g.robberBag, a); assert.equal(g.alarm, true); assert.equal(a.state, 'robber');
-  g.step(0.1, { x: b.x, z: b.z }, far); assert.equal(b.state, 'home', 'a second bag cannot be taken while carrying one');
   g.step(0.1, { x: g.safehouse.x, z: g.safehouse.z }, far);
   assert.equal(g.robbed, 1); assert.equal(a.state, 'safe'); assert.equal(g.robberBag, null); assert.equal(g.alarm, false);
-  assert.deepEqual(g.events.map((e) => e.type), ['pickup', 'deliver']);
+  assert.deepEqual(g.events.map((e) => e.type), ['spawn', 'pickup', 'deliver', 'spawn']);
+  const n = live(g); assert.ok(n && n !== a, 'a different bag is out now'); assert.equal(g.bags.filter((b) => b.state === 'home').length, 1);
+  assert.ok(g.safehouse.x !== old.x || g.safehouse.z !== old.z, 'the safehouse moved');
 });
 test('three bags in the safehouse and the robbers win', () => {
   const g = fresh();
-  for (let k = 0; k < 3; k++) { g.step(0.1, { x: g.bags[k].x, z: g.bags[k].z }, far); g.step(0.1, { x: g.safehouse.x, z: g.safehouse.z }, far); }
+  for (let k = 0; k < 3; k++) { const a = live(g); g.step(0.1, { x: a.x, z: a.z }, far); g.step(0.1, { x: g.safehouse.x, z: g.safehouse.z }, far); }
   assert.equal(g.over, true); assert.equal(g.winner, 'robber'); assert.equal(g.robbed, 3);
   const n = g.events.length; g.step(0.1, { x: g.bags[5].x, z: g.bags[5].z }, far); assert.equal(g.events.length, n, 'nothing happens once it is over');
 });
 test('a hard ram drops the bag, a soft one does not; the police can take it only from the road', () => {
-  const g = fresh(), a = g.bags[0];
+  const g = fresh(), a = only(g, 0);
   g.step(0.1, { x: a.x, z: a.z }, far);
   g.step(0.1, { x: a.x + 5, z: a.z }, far, [TOWN.ramSpeed - 1]); assert.equal(g.robberBag, a, 'a nudge is nothing');
   g.step(0.1, { x: a.x + 5, z: a.z }, { x: a.x + 3, z: a.z }, [TOWN.ramSpeed + 2]);
@@ -80,17 +87,17 @@ test('a hard ram drops the bag, a soft one does not; the police can take it only
   assert.equal(g.policeBag, a, 'the police were right there and scooped it up');
 });
 test('the robber cannot take a dropped bag straight back, then can', () => {
-  const g = fresh(), a = g.bags[0], at = { x: a.x, z: a.z };
+  const g = fresh(), a = only(g, 0), at = { x: a.x, z: a.z };
   g.step(0.1, at, far); g.step(0.1, at, far, [12]);
   assert.equal(a.state, 'ground'); g.step(0.1, at, far); assert.equal(a.state, 'ground', 'grace');
   for (let t = 0; t < 3; t += 0.1) g.step(0.1, at, far);
   assert.equal(g.robberBag, a, 'picked up again after the grace');
 });
-test('the police bring a bag back to its own bank, not just any bank, and three wins', () => {
+test('the police bring a bag back to its own bank and it is out again; three returned wins', () => {
   const g = fresh();
   for (let k = 0; k < 3; k++) {
-    const b = g.bags[k]; g.step(0.1, { x: b.x, z: b.z }, far); g.step(0.1, { x: b.x + 44, z: b.z }, { x: b.x + 43, z: b.z }, [15]);          // robbed, driven off, then rammed: the police take it
-    g.step(0.1, far, { x: g.bags[(k + 5) % 12].x, z: g.bags[(k + 5) % 12].z });
+    const b = only(g, k); g.step(0.1, { x: b.x, z: b.z }, far); g.step(0.1, { x: b.x + 44, z: b.z }, { x: b.x + 43, z: b.z }, [15]);          // robbed, driven off, then rammed: the police take it
+    g.step(0.1, far, { x: g.bags[(k + 5) % 12].home.x, z: g.bags[(k + 5) % 12].home.z });
     assert.equal(g.policeBag, b, 'still carrying: that is the wrong bank'); assert.equal(g.returned, k);
     g.time += 5;
     g.step(0.1, far, { x: b.home.x, z: b.home.z });
@@ -100,7 +107,7 @@ test('the police bring a bag back to its own bank, not just any bank, and three 
   assert.equal(g.winner, 'police');
 });
 test('police cannot pick up a bag that is still at its bank', () => {
-  const g = fresh(), a = g.bags[4];
+  const g = fresh(), a = live(g);
   g.step(0.1, far, { x: a.x, z: a.z }); assert.equal(g.policeBag, null); assert.equal(a.state, 'home');
 });
 

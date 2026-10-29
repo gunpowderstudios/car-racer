@@ -38,7 +38,7 @@ export function townLayout(T = TOWN) {
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
     blocks.push({ i, j, cx, cz, hx: bx / 2, hz: bz / 2 });
-    banks.push({ id: bagKey(j, i), i, j, cx, cz, bag: { x: cx, z: zs[j + 1] }, door: { x: cx, z: cz + bz / 2 } });          // the bag lies in the middle of the street on the bank's (south) side
+    banks.push({ id: bagKey(j, i), i, j, cx, cz, bag: { x: cx + bx / 2 - 5, z: cz + bz / 2 + 4.5 }, door: { x: cx, z: cz + bz / 2 } });          // the bag lies small in the corner of the street, by the kerb at the east end of the bank's (south) side
   }
   const nodes = [];
   for (let j = 0; j <= rows; j++) for (let i = 0; i <= cols; i++) nodes.push({ i, j, x: xs[i], z: zs[j] });
@@ -65,8 +65,9 @@ export function safehouseSpots(L) {
 }
 
 /** One safehouse picked at random (`rng` is a 0..1 function), at least `minFrom` metres from both starting places. */
-export function pickSafehouse(L, rng = Math.random, minFrom = 110) {
-  const all = safehouseSpots(L), far = all.filter((p) => Math.hypot(p.x - L.robberStart.x, p.z - L.robberStart.z) >= minFrom && Math.hypot(p.x - L.policeStart.x, p.z - L.policeStart.z) >= minFrom);
+export function pickSafehouse(L, rng = Math.random, minFrom = 110, from = null, not = null) {
+  const away = from || [L.robberStart, L.policeStart];
+  const all = safehouseSpots(L).filter((p) => !not || p.x !== not.x || p.z !== not.z), far = all.filter((p) => away.every((a) => Math.hypot(p.x - a.x, p.z - a.z) >= minFrom));
   const list = far.length ? far : all;
   return list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
 }
@@ -162,13 +163,24 @@ export class GetawayGame {
   reset(safehouse = null) {
     const L = this.L;
     this.safehouse = safehouse || pickSafehouse(L, this.rng);
-    this.bags = L.banks.map((b) => ({ id: b.id, home: { x: b.bag.x, z: b.bag.z }, x: b.bag.x, z: b.bag.z, state: 'home', lockUntil: 0 }));
+    this.bags = L.banks.map((b) => ({ id: b.id, home: { x: b.bag.x, z: b.bag.z }, x: b.bag.x, z: b.bag.z, state: 'hidden', lockUntil: 0 }));
     this.robbed = 0;        // bags the robbers have got into the safehouse
     this.returned = 0;      // bags the police have got back into the banks
     this.time = 0; this.over = false; this.winner = null;
     this.robberBag = null; this.policeBag = null;       // the bag each is carrying (or null)
     this.ramCoolUntil = 0; this.events = [];
     this.alarm = false;     // a robbery in progress: the robber has a bag
+    this._spawn(null, null);       // only one bag is out at a time; the rest are hidden until it is safe
+  }
+
+  /** Put the next bag out at a random bank (the hidden ones only), keeping away from both cars when it can. */
+  _spawn(robber, police) {
+    const hid = this.bags.filter((b) => b.state === 'hidden'); if (!hid.length) return null;
+    const far = hid.filter((b) => [robber, police].every((c) => !c || Math.hypot(b.home.x - c.x, b.home.z - c.z) > 60));
+    const list = far.length ? far : hid, b = list[Math.min(list.length - 1, Math.floor(this.rng() * list.length))];
+    b.state = 'home'; b.x = b.home.x; b.z = b.home.z; b.lockUntil = 0;
+    this.events.push({ type: 'spawn', bag: b.id });
+    return b;
   }
 
   get robberCarrying() { return !!this.robberBag; }
@@ -212,6 +224,11 @@ export class GetawayGame {
       const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++;
       this.events.push({ type: 'deliver', bag: b.id, count: this.robbed });
       if (this.robbed >= this.goal) this._win('robber');
+      else {                                         // the next bag turns up somewhere else, and the safehouse moves
+        const old = this.safehouse;
+        this.safehouse = pickSafehouse(this.L, this.rng, 90, [robber, police], old);
+        this._spawn(robber, police);
+      }
     }
     // the police bring a bag back to its own bank
     if (this.policeBag && !this.over) {

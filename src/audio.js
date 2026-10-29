@@ -290,6 +290,21 @@ export class Sound {
     setTimeout(stop, 6000);
     return { stop };
   }
+  /** The police siren in The Getaway, wailing for as long as it is kept going: louder the nearer the police car is (`dist` metres); `null` stops it. */
+  sirenLoop(dist) {
+    if (dist == null || !this.ready || !this.sfxOn || !this.buf.policeSiren) {
+      if (this._sirenV) { const v = this._sirenV; this._sirenV = null; const n = this.ctx.currentTime; v.g.gain.cancelScheduledValues(n); v.g.gain.setTargetAtTime(0, n, 0.08); try { v.s.stop(n + 0.5); } catch { /* already stopped */ } }
+      return;
+    }
+    if (!this._sirenV) {
+      const c = this.ctx, s = c.createBufferSource(), g = c.createGain();
+      s.buffer = this.buf.policeSiren; s.loop = true; g.gain.value = 0; s.connect(g).connect(this.sfx); s.start();
+      this._sirenV = { s, g };
+    }
+    const near = clamp01(1 - dist / 190), want = 0.05 + 0.95 * near * near;          // always faintly audible across town, roaring when it is right behind you
+    this._sirenV.g.gain.setTargetAtTime(want, this.ctx.currentTime, 0.12);
+    this._sirenV.s.playbackRate.setTargetAtTime(1 + 0.08 * near, this.ctx.currentTime, 0.2);
+  }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1, vehicleId = null) {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return;

@@ -705,7 +705,7 @@ function getawayEvents() {
       if (e.who === 'robber') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! To the safehouse!' : 'Robbery in progress!', 2200); }
       else { gwChime([520, 780]); getawayPop(me === 'police' ? 'Got it! Back to the bank!' : 'The police have the cash!', 2000); }
     } else if (e.type === 'drop') { sound.hit(14, 'car'); gwChime([440, 330, 220], 90); getawayPop(me === 'police' ? 'Cash dropped - grab it!' : 'Rammed! You dropped the cash!', 2000); }
-    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); getawayPop(`Safe! ${e.count}/${g.goal} in the safehouse`, 2200); }
+    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'return') { gwChime([784, 659, 523, 392], 110); getawayPop(`Back in the bank! ${e.count}/${g.goal}`, 2200); }
     else if (e.type === 'win') getawayFinish(e);
   }
@@ -720,12 +720,13 @@ function getawayFinish(e) {
     title, again: `Play again as ${gwOther(me)} (Enter)`,
     lines: [rob ? `${e.robbed} bags safe in the safehouse` : `${e.returned} bags back in the banks - the robbers are in jail`, `Bags taken ${e.robbed} · returned ${e.returned}`, `Time ${mm}:${ss}`],
   };
-  G.resultAt = performance.now() + 1700;
+  G.resultAt = performance.now() + 1700; sound.sirenLoop(null);
 }
 function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G.card, () => getawayRound(gwOther(G.role)), showMenu, startReplay); }
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role);
+  sound.sirenLoop(G.role === 'robber' && f && !G.game.over && !paused && mode === 'drive' ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : null);       // the police siren: you hear it from anywhere, louder the nearer it is
   drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t);
   if (G.resultAt && performance.now() > G.resultAt) { G.resultAt = 0; showGetawayCard(); }
 }
@@ -1247,7 +1248,7 @@ function selfDestruct() {
 function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
   setPaused(false);
-  if (m !== 'drive') setSoundPop(false);
+  if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); }
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '') + (getaway ? ' getaway' : '');
   $('hud').hidden = m !== 'drive';
@@ -1259,6 +1260,7 @@ function setMode(m) {
 }
 function showMenu() {
   mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false);
+  sound.sirenLoop(null);
   if (getaway) { hideGetawayResult(); menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false; }      // (the town is left behind: your own car comes back, and the home screen has a plain track under it)
   setMode('menu'); renderMenu();
 }
@@ -1503,8 +1505,8 @@ function renderMenu() {
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
-  group('Driving Tests'); addTemplate('apple');
-  group('Cops and Robbers'); { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]); }
+  group('Driving Tests (beta)'); addTemplate('apple');
+  { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]); }
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }

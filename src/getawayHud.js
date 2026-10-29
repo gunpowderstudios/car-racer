@@ -61,7 +61,7 @@ export function getawayHudUpdate(game, role) {
   rob.querySelector('.gw-pips').textContent = pips(game.robbed, game.goal);
   pol.querySelector('.gw-pips').textContent = pips(game.returned, game.goal);
   let hint;
-  if (role === 'robber') hint = game.robberBag ? 'Take the cash to the safehouse!' : 'Drive over a bag outside a bank';
+  if (role === 'robber') hint = game.robberBag ? 'Take the cash to the safehouse!' : 'Find the bag on your map and drive over it';
   else hint = game.policeBag ? 'Take the cash back to its bank!' : game.robberBag ? 'Catch him and ram him to drop the cash' : game.bags.some((b) => b.state === 'ground') ? 'Drive over the dropped cash' : 'Watch the banks - wait for the alarm';
   el.querySelector('.gw-hint').textContent = hint;
   const on = game.alarm && !game.over;
@@ -123,10 +123,9 @@ export function drawGetawayMap(game, role, me, foe, t = 0) {
   g.clearRect(0, 0, c.width, c.height); g.drawImage(off, 0, 0);
   const flash = 0.5 + 0.5 * Math.sin(t * 8);
   // banks: gold when the money is still there, a dim outline when it has been taken
+  for (const bank of L.banks) { g.fillStyle = '#6b5a24'; g.fillRect(X(bank.door.x) - 4, Z(bank.door.z) - 3, 8, 6); }          // every bank looks the same: nobody knows which has the bag
   for (const b of game.bags) {
-    const bank = L.banks[b.id];
-    const x = X(bank.door.x), y = Z(bank.door.z);
-    g.fillStyle = b.state === 'home' ? '#ffd23a' : '#6b5a24'; g.fillRect(x - 5, y - 4, 10, 8);
+    if (b.state === 'home' && role === 'robber') { g.fillStyle = '#ffd23a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.fillRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); g.strokeRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); }       // the robber sees where the bag is
     if (b.state === 'ground') { g.fillStyle = `rgba(255,210,58,${0.5 + 0.5 * flash})`; g.beginPath(); g.arc(X(b.x), Z(b.z), 6, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke(); }
   }
   if (role === 'robber') {                                         // the safehouse

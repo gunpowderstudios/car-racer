@@ -30,7 +30,7 @@ const findT = (ok, to = 40) => { for (let t = 0; t < to; t += 0.01) if (ok(t)) r
 test('Apple Crumple is a Driving Test: its own course, kept out of the race lists', () => {
   assert.ok(!TEMPLATE_KEYS.includes('apple'), 'not a Race Day / multiplayer / Wacky Racing track');
   assert.ok(TEMPLATE_INFO.apple);
-  assert.match(main, /group\('Driving Tests'\); addTemplate\('apple'\)/);
+  assert.match(main, /group\('Driving Tests \(beta\)'\); addTemplate\('apple'\)/);
   assert.doesNotMatch(main, /group\('Wacky Racing'\)[^\n]*apple/);
   assert.doesNotMatch(main, /group\('Stunt and Shunts'\)[^\n]*apple/);
   assert.equal(TEMPLATE_KEYS.length, 10, 'the existing nine tracks and random are unchanged');

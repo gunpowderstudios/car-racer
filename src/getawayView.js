@@ -128,14 +128,14 @@ export class GetawayView {
     wallBox(-OUT, -hw, -hd, hd); wallBox(hw, OUT, -hd, hd);
 
     // ---- the bags of money: a sack with a $ on it, a ring on the road and a tall beam when one is lying loose
-    const sackMap = sackTex(), sackGeo = new THREE.SphereGeometry(1.15, 18, 14), neckGeo = new THREE.CylinderGeometry(0.28, 0.5, 0.55, 10);
+    const sackMap = sackTex(), sackGeo = new THREE.SphereGeometry(0.6, 16, 12), neckGeo = new THREE.CylinderGeometry(0.14, 0.26, 0.3, 10);
     const sackMat = new THREE.MeshLambertMaterial({ map: sackMap }), tieMat = new THREE.MeshLambertMaterial({ color: 0xd9b84a });
-    const ringGeo = new THREE.RingGeometry(2.6, 3.4, 40), beamGeo = new THREE.CylinderGeometry(0.5, 0.5, 40, 10, 1, true);
+    const ringGeo = new THREE.RingGeometry(2.4, 3.0, 40), beamGeo = new THREE.CylinderGeometry(0.5, 0.5, 40, 10, 1, true);
     for (const bank of L.banks) {
       const grp = new THREE.Group();
       const sack = new THREE.Mesh(sackGeo, sackMat); sack.scale.set(1, 0.95, 1); sack.castShadow = true;
-      const neck = new THREE.Mesh(neckGeo, tieMat); neck.position.y = 1.2;
-      const spin = new THREE.Group(); spin.add(sack, neck); spin.position.y = 1.4; grp.add(spin);
+      const neck = new THREE.Mesh(neckGeo, tieMat); neck.position.y = 0.65;
+      const spin = new THREE.Group(); spin.add(sack, neck); spin.position.y = 0.8; grp.add(spin);
       const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.12; grp.add(ring);
       const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 20; beam.visible = false; grp.add(beam);
       g.add(grp); this.bags.push({ grp, spin, ring, beam, id: bank.id });
@@ -151,7 +151,7 @@ export class GetawayView {
     const sbeam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 120, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0x5dff8a, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); sbeam.position.y = 60; sh.add(sbeam);
     this.pad = pad; sh.visible = false; g.add(sh);
     this.stash = [];
-    for (let i = 0; i < TOWN.goal + 1; i++) { const s = new THREE.Mesh(sackGeo, sackMat); s.scale.setScalar(0.7); s.visible = false; g.add(s); this.stash.push(s); }
+    for (let i = 0; i < TOWN.goal + 1; i++) { const s = new THREE.Mesh(sackGeo, sackMat); s.scale.setScalar(1); s.visible = false; g.add(s); this.stash.push(s); }
   }
 
   /** Put the safehouse arch where the game says (it spans the street it is on). */
@@ -169,16 +169,18 @@ export class GetawayView {
     let safeN = 0;
     for (const v of this.bags) {
       const b = game.bags[v.id];
-      v.grp.visible = b.state !== 'safe';
+      v.grp.visible = b.state !== 'hidden' && b.state !== 'safe';
+      if (b.state === 'hidden') continue;
       if (b.state === 'safe') { const s = this.stash[safeN++]; if (s) { s.visible = true; s.position.set(game.safehouse.x + (safeN - 2) * 1.6, this.y0 + 0.8, game.safehouse.z + (safeN % 2 ? 1.4 : -1.4)); } continue; }
       v.spin.rotation.y = this.t * 1.6;
       v.ring.visible = b.state === 'home' || b.state === 'ground';
       v.ring.material.color.setHex(b.state === 'ground' ? 0xffd23a : 0x7dff9a);
       v.ring.scale.setScalar(0.92 + 0.12 * pulse);
-      v.beam.visible = b.state === 'ground';
+      v.beam.visible = b.state === 'ground' || b.state === 'home';
+      v.beam.material.color.setHex(b.state === 'ground' ? 0xffd23a : 0x7dff9a);
       const carried = b.state === 'robber' || b.state === 'police';
-      v.spin.position.y = carried ? 3.0 : 1.4 + 0.18 * Math.sin(this.t * 3 + v.id);
-      v.spin.scale.setScalar(carried ? 0.8 : 1);
+      v.spin.position.y = carried ? 2.6 : 0.8 + 0.1 * Math.sin(this.t * 3 + v.id);
+      v.spin.scale.setScalar(carried ? 0.9 : 1);
       v.grp.position.set(b.x, this.y0, b.z);
     }
     for (let i = safeN; i < this.stash.length; i++) this.stash[i].visible = false;
