@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.477 — Replay controls stay visible
+- Tablet and mobile replay controls no longer tuck away behind the dock.
+- Available replay controls now stay visible and use a tighter wrapping layout so they fit smaller screens.
+
 ## v17.476 — Replay exit always visible on touch
 - Phones and tablets now keep a Back to game button visible in the top-right of the replay screen, even when the bottom replay controls are tucked away.
 

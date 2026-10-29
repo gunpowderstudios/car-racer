@@ -334,7 +334,7 @@ export function createReplayMode(d) {
     rebuildTo(R.t);
     d.chase.mode = 0; d.chase.snap();
     el.bar.hidden = false; syncUi();
-    setDocked(!desktop);                                              // on a phone the replay starts with the controls tucked away
+    setDocked(false);                                                 // replay controls stay visible on every device
     return true;
   }
 
