@@ -24,7 +24,7 @@ export function describeBinding(b, standard) {
 export class Input {
   constructor({ onReset, onRestart, onPadConnect, onCamera, onMenu, onEditor, onDebug, onMusic, onMirror, onPause, onBoom, onReplay } = {}) {
     this.keys = new Set();
-    this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false };
+    this.touch = { left: false, right: false, gas: false, brake: false, hand: false, boost: false, horn: false };
     this.pad = { throttle: 0, brake: 0, steer: 0, hand: false, boost: false, horn: false };
     this._prevPad = {};
     this.learn = null;                                                              // set while the Controller panel waits for a button press
@@ -53,7 +53,7 @@ export class Input {
       el.addEventListener('pointerdown', set(true)); el.addEventListener('pointerup', set(false));
       el.addEventListener('pointercancel', set(false)); el.addEventListener('pointerleave', set(false));
     };
-    bind('t-left', 'left'); bind('t-right', 'right'); bind('t-gas', 'gas'); bind('t-brake', 'brake'); bind('t-hand', 'hand'); bind('t-boost', 'boost');
+    bind('t-left', 'left'); bind('t-right', 'right'); bind('t-gas', 'gas'); bind('t-brake', 'brake'); bind('t-hand', 'hand'); bind('t-boost', 'boost'); bind('mq-horn', 'horn');
   }
 
   poll() { this._poll(); }                                                          // (the Controller panel polls on the menu, where no race is reading the input)
@@ -133,7 +133,7 @@ export class Input {
       steer: clamp(steerKeys + this.pad.steer, -1, 1),
       handbrake: key('ShiftLeft', 'ShiftRight') || t.hand || this.pad.hand,
       boost: key('Space') || t.boost || this.pad.boost,
-      horn: key('KeyH') || this.pad.horn,
+      horn: key('KeyH') || t.horn || this.pad.horn,
     };
   }
 }

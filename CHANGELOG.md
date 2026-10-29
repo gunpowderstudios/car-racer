@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.474 — Bigger tablet quick controls + horn
+- Tablet camera and quick-action icons are now 50% larger than mobile.
+- Added a hold-to-honk Horn button to the quick-action stack on both mobile and tablet. It uses the existing horn input/behaviour; gameplay is unchanged.
+
 ## v17.473 — Version joins edition label
 - The version number now sits in the top-right badge after Desktop Edition, Tablet Edition or Mobile Edition instead of appearing in the main menu.
 

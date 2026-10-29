@@ -1137,3 +1137,22 @@ body:not(.mode-menu) #edition-badge { display: none; }
   #edition-badge .edition-desktop { display: none; }
   #edition-badge .edition-mobile { display: inline; }
 }
+
+
+/* Tablet quick-action controls: 50% larger than mobile. */
+@media (pointer: coarse) and (min-width: 761px) {
+  #mobile-quick-actions {
+    gap: 14px;
+  }
+  #mobile-quick-actions button,
+  #t-camera {
+    width: 51px !important;
+    height: 51px !important;
+    min-width: 51px;
+    padding: 9px;
+  }
+  #t-camera {
+    right: 10px;
+    bottom: 162px;
+  }
+}
