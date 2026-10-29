@@ -259,6 +259,7 @@ export class Vehicle {
     this._walls(track, dt);
     if (track.rocks) this._rocks(track);
     if (track.trees) this._trees(track);
+    if (track.blocks) this._blocks(track);
 
     // --- integrate pose
     const vl = this.vel.length();
@@ -726,6 +727,30 @@ export class Vehicle {
         if (R - d > pen) { pen = R - d; nx = n.x; nz = n.z; }
         if (vn >= 0) continue;
         const rr = r.clone(), nn = n.clone();
+        const e = this.spec.wallBounce * clamp((-vn - 0.5) / 2.5, 0, 1);
+        this._impulse(nn, -(1 + e) * vn / this._kAt(rr, nn), rr);
+        if (-vn > worstV) { worstV = -vn; wx = p.x; wy = p.y; wz = p.z; }
+      }
+    }
+    if (pen > 0) { this.pos.x += nx * Math.min(pen, 0.5) * 0.7; this.pos.z += nz * Math.min(pen, 0.5) * 0.7; }
+    if (worstV > 0) this.scraping = true;
+    if (worstV > 1.5) this.events.push({ type: 'wall', speed: worstV, x: wx, y: wy, z: wz });
+  }
+  /** The Getaway's buildings: solid boxes on the ground plan. A hull point inside one is pushed out through the nearest face and bounces off like a wall. */
+  _blocks(track) {
+    const hull = this.spec.hull;
+    let worstV = 0, wx = 0, wy = 0, wz = 0, nx = 0, nz = 0, pen = 0;
+    for (const bk of track.blocks) {
+      if (this.pos.x < bk.x0 - 5 || this.pos.x > bk.x1 + 5 || this.pos.z < bk.z0 - 5 || this.pos.z > bk.z1 + 5 || this.pos.y > bk.y + bk.h + 3) continue;
+      for (let i = 0; i < hull.length; i++) {
+        const p = this.toWorld(hull[i], this.hullWorld[i]);
+        if (p.y > bk.y + bk.h || p.y < bk.y - 1.5 || p.x <= bk.x0 || p.x >= bk.x1 || p.z <= bk.z0 || p.z >= bk.z1) continue;
+        const dl = p.x - bk.x0, dr = bk.x1 - p.x, dn = p.z - bk.z0, df = bk.z1 - p.z, m = Math.min(dl, dr, dn, df);
+        const n = tmpE.set(m === dl ? -1 : m === dr ? 1 : 0, 0, m === dn ? -1 : m === df ? 1 : 0);       // the way out: through the nearest face
+        const r = tmpC.copy(p).sub(this.pos), v = this._velAt(r, tmpD), vn = v.dot(n);
+        if (m > pen) { pen = m; nx = n.x; nz = n.z; }
+        if (vn >= 0) continue;
+        const rr = r.clone(), nn = n.clone(); rr.y = 0;       // (a building shoves the car at the height of its middle, so it spins but never trips over its own wheels)
         const e = this.spec.wallBounce * clamp((-vn - 0.5) / 2.5, 0, 1);
         this._impulse(nn, -(1 + e) * vn / this._kAt(rr, nn), rr);
         if (-vn > worstV) { worstV = -vn; wx = p.x; wy = p.y; wz = p.z; }

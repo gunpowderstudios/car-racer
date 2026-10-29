@@ -231,6 +231,7 @@ export class Derby {
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
+    this.getaway = false; this.getawaySetup = null;    // The Getaway (see _spawnGetaway): main.js fills in { L, role, makeDriver(rng), rescue(car) } before start()
     this.slotSkill = null;                               // optional { raceSlot: skill offset }
     this.brutal = false;                                 // Demolition Day: tougher, Expert-skill rivals whatever the options say (main.js sets it)
     this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
@@ -259,6 +260,7 @@ export class Derby {
     // A track marked mode 'lastStanding' (The Oval) is a free-for-all: rivals start spread round the ring, fight each
     // other as well as you, are never replaced, and the last car still running wins.
     this.lastStanding = !!(track && track.def && track.def.mode === 'lastStanding'); this._arenaField = 0;
+    this.getaway = !!(track && track.def && track.def.getaway && this.getawaySetup);      // The Getaway: one computer car (robber or police) in the town (see _spawnGetaway)
     // Two ways to play. RACE: you are wrecked, you explode, you come back on the road and the race goes on; rivals are replaced.
     // DEMOLITION: wrecked means out, nobody is replaced, and the last car running wins. The Oval is always demolition.
     this.mode = mode === 'demolition' || this.lastStanding ? 'demolition' : 'race'; this.demolition = this.mode === 'demolition';
@@ -270,10 +272,19 @@ export class Derby {
       prev: pose(), cur: pose(), hue: -1,
     };
     this.fighters.push(p);
-    if (this.lastStanding) {
+    if (this.getaway) this._spawnGetaway();
+    else if (this.lastStanding) {
       for (let k = 0; k < count; k++) { this._spawnArena(k, count); this._arenaField++; }
     } else for (let k = 0; k < count; k++) this._spawnGrid(k, count);
     this._refreshCars();
+  }
+
+  /** The Getaway: the one computer car, on the side `getawaySetup.role` ('robber' or 'police'), standing at its end of the town. */
+  _spawnGetaway() {
+    const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = this._kind(), car = new Vehicle(kind?.spec);
+    car.reset(new V3(p.x, this.track.py[0] + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
+    car.opts.assist = 0.7;
+    return this.add(car, S.makeDriver(this.rng), 1, kind);
   }
 
   /** Rival `k` of `of` in The Oval: standing still on a ring inside the floor, facing the middle, spoiling for a fight. */
@@ -550,7 +561,7 @@ export class Derby {
     }
 
     // -------- last one standing
-    if (this.demolition && !this.over && !P.wrecked && (this._arenaField > 0 || this.count > 0) && this.time > DERBY.grace && this._standing() === 0) this._win();
+    if (this.demolition && !this.getaway && !this.over && !P.wrecked && (this._arenaField > 0 || this.count > 0) && this.time > DERBY.grace && this._standing() === 0) this._win();
   }
 
   /** Rivals still in the fight. One that is only 3-2-1 resetting after being lost off the road still counts. */
@@ -598,6 +609,11 @@ export class Derby {
   /** Rivals that flipped, got lost or got stuck: cook the upside-down ones, put the lost ones back. */
   _watch(f, dt) {
     const c = f.car, T = this.track;
+    if (this.getaway) {                                    // the town has no road to be put back on: a car that flips goes upright at its junction
+      f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
+      if (f.flipT > 2.5 || c.pos.y < -5) { this.getawaySetup.rescue(c); f.flipT = 0; this._pose(f, f.cur); this._pose(f, f.prev); }
+      return;
+    }
     f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
     if (f.flipT > 3 && this.damageEnabled) this._damage(f, 'front', DAMAGE.burnPerSecond * dt, null);      // destruction: an engine fire, eventually
     f.idleT = c.speed < 2 && c.ay.y > 0.15 ? f.idleT + dt : 0;

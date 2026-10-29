@@ -174,7 +174,13 @@ const BASE_CAR = {
   wallBounce: CAR.wallBounce,
 };
 
+// A mode can lend the player a particular vehicle for a while without touching their saved choice (The Getaway: the Dodge or the police car).
+let forced = null;
+export function forceVehicle(id) { forced = id ? vehicleById(id).id : null; }
+export const forcedVehicle = () => forced;
+
 export function selectedVehicle() {
+  if (forced) return vehicleById(forced);
   let id = fallback.id;
   try { id = localStorage.getItem(KEY) || id; } catch { /* storage unavailable */ }
   return VEHICLES.find((v) => v.id === id) || fallback;

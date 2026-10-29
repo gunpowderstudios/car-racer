@@ -125,6 +125,23 @@ export function bumpAt(bumps, x, z, out) {
 }
 const _bump = { h: 0, gx: 0, gz: 0 };
 
+// ---------------------------------------------------------------- buildings (The Getaway)
+/** Solid boxes cars cannot enter: { x0, x1, z0, z1 } on the ground plan (the town's blocks and its border wall). */
+export const MAX_BLOCKS = 64;
+export function normalizeBlocks(list) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (out.length >= MAX_BLOCKS || !b) continue;
+    const x0 = Number(b.x0), x1 = Number(b.x1), z0 = Number(b.z0), z1 = Number(b.z1);
+    if (![x0, x1, z0, z1].every(Number.isFinite) || x1 <= x0 || z1 <= z0 || Math.abs(x0) > 1e4 || Math.abs(x1) > 1e4 || Math.abs(z0) > 1e4 || Math.abs(z1) > 1e4) continue;
+    const o = { x0: Math.round(x0 * 100) / 100, x1: Math.round(x1 * 100) / 100, z0: Math.round(z0 * 100) / 100, z1: Math.round(z1 * 100) / 100 };
+    if (b.kind === 'wall') o.kind = 'wall';
+    out.push(o);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- rocks and boulders (rally stages)
 
 /** Grey boulders beside (and a little onto) a rally stage: { x, z, r (radius on the ground, m), h (height, m) }. Solid: cars bounce off them. */
@@ -227,7 +244,7 @@ export function puddleEdge(sh, angle) {
 export function normalizeTrack(input) {
   const src = input || {};
   const arena = src.mode === 'lastStanding';
-  const width = clamp(Number(src.width) || 22, 12, arena ? 120 : 40);          // an arena's 'road' is a whole dirt floor
+  const width = clamp(Number(src.width) || 22, 12, arena ? (src.getaway ? 280 : 120) : 40);          // an arena's 'road' is a whole dirt floor
   const handles = (Array.isArray(src.handles) ? src.handles : []).map((h) => ({
     x: Number(h.x) || 0,
     y: Math.max(0, Number.isFinite(+h.y) ? +h.y : 0.65),
@@ -261,6 +278,7 @@ export function normalizeTrack(input) {
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
+  if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
@@ -322,6 +340,7 @@ export class Track {
     this.bumps = this.def.bumps || null;
     this.berm = !!this.def.berm; this.margin = this.berm ? BERM_MARGIN : QUERY_MARGIN;
     this.puddles = this.def.puddles || null;
+    this.blocks = null;                                                       // (set below, once the floor height is known)
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
     this._build();
     // boulders: remember how high the ground is under each (the car's collision needs it)
@@ -336,6 +355,7 @@ export class Track {
     if (!this.rollers.length) this.rollers = null;
     if (!this.rocks.length) this.rocks = null;
     this._rq = Track.newQuery(); this._rollN = 0;
+    if (this.def.blocks && this.def.blocks.length) { const y = this.py[0]; this.blocks = this.def.blocks.map((b) => ({ ...b, y, h: 14 })); }
   }
 
   /** Another player's boulder has been set off (multiplayer): ours rolls too, if it is still waiting. */

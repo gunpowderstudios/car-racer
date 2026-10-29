@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.481 — The Getaway (cops and robbers)
+- New game under "Cops and Robbers" in the track list: **The Getaway**. A small town of 4 x 3 blocks with a bank on every block and a bag of money lying in the street outside each one.
+- Play the **Robber** (the Dodge): drive over a bag (one at a time) and take it to the safehouse, which is hidden in a different random spot each round. Three bags safe and the robbers win.
+- Or play the **Police** (the police car): you start at the far end of town with a street map. The moment a bag is picked up the map flashes "Robbery in progress" and shows the robber. Ram him hard to knock the bag out of his car, drive over it and return it to its bank. Three bags back and the robbers are jailed.
+- This version is you against the computer (it plays the other side). Sides swap each round. Online two-player is next.
+- Buildings are solid: the town has its own walls and blocks to drive into. The Dodge and the police car are lent to you for the game, and your chosen vehicle comes back afterwards.
+
 ## v17.480 — Menu TV, open Apple Crumple
 - The TV on the main menu now sits lower, clear of the edition badge, and reads "LIVE TV Playback!" underneath instead of the cassette and "Record your greatest hit!".
 - Apple Crumple no longer asks for a password: anyone can pick it from the track list.

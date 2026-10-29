@@ -6,6 +6,7 @@ import { buildTrackGeometry } from './trackGeometry.js';
 import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
+import { GetawayView } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
 const SKY_TOP = 0x1f3a72, SKY_MID = 0xc2557a, SKY_LOW = 0xffa45c, FOG = 0xe39a6a;
@@ -99,6 +100,8 @@ export class Stage {
 
   /** Apple Crumple: put every hazard where its clock says it is (`a` is the Assault run). */
   updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
+  /** The Getaway: bags, rings and the safehouse (`game` is the GetawayGame). */
+  updateGetaway(game, dt) { if (this.getawayView && game) this.getawayView.update(game, dt); }
 
   /** Put each rolling boulder where the simulation has it, turning as it rolls. */
   updateRollers() {
@@ -151,7 +154,7 @@ export class Stage {
   }
 
   clearTrack() {
-    this.fish = null; this.assaultView = null;
+    this.fish = null; this.assaultView = null; this.getawayView = null;
     if (!this.trackGroup) return;
     this.scene.remove(this.trackGroup);
     this.trackGroup.traverse((o) => {
@@ -306,7 +309,8 @@ export class Stage {
     const g = new THREE.Group(), arena = buildArena(track, this.aniso);
     g.add(arena);
     const geo = { bounds: arena.userData.bounds, arena: true };
-    g.add(this._scenery(track, geo, arena.userData.clear));
+    if (track.def.getaway) this.getawayView = new GetawayView(track, g);          // The Getaway: the town, its bags and the safehouse (no scenery in the streets)
+    else g.add(this._scenery(track, geo, arena.userData.clear));
     this.scene.add(g); this.trackGroup = g;
     return geo;
   }

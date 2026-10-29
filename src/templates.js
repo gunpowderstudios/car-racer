@@ -4,6 +4,7 @@
 import { Track, suggestBanks, normalizeTrack, analyzeTrack } from './track.js';
 import { placeProp } from './props.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
+import { townLayout } from './getaway.js';
 import { placeOnRoad } from './derby.js';
 import { Vehicle } from './vehicle.js';
 import { Driver } from './ai.js';
@@ -507,7 +508,14 @@ function buildRandomTrack(seed) {
   return normalizeTrack({ ...def, props });
 }
 
+/** The Getaway's town: an open flat floor (an arena, so the ground and the outer wall just work) with the town's buildings standing on it as solid blocks. */
+function getawayTrack() {
+  const L = townLayout();
+  return normalizeTrack({ name: 'The Getaway', width: 280, mode: 'lastStanding', getaway: true, handles: ellipse(30, 30, 20).map((h) => ({ ...h, y: 0.65 })), blocks: L.boxes });
+}
+
 export function makeTemplate(key) {
+  if (key === 'getaway') return getawayTrack();            // The Getaway: a two-player cops and robbers game (see getaway.js); not one of the race tracks, so left out of TEMPLATE_KEYS
   if (key === 'apple') {                                   // Apple Crumple: its own course, not one of the race tracks (so it is left out of TEMPLATE_KEYS)
     const base = normalizeTrack({ name: 'Apple Crumple', width: CRUMPLE.width, defaultLaps: 1, handles: crumpleHandles(), walls: true });
     return normalizeTrack(crumpleCourse(base));
@@ -529,6 +537,7 @@ export function makeTemplate(key) {
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
 export const TEMPLATE_INFO = {
+  getaway: 'Cops and robbers in a small town: rob the banks and get the cash to the safehouse - or catch the robbers and put it back. Two players, or one against the AI.',
   apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, fire pits, a jump and a final gauntlet - then fly through the flaming hoop. Every stage has its own clock!',
   speedway: 'A fast 1.6 km banked Nascar-style paint-scraping, head rush',
   oval: 'A cheesy pizza-shaped pile up of olives and exploding peppers!',
