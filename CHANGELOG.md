@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.479 — Housekeeping
+- Fixed the asset version number that was left behind at v17.467, so the latest files and car models are always fetched fresh; tidied the v17.468 and v17.469 notes in this log.
+
 ## v17.478 — Replay dock restored
 - Mobile and tablet replay controls once again slide/tuck down and return when the tab is tapped.
 - Removed the separate top-right Back to game button; Back to game remains in the replay controls.
@@ -34,7 +37,11 @@ This file records notable user-facing changes. New entries go at the top.
 - Restored the small top-right Desktop Edition, Tablet Edition or Mobile Edition label on the main menu. No gameplay or audio code changed.
 
 ## v17.469 — Edition label rolled back
-- Removed the new Desktop/Tablet/Mobile Edition corner label after sound was reported missing. No gameplay or audio code was changed.\n\n## v17.468 — Device edition label\n- A small top-right label on the main menu now identifies the current version as Desktop Edition, Tablet Edition or Mobile Edition.\n
+- Removed the new Desktop/Tablet/Mobile Edition corner label after sound was reported missing. No gameplay or audio code was changed.
+
+## v17.468 — Device edition label
+- A small top-right label on the main menu now identifies the current version as Desktop Edition, Tablet Edition or Mobile Edition.
+
 ## v17.467 — Hazards move in the replay
 - Apple Crumple: the hammers, spinners, rolling rocks and presses now move in the replay (and in made movies) exactly as they did in your run; they used to stand frozen.
 
