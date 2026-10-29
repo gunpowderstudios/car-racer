@@ -168,8 +168,8 @@ export class GetawayView {
       for (let i = 0; i < MAX - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       geo.setIndex(idx);
       const tex = canvasTex(64, 32, (g, w, h) => {
-        g.fillStyle = 'rgba(255,40,30,0.55)'; g.fillRect(0, 0, w, h);
-        g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.moveTo(14, 5); g.lineTo(48, h / 2); g.lineTo(14, h - 5); g.lineTo(26, h / 2); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,40,30,0.32)'; g.fillRect(0, 0, w, h);
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.moveTo(14, 5); g.lineTo(48, h / 2); g.lineTo(14, h - 5); g.lineTo(26, h / 2); g.closePath(); g.fill();
       });
       this.line = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
       this.line.frustumCulled = false; this.line.renderOrder = 2; this.g.add(this.line); this.lineMax = MAX;
@@ -177,7 +177,7 @@ export class GetawayView {
     if (!pts || pts.length < 2) { this.line.visible = false; return; }
     let P = pts;
     for (let it = 0; it < 2; it++) { const Q = [P[0]]; for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; Q.push({ x: a.x * 0.75 + b.x * 0.25, z: a.z * 0.75 + b.z * 0.25 }, { x: a.x * 0.25 + b.x * 0.75, z: a.z * 0.25 + b.z * 0.75 }); } Q.push(P[P.length - 1]); P = Q; }
-    const n = Math.min(P.length, this.lineMax), pos = this.line.geometry.attributes.position, uv = this.line.geometry.attributes.uv, y = this.y0 + 0.1, half = 1.1;
+    const n = Math.min(P.length, this.lineMax), pos = this.line.geometry.attributes.position, uv = this.line.geometry.attributes.uv, y = this.y0 + 0.1, half = 0.4;
     let u = 0;
     for (let i = 0; i < n; i++) {
       const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)], tx = b.x - a.x, tz = b.z - a.z, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl;
@@ -213,7 +213,7 @@ export class GetawayView {
       v.beam.visible = b.state === 'ground' || b.state === 'home';
       v.beam.material.color.setHex(b.state === 'ground' ? 0xffd23a : 0x7dff9a);
       const carried = b.state === 'robber' || b.state === 'police';
-      v.spin.position.y = carried ? 2.6 : 0.8 + 0.1 * Math.sin(this.t * 3 + v.id);
+      v.spin.visible = !carried; v.spin.position.y = carried ? 2.6 : 0.8 + 0.1 * Math.sin(this.t * 3 + v.id);
       v.spin.scale.setScalar(carried ? 0.9 : 1);
       v.grp.position.set(b.x, this.y0, b.z);
     }

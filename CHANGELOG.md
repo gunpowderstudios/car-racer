@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.486 — The Getaway: tidier HUD, police stay on the road
+- The red satnav line is thinner and fainter, on the road and on the map.
+- The bag you are carrying is now a small icon (with the ram count) above the Bangers and Smash! TV logo, instead of a big sack over your car.
+- The computer police only drive straight at you along the same street, and keep to the tarmac, so they stop ploughing into buildings.
+- Traffic now stops for any car in front, including yours, and waits until you move away.
+
 ## v17.485 — The Getaway: strikes and a satnav line
 - New rules: the police no longer pick bags up. Ram the robber three times while he is carrying a bag and the robbery is stopped: the money goes straight back in its bank, the next bag is put out for the robber, and the robber gets a strike. Three strikes and he is in jail (police win). Three bags in the safehouse still wins it for the robbers.
 - The scoreboard now shows bags safe (robbers) and strikes (police), and a hint tells you how many times the robber has been rammed.

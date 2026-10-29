@@ -66,7 +66,7 @@ export class GetawayDriver {
     let vT = G.kind === 'idle' ? 0 : this.cruise, ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
-    if (G.kind === 'robber' && same && dist < 45) { chase = true; vT = this.cruise * 1.5; }            // the last stretch of a chase: straight at him
+    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = this.cruise * 1.25; }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
       const pts = G.path || route(L, px, pz, fx, fz, G.x, G.z, car.speed), P = [{ x: px, z: pz }];
@@ -90,17 +90,18 @@ export class GetawayDriver {
     }
 
     // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it
-    if (sA && sA.kind === 'h') { const c = L.zs[sA.j], dev = pz - c; az = clamp(az, c - 4.6, c + 4.6); if (!chase && Math.abs(dev) > 5.2) { az = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
-    else if (sA && sA.kind === 'v') { const c = L.xs[sA.i], dev = px - c; ax = clamp(ax, c - 4.6, c + 4.6); if (!chase && Math.abs(dev) > 5.2) { ax = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
+    if (sA && sA.kind === 'h') { const c = L.zs[sA.j], dev = pz - c; az = clamp(az, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { az = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
+    else if (sA && sA.kind === 'v') { const c = L.xs[sA.i], dev = px - c; ax = clamp(ax, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { ax = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
 
     // keep clear of other cars: ease off for one in the way ahead (not the one being chased, and never wait for ever in a jam)
     let blocked = false;
     if (!(this.shove > 0)) {
       for (const c of ctx.cars || []) {
         if (c === car || (chase && c === foe)) continue;
+        const tr = this.role === 'traffic', human = c === foe;
         const rx = c.pos.x - px, rz = c.pos.z - pz, ahead = rx * fx + rz * fz, side = Math.abs(rz * fx - rx * fz);
-        if (ahead > 0 && ahead < 7 + Math.max(v, 0) * 0.8 && side < 3.3 && Math.abs(c.pos.y - car.pos.y) < 3 && (c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
-          const gap = ahead - 5.5; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
+        if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && side < (tr ? 3.6 : 3.3) && Math.abs(c.pos.y - car.pos.y) < 3 && (tr || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
+          const gap = ahead - (tr ? 7 : 5.5); if (tr && human) this.waitT = -1e9; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
         }
       }
     }
