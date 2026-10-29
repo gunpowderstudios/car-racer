@@ -726,7 +726,7 @@ function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role);
-  sound.sirenLoop(G.role === 'robber' && f && !G.game.over && !paused && mode === 'drive' ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : null);       // the police siren: you hear it from anywhere, louder the nearer it is
+  sound.sirenLoop(G.role === 'robber' && f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t);
   if (G.resultAt && performance.now() > G.resultAt) { G.resultAt = 0; showGetawayCard(); }
 }

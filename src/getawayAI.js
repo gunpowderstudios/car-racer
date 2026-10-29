@@ -13,7 +13,7 @@ export class GetawayDriver {
     this.cruise = role === 'police' ? 20 + skill * 8 : 17 + skill * 7;                    // m/s on a straight
     this.mood = 'hunt'; this.target = false; this.grudgeT = 0;
     this.stuck = 0; this.reverse = 0; this.revSteer = 0; this.steerNow = 0;
-    this.goal = null; this.path = []; this.repathT = 0;
+    this.patrol = null; this.patrolT = 0; this.goal = null; this.path = []; this.repathT = 0;
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
   }
 
@@ -48,9 +48,11 @@ export class GetawayDriver {
         const lead = clamp(Math.hypot(foe.pos.x - cx, foe.pos.z - cz) / Math.max(car.speed + 6, 14), 0, 2.2);
         return { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' };
       }
-      let best = null, bd = Infinity;
-      for (const b of g.bags) if (b.state === 'home') { const d = Math.hypot(b.x - foe.pos.x, b.z - foe.pos.z); if (d < bd) { bd = d; best = b; } }
-      if (best) return { x: best.x, z: best.z, kind: 'patrol' };
+      // no alarm, no idea where the robber is: cruise past the banks, one after another
+      if (!this.patrol || g.time > this.patrolT || Math.hypot(this.patrol.x - cx, this.patrol.z - cz) < 12) {
+        const bk = g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.door.x, z: bk.door.z + 4.5 }; this.patrolT = g.time + 25;
+      }
+      return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
     }
     return { x: cx, z: cz, kind: 'idle' };
   }

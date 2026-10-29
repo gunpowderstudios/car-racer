@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.483 — The Getaway: the police lose you
+- The police siren now sounds only while the robber is carrying a bag (the alarm is on). Once the bag is in the safehouse the police lose you, and the computer police go back to cruising past the banks until the next robbery.
+
 ## v17.482 — The Getaway: one bag at a time
 - Bags are now small and tucked into a street corner by their bank.
 - Only one bag is out at a time. The robber sees it on the map; the police don't know where it is until the alarm goes. Drop one off and the next bag turns up at a different, random bank.
