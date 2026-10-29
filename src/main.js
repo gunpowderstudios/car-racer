@@ -22,7 +22,7 @@ import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { Assault, COURSE } from './assault.js';
-import { GetawayGame, townLayout, rescuePose } from './getaway.js';
+import { GetawayGame, townLayout, rescuePose, route } from './getaway.js';
 import { GetawayDriver, TrafficDriver } from './getawayAI.js';
 import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGetawayResult, drawGetawayMap, getawayCompass } from './getawayHud.js';
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
@@ -705,12 +705,11 @@ function getawayStep() {
 function getawayEvents() {
   const G = getaway, g = G.game, me = G.role;
   for (const e of g.events) {
-    if (e.type === 'pickup') {
-      if (e.who === 'robber') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! To the safehouse!' : 'Robbery in progress!', 2200); }
-      else { gwChime([520, 780]); getawayPop(me === 'police' ? 'Got it! Back to the bank!' : 'The police have the cash!', 2000); }
-    } else if (e.type === 'drop') { sound.hit(14, 'car'); gwChime([440, 330, 220], 90); getawayPop(me === 'police' ? 'Cash dropped - grab it!' : 'Rammed! You dropped the cash!', 2000); }
+    if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! Follow the red line to the safehouse!' : 'Robbery in progress! Follow the red line!', 2400); }
+    else if (e.type === 'ram') { sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
+    else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
     else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
-    else if (e.type === 'return') { gwChime([784, 659, 523, 392], 110); getawayPop(`Back in the bank! ${e.count}/${g.goal}`, 2200); }
+    else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
     else if (e.type === 'win') getawayFinish(e);
   }
   g.events.length = 0;
@@ -719,10 +718,10 @@ function getawayFinish(e) {
   const G = getaway, me = G.role, won = e.who === me, rob = e.who === 'robber';
   gwChime(won ? [523, 659, 784, 1047, 1319] : [392, 330, 262, 196], 150, 0.34);
   const t = Math.round(e.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
-  const title = rob ? (me === 'robber' ? 'You got away with it!' : 'They got away!') : (me === 'police' ? 'Robbers busted!' : 'Busted! Off to jail');
+  const title = rob ? (me === 'robber' ? 'You got away with it!' : 'They got away!') : (me === 'police' ? 'Robber busted!' : 'Busted! Off to jail');
   G.card = {
     title, again: `Play again as ${gwOther(me)} (Enter)`,
-    lines: [rob ? `${e.robbed} bags safe in the safehouse` : `${e.returned} bags back in the banks - the robbers are in jail`, `Bags taken ${e.robbed} · returned ${e.returned}`, `Time ${mm}:${ss}`],
+    lines: [rob ? `${e.robbed} bags safe in the safehouse` : `Three strikes - the robber is in jail`, `Bags safe ${e.robbed} · strikes ${e.strikes}`, `Time ${mm}:${ss}`],
   };
   G.resultAt = performance.now() + 1700; sound.sirenLoop(null);
 }
@@ -731,7 +730,19 @@ function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role); getawayCompass(car.az.x, car.az.z);
   sound.sirenLoop(G.role === 'robber' && f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
-  drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t);
+  if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
+    const g = G.game; let to = null;
+    if (!g.over) { if (G.role === 'robber') { const b = g.robberBag ? g.safehouse : g.loose()[0]; if (b) to = { x: b.x, z: b.z }; } else if (g.alarm && f) to = { x: f.car.pos.x, z: f.car.pos.z }; }
+    let line = null;
+    if (to) {
+      const pts = route(G.L, car.pos.x, car.pos.z, car.az.x, car.az.z, to.x, to.z, car.speed), P = [{ x: car.pos.x, z: car.pos.z }, ...pts];
+      while (P.length > 2 && Math.hypot(P[1].x - P[0].x, P[1].z - P[0].z) < 14 && (P[0].x - P[1].x) * (P[2].x - P[1].x) + (P[0].z - P[1].z) * (P[2].z - P[1].z) > 0) P.splice(1, 1);
+      line = P.length > 1 ? P : null;
+    }
+    G.line = line || [];
+    stage.setGetawayRoute(line);
+  }
+  drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t, G.line);
   if (G.resultAt && performance.now() > G.resultAt) { G.resultAt = 0; showGetawayCard(); }
 }
 

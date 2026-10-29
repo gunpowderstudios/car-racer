@@ -1,9 +1,9 @@
 // The Getaway: a two-player cops-and-robbers game in a small town. No three.js in here, so it runs (and is tested) in Node.
 //
-// The town is a grid of blocks (4 across, 3 deep) with streets between and all round them. Every block has a bank, and outside each bank
-// (in the middle of the street) lies a bag of money. One player is the ROBBER (the Dodge): drive over a bag to pick it up (one at a time) and
-// take it to the safehouse. The other is the POLICE car: ram the robber hard enough and the bag drops; drive over a dropped bag and take it
-// back to its bank. Three bags safe in the safehouse and the robbers win; three bags back in the banks and the police win.
+// The town is a grid of blocks (4 across, 3 deep) with streets between and all round them. Every block has a bank; one bag of money is out at a time,
+// lying small in a corner of the street outside a bank. One player is the ROBBER (the Dodge): drive over the bag and take it to the safehouse. The other
+// is the POLICE car: ram the robber three times while he carries the bag and the robbery is stopped (the money goes back in its bank, the robber gets a
+// strike). Three bags in the safehouse and the robbers win; three strikes and the robber goes to jail.
 //
 // Everything here is a pure function of positions handed in each step, so the same code serves the AI game and (later) the online one.
 
@@ -15,10 +15,11 @@ export const TOWN = {
   border: 12,              // thickness of the solid wall of buildings all round the town
   bagR: 3.4,               // how close a car must come to a bag to pick it up
   homeR: 7,                // how close the police must bring a bag to its bank / the robber to the safehouse
-  goal: 3,                 // bags needed to win
-  ramSpeed: 7,             // closing speed (m/s) that knocks a bag out of the robber's car
-  ramGrace: 2.6,           // seconds after a drop before the robber may take the same bag back
-  ramCool: 1.6,            // seconds before another ram can drop another bag
+  goal: 3,                 // bags the robber needs in the safehouse to win
+  ramSpeed: 6,             // closing speed (m/s) that counts as a ram
+  rams: 3,                 // rams on the robber (while he carries a bag) that stop the robbery
+  jail: 3,                 // stopped robberies (strikes) that put the robber in jail
+  ramCool: 1.2,            // seconds before another ram can count
   height: 11,              // how tall the buildings stand (the solid part; the view makes them different)
 };
 
@@ -165,17 +166,18 @@ export class GetawayGame {
     this.safehouse = safehouse || pickSafehouse(L, this.rng);
     this.bags = L.banks.map((b) => ({ id: b.id, home: { x: b.bag.x, z: b.bag.z }, x: b.bag.x, z: b.bag.z, state: 'hidden', lockUntil: 0 }));
     this.robbed = 0;        // bags the robbers have got into the safehouse
-    this.returned = 0;      // bags the police have got back into the banks
+    this.strikes = 0;       // robberies the police have stopped (three and the robber is in jail)
+    this.ramCount = 0;      // hard rams on the bag being carried now
     this.time = 0; this.over = false; this.winner = null;
-    this.robberBag = null; this.policeBag = null;       // the bag each is carrying (or null)
+    this.robberBag = null;       // the bag the robber is carrying (or null)
     this.ramCoolUntil = 0; this.events = [];
     this.alarm = false;     // a robbery in progress: the robber has a bag
     this._spawn(null, null);       // only one bag is out at a time; the rest are hidden until it is safe
   }
 
   /** Put the next bag out at a random bank (the hidden ones only), keeping away from both cars when it can. */
-  _spawn(robber, police) {
-    const hid = this.bags.filter((b) => b.state === 'hidden'); if (!hid.length) return null;
+  _spawn(robber, police, not = null) {
+    const hid = this.bags.filter((b) => b.state === 'hidden' && b !== not); if (!hid.length) return null;
     const far = hid.filter((b) => [robber, police].every((c) => !c || Math.hypot(b.home.x - c.x, b.home.z - c.z) > 60));
     const list = far.length ? far : hid, b = list[Math.min(list.length - 1, Math.floor(this.rng() * list.length))];
     b.state = 'home'; b.x = b.home.x; b.z = b.home.z; b.lockUntil = 0;
@@ -185,43 +187,43 @@ export class GetawayGame {
 
   get robberCarrying() { return !!this.robberBag; }
 
-  /** Bags lying about that either side could pick up (home or dropped), for the AI and the map. */
-  loose() { return this.bags.filter((b) => b.state === 'home' || b.state === 'ground'); }
+  /** The bag that is out (at its bank) waiting to be picked up, as a list for the AI and the map. */
+  loose() { return this.bags.filter((b) => b.state === 'home'); }
 
   /**
    * One step. `robber` and `police` are { x, z } (the cars); `rams` is the closing speeds of car-against-car knocks since the last step (m/s).
-   * Appends what happened to this.events: pickup, drop, deliver, return, win.
+   * Appends what happened to this.events: pickup, ram, stopped, deliver, spawn, win.
+   * The robber picks a bag up from its bank and drives it to the safehouse. Each hard ram from the police counts; the third stops the robbery: the bag
+   * goes back in its bank (and the next one is put out) and the robber gets a strike. Three strikes and he is in jail.
    */
   step(dt, robber, police, rams = []) {
     if (this.over) return;
     this.time += dt;
     const T = this.L.T;
-    // a hard enough ram knocks the bag out of the robber's car, into the road where it was
     if (this.robberBag && this.time >= this.ramCoolUntil) {
       let hardest = 0; for (const s of rams) hardest = Math.max(hardest, s);
       if (hardest >= T.ramSpeed) {
-        const b = this.robberBag; this.robberBag = null;
-        b.state = 'ground'; b.x = robber.x; b.z = robber.z; b.lockUntil = this.time + T.ramGrace;
-        this.ramCoolUntil = this.time + T.ramCool; this.alarm = false;
-        this.events.push({ type: 'drop', bag: b.id, x: b.x, z: b.z, speed: hardest });
+        this.ramCount++; this.ramCoolUntil = this.time + T.ramCool;
+        this.events.push({ type: 'ram', count: this.ramCount, need: T.rams, speed: hardest });
+        if (this.ramCount >= T.rams) {                 // robbery stopped: the money goes back in its bank and the next bag is put out
+          const b = this.robberBag; this.robberBag = null; b.state = 'hidden'; b.x = b.home.x; b.z = b.home.z;
+          this.alarm = false; this.ramCount = 0; this.strikes++;
+          this.events.push({ type: 'stopped', bag: b.id, count: this.strikes });
+          if (this.strikes >= T.jail) this._win('police'); else this._spawn(robber, police, b);
+        }
       }
     }
-    // picking bags up: the robber takes a bag from its bank or the road; the police only take one from the road
-    for (const b of this.bags) {
-      if (!this.robberBag && (b.state === 'home' || b.state === 'ground') && this.time >= b.lockUntil && Math.hypot(robber.x - b.x, robber.z - b.z) < T.bagR) {
-        this.robberBag = b; b.state = 'robber'; this.alarm = true;
+    if (this.over) return;
+    if (!this.robberBag) {                              // the robber takes the bag that is out
+      for (const b of this.bags) if (b.state === 'home' && Math.hypot(robber.x - b.x, robber.z - b.z) < T.bagR) {
+        this.robberBag = b; b.state = 'robber'; this.alarm = true; this.ramCount = 0;
         this.events.push({ type: 'pickup', who: 'robber', bag: b.id, x: b.x, z: b.z });
-      } else if (!this.policeBag && b.state === 'ground' && Math.hypot(police.x - b.x, police.z - b.z) < T.bagR) {
-        this.policeBag = b; b.state = 'police';
-        this.events.push({ type: 'pickup', who: 'police', bag: b.id, x: b.x, z: b.z });
+        break;
       }
     }
-    // a bag carried follows its car
     if (this.robberBag) { this.robberBag.x = robber.x; this.robberBag.z = robber.z; }
-    if (this.policeBag) { this.policeBag.x = police.x; this.policeBag.z = police.z; }
-    // delivery to the safehouse
-    if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.homeR) {
-      const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++;
+    if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.homeR) {      // delivery to the safehouse
+      const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++; this.ramCount = 0;
       this.events.push({ type: 'deliver', bag: b.id, count: this.robbed });
       if (this.robbed >= this.goal) this._win('robber');
       else {                                         // the next bag turns up somewhere else, and the safehouse moves
@@ -230,18 +232,9 @@ export class GetawayGame {
         this._spawn(robber, police);
       }
     }
-    // the police bring a bag back to its own bank
-    if (this.policeBag && !this.over) {
-      const b = this.policeBag;
-      if (Math.hypot(police.x - b.home.x, police.z - b.home.z) < T.homeR) {
-        this.policeBag = null; b.state = 'home'; b.x = b.home.x; b.z = b.home.z; this.returned++;
-        this.events.push({ type: 'return', bag: b.id, count: this.returned });
-        if (this.returned >= this.goal) this._win('police');
-      }
-    }
   }
 
-  _win(who) { this.over = true; this.winner = who; this.events.push({ type: 'win', who, robbed: this.robbed, returned: this.returned, time: this.time }); }
+  _win(who) { this.over = true; this.winner = who; this.events.push({ type: 'win', who, robbed: this.robbed, strikes: this.strikes, time: this.time }); }
 }
 
 /** Where a bag is drawn and picked up is already in the game; this keeps a point inside the streets (never inside a building), for dropping things. */

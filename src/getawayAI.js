@@ -4,7 +4,7 @@
 // by following the junction route from getaway.js, so it never tries to cut through a building.
 
 import { clamp } from './math.js';
-import { route, streetAt } from './getaway.js';
+import { route, streetAt, nearestNode } from './getaway.js';
 
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
@@ -34,33 +34,15 @@ export class GetawayDriver {
       }
       return best ? { x: best.x, z: best.z, kind: 'bag' } : { x: cx, z: cz, kind: 'idle' };
     }
-    // police
-    if (g.policeBag) return { x: g.policeBag.home.x, z: g.policeBag.home.z, kind: 'bank' };
-    const ground = g.bags.filter((b) => b.state === 'ground');
-    if (ground.length) {
-      let best = null, bd = Infinity;
-      for (const b of ground) { const d = Math.hypot(b.x - cx, b.z - cz); if (d < bd) { bd = d; best = b; } }
-      // a dropped bag the robber is about to retake is not worth a detour: go for the robber
-      if (!(foe && Math.hypot(foe.pos.x - best.x, foe.pos.z - best.z) < bd * 0.6 && g.time < best.lockUntil + 1.5)) return { x: best.x, z: best.z, kind: 'bag' };
+    // police: with the alarm on, the shortest way to the robber; otherwise cruise past the banks, one after another
+    if (foe && g.robberBag) {
+      const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz), lead = d < 45 ? clamp(d / Math.max(car.speed + 6, 14), 0, 1.5) : 0;
+      return { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' };
     }
-    if (foe) {
-      // the robber is on the map only while carrying; otherwise the police prowl near the banks the robber is nearest to
-      if (g.robberBag) {
-        const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz);
-        if (d > 40) {                                  // a long way off: cut him off on his way to the safehouse (he is heard heading that way) rather than tail him
-          const hl = Math.hypot(foe.vel.x, foe.vel.z) || 1, pts = route(g.L, foe.pos.x, foe.pos.z, foe.vel.x / hl, foe.vel.z / hl, g.safehouse.x, g.safehouse.z, hl), P = [{ x: foe.pos.x, z: foe.pos.z }, ...pts];
-          const A = this._along(P, Math.min(d * 0.6, 70)); return { x: A.x, z: A.z, kind: 'intercept' };
-        }
-        const lead = clamp(d / Math.max(car.speed + 6, 14), 0, 2.2);
-        return { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' };
-      }
-      // no alarm, no idea where the robber is: cruise past the banks, one after another
-      if (!this.patrol || g.time > this.patrolT || Math.hypot(this.patrol.x - cx, this.patrol.z - cz) < 12) {
-        const bk = g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.door.x, z: bk.door.z + 4.5 }; this.patrolT = g.time + 25;
-      }
-      return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
+    if (!this.patrol || g.time > this.patrolT || Math.hypot(this.patrol.x - cx, this.patrol.z - cz) < 12) {
+      const bk = g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.bag.x, z: bk.bag.z }; this.patrolT = g.time + 25;
     }
-    return { x: cx, z: cz, kind: 'idle' };
+    return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
   }
 
   /** The point `ahead` metres along a list of points, and the way that stretch runs (for staying in lane). */
@@ -87,7 +69,7 @@ export class GetawayDriver {
     if (G.kind === 'robber' && same && dist < 45) { chase = true; vT = this.cruise * 1.5; }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
-      const pts = route(L, px, pz, fx, fz, G.x, G.z, car.speed), P = [{ x: px, z: pz }];
+      const pts = G.path || route(L, px, pz, fx, fz, G.x, G.z, car.speed), P = [{ x: px, z: pz }];
       for (const q of pts) if (Math.hypot(q.x - P[P.length - 1].x, q.z - P[P.length - 1].z) > 2) P.push(q);
       while (P.length > 2 && Math.hypot(P[1].x - px, P[1].z - pz) < 14 && (px - P[1].x) * (P[2].x - P[1].x) + (pz - P[1].z) * (P[2].z - P[1].z) > 0) P.splice(1, 1);       // (a junction the car has already passed is not on the way)
       // the first real corner on the way: how far off, and how sharp
@@ -101,11 +83,15 @@ export class GetawayDriver {
       let Ld = clamp(6 + Math.max(v, 0) * 0.55, 8, 24);
       if (corner && corner.d > 7 && corner.d < Ld + 6) Ld = corner.d - 0.5;                    // do not look round a corner before reaching it: aim for the corner, then turn (so the inside kerb is not clipped)
       const A = this._along(P, Ld);
-      const toGoal = Math.hypot(G.x - A.x, G.z - A.z), lane = this.lane * clamp((toGoal - 6) / 14, 0, 1);
+      const toGoal = Math.hypot(G.x - A.x, G.z - A.z), lane = G.kind === 'drive' ? this.lane : this.lane * clamp((toGoal - 6) / 14, 0, 1);
       ax = A.x + A.dz * lane; az = A.z - A.dx * lane;
       if (corner) { const vc = 14 - 8 * clamp(corner.turn / 1.57, 0, 1.2); vT = Math.min(vT, Math.sqrt(vc * vc + 14 * Math.max(corner.d - 6, 0))); }
       if (G.kind === 'bag' || G.kind === 'safehouse' || G.kind === 'bank') vT = Math.min(vT, 8 + dist * 0.7);
     }
+
+    // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it
+    if (sA && sA.kind === 'h') { const c = L.zs[sA.j], dev = pz - c; az = clamp(az, c - 4.6, c + 4.6); if (!chase && Math.abs(dev) > 5.2) { az = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
+    else if (sA && sA.kind === 'v') { const c = L.xs[sA.i], dev = px - c; ax = clamp(ax, c - 4.6, c + 4.6); if (!chase && Math.abs(dev) > 5.2) { ax = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
 
     // keep clear of other cars: ease off for one in the way ahead (not the one being chased, and never wait for ever in a jam)
     let blocked = false;
@@ -148,15 +134,34 @@ export class GetawayDriver {
   }
 }
 
-/** Ordinary traffic: drives about the streets from junction to junction in the left-hand lane, never in a hurry. */
+/** Ordinary traffic: drives straight down a street, and at each junction goes straight on or turns left or right at random (never turning round), in the left-hand lane. */
 export class TrafficDriver extends GetawayDriver {
-  constructor(rng, game) { super(rng, game, 'traffic', 0.4); this.cruise = 9 + rng() * 5; this.lane = 4; this.dest = null; }
+  constructor(rng, game) { super(rng, game, 'traffic', 0.4); this.cruise = 9 + rng() * 5; this.lane = 3.2; this.from = null; this.to = null; this.next = null; }
+  _nbrs(n) {
+    const { cols, rows } = this.game.L.T, i = n % (cols + 1), j = Math.floor(n / (cols + 1)), out = [];
+    if (i > 0) out.push(n - 1); if (i < cols) out.push(n + 1); if (j > 0) out.push(n - (cols + 1)); if (j < rows) out.push(n + (cols + 1));
+    return out;
+  }
+  /** At junction `n`, having come from `from`: straight on about half the time, otherwise a turn; a dead end turns round. */
+  _choose(from, n) {
+    const L = this.game.L, nd = L.nodes[n], fr = L.nodes[from], opts = this._nbrs(n).filter((m) => m !== from);
+    if (!opts.length) return from;
+    const dx = nd.x - fr.x, dz = nd.z - fr.z, dl = Math.hypot(dx, dz) || 1;
+    const w = opts.map((m) => { const q = L.nodes[m], ex = q.x - nd.x, ez = q.z - nd.z, dot = (dx * ex + dz * ez) / (dl * (Math.hypot(ex, ez) || 1)); return dot > 0.5 ? 2 : 1; });
+    let r = this.rng() * w.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < opts.length; k++) { r -= w[k]; if (r <= 0) return opts[k]; }
+    return opts[opts.length - 1];
+  }
   think(car) {
     const L = this.game.L;
-    if (!this.dest || Math.hypot(this.dest.x - car.pos.x, this.dest.z - car.pos.z) < 11) {
-      let n; do { n = L.nodes[Math.floor(this.rng() * L.nodes.length)]; } while (Math.hypot(n.x - car.pos.x, n.z - car.pos.z) < 50);
-      this.dest = { x: n.x, z: n.z };
+    if (this.to == null) {                        // start: head for the junction ahead on the street the car is facing along
+      const n0 = nearestNode(L, car.pos.x, car.pos.z), nd = L.nodes[n0];
+      const ahead = this._nbrs(n0).filter((m) => (L.nodes[m].x - nd.x) * car.az.x + (L.nodes[m].z - nd.z) * car.az.z > 0);
+      this.from = n0; this.to = ahead.length ? ahead[Math.floor(this.rng() * ahead.length)] : this._nbrs(n0)[0]; this.next = this._choose(this.from, this.to);
     }
-    return { x: this.dest.x, z: this.dest.z, kind: 'drive' };
+    let T = L.nodes[this.to];
+    if (Math.hypot(T.x - car.pos.x, T.z - car.pos.z) < 8) { this.from = this.to; this.to = this.next; this.next = this._choose(this.from, this.to); T = L.nodes[this.to]; }
+    const N = L.nodes[this.next];
+    return { x: T.x, z: T.z, kind: 'drive', path: [{ x: T.x, z: T.z }, { x: N.x, z: N.z }] };
   }
 }

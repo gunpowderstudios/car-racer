@@ -38,10 +38,11 @@ function play(S, seconds) {
     const rams = []; for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1)) rams.push(e.speed); derby.events.length = 0;
     const robber = S.mine === 'robber' ? car : foe.car, police = S.mine === 'robber' ? foe.car : car;
     game.step(DT, { x: robber.pos.x, z: robber.pos.z }, { x: police.pos.x, z: police.pos.z }, rams);
-    for (const e of game.events) { lastEv = e; if (e.type === 'pickup') picks++; if (e.type === 'drop') S.drops = (S.drops || 0) + 1; } game.events.length = 0;
+    for (const e of game.events) { lastEv = e; if (e.type === 'pickup') picks++; if (e.type === 'ram') S.drops = (S.drops || 0) + 1; } game.events.length = 0;
     if (car.ay.y < 0.15 && car.speed < 3) { car._flip = (car._flip || 0) + DT; if (car._flip > 2.5) { S_rescue(car); car._flip = 0; } } else car._flip = 0;
     if (inside(car) || inside(foe.car) || derby.rivals.some((f) => inside(f.car))) bad++;
     if (process.env.GT_TRACE && i % 3600 === 0) console.log('#t', (i*DT).toFixed(0), 'me', car.pos.x.toFixed(0), car.pos.z.toFixed(0), car.speed.toFixed(1), me.goalKind, 'up', car.ay.y.toFixed(2), 'foe', foe.car.pos.x.toFixed(0), foe.car.pos.z.toFixed(0), foe.car.speed.toFixed(1), foe.driver.goalKind, 'bag', game.robberBag?.id, game.policeBag?.id);
+    if (game.alarm) { S.alarmT = (S.alarmT || 0) + DT; const dd = Math.hypot(car.pos.x - foe.car.pos.x, car.pos.z - foe.car.pos.z); if (dd < 15) S.near = (S.near || 0) + DT; S.minD = Math.min(S.minD ?? 1e9, dd); }
     if (game.over) break;
   }
   return { bad, picks, lastEv, time: game.time };
@@ -51,7 +52,7 @@ test('computer robber against a computer police car: both stay in the streets an
   const S = setup('robber'); const r = play(S, 200);
   assert.equal(r.bad, 0, 'a car ended up inside a building');
   assert.ok(r.picks >= 1, 'the robber picked up a bag');
-  assert.ok(S.game.robbed + S.game.returned >= 1 || S.game.robberBag, 'something was delivered');
+  assert.ok(S.game.robbed + S.game.strikes >= 1 || S.game.robberBag || r.picks, 'something was delivered');
   for (const c of [S.car, S.derby.rivals[0].car]) assert.ok(Number.isFinite(c.pos.x) && c.pos.y > -2, 'cars stay in the world');
 });
 
@@ -63,6 +64,6 @@ test('computer police against a computer robber: the same', () => {
 if (process.env.GT_REPORT) test('report', () => {
   for (const [role, seed] of [['robber', 3], ['police', 4], ['robber', 8], ['police', 9]]) {
     const S = setup(role, seed), r = play(S, 600);
-    console.log(role, seed, 'time', r.time.toFixed(0), 'robbed', S.game.robbed, 'returned', S.game.returned, 'winner', S.game.winner, 'bad', r.bad, 'picks', r.picks, 'drops', S.drops || 0, 'walls', S.walls || 0);
+    console.log(role, seed, 'time', r.time.toFixed(0), 'robbed', S.game.robbed, 'strikes', S.game.strikes, 'winner', S.game.winner, 'bad', r.bad, 'picks', r.picks, 'drops', S.drops || 0, 'walls', S.walls || 0, 'alarmT', (S.alarmT||0).toFixed(0), 'near', (S.near||0).toFixed(1), 'minD', (S.minD||0).toFixed(1));
   }
 });

@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.485 — The Getaway: strikes and a satnav line
+- New rules: the police no longer pick bags up. Ram the robber three times while he is carrying a bag and the robbery is stopped: the money goes straight back in its bank, the next bag is put out for the robber, and the robber gets a strike. Three strikes and he is in jail (police win). Three bags in the safehouse still wins it for the robbers.
+- The scoreboard now shows bags safe (robbers) and strikes (police), and a hint tells you how many times the robber has been rammed.
+- A red satnav line (with arrows) runs along the road, and on the map, showing where to go: the robber follows it to the bag and then the safehouse, the police follow it to the robber while the alarm is on.
+- The computer police take the shortest route to the robber as soon as he picks a bag up.
+- Traffic now drives straight down the streets and turns left or right at random at the junctions (never turning round).
+- The computer's cars keep to the tarmac and steer back if they stray onto the pavement.
+
 ## v17.484 — The Getaway: compass, sidewalks and traffic
 - A compass beside the map (for both robbers and police) shows which way North is, turning as you drive. North is the top of the map.
 - The streets now have pavements and kerb lines.

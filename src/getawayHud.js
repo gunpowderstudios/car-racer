@@ -16,6 +16,7 @@ function ensure() {
 #getaway-hud .gw-side{min-width:132px;padding:2px 14px;border-radius:10px;background:#16102acc;border:3px solid #fff4;font-size:clamp(15px,2.2vw,22px);font-weight:900;letter-spacing:.05em;text-transform:uppercase}
 #getaway-hud .gw-side.me{border-color:#ffb31f}
 #getaway-hud .gw-side.rob b{color:#7dff9a}#getaway-hud .gw-side.pol b{color:#6fb4ff}
+#getaway-hud small{display:block;font-size:11px;letter-spacing:.1em;opacity:.7;margin-top:-2px}
 #getaway-hud .gw-pips{font-size:clamp(20px,3vw,30px);letter-spacing:.12em;line-height:1}
 #getaway-hud .gw-hint{margin-top:5px;font-size:clamp(14px,2vw,20px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#16102a99;display:inline-block;padding:1px 14px;border-radius:8px}
 #getaway-siren{position:absolute;left:50%;top:24%;transform:translateX(-50%);z-index:31;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(24px,4.4vw,48px);text-transform:uppercase;letter-spacing:.06em;padding:2px 24px;border-radius:12px;color:#fff;text-shadow:0 2px 6px #000c;animation:gw-siren .5s infinite alternate}
@@ -41,7 +42,7 @@ body.getaway #lap-card{display:none}
 @media (max-width:900px){body.getaway #minimap{width:132px;height:86px}#getaway-compass{right:150px;top:calc(max(8px,env(safe-area-inset-top)) + 48px);width:54px;height:54px}#getaway-compass .gw-dial span{font-size:11px}#getaway-compass .gw-dial span.n{font-size:16px}#getaway-hud .gw-side{min-width:96px;padding:1px 8px}}`;
   document.head.appendChild(st);
   box = document.createElement('div'); box.id = 'getaway-hud'; box.hidden = true;
-  box.innerHTML = '<div class="gw-row"><div class="gw-side rob"><b>Robbers</b><div class="gw-pips"></div></div><div class="gw-side pol"><b>Police</b><div class="gw-pips"></div></div></div><div class="gw-hint"></div>';
+  box.innerHTML = '<div class="gw-row"><div class="gw-side rob"><b>Robbers</b><div class="gw-pips"></div><small>bags safe</small></div><div class="gw-side pol"><b>Police</b><div class="gw-pips"></div><small>strikes</small></div></div><div class="gw-hint"></div>';
   hud.appendChild(box);
   compass = document.createElement('div'); compass.id = 'getaway-compass'; compass.hidden = true;
   compass.innerHTML = '<div class="gw-dial"><span class="n" data-a="0">N</span><span data-a="90">E</span><span data-a="180">S</span><span data-a="270">W</span></div><div class="gw-car"></div>';
@@ -69,10 +70,11 @@ export function getawayHudUpdate(game, role) {
   const [rob, pol] = el.querySelectorAll('.gw-side');
   rob.classList.toggle('me', role === 'robber'); pol.classList.toggle('me', role === 'police');
   rob.querySelector('.gw-pips').textContent = pips(game.robbed, game.goal);
-  pol.querySelector('.gw-pips').textContent = pips(game.returned, game.goal);
+  pol.querySelector('.gw-pips').textContent = pips(game.strikes, game.L.T.jail);
   let hint;
-  if (role === 'robber') hint = game.robberBag ? 'Take the cash to the safehouse!' : 'Find the bag on your map and drive over it';
-  else hint = game.policeBag ? 'Take the cash back to its bank!' : game.robberBag ? 'Catch him and ram him to drop the cash' : game.bags.some((b) => b.state === 'ground') ? 'Drive over the dropped cash' : 'Watch the banks - wait for the alarm';
+  const need = game.L.T.rams;
+  if (role === 'robber') hint = game.robberBag ? `Follow the red line! Rammed ${game.ramCount}/${need}` : 'Follow the red line to the bag';
+  else hint = game.robberBag ? `Ram him! ${game.ramCount}/${need}` : 'Patrol the town - wait for the alarm';
   el.querySelector('.gw-hint').textContent = hint;
   const on = game.alarm && !game.over;
   siren.hidden = !on;
@@ -122,10 +124,10 @@ function baseMap(L, w, h) {
 
 /**
  * Draw the map. Each side sees what it should: the robber sees the safehouse, the banks' bags and any police car close by; the police see the banks
- * and any bag lying loose, but the robber only while there is a robbery in progress (while he has a bag), and never the safehouse.
+ * and any bag lying loose, but the robber only while there is a robbery in progress (while he has a bag), and never the safehouse. `line` is the satnav route to draw.
  * `me` and `foe` are the two cars; `t` is a clock in seconds, for the flashing.
  */
-export function drawGetawayMap(game, role, me, foe, t = 0) {
+export function drawGetawayMap(game, role, me, foe, t = 0, line = null) {
   const c = canvas(); if (!c) return;
   const L = game.L;
   if (!mapBase || mapBase.L !== L || mapBase.w !== c.width || mapBase.h !== c.height) mapBase = baseMap(L, c.width, c.height);
@@ -136,7 +138,9 @@ export function drawGetawayMap(game, role, me, foe, t = 0) {
   for (const bank of L.banks) { g.fillStyle = '#6b5a24'; g.fillRect(X(bank.door.x) - 4, Z(bank.door.z) - 3, 8, 6); }          // every bank looks the same: nobody knows which has the bag
   for (const b of game.bags) {
     if (b.state === 'home' && role === 'robber') { g.fillStyle = '#ffd23a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.fillRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); g.strokeRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); }       // the robber sees where the bag is
-    if (b.state === 'ground') { g.fillStyle = `rgba(255,210,58,${0.5 + 0.5 * flash})`; g.beginPath(); g.arc(X(b.x), Z(b.z), 6, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke(); }
+  }
+  if (line && line.length > 1) {                                   // the satnav line
+    g.strokeStyle = '#ff3b30'; g.lineWidth = 3; g.lineJoin = 'round'; g.beginPath(); line.forEach((p, i) => { if (i) g.lineTo(X(p.x), Z(p.z)); else g.moveTo(X(p.x), Z(p.z)); }); g.stroke();
   }
   if (role === 'robber') {                                         // the safehouse
     const s = game.safehouse, x = X(s.x), y = Z(s.z);

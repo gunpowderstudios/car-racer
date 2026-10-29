@@ -101,6 +101,7 @@ export class Stage {
   /** Apple Crumple: put every hazard where its clock says it is (`a` is the Assault run). */
   updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
   /** The Getaway: bags, rings and the safehouse (`game` is the GetawayGame). */
+  setGetawayRoute(pts) { if (this.getawayView) this.getawayView.setRoute(pts); }
   updateGetaway(game, dt) { if (this.getawayView && game) this.getawayView.update(game, dt); }
 
   /** Put each rolling boulder where the simulation has it, turning as it rolls. */
