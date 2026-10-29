@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.488 — The Getaway: garage safehouse, more police
+- The safehouse is now a garage cut into a building: drive in through the open door, right to the middle of the bay, to hide the bag. The satnav line and the computer robber both take the turn into the garage.
+- Every building has a garage bay in its north face; the safehouse is one of them at a time, marked with a green SAFEHOUSE sign, door posts and a green ring inside.
+- When you play the robber there are now four more computer police cars patrolling the streets (two on phones), so any of the five can catch you: any of them ramming you counts. They all show on the map when close, and the siren gets louder as the nearest one gets closer.
+- A computer car left in a garage backs straight out again.
+
 ## v17.487 — The Getaway: far safehouse, police siren
 - When the robber picks up a bag, the safehouse now moves to the far side of the map from where he is.
 - If you play the police, your siren now sounds as soon as the robber grabs a bag.

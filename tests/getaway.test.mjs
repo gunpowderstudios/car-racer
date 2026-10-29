@@ -26,8 +26,8 @@ test('the two sides start at opposite ends of the town, in the street', () => {
   assert.ok(streetAt(L, L.robberStart.x, L.robberStart.z)); assert.ok(streetAt(L, L.policeStart.x, L.policeStart.z));
   assert.ok(Math.hypot(L.robberStart.x - L.policeStart.x, L.robberStart.z - L.policeStart.z) > 0.8 * Math.hypot(L.W, L.D));
 });
-test('the safehouse is on a street, never on a bag, and far from both starts', () => {
-  for (const p of safehouseSpots(L)) { assert.ok(streetAt(L, p.x, p.z)); for (const b of L.banks) assert.ok(Math.hypot(p.x - b.bag.x, p.z - b.bag.z) > 8, 'not on a bag'); }
+test('the safehouse is a garage bay open to a street, never on a bag, and far from both starts', () => {
+  for (const p of safehouseSpots(L)) { assert.ok(!L.boxes.some((q) => p.x > q.x0 && p.x < q.x1 && p.z > q.z0 && p.z < q.z1), 'the bay is empty'); assert.ok(streetAt(L, p.gx, p.street)); for (const b of L.banks) assert.ok(Math.hypot(p.x - b.bag.x, p.z - b.bag.z) > 8, 'not on a bag'); }
   const seen = new Set();
   for (let k = 0; k < 60; k++) {
     const s = pickSafehouse(L, mulberry(k + 1)); seen.add(s.x + ',' + s.z);
@@ -113,5 +113,5 @@ test('the town streets sit on solid arena floor', () => {
   const L = townLayout(); const q = _Track.newQuery(); let bad = 0, n = 0;
   for (let x = -L.W / 2 + 8; x <= L.W / 2 - 8; x += 4) for (let z = -L.D / 2 + 8; z <= L.D / 2 - 8; z += 4) { tr.query(x, 3, z, q, 2); n++; if (q.idx < 0) bad++; }
   assert.equal(bad, 0, bad + ' of ' + n + ' points off floor');
-  assert.equal(tr.blocks.length, 16);
+  assert.equal(tr.blocks.length, 40);
 });

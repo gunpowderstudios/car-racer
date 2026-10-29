@@ -20,9 +20,11 @@ export const TOWN = {
   rams: 3,                 // rams on the robber (while he carries a bag) that stop the robbery
   jail: 3,                 // stopped robberies (strikes) that put the robber in jail
   ramCool: 1.2,            // seconds before another ram can count
+  garageW: 10, garageD: 15, safeR: 4.5,   // the safehouse is a garage cut into a building: a bay this wide and deep, and you must drive in this close to its middle
   height: 11,              // how tall the buildings stand (the solid part; the view makes them different)
 };
 
+const L_zs = (zs, j) => zs[j];
 const bagKey = (j, i) => j * TOWN.cols + i;
 
 /**
@@ -44,13 +46,18 @@ export function townLayout(T = TOWN) {
   const nodes = [];
   for (let j = 0; j <= rows; j++) for (let i = 0; i <= cols; i++) nodes.push({ i, j, x: xs[i], z: zs[j] });
   // the solid boxes: every block, and a wall of buildings all round the outside
-  const boxes = blocks.map((b) => ({ x0: b.cx - b.hx, x1: b.cx + b.hx, z0: b.cz - b.hz, z1: b.cz + b.hz, kind: 'block' }));
+  const boxes = [], garages = [], gw = T.garageW / 2, gd = T.garageD;
+  for (const b of blocks) {                       // every block has a garage cut into its north face (an open bay: three solid pieces round it)
+    const gx = b.cx - 8, x0 = b.cx - b.hx, x1 = b.cx + b.hx, z0 = b.cz - b.hz, z1 = b.cz + b.hz;
+    boxes.push({ x0, x1: gx - gw, z0, z1, kind: 'block' }, { x0: gx + gw, x1, z0, z1, kind: 'block' }, { x0: gx - gw, x1: gx + gw, z0: z0 + gd, z1, kind: 'block' });
+    garages.push({ i: b.i, j: b.j, gx, mouth: z0, back: z0 + gd, x: gx, z: z0 + 9, street: L_zs(zs, b.j) });
+  }
   boxes.push({ x0: -W / 2 - border, x1: W / 2 + border, z0: -D / 2 - border, z1: -D / 2, kind: 'wall' });
   boxes.push({ x0: -W / 2 - border, x1: W / 2 + border, z0: D / 2, z1: D / 2 + border, kind: 'wall' });
   boxes.push({ x0: -W / 2 - border, x1: -W / 2, z0: -D / 2, z1: D / 2, kind: 'wall' });
   boxes.push({ x0: W / 2, x1: W / 2 + border, z0: -D / 2, z1: D / 2, kind: 'wall' });
   const L = {
-    T, W, D, xs, zs, blocks, banks, nodes, boxes,
+    T, W, D, xs, zs, blocks, banks, nodes, boxes, garages,
     robberStart: { x: xs[0] + 14, z: zs[rows], fx: 1, fz: 0 },                 // the robber's end of the town: bottom left...
     policeStart: { x: xs[cols] - 14, z: zs[0], fx: -1, fz: 0 },                // ...and the police at the opposite end
   };
@@ -59,9 +66,21 @@ export function townLayout(T = TOWN) {
 
 /** Where the safehouse can go: the middle of every vertical street's segments and of the top street's (no bag ever lies there), so never on a bank's bag. */
 export function safehouseSpots(L) {
-  const { cols, rows } = L.T, out = [];
-  for (let i = 0; i <= cols; i++) for (let j = 0; j < rows; j++) out.push({ x: L.xs[i], z: (L.zs[j] + L.zs[j + 1]) / 2 });
-  for (let i = 0; i < cols; i++) out.push({ x: (L.xs[i] + L.xs[i + 1]) / 2, z: L.zs[0] });
+  return L.garages.map((g) => ({ x: g.x, z: g.z, gx: g.gx, mouth: g.mouth, street: g.street, back: g.back }));
+}
+
+/** The way to the safehouse garage for the satnav and the computer: along the streets to the front of the garage, round a smooth turn in, and on to the middle of the bay. */
+export function safehouseRoute(L, S, x, z, hx, hz, speed = 0) {
+  const R = 10, inBay = Math.abs(x - S.gx) < L.T.garageW / 2 + 1 && z > S.mouth - 2;
+  if (inBay) return [{ x: S.x, z: S.z }];
+  const F = { x: S.gx, z: S.street }, pts = route(L, x, z, hx, hz, F.x, F.z, speed);
+  const prev = pts.length > 1 ? pts[pts.length - 2] : { x, z };
+  const sx = Math.abs(F.x - prev.x) > 0.5 ? Math.sign(F.x - prev.x) : (Math.sign(F.x - x) || 1), out = [];
+  for (const q of pts.slice(0, -1)) if (Math.abs(q.z - S.street) > 0.5 || Math.abs(q.x - (S.gx - sx * 22)) > 0.5) out.push(q);
+  while (out.length && ((q) => (q.z === S.street && (q.x - S.gx) * sx > -22))(out[out.length - 1])) out.pop();
+  out.push({ x: S.gx - sx * 22, z: S.mouth - 1 - R });
+  for (let k = 0; k <= 6; k++) { const a = (k / 6) * Math.PI / 2; out.push({ x: S.gx - sx * R + sx * R * Math.sin(a), z: S.mouth - 1 - R * Math.cos(a) }); }
+  out.push({ x: S.gx, z: S.mouth + 4 }, { x: S.x, z: S.z });
   return out;
 }
 
@@ -223,7 +242,7 @@ export class GetawayGame {
       }
     }
     if (this.robberBag) { this.robberBag.x = robber.x; this.robberBag.z = robber.z; }
-    if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.homeR) {      // delivery to the safehouse
+    if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.safeR) {      // delivery to the safehouse (the car is in the garage)
       const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++; this.ramCount = 0;
       this.events.push({ type: 'deliver', bag: b.id, count: this.robbed });
       if (this.robbed >= this.goal) this._win('robber');

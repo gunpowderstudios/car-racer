@@ -4,7 +4,7 @@
 // by following the junction route from getaway.js, so it never tries to cut through a building.
 
 import { clamp } from './math.js';
-import { route, streetAt, nearestNode } from './getaway.js';
+import { route, streetAt, nearestNode, safehouseRoute } from './getaway.js';
 
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
@@ -59,17 +59,25 @@ export class GetawayDriver {
   }
 
   drive(car, track, ctx, dt) {
-    const inp = this.input, L = this.game.L, fx = car.az.x, fz = car.az.z, foe = ctx.player, v = car.fwdSpeed;
+    const g = this.game, inp = this.input, L = this.game.L, fx = car.az.x, fz = car.az.z, foe = ctx.player, v = car.fwdSpeed;
     const G = this.think(car, foe), px = car.pos.x, pz = car.pos.z;
     this.target = G.kind !== 'idle'; this.goalKind = G.kind;
     const dist = Math.hypot(G.x - px, G.z - pz);
+    // in a garage bay that is not the way on: back straight out into the street
+    const bay = L.garages.find((q) => Math.abs(px - q.gx) < 5.6 && pz > q.mouth - 4 && pz < q.back + 1);
+    if (bay && !(G.kind === 'safehouse' && g.safehouse.gx === bay.gx && g.safehouse.mouth === bay.mouth) && (fz > 0.2 || this.backing)) {
+      this.backing = pz > bay.mouth - 3.5;
+      inp.throttle = 0; inp.brake = this.backing ? 1 : 0.6; inp.steer = clamp((px - bay.gx) * 0.06, -0.3, 0.3) * (fz > 0 ? 1 : -1); inp.handbrake = false; inp.boost = false;
+      return inp;
+    }
+    this.backing = false;
     let vT = G.kind === 'idle' ? 0 : this.cruise, ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
     if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = this.cruise * 1.25; }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
-      const pts = G.path || route(L, px, pz, fx, fz, G.x, G.z, car.speed), P = [{ x: px, z: pz }];
+      const pts = G.path || (G.kind === 'safehouse' && g.safehouse.gx !== undefined ? safehouseRoute(L, g.safehouse, px, pz, fx, fz, car.speed) : route(L, px, pz, fx, fz, G.x, G.z, car.speed)), P = [{ x: px, z: pz }];
       for (const q of pts) if (Math.hypot(q.x - P[P.length - 1].x, q.z - P[P.length - 1].z) > 2) P.push(q);
       while (P.length > 2 && Math.hypot(P[1].x - px, P[1].z - pz) < 14 && (px - P[1].x) * (P[2].x - P[1].x) + (pz - P[1].z) * (P[2].z - P[1].z) > 0) P.splice(1, 1);       // (a junction the car has already passed is not on the way)
       // the first real corner on the way: how far off, and how sharp
@@ -83,14 +91,17 @@ export class GetawayDriver {
       let Ld = clamp(6 + Math.max(v, 0) * 0.55, 8, 24);
       if (corner && corner.d > 7 && corner.d < Ld + 6) Ld = corner.d - 0.5;                    // do not look round a corner before reaching it: aim for the corner, then turn (so the inside kerb is not clipped)
       const A = this._along(P, Ld);
-      const toGoal = Math.hypot(G.x - A.x, G.z - A.z), lane = G.kind === 'drive' ? this.lane : this.lane * clamp((toGoal - 6) / 14, 0, 1);
+      const toGoal = Math.hypot(G.x - A.x, G.z - A.z), lane = G.kind === 'safehouse' ? 0 : G.kind === 'drive' ? this.lane : this.lane * clamp((toGoal - 6) / 14, 0, 1);
       ax = A.x + A.dz * lane; az = A.z - A.dx * lane;
       if (corner) { const vc = 14 - 8 * clamp(corner.turn / 1.57, 0, 1.2); vT = Math.min(vT, Math.sqrt(vc * vc + 14 * Math.max(corner.d - 6, 0))); }
+      if (G.kind === 'safehouse' && g.safehouse.gx !== undefined) { const dg = Math.hypot(px - g.safehouse.gx, pz - g.safehouse.street); if (dg < 40) vT = Math.min(vT, 7 + dg * 0.15); }
       if (G.kind === 'bag' || G.kind === 'safehouse' || G.kind === 'bank') vT = Math.min(vT, 8 + dist * 0.7);
     }
 
-    // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it
-    if (sA && sA.kind === 'h') { const c = L.zs[sA.j], dev = pz - c; az = clamp(az, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { az = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
+    // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it (except on the way into the garage)
+    const garage = G.kind === 'safehouse' && g.safehouse.gx !== undefined && Math.hypot(px - g.safehouse.gx, pz - g.safehouse.street) < 34;
+    if (garage) { /* the garage turn leaves the street on purpose */ }
+    else if (sA && sA.kind === 'h') { const c = L.zs[sA.j], dev = pz - c; az = clamp(az, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { az = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
     else if (sA && sA.kind === 'v') { const c = L.xs[sA.i], dev = px - c; ax = clamp(ax, c - 4.6, c + 4.6); if (Math.abs(dev) > 5.2) { ax = c + Math.sign(dev) * 1.5; vT = Math.min(vT, 9); } }
 
     // keep clear of other cars: ease off for one in the way ahead (not the one being chased, and never wait for ever in a jam)

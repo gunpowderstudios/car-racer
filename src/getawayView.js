@@ -108,8 +108,15 @@ export class GetawayView {
       const mk = (map, rx, ry) => { const t = map.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t }); };
       const roof = new THREE.MeshLambertMaterial({ color: 0x4b4e55 });
       const shop = shopTex(wall, awn, n), up = upperTex(wall, n + 99);
-      const shopBox = new THREE.Mesh(new THREE.BoxGeometry(w, shopH, d), [mk(shop, w / 14, 1), mk(shop, w / 14, 1), roof, roof, mk(shop, d / 14, 1), mk(shop, d / 14, 1)]);
-      shopBox.position.set(b.cx, y0 + shopH / 2, b.cz); shopBox.castShadow = shopBox.receiveShadow = true; g.add(shopBox);
+      const gx = b.cx - 8, gw = L.T.garageW / 2, gd = L.T.garageD, x0 = b.cx - b.hx, x1 = b.cx + b.hx, z0 = b.cz - b.hz, z1 = b.cz + b.hz;
+      const piece = (ax, bx_, az, bz_) => {                      // the ground floor is three pieces round the garage bay; the floors above run right over it
+        const pw = bx_ - ax, pd = bz_ - az;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(pw, shopH, pd), [mk(shop, pd / 14, 1), mk(shop, pd / 14, 1), roof, roof, mk(shop, pw / 14, 1), mk(shop, pw / 14, 1)]);
+        m.position.set((ax + bx_) / 2, y0 + shopH / 2, (az + bz_) / 2); m.castShadow = m.receiveShadow = true; g.add(m);
+      };
+      piece(x0, gx - gw, z0, z1); piece(gx + gw, x1, z0, z1); piece(gx - gw, gx + gw, z0 + gd, z1);
+      const bayFloor = new THREE.Mesh(new THREE.PlaneGeometry(gw * 2, gd), new THREE.MeshLambertMaterial({ color: 0x3a3b40 })); bayFloor.rotation.x = -Math.PI / 2; bayFloor.position.set(gx, y0 + 0.06, z0 + gd / 2); g.add(bayFloor);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(gw * 2 + 1, 0.6, 0.5), new THREE.MeshLambertMaterial({ color: 0xe0a21a })); lintel.position.set(gx, y0 + shopH - 0.3, z0 - 0.1); g.add(lintel);
       const upBox = new THREE.Mesh(new THREE.BoxGeometry(w, upH, d), [mk(up, d / 12, upH / 8), mk(up, d / 12, upH / 8), roof, roof, mk(up, w / 12, upH / 8), mk(up, w / 12, upH / 8)]);
       upBox.position.set(b.cx, y0 + shopH + upH / 2, b.cz); upBox.castShadow = upBox.receiveShadow = true; g.add(upBox);
       // the bank's sign over the door (south face) and a bigger one on the roof
@@ -150,10 +157,10 @@ export class GetawayView {
     const sh = this.safe = new THREE.Group();
     const green = new THREE.MeshLambertMaterial({ color: 0x1e7a3a });
     const vertical = false;       // (set in place(): the arch spans the street)
-    for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 9, 0.9), green); post.position.set(sx * 8, 4.5, 0); sh.add(post); }
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshBasicMaterial({ map: safeTex(), side: THREE.DoubleSide })); banner.position.set(0, 9.6, 0); sh.add(banner);
-    const pad = new THREE.Mesh(new THREE.RingGeometry(L.T.homeR - 1.2, L.T.homeR, 48), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.85, side: THREE.DoubleSide })); pad.rotation.x = -Math.PI / 2; pad.position.y = 0.14; sh.add(pad);
-    const sbeam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 120, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0x5dff8a, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); sbeam.position.y = 60; sh.add(sbeam);
+    for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, 5, 0.7), green); post.position.set(sx * 5.2, 2.5, -0.2); sh.add(post); }
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5), new THREE.MeshBasicMaterial({ map: safeTex(), side: THREE.DoubleSide })); banner.position.set(0, 7.2, -0.3); banner.rotation.y = Math.PI; sh.add(banner);
+    const pad = new THREE.Mesh(new THREE.RingGeometry(L.T.safeR - 0.8, L.T.safeR, 48), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.85, side: THREE.DoubleSide })); pad.rotation.x = -Math.PI / 2; pad.position.set(0, 0.14, L.T.garageD * 0 + 9); sh.add(pad);
+    const sbeam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 120, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0x5dff8a, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); sbeam.position.set(0, 60, 9); sh.add(sbeam);
     this.pad = pad; sh.visible = false; g.add(sh);
     this.stash = [];
     for (let i = 0; i < TOWN.goal + 1; i++) { const s = new THREE.Mesh(sackGeo, sackMat); s.scale.setScalar(1); s.visible = false; g.add(s); this.stash.push(s); }
@@ -190,8 +197,8 @@ export class GetawayView {
 
   /** Put the safehouse arch where the game says (it spans the street it is on). */
   place(game) {
-    const S = game.safehouse, L = this.L, onTop = Math.abs(S.z - L.zs[0]) < 0.5;
-    this.safe.position.set(S.x, this.y0, S.z); this.safe.rotation.y = onTop ? Math.PI / 2 : 0; this.safe.visible = true;
+    const S = game.safehouse;
+    this.safe.position.set(S.gx ?? S.x, this.y0, S.mouth ?? S.z); this.safe.rotation.y = 0; this.safe.visible = true;
   }
 
   /** Bring every bag, ring and beam up to date with the game (`game` is a GetawayGame). */

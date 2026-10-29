@@ -134,7 +134,7 @@ function baseMap(L, w, h) {
  * and any bag lying loose, but the robber only while there is a robbery in progress (while he has a bag), and never the safehouse. `line` is the satnav route to draw.
  * `me` and `foe` are the two cars; `t` is a clock in seconds, for the flashing.
  */
-export function drawGetawayMap(game, role, me, foe, t = 0, line = null) {
+export function drawGetawayMap(game, role, me, foe, t = 0, line = null, cops = null) {
   const c = canvas(); if (!c) return;
   const L = game.L;
   if (!mapBase || mapBase.L !== L || mapBase.w !== c.width || mapBase.h !== c.height) mapBase = baseMap(L, c.width, c.height);
@@ -167,7 +167,7 @@ export function drawGetawayMap(game, role, me, foe, t = 0, line = null) {
     }
     car(me, '#5aa0ff');
   } else {
-    if (foe && Math.hypot(foe.pos.x - me.pos.x, foe.pos.z - me.pos.z) < 70) { const x = X(foe.pos.x), y = Z(foe.pos.z); g.fillStyle = `rgba(80,140,255,${0.5 + 0.5 * flash})`; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.stroke(); }
+    for (const fc of (cops && cops.length ? cops : foe ? [foe] : [])) if (Math.hypot(fc.pos.x - me.pos.x, fc.pos.z - me.pos.z) < 70) { const x = X(fc.pos.x), y = Z(fc.pos.z); g.fillStyle = `rgba(80,140,255,${0.5 + 0.5 * flash})`; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.stroke(); }
     car(me, '#e8392c');
   }
 }

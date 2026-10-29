@@ -284,7 +284,22 @@ export class Derby {
     const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = S.kind, car = new Vehicle(kind?.spec);
     car.reset(new V3(p.x, this.track.py[0] + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
     car.opts.assist = 0.7;
-    const me = this.add(car, S.makeDriver(this.rng), 1, kind);
+    const me = this.add(car, S.makeDriver(this.rng), 1, kind); me.cop = S.role === 'police';
+    // more police cars patrolling the streets (when the robber is the person): each starts at its own junction, away from the robber and from each other
+    const extra = S.role === 'police' ? (S.extraPolice || 0) : 0, cops = [S.L.policeStart];
+    for (let k = 0; k < extra; k++) {
+      let n = null;
+      for (let t = 0; t < 40 && !n; t++) {
+        const c = S.L.nodes[Math.floor(this.rng() * S.L.nodes.length)];
+        if (Math.hypot(c.x - S.L.robberStart.x, c.z - S.L.robberStart.z) > 80 && cops.every((q) => Math.hypot(q.x - c.x, q.z - c.z) > 50)) n = c;
+      }
+      if (!n) break;
+      cops.push(n);
+      const horiz = this.rng() < 0.5, dir = this.rng() < 0.5 ? 1 : -1, cc = new Vehicle(kind?.spec);
+      cc.reset(new V3(n.x, this.track.py[0] + cc.restHeight + 0.08, n.z), new V3(horiz ? dir : 0, 0, horiz ? 0 : dir), new V3(0, 1, 0), 0);
+      cc.opts.assist = 0.7;
+      this.add(cc, S.makeDriver(this.rng), k + 2, kind).cop = true;
+    }
     // ordinary traffic wandering the streets: a few cars of a few kinds (each is a car to simulate and a model to draw, so not many)
     const spots = [];
     for (let k = 0; k < (S.traffic || 0); k++) {
@@ -298,7 +313,7 @@ export class Derby {
       const tk = this._kind(), tc = new Vehicle(tk?.spec), horiz = this.rng() < 0.5, dir = this.rng() < 0.5 ? 1 : -1;
       tc.reset(new V3(n.x, this.track.py[0] + tc.restHeight + 0.08, n.z), new V3(horiz ? dir : 0, 0, horiz ? 0 : dir), new V3(0, 1, 0), 0);
       tc.opts.assist = 0.7;
-      this.add(tc, S.makeTraffic(this.rng), k + 2, tk);
+      this.add(tc, S.makeTraffic(this.rng), k + 2 + Math.max(0, cops.length - 1), tk);
     }
     return me;
   }

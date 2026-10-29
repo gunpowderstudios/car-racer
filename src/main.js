@@ -22,7 +22,7 @@ import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { Assault, COURSE } from './assault.js';
-import { GetawayGame, townLayout, rescuePose, route } from './getaway.js';
+import { GetawayGame, townLayout, rescuePose, route, safehouseRoute } from './getaway.js';
 import { GetawayDriver, TrafficDriver } from './getawayAI.js';
 import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGetawayResult, drawGetawayMap, getawayCompass } from './getawayHud.js';
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
@@ -669,7 +669,7 @@ function getawaySetup() {
     L: G.L, role: G.ai,
     makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
-    traffic: device.touch ? 3 : 6,
+    traffic: device.touch ? 3 : 6, extraPolice: device.touch ? 2 : 4,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),
     rescue: (c) => { const p = rescuePose(G.L, c.pos.x, c.pos.z); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
   };
@@ -695,8 +695,8 @@ function getawayBegin() {
 const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
 function getawayStep() {
   const G = getaway, f = derby.rivals[0]; if (!f || G.game.over) return;
-  const rams = G.rams; rams.length = 0;
-  for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1)) rams.push(e.speed);       // (only car against car, you and the other side: traffic does not knock the bag out)
+  const rams = G.rams, copIds = new Set(derby.rivals.filter((x) => x.cop).map((x) => x.id)); rams.length = 0;
+  for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1 || copIds.has(e.a) || copIds.has(e.b))) rams.push(e.speed);       // (only car against car, you and the other side: traffic does not knock the bag out)
   const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: f.car.pos.x, z: f.car.pos.z };
   G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams);
   if (G.game.events.length) getawayEvents();
@@ -729,20 +729,20 @@ function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role); getawayCompass(car.az.x, car.az.z);
-  sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z)) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
+  sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;
     if (!g.over) { if (G.role === 'robber') { const b = g.robberBag ? g.safehouse : g.loose()[0]; if (b) to = { x: b.x, z: b.z }; } else if (g.alarm && f) to = { x: f.car.pos.x, z: f.car.pos.z }; }
     let line = null;
     if (to) {
-      const pts = route(G.L, car.pos.x, car.pos.z, car.az.x, car.az.z, to.x, to.z, car.speed), P = [{ x: car.pos.x, z: car.pos.z }, ...pts];
+      const pts = G.role === 'robber' && g.robberBag && g.safehouse.gx !== undefined ? safehouseRoute(G.L, g.safehouse, car.pos.x, car.pos.z, car.az.x, car.az.z, car.speed) : route(G.L, car.pos.x, car.pos.z, car.az.x, car.az.z, to.x, to.z, car.speed), P = [{ x: car.pos.x, z: car.pos.z }, ...pts];
       while (P.length > 2 && Math.hypot(P[1].x - P[0].x, P[1].z - P[0].z) < 14 && (P[0].x - P[1].x) * (P[2].x - P[1].x) + (P[0].z - P[1].z) * (P[2].z - P[1].z) > 0) P.splice(1, 1);
       line = P.length > 1 ? P : null;
     }
     G.line = line || [];
     stage.setGetawayRoute(line);
   }
-  drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t, G.line);
+  drawGetawayMap(G.game, G.role, car, f ? f.car : null, G.t, G.line, derby.rivals.filter((x) => x.cop).map((x) => x.car));
   if (G.resultAt && performance.now() > G.resultAt) { G.resultAt = 0; showGetawayCard(); }
 }
 
