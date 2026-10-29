@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.502 — The Getaway: damage
+- The robber and the police cars now have 100 health each, shown as a small bar on the scoreboard. Hitting walls, buildings and other cars takes it down (harder knocks hurt more); traffic is never hurt.
+- A wrecked robber's car means the police win ("Robber wrecked!"). It is a second way to win, besides three strikes.
+- A wrecked police car blows up and is out for 8 seconds, then reappears at the police start with full health. It does not lose the game.
+- Hiding a bag in the garage repairs the robber's car completely.
+
 ## v17.501 — M for music, black barrels, un-jamming
 - Pressing M on the home screen now turns the music on or off (as it already did during a race).
 - Apple Crumple has four black-and-yellow barrels, which go off the moment you touch them.

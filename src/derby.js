@@ -231,6 +231,7 @@ export class Derby {
     this.track = null; this.fighters = []; this.player = null; this.events = [];
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
     this.lastStanding = false; this._arenaField = 0;   // free-for-all arena: see start()
+    this.onImpact = null;                                 // The Getaway: (fighter, 'wall' | 'car', speed, other) for every knock, so main.js can wear the cars down
     this.getaway = false; this.getawaySetup = null;    // The Getaway (see _spawnGetaway): main.js fills in { L, role, makeDriver(rng), rescue(car) } before start()
     this.slotSkill = null;                               // optional { raceSlot: skill offset }
     this.brutal = false;                                 // Demolition Day: tougher, Expert-skill rivals whatever the options say (main.js sets it)
@@ -514,6 +515,7 @@ export class Derby {
             this._damage(f, zone, hp, null, e.type === 'wall' || roof ? e.x : undefined, e.y, e.z, roof ? roofDentHp(e.speed) : undefined);
           }
         }
+        if (this.getaway && this.onImpact && e.type === 'wall' && e.speed > 3) this.onImpact(f, 'wall', e.speed, null);
         if (!f.isPlayer && e.speed > 3 && e.type === 'wall') this._hitEvent('wall', e.speed, e.x, e.y, e.z);
       }
       if (!f.isPlayer) ev.length = 0;            // the player's own are left for main.js (sound, sparks)
@@ -528,6 +530,7 @@ export class Derby {
         const b = F[j]; if (b.gone) continue;
         if (!collideCars(a.car, b.car, H)) continue;
         if (H.closing > 1.5) this._hitEvent('car', H.closing, H.x, H.y, H.z, a.isPlayer || b.isPlayer, a.id, b.id);
+        if (this.getaway && this.onImpact && H.closing > 4) { this.onImpact(a, 'car', H.closing, b); this.onImpact(b, 'car', H.closing, a); }
         if (this.damageEnabled) {
           const hp = crashDamage(H.mu, H.closing) * (this.demolition && !a.isPlayer && !b.isPlayer ? DERBY.rivalClash : 1);
           if (hp > 0) {

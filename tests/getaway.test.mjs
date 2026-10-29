@@ -124,3 +124,8 @@ test('after a drop the garage door comes down behind the robber, stays shut a wh
   for (let k = 0; k < 90; k++) g.step(0.1, far, far, [], [far]);
   assert.equal(g.doorAmount(), 0); assert.equal(g.door, null);
 });
+
+test('wrecking the robber wins it for the police', () => {
+  const g = fresh(); g.wreckRobber();
+  assert.ok(g.over); assert.equal(g.winner, 'police'); assert.equal(g.events.at(-1).why, 'wrecked');
+});

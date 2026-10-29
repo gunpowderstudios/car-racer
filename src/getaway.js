@@ -264,7 +264,10 @@ export class GetawayGame {
     }
   }
 
-  _win(who) { this.over = true; this.winner = who; this.events.push({ type: 'win', who, robbed: this.robbed, strikes: this.strikes, time: this.time }); }
+  /** The robber's car has been smashed to bits: the police win. */
+  wreckRobber() { if (!this.over) this._win('police', 'wrecked'); }
+
+  _win(who, why = null) { this.over = true; this.winner = who; this.events.push({ type: 'win', who, why, robbed: this.robbed, strikes: this.strikes, time: this.time }); }
 }
 
 /** Where a bag is drawn and picked up is already in the game; this keeps a point inside the streets (never inside a building), for dropping things. */

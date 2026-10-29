@@ -17,6 +17,7 @@ function ensure() {
 #getaway-hud .gw-side.me{border-color:#ffb31f}
 #getaway-hud .gw-side.rob b{color:#7dff9a}#getaway-hud .gw-side.pol b{color:#6fb4ff}
 #getaway-hud small{display:block;font-size:11px;letter-spacing:.1em;opacity:.7;margin-top:-2px}
+#getaway-hud .gw-hp{display:block;height:5px;margin:3px auto 0;width:84%;border-radius:3px;background:#0007;overflow:hidden}#getaway-hud .gw-hp u{display:block;height:100%;width:100%;background:#6fd36f;transition:width .2s}
 #getaway-hud .gw-pips{font-size:clamp(20px,3vw,30px);letter-spacing:.12em;line-height:1}
 #getaway-hud .gw-hint{margin-top:5px;font-size:clamp(14px,2vw,20px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#16102a99;display:inline-block;padding:1px 14px;border-radius:8px}
 #getaway-siren{position:absolute;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 124px);transform:translateX(-50%);z-index:31;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(13px,1.6vw,19px);text-transform:uppercase;letter-spacing:.06em;padding:1px 14px;border-radius:8px;color:#fff;text-shadow:0 2px 6px #000c;animation:gw-siren .5s infinite alternate}
@@ -46,7 +47,7 @@ body.getaway #lap-card{display:none}
 @media (max-width:900px){body.getaway #minimap{width:132px;height:86px}#getaway-compass{right:150px;top:calc(max(8px,env(safe-area-inset-top)) + 48px);width:54px;height:54px}#getaway-compass .gw-dial span{font-size:11px}#getaway-compass .gw-dial span.n{font-size:16px}#getaway-hud .gw-side{min-width:96px;padding:1px 8px}}`;
   document.head.appendChild(st);
   box = document.createElement('div'); box.id = 'getaway-hud'; box.hidden = true;
-  box.innerHTML = '<div class="gw-row"><div class="gw-side rob"><b>Robbers</b><div class="gw-pips"></div><small>bags safe</small></div><div class="gw-side pol"><b>Police</b><div class="gw-pips"></div><small>strikes</small></div></div><div class="gw-hint"></div>';
+  box.innerHTML = '<div class="gw-row"><div class="gw-side rob"><b>Robbers</b><div class="gw-pips"></div><small>bags safe</small><i class="gw-hp"><u></u></i></div><div class="gw-side pol"><b>Police</b><div class="gw-pips"></div><small>strikes</small><i class="gw-hp"><u></u></i></div></div><div class="gw-hint"></div>';
   hud.appendChild(box);
   compass = document.createElement('div'); compass.id = 'getaway-compass'; compass.hidden = true;
   compass.innerHTML = '<div class="gw-dial"><span class="n" data-a="0">N</span><span data-a="90">E</span><span data-a="180">S</span><span data-a="270">W</span></div><div class="gw-car"></div>';
@@ -71,10 +72,11 @@ export function getawayHudShow(on) {
 const pips = (n, goal) => '●'.repeat(Math.min(n, goal)) + '○'.repeat(Math.max(0, goal - n));
 
 /** Score, hint and siren. `game` is the GetawayGame and `role` the side the person plays ('robber' or 'police'). */
-export function getawayHudUpdate(game, role) {
+export function getawayHudUpdate(game, role, hp = null) {
   const el = ensure(); if (!el || el.hidden) return;
   const [rob, pol] = el.querySelectorAll('.gw-side');
   rob.classList.toggle('me', role === 'robber'); pol.classList.toggle('me', role === 'police');
+  if (hp) for (const [side, v] of [[rob, hp.robber], [pol, hp.police]]) { const u = side.querySelector('.gw-hp u'); u.style.width = Math.max(0, Math.min(100, v)) + '%'; u.style.background = v > 60 ? '#6fd36f' : v > 25 ? '#ffb31f' : '#e8392c'; }
   rob.querySelector('.gw-pips').textContent = pips(game.robbed, game.goal);
   pol.querySelector('.gw-pips').textContent = pips(game.strikes, game.L.T.jail);
   let hint;

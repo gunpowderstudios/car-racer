@@ -656,7 +656,7 @@ const TRAFFIC_CARS = ['big-apple', 'mini', 'volvo', 'panda', 'bmw'];      // the
 const gwOther = (r) => (r === 'robber' ? 'police' : 'robber');
 function makeGetaway() {
   const role = store.get('cr.gwRole', 'robber') === 'police' ? 'police' : 'robber', L = townLayout();
-  return { L, role, ai: gwOther(role), game: new GetawayGame(L), rams: [], flipT: 0, resultAt: 0, card: null, t: 0 };
+  return { L, role, ai: gwOther(role), game: new GetawayGame(L), rams: [], flipT: 0, resultAt: 0, card: null, t: 0, out: [] };
 }
 /** The Getaway has its own cars: the Dodge for the robber, the police car for the police (and the vehicle you chose comes back afterwards). */
 function syncGetawayVehicle() {
@@ -682,7 +682,7 @@ function getawaySetup() {
   };
 }
 function placeGetawayCar() {
-  const G = getaway; G.game.reset(); G.rams.length = 0; G.flipT = 0; G.resultAt = 0; G.card = null; G.t = 0;
+  const G = getaway; gwHp.clear(); G.out.length = 0; G.game.reset(); G.rams.length = 0; G.flipT = 0; G.resultAt = 0; G.card = null; G.t = 0;
   placeCarInArena(null, G.role === 'robber' ? G.L.robberStart : G.L.policeStart);
   car.boostFuel = 1;
 }
@@ -700,6 +700,40 @@ function getawayBegin() {
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
 const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
+// ---- wear and tear: the robber and the police cars have 100 health each; knocks take some off. A wrecked robber means the police win; a wrecked police car is out for 8 s.
+// Traffic is never hurt. A drop in the garage repairs the robber.
+const gwHp = new Map();                                  // Vehicle -> health 0..100
+const hpOf = (c) => (gwHp.has(c) ? gwHp.get(c) : 100);
+function gwSide(f) {
+  const G = getaway; if (!G) return null;
+  if (f.isPlayer) return G.role === 'robber' ? 'robber' : 'cop';
+  if (f.cop) return 'cop';
+  return f === derby.rivals[0] && G.ai === 'robber' ? 'robber' : null;
+}
+function gwImpact(f, kind, speed) {
+  const G = getaway; if (!G || G.game.over) return;
+  const side = gwSide(f); if (!side || G.out.some((o) => o.car === f.car)) return;
+  const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * 2.2; if (dmg <= 0) return;
+  const hp = Math.max(0, hpOf(f.car) - dmg); gwHp.set(f.car, hp);
+  if (hp > 0) return;
+  const c = f.car, d = f.isPlayer ? 0 : Math.hypot(c.pos.x - car.pos.x, c.pos.z - car.pos.z);
+  particles.blast(c.pos.x, c.pos.y, c.pos.z, 1.8); crashDebris(c.pos.x, c.pos.y + 0.4, c.pos.z, 20, f.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6); sound.explode(d);
+  if (d < 45) chase.impact(Math.max(0, 1 - d / 45) * 22);
+  if (side === 'robber') { G.game.wreckRobber(); return; }
+  c.engineOff = true; c.crank = 0; if (!f.isPlayer) f.stallT = 999;
+  G.out.push({ car: c, f, until: G.game.time + 8 });
+  if (f.isPlayer) getawayPop('Your car is wrecked! Back in 8 seconds', 2600);
+}
+derby.onImpact = gwImpact;
+function gwOutStep(G) {
+  for (let i = G.out.length - 1; i >= 0; i--) {
+    const o = G.out[i]; if (G.game.time < o.until) continue;
+    G.out.splice(i, 1); gwHp.set(o.car, 100); o.car.engineOff = false; o.car.crank = 0;
+    const p = rescuePose(G.L, G.L.policeStart.x, G.L.policeStart.z, derby.cars.filter((c) => c !== o.car));
+    if (o.f.isPlayer) placeCarInArena(null, p);
+    else { o.car.reset(new V3(p.x, track.py[0] + o.car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(o.f, o.f.cur); derby._pose(o.f, o.f.prev); }
+  }
+}
 /** After a drop the garage door comes down (solid, so nobody drives in after the robber) and the robber reappears at another junction across town. */
 function getawayDoor(G) {
   const g = G.game, d = g.door;
@@ -723,7 +757,7 @@ function getawayStep() {
   for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1 || copIds.has(e.a) || copIds.has(e.b))) rams.push(e.speed);       // (only car against car, you and the other side: traffic does not knock the bag out)
   const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: f.car.pos.x, z: f.car.pos.z };
   G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams, G.role === 'robber' ? derby.rivals.filter((x) => x.cop).map((x) => ({ x: x.car.pos.x, z: x.car.pos.z })) : null);
-  getawayDoor(G);
+  getawayDoor(G); gwOutStep(G);
   if (G.game.events.length) getawayEvents();
   if (car.ay.y < 0.15 && car.speed < 3) { G.flipT += DT; if (G.flipT > 2.5) { G.flipT = 0; respawn(); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
 }
@@ -733,7 +767,7 @@ function getawayEvents() {
     if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! Follow the red line to the safehouse!' : 'Robbery in progress! Follow the red line!', 2400); }
     else if (e.type === 'ram') { sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
     else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
-    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
+    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { const rc = me === 'robber' ? car : derby.rivals[0]?.car; if (rc) gwHp.set(rc, 100); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
     else if (e.type === 'win') getawayFinish(e);
   }
@@ -743,17 +777,19 @@ function getawayFinish(e) {
   const G = getaway, me = G.role, won = e.who === me, rob = e.who === 'robber';
   gwChime(won ? [523, 659, 784, 1047, 1319] : [392, 330, 262, 196], 150, 0.34);
   const t = Math.round(e.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
-  const title = rob ? (me === 'robber' ? 'You got away with it!' : 'They got away!') : (me === 'police' ? 'Robber busted!' : 'Busted! Off to jail');
+  const wrecked = e.why === 'wrecked';
+  const title = rob ? (me === 'robber' ? 'You got away with it!' : 'They got away!') : wrecked ? (me === 'police' ? 'Robber wrecked!' : 'Wrecked! Busted!') : (me === 'police' ? 'Robber busted!' : 'Busted! Off to jail');
   G.card = {
     title, again: `Play again as ${gwOther(me)} (Enter)`,
-    lines: [rob ? `${e.robbed} bags safe in the safehouse` : `Three strikes - the robber is in jail`, `Bags safe ${e.robbed} · strikes ${e.strikes}`, `Time ${mm}:${ss}`],
+    lines: [rob ? `${e.robbed} bags safe in the safehouse` : wrecked ? `The getaway car is a wreck` : `Three strikes - the robber is in jail`, `Bags safe ${e.robbed} · strikes ${e.strikes}`, `Time ${mm}:${ss}`],
   };
   G.resultAt = performance.now() + 1700; sound.sirenLoop(null);
 }
 function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G.card, () => getawayRound(gwOther(G.role)), showMenu, startReplay); }
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
-  getawayHudUpdate(G.game, G.role); getawayCompass(car.az.x, car.az.z);
+  { const rc = G.role === 'robber' ? car : f?.car, pc = G.role === 'police' ? car : f?.car; getawayHudUpdate(G.game, G.role, { robber: rc ? hpOf(rc) : 100, police: pc ? hpOf(pc) : 100 }); }
+  getawayCompass(car.az.x, car.az.z);
   sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;
