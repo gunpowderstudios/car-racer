@@ -21,6 +21,7 @@ export const TOWN = {
   jail: 3,                 // stopped robberies (strikes) that put the robber in jail
   ramCool: 1.2,            // seconds before another ram can count
   garageW: 10, garageD: 15, safeR: 4.5,   // the safehouse is a garage cut into a building: a bay this wide and deep, and you must drive in this close to its middle
+  copR: 40,                // police this close to the safehouse door (or 20 m from the robber) and the robber cannot hide the bag
   height: 11,              // how tall the buildings stand (the solid part; the view makes them different)
 };
 
@@ -191,6 +192,7 @@ export class GetawayGame {
     this.robberBag = null;       // the bag the robber is carrying (or null)
     this.ramCoolUntil = 0; this.events = [];
     this.alarm = false;     // a robbery in progress: the robber has a bag
+    this.copsNear = false;  // police near the safehouse: the bag cannot be hidden yet
     this._spawn(null, null);       // only one bag is out at a time; the rest are hidden until it is safe
   }
 
@@ -215,7 +217,7 @@ export class GetawayGame {
    * The robber picks a bag up from its bank and drives it to the safehouse. Each hard ram from the police counts; the third stops the robbery: the bag
    * goes back in its bank (and the next one is put out) and the robber gets a strike. Three strikes and he is in jail.
    */
-  step(dt, robber, police, rams = []) {
+  step(dt, robber, police, rams = [], cops = null) {
     if (this.over) return;
     this.time += dt;
     const T = this.L.T;
@@ -242,7 +244,13 @@ export class GetawayGame {
       }
     }
     if (this.robberBag) { this.robberBag.x = robber.x; this.robberBag.z = robber.z; }
-    if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.safeR) {      // delivery to the safehouse (the car is in the garage)
+    // the police about: with any near the garage door (or on the robber's tail) the bag cannot be hidden: "Lose the cops!"
+    this.copsNear = false;
+    if (this.robberBag) {
+      const S = this.safehouse, fx = S.gx ?? S.x, fz = S.street ?? S.z;
+      for (const c of cops || (police ? [police] : [])) if (Math.hypot(c.x - fx, c.z - fz) < T.copR || Math.hypot(c.x - robber.x, c.z - robber.z) < 20) { this.copsNear = true; break; }
+    }
+    if (this.robberBag && !this.copsNear && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.safeR) {      // delivery to the safehouse (the car is in the garage)
       const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++; this.ramCount = 0;
       this.events.push({ type: 'deliver', bag: b.id, count: this.robbed });
       if (this.robbed >= this.goal) this._win('robber');

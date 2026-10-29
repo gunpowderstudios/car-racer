@@ -698,7 +698,7 @@ function getawayStep() {
   const rams = G.rams, copIds = new Set(derby.rivals.filter((x) => x.cop).map((x) => x.id)); rams.length = 0;
   for (const e of derby.events) if (e.type === 'hit' && e.kind === 'car' && (e.a === 0 || e.b === 0) && (e.a === 1 || e.b === 1 || copIds.has(e.a) || copIds.has(e.b))) rams.push(e.speed);       // (only car against car, you and the other side: traffic does not knock the bag out)
   const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: f.car.pos.x, z: f.car.pos.z };
-  G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams);
+  G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams, G.role === 'robber' ? derby.rivals.filter((x) => x.cop).map((x) => ({ x: x.car.pos.x, z: x.car.pos.z })) : null);
   if (G.game.events.length) getawayEvents();
   if (car.ay.y < 0.15 && car.speed < 3) { G.flipT += DT; if (G.flipT > 2.5) { G.flipT = 0; respawn(); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
 }
@@ -729,6 +729,10 @@ function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
   getawayHudUpdate(G.game, G.role); getawayCompass(car.az.x, car.az.z);
+  if (G.role === 'robber' && G.game.robberBag && G.game.copsNear && !G.game.over) {            // at the garage with the police about: they have to be shaken off first
+    const S = G.game.safehouse, d = Math.hypot(car.pos.x - (S.gx ?? S.x), car.pos.z - (S.street ?? S.z));
+    if (d < 36 && performance.now() > (G.loseAt || 0)) { G.loseAt = performance.now() + 2600; getawayPop('Lose the cops!', 1400); gwChime([330, 262], 120); }
+  }
   sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;

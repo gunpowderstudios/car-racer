@@ -23,6 +23,13 @@ export class GetawayDriver {
     const g = this.game, cx = car.pos.x, cz = car.pos.z;
     if (g.over) return { x: cx, z: cz, kind: 'idle' };
     if (this.role === 'robber') {
+      if (g.robberBag && g.copsNear && foe) {                      // the police are on the garage door: shake them off first (head for the junction furthest from them, for a few seconds)
+        if (!this.flee || g.time > this.fleeT || Math.hypot(this.flee.x - cx, this.flee.z - cz) < 12) {
+          let best = null, bd = -1; for (const n of g.L.nodes) { const d = Math.hypot(n.x - foe.pos.x, n.z - foe.pos.z) - 0.4 * Math.hypot(n.x - cx, n.z - cz); if (Math.hypot(n.x - cx, n.z - cz) > 30 && d > bd) { bd = d; best = n; } }
+          this.flee = best; this.fleeT = g.time + 8;
+        }
+        if (this.flee) return { x: this.flee.x, z: this.flee.z, kind: 'bank' };
+      }
       if (g.robberBag) return { x: g.safehouse.x, z: g.safehouse.z, kind: 'safehouse' };
       // the nearest bag that is free to take, leaning away from the police
       let best = null, bs = Infinity;

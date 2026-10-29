@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.490 — The Getaway: lose the cops
+- With a bag in the car, if any police car is near the safehouse garage (or right on your tail) the drop will not complete: the screen says "Lose the cops!" as you get close. Shake them off, and the bag goes in as soon as none are near.
+
 ## v17.489 — The Getaway: a proper town's traffic
 - The town's traffic is now every kind of civilian vehicle in the game (cars, the bus, campervan, motorhome and more; never the police car), ten of them on a computer and four on a phone, and some of the ones that can tow have a caravan on the back.
 - Until a robbery starts, the police cars (and the computer robber) stop for any car in front of them, yours included, like the rest of the traffic. When the robber picks up a bag the police drop that and chase as fast as they can.

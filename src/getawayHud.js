@@ -79,7 +79,7 @@ export function getawayHudUpdate(game, role) {
   pol.querySelector('.gw-pips').textContent = pips(game.strikes, game.L.T.jail);
   let hint;
   const need = game.L.T.rams;
-  if (role === 'robber') hint = game.robberBag ? `Follow the red line! Rammed ${game.ramCount}/${need}` : 'Follow the red line to the bag';
+  if (role === 'robber') hint = game.robberBag && game.copsNear ? `Lose the cops! Rammed ${game.ramCount}/${need}` : game.robberBag ? `Follow the red line! Rammed ${game.ramCount}/${need}` : 'Follow the red line to the bag';
   else hint = game.robberBag ? `Ram him! ${game.ramCount}/${need}` : 'Patrol the town - wait for the alarm';
   el.querySelector('.gw-hint').textContent = hint;
   if (bagEl) { bagEl.hidden = !(role === 'robber' && game.robberBag); bagEl.querySelector('span').textContent = `${game.ramCount}/${need}`; }
