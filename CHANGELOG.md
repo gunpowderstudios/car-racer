@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.503 — Easier to see satnav line
+- The red satnav line is back to a ribbon with arrows, a little wider and stronger than before, so it is easy to follow. The map line is a solid red line.
+
 ## v17.502 — The Getaway: damage
 - The robber and the police cars now have 100 health each, shown as a small bar on the scoreboard. Hitting walls, buildings and other cars takes it down (harder knocks hurt more); traffic is never hurt.
 - A wrecked robber's car means the police win ("Robber wrecked!"). It is a second way to win, besides three strikes.

@@ -150,7 +150,7 @@ export function drawGetawayMap(game, role, me, foe, t = 0, line = null, cops = n
     if (b.state === 'home' && role === 'robber') { g.fillStyle = '#ffd23a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.fillRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); g.strokeRect(X(b.x) - 5, Z(b.z) - 5, 10, 10); }       // the robber sees where the bag is
   }
   if (line && line.length > 1) {                                   // the satnav line
-    g.strokeStyle = 'rgba(255,59,48,0.9)'; g.lineWidth = 2; g.lineCap = 'round'; g.setLineDash([0.1, 5]); g.lineJoin = 'round'; g.beginPath(); line.forEach((p, i) => { if (i) g.lineTo(X(p.x), Z(p.z)); else g.moveTo(X(p.x), Z(p.z)); }); g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
+    g.strokeStyle = 'rgba(255,59,48,0.95)'; g.lineWidth = 2.5; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); line.forEach((p, i) => { if (i) g.lineTo(X(p.x), Z(p.z)); else g.moveTo(X(p.x), Z(p.z)); }); g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
   }
   if (role === 'robber') {                                         // the safehouse
     const s = game.safehouse, x = X(s.x), y = Z(s.z);
