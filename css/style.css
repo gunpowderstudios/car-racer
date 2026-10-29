@@ -482,6 +482,14 @@ body:not(.mode-drive) .mp-label { display: none; }
   #dmg-card { width: 96px; top: calc(max(14px, env(safe-area-inset-top)) + 214px); }
 }
 
+/* Tablet-only: larger damage chart. */
+@media (pointer: coarse) and (min-width: 761px) {
+  #dmg-card {
+    width: 125px;
+    padding: 5px 10px 8px;
+  }
+}
+
 /* ---------------------------------------------- phone (touch, portrait-ish)
    Top: lap | score | map. One row of action buttons under that, cog at its end.
    Sides: damage on the right, compact speed plate on the left above steering.
@@ -1041,7 +1049,7 @@ body:not(.mode-menu) #gp-credit { display: none; }
 
 /* Mobile/tablet camera-cycle button: compact white icon tucked immediately above Boost. */
 #t-camera { display: none; }
-@media (pointer: coarse) and (max-width: 1024px) {
+@media (pointer: coarse) {
   #touch .t-right { position: relative; }
   #t-camera {
     display: grid;
@@ -1067,7 +1075,7 @@ body:not(.mode-menu) #gp-credit { display: none; }
 
 /* Mobile/tablet quick actions above the speedometer: mirror, back on road, explode. */
 #mobile-quick-actions { display: none; }
-@media (pointer: coarse) and (max-width: 1024px) {
+@media (pointer: coarse) {
   body.mode-drive #mobile-quick-actions {
     position: fixed;
     left: 12px;

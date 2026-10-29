@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.472 — Tablet controls fixed
+- The camera, mirror, back-on-road and explode buttons now show on larger tablets too, including wide iPads.
+- The tablet damage chart is about 30% larger. Gameplay is unchanged.
+
 ## v17.471 — Tablet screen controls
 - Tablets now get the same on-screen camera and quick-action buttons as mobile: mirror, back on road and explode. This is UI-only; gameplay behaviour is unchanged.
 
