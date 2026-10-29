@@ -1,7 +1,6 @@
 # Bangers & Smash! — Change Log
 
-This file records notable user-facing changes. New entries go at the top.
-
+This file records notable user-facing changes. New entries go at the top.\n\n## v17.468 — Device edition label\n- A small top-right label on the main menu now identifies the current version as Desktop Edition, Tablet Edition or Mobile Edition.\n
 ## v17.467 — Hazards move in the replay
 - Apple Crumple: the hammers, spinners, rolling rocks and presses now move in the replay (and in made movies) exactly as they did in your run; they used to stand frozen.
 
