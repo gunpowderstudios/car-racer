@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.496 — A way home
+- The TV and its "LIVE TV Playback!" slogan are taken off the home page for now (hidden, not deleted).
+- A little white house icon, top right beside the cog, takes you back to the home page from a race, The Getaway or multiplayer. (The track editor keeps its own Menu button.)
+
 ## v17.495 — Every cog-menu entry reachable on a phone
 - On a phone the cog menu was taller than the screen, so Replay, Share race and Menu could not be reached. It now scrolls (and is a little more compact on short screens), so every entry can be tapped.
 

@@ -1162,3 +1162,14 @@ body:not(.mode-menu) #edition-badge { display: none; }
 
 
 #track-list li.linked { outline: 2px solid #ffb31f; outline-offset: 2px; border-radius: 6px; }
+
+/* the home page has no TV and slogan for now */
+#menu-tv { display: none !important; }
+/* a little white house, top right beside the cog, on every screen but the home page */
+#home-btn { position: fixed; z-index: 100; top: max(8px, env(safe-area-inset-top)); right: 58px; width: 40px; height: 40px; padding: 8px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45);
+  background: rgba(42,29,74,.82); color: #fff; cursor: pointer; pointer-events: auto; transition: border-color .2s, transform .15s; }
+#home-btn svg { display: block; width: 100%; height: 100%; }
+#home-btn:hover { border-color: #fff; transform: scale(1.06); }
+body.mode-menu #home-btn { display: none; }
+@media (max-width: 760px) { #home-btn { width: 38px; height: 38px; padding: 7px; right: 54px; } }
+body.mode-edit #home-btn { display: none; }   /* (the editor has its own Menu button) */

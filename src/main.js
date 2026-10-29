@@ -2191,6 +2191,8 @@ async function shareRace() {
     catch { window.prompt('Copy this link and send it to a friend:', url); }
   } catch { toast('Could not make a link for this race.'); }
 }
+$('home-btn').addEventListener('pointerdown', (e) => e.preventDefault());   // (never takes focus: Space stays the boost)
+$('home-btn').addEventListener('click', (e) => { if (mode === 'edit') editor.cb.onClose(editor.def); else showMenu(); e.currentTarget.blur(); });
 $('share-btn').addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
 $('share-btn').addEventListener('click', (e) => { if (mode === 'drive') shareRace(); e.currentTarget.blur(); });
 
