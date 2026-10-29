@@ -187,7 +187,7 @@ export class GetawayView {
     }
     if (!pts || pts.length < 2) { this.line.visible = false; return; }
     let P = pts;
-    for (let it = 0; it < 2; it++) { const Q = [P[0]]; for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; Q.push({ x: a.x * 0.75 + b.x * 0.25, z: a.z * 0.75 + b.z * 0.25 }, { x: a.x * 0.25 + b.x * 0.75, z: a.z * 0.25 + b.z * 0.75 }); } Q.push(P[P.length - 1]); P = Q; }
+    for (let it = 0; it < 0; it++) { const Q = [P[0]]; for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; Q.push({ x: a.x * 0.75 + b.x * 0.25, z: a.z * 0.75 + b.z * 0.25 }, { x: a.x * 0.25 + b.x * 0.75, z: a.z * 0.25 + b.z * 0.75 }); } Q.push(P[P.length - 1]); P = Q; }
     const n = Math.min(P.length, this.lineMax), pos = this.line.geometry.attributes.position, uv = this.line.geometry.attributes.uv, y = this.y0 + 0.1, half = 0.75;
     let u = 0;
     for (let i = 0; i < n; i++) {

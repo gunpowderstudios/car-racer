@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TOWN, townLayout, pickSafehouse, safehouseSpots, streetAt, nearestNode, route, GetawayGame } from '../src/getaway.js';
+import { TOWN, townLayout, pickSafehouse, safehouseSpots, streetAt, nearestNode, route, roundRoute, GetawayGame } from '../src/getaway.js';
 
 const L = townLayout();
 const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -128,4 +128,17 @@ test('after a drop the garage door comes down behind the robber, stays shut a wh
 test('wrecking the robber wins it for the police', () => {
   const g = fresh(); g.wreckRobber();
   assert.ok(g.over); assert.equal(g.winner, 'police'); assert.equal(g.events.at(-1).why, 'wrecked');
+});
+
+test('the satnav line stays on the streets and never cuts across a building', () => {
+  const rnd = mulberry(11);
+  for (let k = 0; k < 300; k++) {
+    const a = L.nodes[Math.floor(rnd() * L.nodes.length)], b = L.nodes[Math.floor(rnd() * L.nodes.length)]; if (a === b) continue;
+    const hx = rnd() < 0.5 ? 1 : -1, car = { x: a.x + (rnd() - 0.5) * 6, z: a.z + (rnd() - 0.5) * 6 };
+    const pts = route(L, car.x, car.z, hx, 0, b.x, b.z, 10), line = roundRoute(L, [car, ...pts]);
+    for (let i = 0; i < line.length - 1; i++) for (let u = 0; u <= 1; u += 0.1) {
+      const x = line[i].x + (line[i + 1].x - line[i].x) * u, z = line[i].z + (line[i + 1].z - line[i].z) * u;
+      for (const box of L.boxes) assert.ok(!(x > box.x0 && x < box.x1 && z > box.z0 && z < box.z1), `route ${k} runs through a building at ${x.toFixed(1)}, ${z.toFixed(1)}`);
+    }
+  }
 });

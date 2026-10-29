@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.504 — Satnav line stays on the road
+- The red satnav line now runs down the middle of the streets and turns each junction corner in a neat curve, instead of sometimes cutting across a building corner. It also eases back onto the middle of the street if you are driving at the side. A new test checks 300 random routes never touch a building.
+
 ## v17.503 — Easier to see satnav line
 - The red satnav line is back to a ribbon with arrows, a little wider and stronger than before, so it is easy to follow. The map line is a solid red line.
 

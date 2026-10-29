@@ -22,7 +22,7 @@ import { CarVisual, ChaseCamera, RIVAL_LOOKS, warmRivalLooks } from './carVisual
 import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { Assault, COURSE } from './assault.js';
-import { GetawayGame, townLayout, rescuePose, route, safehouseRoute } from './getaway.js';
+import { GetawayGame, townLayout, rescuePose, route, safehouseRoute, roundRoute } from './getaway.js';
 import { GetawayDriver, TrafficDriver } from './getawayAI.js';
 import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGetawayResult, drawGetawayMap, getawayCompass } from './getawayHud.js';
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
@@ -798,7 +798,7 @@ function getawayFrame() {
     if (to) {
       const pts = G.role === 'robber' && g.robberBag && g.safehouse.gx !== undefined ? safehouseRoute(G.L, g.safehouse, car.pos.x, car.pos.z, car.az.x, car.az.z, car.speed) : route(G.L, car.pos.x, car.pos.z, car.az.x, car.az.z, to.x, to.z, car.speed), P = [{ x: car.pos.x, z: car.pos.z }, ...pts];
       while (P.length > 2 && Math.hypot(P[1].x - P[0].x, P[1].z - P[0].z) < 14 && (P[0].x - P[1].x) * (P[2].x - P[1].x) + (P[0].z - P[1].z) * (P[2].z - P[1].z) > 0) P.splice(1, 1);
-      line = P.length > 1 ? P : null;
+      line = P.length > 1 ? roundRoute(G.L, P) : null;
     }
     G.line = line || [];
     stage.setGetawayRoute(line);

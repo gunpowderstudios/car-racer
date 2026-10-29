@@ -168,6 +168,32 @@ export function route(L, x, z, hx, hz, tx, tz, speed = 0) {
   return pts.reverse();
 }
 
+/**
+ * The satnav line: the route (car, then junctions) with its corners rounded off, kept on the middle of the streets. A car that is off to one side first
+ * eases back onto the centre line, and each 90-degree corner at a junction is a neat curve that begins `r` metres before it and ends `r` after, so it never
+ * swings out over the pavement or cuts across a building.
+ */
+export function roundRoute(L, P, r = 7) {
+  if (P.length < 2) return P;
+  const out = [P[0]], n1 = P[1], dx0 = n1.x - P[0].x, dz0 = n1.z - P[0].z, d0 = Math.hypot(dx0, dz0);
+  if (d0 > 18 && P.length > 2) {                       // ease onto the centre line of the street the next junction is on, 9 m ahead
+    const horiz = Math.abs(dx0) >= Math.abs(dz0), k = 9 / d0;
+    out.push(horiz ? { x: P[0].x + dx0 * k, z: n1.z } : { x: n1.x, z: P[0].z + dz0 * k });
+  }
+  const Q = [...out, ...P.slice(1)];
+  const res = [Q[0]];
+  for (let i = 1; i < Q.length - 1; i++) {
+    const a = Q[i - 1], b = Q[i], c = Q[i + 1], l1 = Math.hypot(b.x - a.x, b.z - a.z), l2 = Math.hypot(c.x - b.x, c.z - b.z);
+    if (l1 < 12 || l2 < 12) { res.push(b); continue; }
+    const d1x = (b.x - a.x) / l1, d1z = (b.z - a.z) / l1, d2x = (c.x - b.x) / l2, d2z = (c.z - b.z) / l2;
+    if (d1x * d2x + d1z * d2z > 0.985) { res.push(b); continue; }           // (nearly straight on)
+    const t = Math.min(r, l1 * 0.45, l2 * 0.45), p0 = { x: b.x - d1x * t, z: b.z - d1z * t }, p2 = { x: b.x + d2x * t, z: b.z + d2z * t };
+    for (let k = 0; k <= 6; k++) { const u = k / 6, w = 1 - u; res.push({ x: w * w * p0.x + 2 * w * u * b.x + u * u * p2.x, z: w * w * p0.z + 2 * w * u * b.z + u * u * p2.z }); }
+  }
+  res.push(Q[Q.length - 1]);
+  return res;
+}
+
 // ------------------------------------------------------------------------------------------------ the game
 
 /**
