@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.469';
-export const NOTE = 'Reverted the device-edition label after a reported sound regression.';
+export const VERSION = '17.470';
+export const NOTE = 'Restore the Desktop, Tablet or Mobile Edition label on the main menu.';

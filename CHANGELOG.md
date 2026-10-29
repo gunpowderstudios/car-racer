@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.470 — Device edition label restored
+- Restored the small top-right Desktop Edition, Tablet Edition or Mobile Edition label on the main menu. No gameplay or audio code changed.
+
 ## v17.469 — Edition label rolled back
 - Removed the new Desktop/Tablet/Mobile Edition corner label after sound was reported missing. No gameplay or audio code was changed.\n\n## v17.468 — Device edition label\n- A small top-right label on the main menu now identifies the current version as Desktop Edition, Tablet Edition or Mobile Edition.\n
 ## v17.467 — Hazards move in the replay
