@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.497 — The track link in the address bar
+- While you race one of the game's own tracks, the address bar shows its link (bangersandsmash.co.uk/#the-twister), ready to copy and send. An edited, random or imported track shows nothing, and multiplayer is left alone.
+
 ## v17.496 — A way home
 - The TV and its "LIVE TV Playback!" slogan are taken off the home page for now (hidden, not deleted).
 - A little white house icon, top right beside the cog, takes you back to the home page from a race, The Getaway or multiplayer. (The track editor keeps its own Menu button.)

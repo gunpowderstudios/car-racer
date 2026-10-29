@@ -1448,6 +1448,7 @@ function startDriving(newDef) {
 }
 function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
+  if (!net) { const k = ownLinkKey(); setHash(k ? slugOf(k) : ''); }        // the address bar shows this game's own link, ready to copy and send (nothing for an edited or random track)
   if (assault) { assaultCountdown(); return; }
   if (getaway) { getawayBegin(); return; }
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
@@ -2174,13 +2175,19 @@ if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
 }
 
 // ----- share this race: the car, the caravan and the track exactly as it is now (edits included) as one link
+/** The key of the game's own track being driven (so it has a short link such as #the-twister), or null for an edited, random or imported track. */
+function ownLinkKey() {
+  if (getaway) return 'getaway';
+  if (!def) return null;
+  return [...TEMPLATE_KEYS, 'apple', 'getaway'].find((k) => k !== 'random' && makeTemplate(k).name === def.name && JSON.stringify(makeTemplate(k)) === JSON.stringify(def)) || null;
+}
 async function shareRace() {
   if (net) { toast('In multiplayer, use the invite link from the lobby.'); return; }
   if (!def) return;
   const v = selectedVehicle(), van = caravanWanted();
   try {
     // one of the game's own tracks, untouched, has its own short link (#the-twister); The Getaway has one too; an edited or random track goes as the full track link
-    const key = getaway ? 'getaway' : [...TEMPLATE_KEYS, 'apple', 'getaway'].find((k) => k !== 'random' && makeTemplate(k).name === def.name && JSON.stringify(makeTemplate(k)) === JSON.stringify(def));
+    const key = ownLinkKey();
     const url = key ? `${location.origin}${location.pathname}#${slugOf(key)}` : await trackLinkUrl(def, `${location.origin}${location.pathname}?car=${encodeURIComponent(v.id)}${van ? '&van=1' : ''}`);
     const what = key ? def.name : `${v.name}${van ? ' + caravan' : ''} on ${def.name}`;
     if (matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {
