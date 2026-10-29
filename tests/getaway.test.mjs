@@ -116,13 +116,6 @@ test('the town streets sit on solid arena floor', () => {
   assert.equal(tr.blocks.length, 40);
 });
 
-test('the bag cannot be hidden while police are near the garage: lose the cops first', () => {
-  const S = safehouseSpots(L)[3], g = new GetawayGame(L, { safehouse: S, rng: mulberry(3) }), a = g.loose()[0], far = { x: 1e4, z: 1e4 };
-  g.step(0.1, { x: a.x, z: a.z }, far); g.safehouse = S; assert.ok(g.robberBag);
-  g.step(0.1, { x: S.x, z: S.z }, { x: S.gx + 5, z: S.street }, [], [{ x: S.gx + 5, z: S.street }]); assert.ok(g.copsNear); assert.equal(g.robbed, 0, 'not hidden with the police at the door');
-  g.step(0.1, { x: S.x, z: S.z }, far, [], [far]); assert.ok(!g.copsNear); assert.equal(g.robbed, 1, 'hidden once they are gone');
-});
-
 test('after a drop the garage door comes down behind the robber, stays shut a while, then goes up', () => {
   const S = safehouseSpots(L)[3], g = new GetawayGame(L, { safehouse: S, rng: mulberry(3) }), a = g.loose()[0], far = { x: 1e4, z: 1e4 };
   g.step(0.1, { x: a.x, z: a.z }, far); g.safehouse = S; g.step(0.1, { x: S.x, z: S.z }, far, [], [far]);

@@ -23,20 +23,13 @@ export class GetawayDriver {
     const g = this.game, cx = car.pos.x, cz = car.pos.z;
     if (g.over) return { x: cx, z: cz, kind: 'idle' };
     if (this.role === 'robber') {
-      if (g.robberBag && g.copsNear && foe) {                      // the police are on the garage door: shake them off first (head for the junction furthest from them, for a few seconds)
-        if (!this.flee || g.time > this.fleeT || Math.hypot(this.flee.x - cx, this.flee.z - cz) < 12) {
-          let best = null, bd = -1; for (const n of g.L.nodes) { const d = Math.hypot(n.x - foe.pos.x, n.z - foe.pos.z) - 0.4 * Math.hypot(n.x - cx, n.z - cz); if (Math.hypot(n.x - cx, n.z - cz) > 30 && d > bd) { bd = d; best = n; } }
-          this.flee = best; this.fleeT = g.time + 8;
-        }
-        if (this.flee) return { x: this.flee.x, z: this.flee.z, kind: 'bank' };
-      }
       if (g.robberBag) return { x: g.safehouse.x, z: g.safehouse.z, kind: 'safehouse' };
       // the nearest bag that is free to take, leaning away from the police
       let best = null, bs = Infinity;
       for (const b of g.loose()) {
         if (g.time < b.lockUntil) continue;
         const mine = Math.hypot(b.x - cx, b.z - cz), theirs = foe ? Math.hypot(b.x - foe.pos.x, b.z - foe.pos.z) : 200;
-        const s = mine - 0.35 * Math.min(theirs, 160);
+        const s = mine - 0.7 * Math.min(theirs, 160);
         if (s < bs) { bs = s; best = b; }
       }
       return best ? { x: best.x, z: best.z, kind: 'bag' } : { x: cx, z: cz, kind: 'idle' };
@@ -78,7 +71,7 @@ export class GetawayDriver {
       return inp;
     }
     this.backing = false;
-    let vT = G.kind === 'idle' ? 0 : this.cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : 1), ax = G.x, az = G.z, chase = false;
+    let vT = G.kind === 'idle' ? 0 : this.cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
     if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = this.cruise * 1.25; }            // the last stretch of a chase: straight at him
@@ -148,7 +141,7 @@ export class GetawayDriver {
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
 
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    inp.boost = this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse' && !!foe && Math.hypot(foe.pos.x - px, foe.pos.z - pz) < 60)) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
+    inp.boost = this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
     return inp;
   }
 }

@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.499 — The Getaway: a sharper robber
+- "Lose the cops!" is gone: the garage door now does that job, so the police can stop a drop only by ramming the robber or by getting into the garage first.
+- The computer robber is harder to follow: it drives about 30% faster while carrying a bag, boosts the whole way to the garage, and picks bags that are further from the police.
+
 ## v17.498 — The Getaway: the garage door shuts
 - When the robber hides a bag, the garage door comes down behind him (solid, for a few seconds), and a moment later he reappears at a junction on the other side of the town, away from the police and the garage. No more waiting at the safehouse to follow him to the next robbery. This works whichever side you play.
 
