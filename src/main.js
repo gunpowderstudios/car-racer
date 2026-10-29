@@ -2179,8 +2179,10 @@ async function shareRace() {
   if (!def) return;
   const v = selectedVehicle(), van = caravanWanted();
   try {
-    const url = await trackLinkUrl(def, `${location.origin}${location.pathname}?car=${encodeURIComponent(v.id)}${van ? '&van=1' : ''}`);
-    const what = `${v.name}${van ? ' + caravan' : ''} on ${def.name}`;
+    // one of the game's own tracks, untouched, has its own short link (#the-twister); The Getaway has one too; an edited or random track goes as the full track link
+    const key = getaway ? 'getaway' : [...TEMPLATE_KEYS, 'apple', 'getaway'].find((k) => k !== 'random' && makeTemplate(k).name === def.name && JSON.stringify(makeTemplate(k)) === JSON.stringify(def));
+    const url = key ? `${location.origin}${location.pathname}#${slugOf(key)}` : await trackLinkUrl(def, `${location.origin}${location.pathname}?car=${encodeURIComponent(v.id)}${van ? '&van=1' : ''}`);
+    const what = key ? def.name : `${v.name}${van ? ' + caravan' : ''} on ${def.name}`;
     if (matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {
       try { await navigator.share({ title: 'Bangers and Smash!', text: `Try my race: ${what}`, url }); return; }
       catch (e) { if (e && e.name === 'AbortError') return; }

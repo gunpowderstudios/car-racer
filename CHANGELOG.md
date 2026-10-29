@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.494 — Share gives the track's own link
+- The share button now copies the short link for the track you are on (bangersandsmash.co.uk/#the-twister, #the-getaway and so on). A track you have edited, or the random one, still shares as the full track link, with your car.
+
 ## v17.493 — A web address for every game
 - Every track and game now has its own link: bangersandsmash.co.uk/#the-twister, #the-getaway, #apple-crumple and so on (the name of the track, lower case, with dashes; #got-the-hump for the random one). Opening it takes you to that track on the menu, ready to pick your vehicle - it does not start the race.
 - #the-getaway/robber and #the-getaway/police go straight into The Getaway as that side.
