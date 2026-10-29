@@ -669,7 +669,7 @@ function getawaySetup() {
     L: G.L, role: G.ai,
     makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
-    traffic: device.touch ? 3 : 6, extraPolice: device.touch ? 2 : 4,
+    traffic: device.touch ? 4 : 10, extraPolice: device.touch ? 2 : 4,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),
     rescue: (c) => { const p = rescuePose(G.L, c.pos.x, c.pos.z); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
   };
@@ -764,7 +764,7 @@ function derbyStart() {
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled; if (gw) derby.damageEnabled = false;
   derby.getawaySetup = gw ? getawaySetup() : null;
-  if (gw) { derby.pool = TRAFFIC_CARS.slice(0, device.touch ? 3 : 5).map((id) => { const v = vehicleById(id); return { id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; }); derby.towing = false; }
+  if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
   derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (solo ? DERBY.repairs : opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
   if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
@@ -860,6 +860,11 @@ function adoptView(v, hue, vid) {
   const src = kindSource(vid);
   if (!src.loaded) return false;
   return v.adopt(src, null);                                      // Jamboree rivals keep each vehicle's original colours
+}
+function trafficPool() {                                          // the ordinary cars, bus and so on that fill the town (never the police car or the robber's Dodge; a phone gets five kinds only)
+  let list = VEHICLES.filter((v) => v.id !== 'police' && v.id !== 'car');
+  if (device.touch) { for (let i = list.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; } list = list.slice(0, 5); }
+  return list.map((v) => ({ id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null }));
 }
 function jamboreePoolForRace() {                                  // (a phone or tablet gets four kinds only, so it never holds a dozen models)
   let list = jamboreePool().filter((v) => v.id !== selectedVehicle().id);

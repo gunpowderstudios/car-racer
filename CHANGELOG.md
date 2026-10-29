@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.489 — The Getaway: a proper town's traffic
+- The town's traffic is now every kind of civilian vehicle in the game (cars, the bus, campervan, motorhome and more; never the police car), ten of them on a computer and four on a phone, and some of the ones that can tow have a caravan on the back.
+- Until a robbery starts, the police cars (and the computer robber) stop for any car in front of them, yours included, like the rest of the traffic. When the robber picks up a bag the police drop that and chase as fast as they can.
+
 ## v17.488 — The Getaway: garage safehouse, more police
 - The safehouse is now a garage cut into a building: drive in through the open door, right to the middle of the bay, to hide the bag. The satnav line and the computer robber both take the turn into the garage.
 - Every building has a garage bay in its north face; the safehouse is one of them at a time, marked with a green SAFEHOUSE sign, door posts and a green ring inside.
