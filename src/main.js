@@ -109,6 +109,7 @@ const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
 const car = new Vehicle(); car.lockMul = 1.15;      // your wheels turn 15% further at low speed (tighter turns); the rivals keep the old lock, which is what their driving is tuned to
 car.mpEqual = true;                          // every vehicle pulls and tops out the same (MP_EQUAL)
+car.donutOk = true;                          // Boost at walking pace swings the back end round (the player only)
 let visual = new CarVisual(stage.scene, car.restHeight);       // (let: picking another vehicle on the menu swaps it, see swapVehicle)
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
 /** Should there be a caravan on the car right now? Only if asked for and on a car that can tow it (in multiplayer too: the others see it through the state reports). */

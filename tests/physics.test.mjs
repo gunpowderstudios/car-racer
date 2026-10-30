@@ -345,7 +345,7 @@ test('the pizza toppings are safe to drive over: straight across every olive and
 
 test('Boost at walking pace while steering swings the back end round, a donut (no Drift needed)', () => {
   const turn = (boost) => {
-    const track = new Track(DRAG_DEF); const car = new Vehicle();
+    const track = new Track(DRAG_DEF); const car = new Vehicle(); car.donutOk = true;
     placeOnTrack(car, track, 1130, 0, 4);
     run(car, track, 1.0, () => ({ throttle: 1, steer: 1, boost }));
     return { yaw: Math.abs(car.angVel.dot(car.ay)), slip: Math.abs(car.sideSlip) };

@@ -18,7 +18,7 @@ export const IDLE = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: 
 export const AI = {
   cruiseMin: 29, cruiseMax: 40,     // m/s a rival is happy to cruise at (about 65 - 89 mph)
   huntMax: 48,                      // m/s when chasing the player (about 107 mph)
-  aLatCruise: 8.6, aLatHunt: 10.8, // stage 3: carry still more speed through bends
+  aLatCruise: 7.8, aLatHunt: 9.8,  // cornering grip a rival trusts (m/s^2): a notch under what it was, since every car now has the same strong pull and spins when pushed
   huntRange: 125,                   // m: faster rivals can start a hunt from a little further away
   jumpSpeed: 32,                    // m/s to take a jump gap at
   grudgeTime: 7,                    // s: how long a rival holds a grudge and won't give up the chase, once rammed
@@ -286,7 +286,7 @@ export class Driver {
     const uphillGrade = gradeAhead(track, s);
     const steepUphill = uphillGrade > 0.075;   // about a 7.5% average climb ahead
     const jump = gapAhead(track, s);
-    if (jump) { vT = Math.max(vT, AI.jumpSpeed, 4.6 * Math.sqrt(jump)); ax = f.x; az = f.z; }
+    if (jump) { const need = 4.6 * Math.sqrt(jump); vT = Math.min(Math.max(vT, need), Math.max(AI.jumpSpeed, need * 1.15)); ax = f.x; az = f.z; }      // fast enough to clear it, never flat out over it (it used to take any speed it had)
 
     // ---------------------------------------------------------------- steer
     const dx = ax - car.pos.x, dz = az - car.pos.z;
@@ -295,6 +295,7 @@ export class Driver {
     if (jump) steerTarget = clamp(steerTarget, -0.25, 0.25);
     this.steerNow += clamp(steerTarget - this.steerNow, -3.2 * (1 + d) * dt, 3.2 * (1 + d) * dt);   // can't snap side to side
     let steer = this.steerNow;
+    if (jump) steer = clamp(steer, -0.25, 0.25);          // (and the wheel itself is held near straight as the gap comes up, whatever it was doing a moment ago)
 
     // ---------------------------------------------------------------- pedals
     const err = vT - car.fwdSpeed;
@@ -332,6 +333,8 @@ export class Driver {
       }
     }
 
+    // Sliding sideways: lift off and steer into the slide (what a driver does) rather than keeping the pedal down and spinning.
+    if (!jump && car.onGround && car.speed > 8 && Math.abs(car.sideSlip) > 0.28) { throttle = Math.min(throttle, 0.15); brk = Math.min(brk, 0.2); steer = clamp(steer + car.sideSlip * 1.6, -1, 1); }
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
     // Nitro still uses the real finite tank. Rivals may also spend it to rescue a genuine steep climb:
     // this mirrors what a human naturally does instead of leaving the pack stalled on procedural hills.

@@ -107,6 +107,7 @@ export class Vehicle {
     this.events = [];
     this.hurt = { front: 0, back: 0, left: 0, right: 0, roof: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
     this.lockMul = 1;                                        // front-wheel lock multiplier: main.js gives the player's car 1.15 (tighter turns); rivals and bots keep 1
+    this.donutOk = false;           // only the player's own car does donuts (main.js turns it on); a rival's nitro at low speed must not break its rear tyres loose
     this.engineOff = false; this.crank = 0;                  // stalled by a big hit: throttle and boost are dead until the driver restarts it (restartEngine)
     this._in = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
     this.opts = { assist: 0.7, stability: 0 };   // stability 0..1: the Arcade handling layer (yaw limiter, traction control), see _stability
@@ -213,7 +214,7 @@ export class Vehicle {
     this.sideSlip = this.speed > 2 ? Math.atan2(this.latSpeed, Math.abs(this.fwdSpeed)) * (this.fwdSpeed >= 0 ? 1 : -1) : 0;
     this._updateDriftAssist(dt, input, handNow);
     // Boost at walking pace while steering = a donut / powerslide (see _applyTightTurn). Drift on its own is unchanged: a handbrake slide when slow, the assisted drift at speed.
-    this.tight = this.boosting && !this.driftActive && this.onGround && this.speed <= DONUT_MAX && this.fwdSpeed > 0.3 && Math.abs(input.steer) > 0.1;
+    this.tight = this.donutOk && this.boosting && !this.driftActive && this.onGround && this.speed <= DONUT_MAX && this.fwdSpeed > 0.3 && Math.abs(input.steer) > 0.1;
     this._steer(dt, input);
 
     // --- suspension and ground probes

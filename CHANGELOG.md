@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.529 — Rivals spin out and fly less
+- Rivals now take a jump at a speed that clears it (about 70 mph) instead of at whatever speed they had, so they stop flying over jumps flat out.
+- A rival that starts sliding sideways now lifts off the throttle and steers into the slide, like a driver would, instead of keeping the pedal down and spinning.
+- Rivals trust a little less grip in bends (about 10% less cornering force), since every car now has the same strong pull.
+- The donut effect from v17.528 is for the player's own car only. A rival using its nitro at low speed was getting its rear tyres knocked loose by it, which made it spin.
+
 ## v17.528 — Donuts come from Boost, Drift is as it was
 - Drift is back exactly as it was before v17.525: a handbrake slide when slow and the assisted drift at speed. The low-speed "tight turn" on Drift is gone.
 - Instead, pressing Boost at walking pace (below about 27 mph) while steering breaks the rear tyres loose and swings the back end round, up to a full donut on the spot, with no Shift needed. Above that speed the normal drift is all there is.
