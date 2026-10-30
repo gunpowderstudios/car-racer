@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.508 — Stall can't repeat straight away
+- After a stalled engine is restarted the car cannot stall again for 9 seconds, so two cars grinding together can no longer keep killing each other's engines.
+
 ## v17.507 — Bigger Getaway town, stalls, SatNaff
 - The town is twice the size (6 x 4 blocks, 24 banks and garages), with more traffic and police.
 - A big knock (a hard wall hit or a proper ram) stalls the engine of the robber or a police car: you restart with Space / Enter / tap; the computer turns the key after a couple of seconds.

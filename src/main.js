@@ -715,8 +715,8 @@ function gwImpact(f, kind, speed) {
   const side = gwSide(f); if (!side || G.out.some((o) => o.car === f.car)) return;
   const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * (side === 'cop' ? 0.8 : 2.2); if (dmg <= 0) return;       // police cars are built tougher against cars: ramming the robber is their job
   const hp = Math.max(0, hpOf(f.car) - dmg); gwHp.set(f.car, hp);
-  if (hp > 0 && speed >= (kind === 'wall' ? 13 : 12) && !f.car.engineOff) {       // a big knock stalls the engine: the player must restart it (Space / Enter / tap), the computer turns the key after a moment
-    f.car.engineOff = true; f.car.crank = 0; f.stallT = 2 + Math.random() * 2.5;
+  if (hp > 0 && speed >= (kind === 'wall' ? 13 : 12) && !f.car.engineOff && G.game.time >= (f.gwNoStall || 0)) {       // a big knock stalls the engine: the player must restart it (Space / Enter / tap), the computer turns the key after a moment
+    f.car.engineOff = true; f.car.crank = 0; f.stallT = 2 + Math.random() * 2.5; f.gwNoStall = G.game.time + 9;       // (restarted, it cannot stall again straight away however the cars grind together)
     if (f.isPlayer) sound.hit?.(speed, 'car');
   }
   if (hp > 0) return;
