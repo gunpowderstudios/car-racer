@@ -183,7 +183,7 @@ test('handbrake drift assist holds a controllable slide instead of forcing a spi
   assert.match(vehicle, /_applyDriftYawAssist\(\)/);
   assert.match(vehicle, /const yawAccel = clamp\(-error \* 9\.5 - yawRate \* 2\.5/);
   assert.match(vehicle, /const driftRearGrip = !w\.front \? 1 - 0\.34 \* this\.driftBlend : 1/);
-  assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && this\.speed <= 7 && !w\.front/);
+  assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && !this\.tight && this\.speed <= 7 && !w\.front/);
 });
 
 
@@ -206,7 +206,7 @@ test('multiplayer join retries a temporarily unavailable mobile host', () => {
 
 
 test('assisted drift keeps throttle and acceleration', () => {
-  assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive && this\.speed <= 7\) drive = 0/);
+  assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive && !this\.tight && this\.speed <= 7\) drive = 0/);
   assert.doesNotMatch(vehicle, /if \(this\.handbrake\) drive = 0/);
 });
 
@@ -235,8 +235,8 @@ test('desktop Drift no longer brakes when Shift is pressed before steering', () 
   assert.match(vehicle, /const atDriftSpeed = this\.onGround && this\.fwdSpeed > 5 && this\.speed > 7/);
   assert.match(vehicle, /if \(handNow && !this\.driftActive && atDriftSpeed && wantsCorner\)/);
   assert.match(vehicle, /if \(!handNow \|\| !atDriftSpeed\) \{\s*this\.driftActive = false/);
-  assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive && this\.speed <= 7\) drive = 0/);
-  assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && this\.speed <= 7 && !w\.front/);
+  assert.match(vehicle, /if \(this\.handbrake && !this\.driftActive && !this\.tight && this\.speed <= 7\) drive = 0/);
+  assert.match(vehicle, /const lockedHB = this\.handbrake && !this\.driftActive && !this\.tight && this\.speed <= 7 && !w\.front/);
 });
 
 

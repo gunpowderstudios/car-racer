@@ -293,6 +293,17 @@ export class GetawayGame {
   /** The robber's car has been smashed to bits: the police win. */
   wreckRobber() { if (!this.over) this._win('police', 'wrecked'); }
 
+  /** The robber's car is blown up: it counts as a strike (any bag he carried goes back to its bank and the next one is put out), the round starts again and the score is kept
+   *  until the game ends (three strikes jail him; three bags safe let him go). main.js mends both cars and puts them back at their starts. */
+  robberDown(robber, police) {
+    if (this.over) return;
+    const b = this.robberBag; this.robberBag = null; this.alarm = false; this.ramCount = 0; this.strikes++;
+    if (b) { b.state = 'hidden'; b.x = b.home.x; b.z = b.home.z; }
+    this.events.push({ type: 'wrecked', count: this.strikes, bag: b ? b.id : null });
+    if (this.strikes >= this.L.T.jail) { this._win('police', 'wrecked'); return; }
+    if (!this.bags.some((x) => x.state === 'home')) this._spawn(robber, police, b);
+  }
+
   _win(who, why = null) { this.over = true; this.winner = who; this.events.push({ type: 'win', who, why, robbed: this.robbed, strikes: this.strikes, time: this.time }); }
 }
 

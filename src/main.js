@@ -708,7 +708,13 @@ function gwWreck(e) {
   const G = getaway; if (!G || G.game.over) return;
   const f = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id); if (!f) return;
   const robber = f.isPlayer ? G.role === 'robber' : (f === derby.rivals[0] && G.ai === 'robber');
-  if (robber) { G.game.wreckRobber(); return; }
+  if (robber) {                    // the robber blew up: a strike against him, the round starts again, and both cars are mended and back at their starts after a few seconds
+    const rb = f.car, pl = G.role === 'robber' ? derby.rivals[0]?.car : car;
+    if (G.ramBlow) G.ramBlow = false;                // (the third ram already counted its strike)
+    else G.game.robberDown({ x: rb.pos.x, z: rb.pos.z }, pl ? { x: pl.pos.x, z: pl.pos.z } : null);
+    if (!G.game.over && !f.isPlayer) G.out.push({ f, until: G.game.time + 6, town: false, start: 'robber' });
+    return;
+  }
   if (f.isPlayer) getawayPop('Your car is wrecked! Back in 6 seconds', 2600);
   else G.out.push({ f, until: G.game.time + (f.cop || f === derby.rivals[0] ? 6 : 12), town: !f.cop && f !== derby.rivals[0] });       // (a wrecked town car is a hulk in the road for a while, then a new one is on its way elsewhere)
 }
@@ -721,7 +727,7 @@ function gwOutStep(G) {
   for (let i = G.out.length - 1; i >= 0; i--) {
     const o = G.out[i]; if (G.game.time < o.until) continue;
     G.out.splice(i, 1); derby.reviveFighter(o.f);
-    const c = o.f.car, at = o.town ? townSpot(G) : G.L.policeStart, p = rescuePose(G.L, at.x, at.z, derby.cars.filter((x) => x !== c));
+    const c = o.f.car, at = o.town ? townSpot(G) : o.start === 'robber' ? G.L.robberStart : G.L.policeStart, p = rescuePose(G.L, at.x, at.z, derby.cars.filter((x) => x !== c));
     c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(o.f, o.f.cur); derby._pose(o.f, o.f.prev);
   }
 }
@@ -756,7 +762,8 @@ function getawayEvents() {
   const G = getaway, g = G.game, me = G.role;
   for (const e of g.events) {
     if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! Follow the red line to the safehouse!' : 'Robbery in progress! Follow the red line!', 2400); }
-    else if (e.type === 'ram') { if (e.count >= e.need) derby.blowUp(G.role === 'robber' ? derby.player : derby.rivals[0]); sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
+    else if (e.type === 'ram') { if (e.count >= e.need) { G.ramBlow = true; derby.blowUp(G.role === 'robber' ? derby.player : derby.rivals[0]); } sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
+    else if (e.type === 'wrecked') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robber blown up! Strike ${e.count}/${g.L.T.jail}` : `Your car blew up! Strike ${e.count}/${g.L.T.jail} - back in 6 seconds`, 2800); }
     else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
     else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { derby.repairFighter(me === 'robber' ? derby.player : derby.rivals[0]); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
@@ -867,7 +874,7 @@ function derbyEvents() {
     } else if (e.type === 'respawn' && !e.isPlayer) {
       views.get(e.id)?.clearDents(); replayRec.event(simTime, { type: 'clear', id: e.id });
     } else if (e.type === 'respawn' && getaway) {
-      placeCarInArena(null, rescuePose(getaway.L, getaway.L.policeStart.x, getaway.L.policeStart.z, derby.cars.filter((x) => x !== car))); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health); hud.banner('Back on the beat!', 1400);
+      { const st = getaway.role === 'robber' ? getaway.L.robberStart : getaway.L.policeStart; placeCarInArena(null, rescuePose(getaway.L, st.x, st.z, derby.cars.filter((x) => x !== car))); } visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health); hud.banner('Back on the beat!', 1400);
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);

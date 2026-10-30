@@ -130,6 +130,17 @@ test('wrecking the robber wins it for the police', () => {
   assert.ok(g.over); assert.equal(g.winner, 'police'); assert.equal(g.events.at(-1).why, 'wrecked');
 });
 
+test('a blown-up robber is a strike and the round starts again; the third strike jails him', () => {
+  const g = fresh(), R = { x: 0, z: 0 }, P = { x: 100, z: 100 };
+  const bag = g.bags.find((b) => b.state === 'home'); g.robberBag = bag; bag.state = 'robber'; g.alarm = true;
+  g.robberDown(R, P);
+  assert.equal(g.over, false); assert.equal(g.strikes, 1); assert.equal(g.robberBag, null); assert.equal(g.alarm, false);
+  assert.ok(g.bags.some((b) => b.state === 'home'), 'a bag is out for the next round');
+  assert.ok(g.events.some((e) => e.type === 'wrecked'));
+  g.robberDown(R, P); g.robberDown(R, P);
+  assert.ok(g.over); assert.equal(g.winner, 'police'); assert.equal(g.events.at(-1).why, 'wrecked');
+});
+
 test('the satnav line stays on the streets and never cuts across a building', () => {
   const rnd = mulberry(11);
   for (let k = 0; k < 300; k++) {

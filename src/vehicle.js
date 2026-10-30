@@ -22,6 +22,7 @@ export const GRIP_BOOST = 1.15;
 export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
 /** While a drift is held, the slide bends the car's path into the corner by this much (m/s², about 0.6 g at full effect) and gives back this share of the speed the slide would scrub off. */
 export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
+export const TIGHT_MAX = 7;          // m/s: below this, holding Drift while steering makes a tight turn instead of a handbrake slide
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
@@ -141,7 +142,7 @@ export class Vehicle {
     this.gear = 1; this.rpm = this.spec.engine.idle; this.shiftTimer = 0; this.spinFactor = 0;
     this.fwdSpeed = speed; this.speed = speed; this.latSpeed = 0; this.sideSlip = 0;
     this.onGround = false; this.airTime = 0; this.scraping = false; this.handbrake = false;
-    this.driftActive = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
+    this.driftActive = false; this.tight = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
     this.boosting = false; this.engineOff = false; this.crank = 0;
     this.events.length = 0;
     if (this.tow) this.tow.reset(this);                       // a caravan goes back behind the car
@@ -211,6 +212,8 @@ export class Vehicle {
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.sideSlip = this.speed > 2 ? Math.atan2(this.latSpeed, Math.abs(this.fwdSpeed)) * (this.fwdSpeed >= 0 ? 1 : -1) : 0;
     this._updateDriftAssist(dt, input, handNow);
+    // Drift held at walking pace while steering = a tight turn round a corner, not a handbrake slide (see _applyTightTurn).
+    this.tight = handNow && !this.driftActive && this.onGround && this.speed <= TIGHT_MAX && this.fwdSpeed > 0.3 && Math.abs(input.steer) > 0.1;
     this._steer(dt, input);
 
     // --- suspension and ground probes
@@ -233,6 +236,7 @@ export class Vehicle {
       this._tyre(w, drv, dt);
     }
     this._applyDriftYawAssist();
+    this._applyTightTurn();
     this._rollGuard(dt);
     this._stability(dt);
 
@@ -337,6 +341,16 @@ export class Vehicle {
     const rate = this.angVel.dot(this.az);
     const acc = (ROLL_K * roll - ROLL_C * rate) * g;
     this.T.addScaled(this.az, acc * this.spec.inertia.z);
+  }
+
+  /** Shift/Drift held below TIGHT_MAX m/s while steering: the car pivots round the corner on full grip (a tight turn) instead of locking its rear wheels and sliding.
+   *  The yaw rate follows the steering up to about a 3 m turning circle and fades out as the speed rises toward where the real drift takes over. */
+  _applyTightTurn() {
+    if (!this.tight) return;
+    const steer = clamp(this._in.steer, -1, 1), sp = this.speed;
+    const want = steer * Math.min(1.9, 0.2 + 0.3 * sp) * clamp((TIGHT_MAX + 1 - sp) / 2.5, 0, 1);      // rad/s (left is positive)
+    const yawRate = this.angVel.dot(this.ay);
+    this.T.addScaled(this.ay, clamp((want - yawRate) * 7, -9, 9) * this.spec.inertia.y);
   }
 
   _applyDriftYawAssist() {
@@ -504,7 +518,7 @@ export class Vehicle {
       if (this.brk > 0.05 && this.thr < 0.05 && fwd < 0.8) { this.gear = -1; drive = this.brk; brakeCmd = 0; }
     }
     // Assisted Drift keeps the engine pulling; only the old low-speed/straight handbrake cuts drive.
-    if (this.handbrake && !this.driftActive && this.speed <= 7) drive = 0;
+    if (this.handbrake && !this.driftActive && !this.tight && this.speed <= 7) drive = 0;
 
     // automatic gearbox
     this.shiftTimer = Math.max(0, this.shiftTimer - dt);
@@ -581,7 +595,7 @@ export class Vehicle {
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.
-    const lockedHB = this.handbrake && !this.driftActive && this.speed <= 7 && !w.front;
+    const lockedHB = this.handbrake && !this.driftActive && !this.tight && this.speed <= 7 && !w.front;
     w.locked = lockedHB;
 
     let Fx = 0, Fy = 0, spinning = false;

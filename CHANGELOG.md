@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.526 — A blown-up robber no longer ends the round dead
+- In The Getaway, when the robber's car is destroyed (a third ram, or too much damage) it now counts as a strike against him instead of freezing both cars. Any bag he carried goes back to its bank, a new one is put out, and after 6 seconds both sides are driving again with the score kept. The game still ends at three strikes (the robber is jailed) or three bags safe (he gets away).
+- A robber who is blown up as the human player now comes back at the robber's start, not the police start.
+
+## v17.525 — Tight turns with Drift at low speed
+- Holding Drift while steering below about 16 mph (7 m/s) now turns the car tightly round the corner on full grip (about a 3 m turning circle at the lowest speeds), with the engine still pulling, instead of locking the rear wheels and sliding. The effect fades out as the speed rises toward where the normal drift takes over. A handbrake with no steering still locks the rear wheels.
+
 ## v17.524 — The robber explodes on the third ram
 - In The Getaway (normal and `?retro`) the third hard ram on a robber carrying a bag now blows his car up there and then, with the usual blast, and the police win the round. Before, the third ram only sent the cash back to the bank and gave a strike.
 

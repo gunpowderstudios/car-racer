@@ -342,3 +342,17 @@ test('the pizza toppings are safe to drive over: straight across every olive and
     assert.ok(minUp > 0.8, `rolled over a ${b.h > 0 ? 'olive' : 'cheese dip'} (${b.h}) at ${sp}: ${minUp}`);
   }
 });
+
+test('Drift held at walking pace while steering is a tight turn, not a handbrake slide', () => {
+  const turn = (hand) => {
+    const track = new Track(DRAG_DEF); const car = new Vehicle();
+    placeOnTrack(car, track, 1130, 0, 4);
+    run(car, track, 1.0, () => ({ throttle: 0.3, steer: 1, handbrake: hand }));
+    const yaw = Math.abs(car.angVel.dot(car.ay));
+    return { yaw, slip: Math.abs(car.sideSlip), speed: car.speed };
+  };
+  const plain = turn(false), tight = turn(true);
+  assert.ok(tight.yaw > plain.yaw * 1.15, `a tighter turn: yaw ${tight.yaw.toFixed(2)} vs ${plain.yaw.toFixed(2)}`);
+  assert.ok(tight.slip < 0.5, `and no big slide: slip ${tight.slip.toFixed(2)}`);
+  assert.ok(tight.speed > 1.5, 'and it keeps moving, not locked up');
+});

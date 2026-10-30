@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.524';
-export const NOTE = 'The Getaway: the robber explodes on the third ram.';
+export const VERSION = '17.526';
+export const NOTE = 'The Getaway: a blown-up robber is a strike and the round restarts (score kept); the robber player comes back at the robber start.';
