@@ -120,8 +120,8 @@ export class GetawayView {
     const L = this.L = townLayout(), A = arenaInfo(track), y0 = this.y0 = A.y;
     this.group = group; this.bags = []; this.t = 0;
     const g = new THREE.Group(); group.add(g); this.g = g;
-    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 2.1 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
-    const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun);
+    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 0.8 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
+    if (!RETRO) { const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun); }      // (?retro uses the stage's own sun instead, the one that casts the shadows)
 
     // ---- the ground: one big sheet of pavement over the arena's dirt, with the streets painted on
     const far = 640;

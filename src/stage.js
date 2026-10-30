@@ -306,11 +306,10 @@ export class Stage {
     return geo;
   }
 
-  /** The 1980s Getaway (?retro): a pale dusty-blue daytime sky and a warm haze instead of the pink dusk; every other track puts the dusk back. */
+  /** The 1980s Getaway (?retro): the sky, fog and golden light stay exactly as in the rest of the game; only the sun is lifted (about 50 degrees, the sky's own glow stays where it was)
+   *  so the buildings throw shadows across the streets and onto the cars. Every other track puts the low dusk sun back. */
   _retroSky(on) {
-    const u = this.skyU, f = this.scene.fog; if (!u || !f) return;
-    u.top.value.set(on ? 0x6f86b0 : SKY_TOP); u.mid.value.set(on ? 0xa9b6cc : SKY_MID); u.low.value.set(on ? 0xe6dcc6 : SKY_LOW);
-    f.color.set(on ? 0xd8cdb6 : FOG); f.near = on ? 120 : 240; f.far = on ? 900 : 2200;
+    this.sunOffset.set(...(on ? [-120, 170, -80] : SUN_OFFSET));
   }
 
   /** An open arena (see arena.js) has no road to draw: a dirt floor, a wall and stands instead. */

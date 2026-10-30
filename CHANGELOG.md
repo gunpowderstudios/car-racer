@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.522 — Retro Getaway keeps the red dusk sky, gains shadows
+- `?retro` no longer changes the sky, haze or light colour: the Getaway keeps the same dusk background as the rest of the game. It now lifts the shadow-casting sun so the buildings throw shadows across the streets and onto the cars (on Medium and High graphics), and drops the extra flat light the town had. The brick, window and road looks from v17.521 are unchanged. Still only with `?retro`, and only on The Getaway.
+
 ## v17.521 — A 1980s town (hidden test: add ?retro)
 - Add `?retro` to the web address and The Getaway looks like a run-down 1980s American town: faded sooty brick and stone, dark, boarded-up and smashed windows with dirt under every sill, boarded shop fronts, patched grey asphalt, and a dusty-blue hazy daytime sky instead of the pink dusk. Without `?retro` nothing changes, and no other track is touched. No extra meshes were added, so it costs no more to draw.
 
