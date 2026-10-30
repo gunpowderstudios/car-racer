@@ -713,7 +713,7 @@ function gwSide(f) {
 function gwImpact(f, kind, speed) {
   const G = getaway; if (!G || G.game.over) return;
   const side = gwSide(f); if (!side || G.out.some((o) => o.car === f.car)) return;
-  const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * 2.2; if (dmg <= 0) return;
+  const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * (side === 'cop' ? 0.8 : 2.2); if (dmg <= 0) return;       // police cars are built tougher against cars: ramming the robber is their job
   const hp = Math.max(0, hpOf(f.car) - dmg); gwHp.set(f.car, hp);
   if (hp > 0) return;
   const c = f.car, d = f.isPlayer ? 0 : Math.hypot(c.pos.x - car.pos.x, c.pos.z - car.pos.z);
@@ -721,8 +721,8 @@ function gwImpact(f, kind, speed) {
   if (d < 45) chase.impact(Math.max(0, 1 - d / 45) * 22);
   if (side === 'robber') { G.game.wreckRobber(); return; }
   c.engineOff = true; c.crank = 0; if (!f.isPlayer) f.stallT = 999;
-  G.out.push({ car: c, f, until: G.game.time + 8 });
-  if (f.isPlayer) getawayPop('Your car is wrecked! Back in 8 seconds', 2600);
+  G.out.push({ car: c, f, until: G.game.time + 5 });
+  if (f.isPlayer) getawayPop('Your car is wrecked! Back in 5 seconds', 2600);
 }
 derby.onImpact = gwImpact;
 function gwOutStep(G) {

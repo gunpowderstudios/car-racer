@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.506 — Police survive ramming
+- Police cars now take far less damage from car-to-car knocks (they have to ram the robber three times), so you are no longer wrecked after a couple of rams. A wrecked police car is back after 5 seconds instead of 8. The robber's damage is unchanged.
+
 ## v17.505 — The Getaway loads faster
 - The Getaway used to wait for every one of its ~14 car models (1–2 MB each) to load one after another. It now starts as soon as your car and the main police car are ready; the traffic and extra police cars appear a moment after the start.
 
