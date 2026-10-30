@@ -22,6 +22,7 @@ export const GRIP_BOOST = 1.15;
 export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
 /** While a drift is held, the slide bends the car's path into the corner by this much (m/s², about 0.6 g at full effect) and gives back this share of the speed the slide would scrub off. */
 export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
+export const DONUT_MAX = 12;         // m/s: with Boost on as well, the donut holds up to this speed before it turns into a normal drift
 export const TIGHT_MAX = 7;          // m/s: below this, holding Drift while steering makes a tight turn instead of a handbrake slide
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
@@ -213,7 +214,7 @@ export class Vehicle {
     this.sideSlip = this.speed > 2 ? Math.atan2(this.latSpeed, Math.abs(this.fwdSpeed)) * (this.fwdSpeed >= 0 ? 1 : -1) : 0;
     this._updateDriftAssist(dt, input, handNow);
     // Drift held at walking pace while steering = a tight turn round a corner, not a handbrake slide (see _applyTightTurn).
-    this.tight = handNow && !this.driftActive && this.onGround && this.speed <= TIGHT_MAX && this.fwdSpeed > 0.3 && Math.abs(input.steer) > 0.1;
+    this.tight = handNow && !this.driftActive && this.onGround && this.speed <= (this.boosting ? DONUT_MAX : TIGHT_MAX) && this.fwdSpeed > 0.3 && Math.abs(input.steer) > 0.1;
     this._steer(dt, input);
 
     // --- suspension and ground probes
@@ -281,7 +282,7 @@ export class Vehicle {
   _updateDriftAssist(dt, input, handNow) {
     const steer = clamp(input.steer, -1, 1);
     const atDriftSpeed = this.onGround && this.fwdSpeed > 5 && this.speed > 7;
-    const wantsCorner = Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06;
+    const wantsCorner = (Math.abs(steer) > 0.08 || Math.abs(this.sideSlip) > 0.06) && !(this.boosting && this.speed <= DONUT_MAX);      // (Boost + Drift at walking pace is a donut, see _applyTightTurn, not a drift)
 
     // Holding Drift at speed is a "ready" state, not a handbrake. If the driver presses
     // Shift before turning, wait for steering input and then initiate the slide.
@@ -348,9 +349,10 @@ export class Vehicle {
   _applyTightTurn() {
     if (!this.tight) return;
     const steer = clamp(this._in.steer, -1, 1), sp = this.speed;
-    const want = steer * Math.min(1.9, 0.2 + 0.3 * sp) * clamp((TIGHT_MAX + 1 - sp) / 2.5, 0, 1);      // rad/s (left is positive)
+    const donut = this.boosting ? 1.55 : 1;      // Boost on top of Drift: the back end breaks loose and the car spins round on its own axis, a donut
+    const want = steer * Math.min(1.9 * donut, 0.2 + 0.3 * sp * donut) * clamp(((this.boosting ? DONUT_MAX : TIGHT_MAX) + 1 - sp) / 2.5, 0, 1);      // rad/s (left is positive)
     const yawRate = this.angVel.dot(this.ay);
-    this.T.addScaled(this.ay, clamp((want - yawRate) * 7, -9, 9) * this.spec.inertia.y);
+    this.T.addScaled(this.ay, clamp((want - yawRate) * 7, -9 * donut, 9 * donut) * this.spec.inertia.y);
   }
 
   _applyDriftYawAssist() {
@@ -588,10 +590,11 @@ export class Vehicle {
     const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
     const muBase = w.front ? ty.muFront * GRIP_BOOST : ty.muRear * GRIP_BOOST_REAR;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
+    const donutGrip = !w.front && this.tight && this.boosting ? 0.5 : 1;      // a tight turn with Boost on: the rear tyres let go and spin
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
     const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
-    const mu = muBase * surfMu * driftRearGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const mu = muBase * surfMu * driftRearGrip * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.

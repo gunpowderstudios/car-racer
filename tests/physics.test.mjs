@@ -356,3 +356,15 @@ test('Drift held at walking pace while steering is a tight turn, not a handbrake
   assert.ok(tight.slip < 0.5, `and no big slide: slip ${tight.slip.toFixed(2)}`);
   assert.ok(tight.speed > 1.5, 'and it keeps moving, not locked up');
 });
+
+test('Boost and Drift together at walking pace spin the car round on the spot, rear tyres sliding (a donut)', () => {
+  const turn = (boost) => {
+    const track = new Track(DRAG_DEF); const car = new Vehicle();
+    placeOnTrack(car, track, 1130, 0, 4);
+    run(car, track, 1.0, () => ({ throttle: 1, steer: 1, handbrake: true, boost }));
+    return { yaw: Math.abs(car.angVel.dot(car.ay)), slip: Math.abs(car.sideSlip) };
+  };
+  const tight = turn(false), donut = turn(true);
+  assert.ok(donut.yaw > tight.yaw * 1.1, `spins faster: ${donut.yaw.toFixed(2)} vs ${tight.yaw.toFixed(2)}`);
+  assert.ok(donut.slip > tight.slip, `and the tail hangs out more: ${donut.slip.toFixed(2)} vs ${tight.slip.toFixed(2)}`);
+});

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.527 — Donuts
+- Hold Boost and Drift together at walking pace (up to about 27 mph) while steering and the car spins round on the spot with its rear tyres letting go, a proper donut, with the engine still pulling. As the speed climbs further it turns into the normal drift. Drift on its own at low speed is still the tight turn from v17.525.
+
 ## v17.526 — A blown-up robber no longer ends the round dead
 - In The Getaway, when the robber's car is destroyed (a third ram, or too much damage) it now counts as a strike against him instead of freezing both cars. Any bag he carried goes back to its bank, a new one is put out, and after 6 seconds both sides are driving again with the score kept. The game still ends at three strikes (the robber is jailed) or three bags safe (he gets away).
 - A robber who is blown up as the human player now comes back at the robber's start, not the police start.
