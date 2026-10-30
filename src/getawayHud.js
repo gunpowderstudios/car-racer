@@ -33,6 +33,7 @@ function ensure() {
 #getaway-card button{font:inherit;font-size:24px;font-weight:900;padding:6px 20px;border-radius:10px;border:0;cursor:pointer;background:#ffb31f;color:#241a40;text-transform:uppercase}
 #getaway-card button.alt{background:#4b3d7a;color:#fff}
 body.getaway #minimap{border-radius:10px;width:198px;height:129px}
+@media (min-width:901px){#getaway-hud{left:172px;top:92px;transform:none;width:270px}#getaway-hud .gw-row{gap:8px}#getaway-hud .gw-side{min-width:0;flex:1;padding:2px 6px}#getaway-hud .gw-hint{display:block;font-size:13px;margin-top:4px;padding:1px 8px}}       /* (the rear-view mirror owns the top middle: the score sits under the sound mixer on the left) */
 #getaway-naff{position:absolute;z-index:30;pointer-events:none;text-align:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:13px;line-height:13px;letter-spacing:.2em;text-transform:uppercase;color:#ffb31f;text-shadow:0 1px 4px #000c}
 #getaway-naff[hidden]{display:none}
 #getaway-compass{position:absolute;right:244px;top:calc(max(8px,env(safe-area-inset-top)) + 52px);width:70px;height:70px;z-index:30;pointer-events:none;border-radius:50%;background:#16102acc;border:2px solid #f6d9b059;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900}

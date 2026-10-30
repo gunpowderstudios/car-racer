@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.515 — More high hills; Getaway score off the mirror
+- The hills have highs: now a much longer loop (about 3.7 km instead of 1.7 km) with 17 hills instead of 9, several 15-25 m high, still gentle enough to drive; the jump is kept as it was.
+- Got the hump (the random track): more of its hills are big ones (about one in three instead of one in four).
+- The Getaway: on a computer the Robbers / Police boxes now sit on the left under the sound mixer, so the rear-view mirror is not hidden.
+
 ## v17.514 — Town traffic takes damage too
 - Every car in The Getaway can now be dented, stalled and wrecked, the town's traffic included. A wrecked town car stays as a hulk for 12 seconds, then a new one turns up at a junction away from you.
 

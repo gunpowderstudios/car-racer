@@ -172,6 +172,9 @@ function steepBanks(def) {
   return { ...def, handles: def.handles.map((h, i) => ({ ...h, bank: i > 1 && !nearJump(i) ? banks[i] : 0 })) };
 }
 
+/** The Hills have highs: the same hilly loop drawn this much wider, so the many high hills keep gentle slopes. */
+function HILLS_SCALE(hs, k = 2.1, yk = 0.8) { return hs.map((h) => { const o = { ...h, x: Math.round(h.x * k), z: Math.round(h.z * k), y: h.gap ? 14 : h.y <= 6 ? h.y : Math.round(h.y * yk * 10) / 10 }; if (h.gap) o.gap = Math.round(h.gap); return o; }); }
+
 /** Humps and puddles scattered along a dirt stage at fixed random spots (never near the start or a jump, nor on top of each other). */
 function rallyScatter(def) {
   const track = new Track(def), rnd = mulberry(20261016), bumps = [], puddles = [], taken = [], rough = [];
@@ -357,18 +360,25 @@ const RAW = {
   },
   hills: {
     name: 'The hills have highs', width: 22,
-    handles: [
+    handles: HILLS_SCALE([
       { x: 0, y: 0.65, z: -170 },
-      { x: 150, y: 0.65, z: -190 },
+      { x: 75, y: 8, z: -185 },
+      { x: 150, y: 18, z: -190 },
+      { x: 225, y: 20, z: -155 },
       { x: 300, y: 5, z: -120 },
       { x: 330, y: 14, z: 20, gap: 13 },
-      { x: 250, y: 6, z: 170 },
-      { x: 90, y: 0.65, z: 230 },
-      { x: -90, y: 0.65, z: 200 },
-      { x: -260, y: 4, z: 120 },
-      { x: -310, y: 9, z: -30 },
-      { x: -220, y: 3, z: -150 },
-    ],
+      { x: 230, y: 6, z: 170 },
+      { x: 170, y: 3, z: 200 },
+      { x: 90, y: 10, z: 230 },
+      { x: 0, y: 14, z: 215 },
+      { x: -90, y: 16, z: 200 },
+      { x: -175, y: 26, z: 160 },
+      { x: -260, y: 12, z: 120 },
+      { x: -310, y: 30, z: -30 },
+      { x: -265, y: 16, z: -90 },
+      { x: -220, y: 22, z: -150 },
+      { x: -110, y: 8, z: -165 },
+    ]),
     autoBank: true,
   },
   bluebell: {
@@ -480,7 +490,7 @@ function buildRandomTrack(seed) {
   for (let k = 0; k < n; k++) {
     const t = (k / n) * Math.PI * 2;
     const r = baseR * (1 + Math.sin(t * lobes + rnd() * 2) * wobble);
-    const bigHill = rnd() < 0.28;
+    const bigHill = rnd() < 0.34;
     let y = k === 0 ? 0.65 : Math.round((bigHill ? 8 + rnd() * 28 : rnd() * 5) * 10) / 10;
     const h = { x: Math.round(Math.cos(t) * r), y, z: Math.round(Math.sin(t) * r) };
     if (gapAt.has(k)) {
