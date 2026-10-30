@@ -1300,7 +1300,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
-  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); stage.updateGetaway(getaway?.game, 1 / 60);
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);

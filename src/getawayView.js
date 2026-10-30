@@ -206,20 +206,22 @@ export class GetawayView {
   }
 
   /** Bring every bag, ring and beam up to date with the game (`game` is a GetawayGame). */
-  update(game, dt = 1 / 60) {
+  update(game, dt = 1 / 60, role = 'robber') {
     this.t += dt;
+    const cop = role === 'police';       // the police are not shown where the money or the safehouse is: only the robber knows
     const dr = game.door, da = dr ? game.doorAmount() : 0;
     this.door.visible = !!dr && da > 0.01;
     if (this.door.visible) { this.door.position.set(dr.gx, this.y0 + 5 - 2.5 * da, dr.mouth - 0.1); this.door.scale.y = da; }
     if (!this._placed || this._placed !== game.safehouse) { this._placed = game.safehouse; this.place(game); }
+    this.safe.visible = !cop;
     const pulse = 0.65 + 0.35 * Math.sin(this.t * 4);
     this.pad.material.opacity = 0.5 + 0.4 * pulse;
     let safeN = 0;
     for (const v of this.bags) {
       const b = game.bags[v.id];
-      v.grp.visible = b.state !== 'hidden' && b.state !== 'safe';
+      v.grp.visible = b.state !== 'hidden' && b.state !== 'safe' && !(cop && b.state === 'home');       // (police see a bag only once it is lying loose on the road)
       if (b.state === 'hidden') continue;
-      if (b.state === 'safe') { const s = this.stash[safeN++]; if (s) { s.visible = true; s.position.set(game.safehouse.x + (safeN - 2) * 1.6, this.y0 + 0.8, game.safehouse.z + (safeN % 2 ? 1.4 : -1.4)); } continue; }
+      if (b.state === 'safe') { const s = this.stash[safeN++]; if (s) { s.visible = !cop; s.position.set(game.safehouse.x + (safeN - 2) * 1.6, this.y0 + 0.8, game.safehouse.z + (safeN % 2 ? 1.4 : -1.4)); } continue; }
       v.spin.rotation.y = this.t * 1.6;
       v.ring.visible = b.state === 'home' || b.state === 'ground';
       v.ring.material.color.setHex(b.state === 'ground' ? 0xffd23a : 0x7dff9a);

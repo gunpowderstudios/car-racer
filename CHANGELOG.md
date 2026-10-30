@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.509 — Police don't see the money
+- Playing the police, the bags in the banks, their rings and beams, and the safehouse are hidden (the robber's map already hid them). A bag lying loose on the road after a stopped robbery still shows.
+
 ## v17.508 — Stall can't repeat straight away
 - After a stalled engine is restarted the car cannot stall again for 9 seconds, so two cars grinding together can no longer keep killing each other's engines.
 

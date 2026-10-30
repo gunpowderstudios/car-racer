@@ -102,7 +102,7 @@ export class Stage {
   updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
   /** The Getaway: bags, rings and the safehouse (`game` is the GetawayGame). */
   setGetawayRoute(pts) { if (this.getawayView) this.getawayView.setRoute(pts); }
-  updateGetaway(game, dt) { if (this.getawayView && game) this.getawayView.update(game, dt); }
+  updateGetaway(game, dt, role) { if (this.getawayView && game) this.getawayView.update(game, dt, role); }
 
   /** Put each rolling boulder where the simulation has it, turning as it rolls. */
   updateRollers() {
