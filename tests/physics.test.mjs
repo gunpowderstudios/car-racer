@@ -343,28 +343,21 @@ test('the pizza toppings are safe to drive over: straight across every olive and
   }
 });
 
-test('Drift held at walking pace while steering is a tight turn, not a handbrake slide', () => {
-  const turn = (hand) => {
-    const track = new Track(DRAG_DEF); const car = new Vehicle();
-    placeOnTrack(car, track, 1130, 0, 4);
-    run(car, track, 1.0, () => ({ throttle: 0.3, steer: 1, handbrake: hand }));
-    const yaw = Math.abs(car.angVel.dot(car.ay));
-    return { yaw, slip: Math.abs(car.sideSlip), speed: car.speed };
-  };
-  const plain = turn(false), tight = turn(true);
-  assert.ok(tight.yaw > plain.yaw * 1.15, `a tighter turn: yaw ${tight.yaw.toFixed(2)} vs ${plain.yaw.toFixed(2)}`);
-  assert.ok(tight.slip < 0.5, `and no big slide: slip ${tight.slip.toFixed(2)}`);
-  assert.ok(tight.speed > 1.5, 'and it keeps moving, not locked up');
-});
-
-test('Boost and Drift together at walking pace spin the car round on the spot, rear tyres sliding (a donut)', () => {
+test('Boost at walking pace while steering swings the back end round, a donut (no Drift needed)', () => {
   const turn = (boost) => {
     const track = new Track(DRAG_DEF); const car = new Vehicle();
     placeOnTrack(car, track, 1130, 0, 4);
-    run(car, track, 1.0, () => ({ throttle: 1, steer: 1, handbrake: true, boost }));
+    run(car, track, 1.0, () => ({ throttle: 1, steer: 1, boost }));
     return { yaw: Math.abs(car.angVel.dot(car.ay)), slip: Math.abs(car.sideSlip) };
   };
-  const tight = turn(false), donut = turn(true);
-  assert.ok(donut.yaw > tight.yaw * 1.1, `spins faster: ${donut.yaw.toFixed(2)} vs ${tight.yaw.toFixed(2)}`);
-  assert.ok(donut.slip > tight.slip, `and the tail hangs out more: ${donut.slip.toFixed(2)} vs ${tight.slip.toFixed(2)}`);
+  const plain = turn(false), donut = turn(true);
+  assert.ok(donut.yaw > plain.yaw * 1.1, `spins faster: ${donut.yaw.toFixed(2)} vs ${plain.yaw.toFixed(2)}`);
+  assert.ok(donut.slip > plain.slip, `and the tail hangs out more: ${donut.slip.toFixed(2)} vs ${plain.slip.toFixed(2)}`);
+});
+
+test('Drift on its own at walking pace is still the old handbrake slide (no donut assist)', () => {
+  const car = new Vehicle(), track = new Track(DRAG_DEF);
+  placeOnTrack(car, track, 1130, 0, 4);
+  run(car, track, 0.5, () => ({ throttle: 1, steer: 1, handbrake: true }));
+  assert.equal(car.tight, false);
 });

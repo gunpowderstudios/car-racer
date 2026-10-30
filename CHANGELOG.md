@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.528 — Donuts come from Boost, Drift is as it was
+- Drift is back exactly as it was before v17.525: a handbrake slide when slow and the assisted drift at speed. The low-speed "tight turn" on Drift is gone.
+- Instead, pressing Boost at walking pace (below about 27 mph) while steering breaks the rear tyres loose and swings the back end round, up to a full donut on the spot, with no Shift needed. Above that speed the normal drift is all there is.
+
 ## v17.527 — Donuts
 - Hold Boost and Drift together at walking pace (up to about 27 mph) while steering and the car spins round on the spot with its rear tyres letting go, a proper donut, with the engine still pulling. As the speed climbs further it turns into the normal drift. Drift on its own at low speed is still the tight turn from v17.525.
 
