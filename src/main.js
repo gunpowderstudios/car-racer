@@ -682,7 +682,7 @@ function getawaySetup() {
   };
 }
 function placeGetawayCar() {
-  const G = getaway; gwHp.clear(); G.out.length = 0; G.game.reset(); G.rams.length = 0; G.flipT = 0; G.resultAt = 0; G.card = null; G.t = 0;
+  const G = getaway; G.out.length = 0; G.game.reset(); G.rams.length = 0; G.flipT = 0; G.resultAt = 0; G.card = null; G.t = 0;
   placeCarInArena(null, G.role === 'robber' ? G.L.robberStart : G.L.policeStart);
   car.boostFuel = 1;
 }
@@ -700,42 +700,23 @@ function getawayBegin() {
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
 const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
-// ---- wear and tear: the robber and the police cars have 100 health each; knocks take some off. A wrecked robber means the police win; a wrecked police car is out for 8 s.
-// Traffic is never hurt. A drop in the garage repairs the robber.
-const gwHp = new Map();                                  // Vehicle -> health 0..100
-const hpOf = (c) => (gwHp.has(c) ? gwHp.get(c) : 100);
-function gwSide(f) {
-  const G = getaway; if (!G) return null;
-  if (f.isPlayer) return G.role === 'robber' ? 'robber' : 'cop';
-  if (f.cop) return 'cop';
-  return f === derby.rivals[0] && G.ai === 'robber' ? 'robber' : null;
-}
-function gwImpact(f, kind, speed) {
+// ---- wear and tear: The Getaway uses the same damage as the other races (zones, dents, holes, stalls, wrecks - see derby.js). Only the robber and the police cars are hurt, never the
+// traffic. A wrecked robber means the police win; a wrecked police car is out for 6 s and then back at the police start. A drop in the garage repairs the robber.
+const gwPct = (f) => (f && f.health ? Math.round(100 * f.health.worst) : 100);
+function gwWreck(e) {
   const G = getaway; if (!G || G.game.over) return;
-  const side = gwSide(f); if (!side || G.out.some((o) => o.car === f.car)) return;
-  const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * (side === 'cop' ? 0.8 : 2.2); if (dmg <= 0) return;       // police cars are built tougher against cars: ramming the robber is their job
-  const hp = Math.max(0, hpOf(f.car) - dmg); gwHp.set(f.car, hp);
-  if (hp > 0 && speed >= (kind === 'wall' ? 13 : 12) && !f.car.engineOff && G.game.time >= (f.gwNoStall || 0)) {       // a big knock stalls the engine: the player must restart it (Space / Enter / tap), the computer turns the key after a moment
-    f.car.engineOff = true; f.car.crank = 0; f.stallT = 2 + Math.random() * 2.5; f.gwNoStall = G.game.time + 9;       // (restarted, it cannot stall again straight away however the cars grind together)
-    if (f.isPlayer) sound.hit?.(speed, 'car');
-  }
-  if (hp > 0) return;
-  const c = f.car, d = f.isPlayer ? 0 : Math.hypot(c.pos.x - car.pos.x, c.pos.z - car.pos.z);
-  particles.blast(c.pos.x, c.pos.y, c.pos.z, 1.8); crashDebris(c.pos.x, c.pos.y + 0.4, c.pos.z, 20, f.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6); sound.explode(d);
-  if (d < 45) chase.impact(Math.max(0, 1 - d / 45) * 22);
-  if (side === 'robber') { G.game.wreckRobber(); return; }
-  c.engineOff = true; c.crank = 0; if (!f.isPlayer) f.stallT = 999;
-  G.out.push({ car: c, f, until: G.game.time + 5 });
-  if (f.isPlayer) getawayPop('Your car is wrecked! Back in 5 seconds', 2600);
+  const f = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id); if (!f) return;
+  const robber = f.isPlayer ? G.role === 'robber' : (f === derby.rivals[0] && G.ai === 'robber');
+  if (robber) { G.game.wreckRobber(); return; }
+  if (f.isPlayer) getawayPop('Your car is wrecked! Back in 6 seconds', 2600);
+  else G.out.push({ f, until: G.game.time + 6 });
 }
-derby.onImpact = gwImpact;
 function gwOutStep(G) {
   for (let i = G.out.length - 1; i >= 0; i--) {
     const o = G.out[i]; if (G.game.time < o.until) continue;
-    G.out.splice(i, 1); gwHp.set(o.car, 100); o.car.engineOff = false; o.car.crank = 0;
-    const p = rescuePose(G.L, G.L.policeStart.x, G.L.policeStart.z, derby.cars.filter((c) => c !== o.car));
-    if (o.f.isPlayer) placeCarInArena(null, p);
-    else { o.car.reset(new V3(p.x, track.py[0] + o.car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(o.f, o.f.cur); derby._pose(o.f, o.f.prev); }
+    G.out.splice(i, 1); derby.reviveFighter(o.f);
+    const c = o.f.car, p = rescuePose(G.L, G.L.policeStart.x, G.L.policeStart.z, derby.cars.filter((x) => x !== c));
+    c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(o.f, o.f.cur); derby._pose(o.f, o.f.prev);
   }
 }
 /** After a drop the garage door comes down (solid, so nobody drives in after the robber) and the robber reappears at another junction across town. */
@@ -771,7 +752,7 @@ function getawayEvents() {
     if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! Follow the red line to the safehouse!' : 'Robbery in progress! Follow the red line!', 2400); }
     else if (e.type === 'ram') { sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
     else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
-    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { const rc = me === 'robber' ? car : derby.rivals[0]?.car; if (rc) gwHp.set(rc, 100); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
+    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { derby.repairFighter(me === 'robber' ? derby.player : derby.rivals[0]); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
     else if (e.type === 'win') getawayFinish(e);
   }
@@ -792,7 +773,7 @@ function getawayFinish(e) {
 function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G.card, () => getawayRound(gwOther(G.role)), showMenu, startReplay); }
 function getawayFrame() {
   const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
-  { const rc = G.role === 'robber' ? car : f?.car, pc = G.role === 'police' ? car : f?.car; getawayHudUpdate(G.game, G.role, { robber: rc ? hpOf(rc) : 100, police: pc ? hpOf(pc) : 100 }); }
+  { const rf = G.role === 'robber' ? derby.player : f, pf = G.role === 'police' ? derby.player : f; getawayHudUpdate(G.game, G.role, { robber: gwPct(rf), police: gwPct(pf) }); }
   getawayCompass(car.az.x, car.az.z);
   sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
@@ -827,7 +808,7 @@ function derbyStart() {
   derby.towing = derby.enabled && !solo && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
   const field = solo ? 0 : Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
-  derby.damageEnabled = derby.enabled; if (gw) derby.damageEnabled = false;
+  derby.damageEnabled = derby.enabled;
   derby.getawaySetup = gw ? getawaySetup() : null;
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
   derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (solo ? DERBY.repairs : opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
@@ -838,7 +819,7 @@ function derbyStart() {
   replayRec.reset(); replayRec.off = !!net;                                              // a new race: a new replay (and none at all in multiplayer)
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
-  if (solo) hud.d.score.hidden = true;                                                    // (no rivals to score against: just the damage chart)
+  if (solo || gw) hud.d.score.hidden = true;                                                    // (no rivals to score against: just the damage chart)
   if (derby.damageEnabled) { hud.setScore(0, 0, derby.alive); hud.setDamage(derby.player.health); }
 }
 
@@ -868,14 +849,19 @@ function derbyEvents() {
         replayRec.event(simTime, { type: 'wreck', id: e.isPlayer ? 'p' : e.id, x: e.x, y: e.y, z: e.z, isPlayer: !!e.isPlayer, vx: wf ? wf.car.vel.x : 0, vz: wf ? wf.car.vel.z : 0 }); }
       props.shock(e.x, e.y, e.z, 8);                  // a burning car sets off drums beside it
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
+      if (getaway) gwWreck(e);
     } else if (e.type === 'repaired') {
-      visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
+      if (!e.isPlayer) { views.get(e.id)?.clearDents(); replayRec.event(simTime, { type: 'clear', id: e.id }); } else { visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health); }
     } else if (e.type === 'award') {
       hud.feed(`+${e.points} ${e.label}`);
     } else if (e.type === 'honk') {
       const hf = derby.fighters.find((x) => x.id === e.id), veh = hf ? hf.vehicleId : undefined;      // (a rival bus rings its bell and a rival police car wails its siren, not a horn)
       sound.honk(e.dist, e.pitch, veh);
       if (hf) replayRec.event(simTime, { type: 'honk', x: hf.car.pos.x, y: hf.car.pos.y, z: hf.car.pos.z, pitch: e.pitch, veh });
+    } else if (e.type === 'respawn' && !e.isPlayer) {
+      views.get(e.id)?.clearDents(); replayRec.event(simTime, { type: 'clear', id: e.id });
+    } else if (e.type === 'respawn' && getaway) {
+      placeCarInArena(null, rescuePose(getaway.L, getaway.L.policeStart.x, getaway.L.policeStart.z, derby.cars.filter((x) => x !== car))); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health); hud.banner('Back on the beat!', 1400);
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
@@ -1314,7 +1300,7 @@ function debugText() {
     `wheel load  ${w.map((x) => x.load.toFixed(0).padStart(5)).join(' ')}\n` +
     `wheel slip  ${w.map((x) => (x.slipAngle * 57.3).toFixed(0).padStart(5)).join(' ')}\n` +
     `lap ${race.laps} progress ${race.unwrapped.toFixed(0)} / ${track.length.toFixed(0)} m` +
-    (getaway ? `\nGETAWAY engineOff ${car.engineOff} crank ${car.crank.toFixed(2)} throttle ${car.thr.toFixed(2)} hp ${hpOf(car).toFixed(0)} out ${getaway.out.length} over ${getaway.game.over} paused ${paused} frozen ${frozen} noStall ${Math.max(0, (derby.player?.gwNoStall || 0) - getaway.game.time).toFixed(1)}s` : '');
+    (getaway ? `\nGETAWAY engineOff ${car.engineOff} crank ${car.crank.toFixed(2)} throttle ${car.thr.toFixed(2)} hp ${gwPct(derby.player)} out ${getaway.out.length} over ${getaway.game.over} paused ${paused} frozen ${frozen} wrecked ${derby.player?.wrecked}` : '');
 }
 
 // --------------------------------------------------------------------- modes

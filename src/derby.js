@@ -285,7 +285,7 @@ export class Derby {
     const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = S.kind, car = new Vehicle(kind?.spec);
     car.reset(new V3(p.x, this.track.py[0] + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
     car.opts.assist = 0.7;
-    const me = this.add(car, S.makeDriver(this.rng), 1, kind); me.cop = S.role === 'police';
+    const me = this.add(car, S.makeDriver(this.rng), 1, kind); me.cop = S.role === 'police'; me.health = new Health(SPECS.player.hp);       // (the robber and the police have the player's armour, not a rival's)
     // more police cars patrolling the streets (when the robber is the person): each starts at its own junction, away from the robber and from each other
     const extra = S.role === 'police' ? (S.extraPolice || 0) : 0, cops = [S.L.policeStart];
     for (let k = 0; k < extra; k++) {
@@ -299,7 +299,7 @@ export class Derby {
       const horiz = this.rng() < 0.5, dir = this.rng() < 0.5 ? 1 : -1, cc = new Vehicle(kind?.spec);
       cc.reset(new V3(n.x, this.track.py[0] + cc.restHeight + 0.08, n.z), new V3(horiz ? dir : 0, 0, horiz ? 0 : dir), new V3(0, 1, 0), 0);
       cc.opts.assist = 0.7;
-      this.add(cc, S.makeDriver(this.rng), k + 2, kind).cop = true;
+      { const cf = this.add(cc, S.makeDriver(this.rng), k + 2, kind); cf.cop = true; cf.health = new Health(SPECS.player.hp); }
     }
     // ordinary traffic wandering the streets: a few cars of a few kinds (each is a car to simulate and a model to draw, so not many)
     const spots = cops.slice(1);      // (not at a junction where a police car starts)
@@ -579,7 +579,7 @@ export class Derby {
       else f.flipT = 0;
       this._snap(f);
     }
-    if (wrecks > DERBY.maxWrecks) {                         // enough hulks: fade the oldest to make room
+    if (wrecks > DERBY.maxWrecks && !this.getaway) {                         // enough hulks: fade the oldest to make room
       let old = null;
       for (const f of F) if (f.wrecked && !f.isPlayer && !f.gone && !f.expire && !f.scrap && !f._offTrackReset && (!old || f.wreckT > old.wreckT)) old = f;
       if (old) old.expire = true;
@@ -624,6 +624,20 @@ export class Derby {
     f.health = new Health(SPECS.player.hp);
     f.wrecked = false; f.wreckT = 0; f.respawnAt = Infinity; f.graceUntil = this.time + DERBY.respawnGrace; f.flipT = 0; f.flash = 0;
     this.events.push({ type: 'respawn', id: f.id, isPlayer: true });
+  }
+
+  /** The Getaway: a wrecked computer car is mended and driven again (main.js puts it back at its start). */
+  reviveFighter(f) {
+    f.health = new Health(SPECS.player.hp); f.wrecked = false; f.wreckT = 0; f.flash = 0; f.flipT = 0; f.graceUntil = this.time + DERBY.respawnGrace;
+    f.car.engineOff = false; f.car.crank = 0; f.stallT = 0;
+    this.events.push({ type: 'respawn', id: f.id, isPlayer: false });
+  }
+
+  /** The Getaway: the robber's drop in the garage patches the car up (a computer car too, not only the player's). */
+  repairFighter(f) {
+    if (!f || f.wrecked || !this.damageEnabled) return;
+    f.health = new Health(SPECS.player.hp); f.flash = 0; f.car.engineOff = false; f.car.crank = 0;
+    this.events.push({ type: 'repaired', id: f.id, isPlayer: !!f.isPlayer });
   }
 
   /** Apple Crumple checkpoint: the pit crew patch the player's car up to full health (and restart a stalled engine). */
@@ -687,6 +701,7 @@ export class Derby {
   /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
   _damage(f, zone, hp, by, x, y, z, dentHp) {
     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
+    if (this.getaway && !f.isPlayer && !f.cop && f !== this.rivals[0]) return;       // The Getaway: only the robber and the police cars are hurt, never the traffic
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace || this.time < f.graceUntil) return; }
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };
@@ -725,7 +740,7 @@ export class Derby {
     const c = f.car, rnd = this.rng;
     f.wrecked = true; f.wreckT = 0;
     c.refreshFrame();
-    if (!f.isPlayer) {
+    if (!f.isPlayer && !this.getaway) {
       const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
       const key = f.raceSlot ?? 'id' + f.id, n = (this._wrecks.get(key) || 0) + 1;
       this._wrecks.set(key, n);
@@ -750,7 +765,8 @@ export class Derby {
       const hp = blastDamage(DAMAGE.wreck, d) * o.spec.blastMul;
       this._damage(o, zoneAt(o.car, c.pos.x, c.pos.y, c.pos.z), hp, by && f.lastHit && this.time - f.lastHit.t <= DERBY.credit ? by : null, c.pos.x, c.pos.y, c.pos.z);
     }
-    if (f.isPlayer) {
+    if (f.isPlayer && this.getaway) f.respawnAt = this.time + 6;       // The Getaway: a wrecked police car is out for a few seconds (main.js ends the round if it was the robber)
+    else if (f.isPlayer) {
       if (Number.isFinite(this.repairsMax)) {
         if (this.repairs <= 0) {
           this.over = true;                                           // no spanners left: the car is scrap (and stays on the track, burnt out)
@@ -760,7 +776,7 @@ export class Derby {
         this.over = true;
         this.events.push({ type: 'over', zone, score: this.score, takedowns: this.takedowns });
       } else f.respawnAt = this.time + DERBY.respawnDelay;           // Race: back on the road shortly
-    } else {
+    } else if (!this.getaway) {
       const h = f.lastHit;
       if (!this.over && h && h.by === this.player.id && this.time - h.t <= DERBY.credit) {
         this.takedowns++;

@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.513 — The Getaway uses the real damage system
+- The robber and the police cars now take the same damage as in the other races: five armour zones, dents and holes (Holy Moley), stalled engines on big hits, smoke and fire, and wrecks that explode. The damage chart shows at the left for your own car.
+- Traffic is never hurt. A wrecked robber still means the police win; a wrecked police car (yours or the computer's) is out for 6 seconds and comes back at the police start; a drop in the garage patches the robber up.
+- This replaces the simple 100-point health bar and the separate stall rule added earlier.
+
 ## v17.512 — Fewer surprise resets in The Getaway
 - The general "propped on its side for 2 s" reset no longer applies in The Getaway; only a car that is properly upside down (or on its side) and nearly stopped for 3 s is stood back up, and the message now says why (upside down / off the map).
 
