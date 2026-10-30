@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.514 — Town traffic takes damage too
+- Every car in The Getaway can now be dented, stalled and wrecked, the town's traffic included. A wrecked town car stays as a hulk for 12 seconds, then a new one turns up at a junction away from you.
+
 ## v17.513 — The Getaway uses the real damage system
 - The robber and the police cars now take the same damage as in the other races: five armour zones, dents and holes (Holy Moley), stalled engines on big hits, smoke and fire, and wrecks that explode. The damage chart shows at the left for your own car.
 - Traffic is never hurt. A wrecked robber still means the police win; a wrecked police car (yours or the computer's) is out for 6 seconds and comes back at the police start; a drop in the garage patches the robber up.

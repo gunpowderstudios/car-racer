@@ -701,7 +701,6 @@ export class Derby {
   /** `x, y, z` (optional) is where in the world it happened; the event then carries it in the car's own space so the dent can go in the right place. */
   _damage(f, zone, hp, by, x, y, z, dentHp) {
     if (!this.damageEnabled || f.wrecked || hp <= 0) return;
-    if (this.getaway && !f.isPlayer && !f.cop && f !== this.rivals[0]) return;       // The Getaway: only the robber and the police cars are hurt, never the traffic
     if (f.isPlayer) { if (this.over || this.time < DERBY.grace || this.time < f.graceUntil) return; }
     else if (f.age < DERBY.spawnGrace) return;
     if (by) f.lastHit = { by: by.id, t: this.time };

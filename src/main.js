@@ -700,8 +700,8 @@ function getawayBegin() {
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
 const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
-// ---- wear and tear: The Getaway uses the same damage as the other races (zones, dents, holes, stalls, wrecks - see derby.js). Only the robber and the police cars are hurt, never the
-// traffic. A wrecked robber means the police win; a wrecked police car is out for 6 s and then back at the police start. A drop in the garage repairs the robber.
+// ---- wear and tear: The Getaway uses the same damage as the other races (zones, dents, holes, stalls, wrecks - see derby.js). Every car is hurt, the town traffic too (a wrecked town car is replaced elsewhere after 12 s).
+// A wrecked robber means the police win; a wrecked police car is out for 6 s and then back at the police start. A drop in the garage repairs the robber.
 const gwPct = (f) => (f && f.health ? Math.round(100 * f.health.worst) : 100);
 function gwWreck(e) {
   const G = getaway; if (!G || G.game.over) return;
@@ -709,13 +709,18 @@ function gwWreck(e) {
   const robber = f.isPlayer ? G.role === 'robber' : (f === derby.rivals[0] && G.ai === 'robber');
   if (robber) { G.game.wreckRobber(); return; }
   if (f.isPlayer) getawayPop('Your car is wrecked! Back in 6 seconds', 2600);
-  else G.out.push({ f, until: G.game.time + 6 });
+  else G.out.push({ f, until: G.game.time + (f.cop || f === derby.rivals[0] ? 6 : 12), town: !f.cop && f !== derby.rivals[0] });       // (a wrecked town car is a hulk in the road for a while, then a new one is on its way elsewhere)
+}
+/** Where a mended town car comes back: a junction at least 70 m from you and from the other side's car. */
+function townSpot(G) {
+  const far = (n, q) => Math.hypot(n.x - q.x, n.z - q.z) > 70, f = derby.rivals[0], c = G.L.nodes.filter((n) => far(n, car.pos) && (!f || far(n, f.car.pos)));
+  return (c.length ? c : G.L.nodes)[Math.floor(Math.random() * (c.length || G.L.nodes.length))];
 }
 function gwOutStep(G) {
   for (let i = G.out.length - 1; i >= 0; i--) {
     const o = G.out[i]; if (G.game.time < o.until) continue;
     G.out.splice(i, 1); derby.reviveFighter(o.f);
-    const c = o.f.car, p = rescuePose(G.L, G.L.policeStart.x, G.L.policeStart.z, derby.cars.filter((x) => x !== c));
+    const c = o.f.car, at = o.town ? townSpot(G) : G.L.policeStart, p = rescuePose(G.L, at.x, at.z, derby.cars.filter((x) => x !== c));
     c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(o.f, o.f.cur); derby._pose(o.f, o.f.prev);
   }
 }
