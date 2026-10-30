@@ -535,8 +535,10 @@ export class Derby {
         if (this.damageEnabled) {
           const hp = crashDamage(H.mu, H.closing) * (this.demolition && !a.isPlayer && !b.isPlayer ? DERBY.rivalClash : 1);
           if (hp > 0) {
-            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp, b, H.x, H.y, H.z);
-            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp, a, H.x, H.y, H.z);
+            // Same speed for every vehicle, but size decides who suffers: the heavier one gives out more damage and takes less (a bus flattens a Panda; a Panda barely scratches a bus).
+            const ma = a.car.mass, mb = b.car.mass, share = (mine, theirs) => Math.min(2.5, Math.max(0.35, Math.sqrt(theirs / mine)));
+            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp * share(ma, mb), b, H.x, H.y, H.z);
+            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp * share(mb, ma), a, H.x, H.y, H.z);
           }
         }
       }

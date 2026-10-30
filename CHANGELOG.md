@@ -2,6 +2,15 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.520 — Size decides who gets hurt
+- Every vehicle goes at the same speed, but in a crash the heavier one now deals more damage and takes less, and the lighter one the reverse. A bus flattens a Panda; a Panda barely scratches a bus. Applies on every track and mode, including multiplayer (the effect is capped so nothing is invincible or made of paper).
+
+## v17.520 — Big vehicles win crashes
+- With every vehicle now the same speed, size decides a crash: in races, demolition, arenas and The Getaway the heavier vehicle gives out more damage and takes less (a bus flattens a Panda; a Panda barely scratches a bus). It is the same rule multiplayer already used, now in every game.
+
+## v17.519 — Reverse twice as fast
+- Every vehicle now reverses with twice the pull and up to twice the top speed (about 40 mph instead of 20), so backing out of a wall or a bad spot is quick. Forward speed is unchanged.
+
 ## v17.518 — Films say when they are paused
 - Making a movie only moves on while its tab is on screen (browsers stop drawing hidden tabs). If you look at another tab, the tab title now reads "Film PAUSED, come back to this tab", and when you return the film carries on exactly where it stopped, with a note. The editing-room hint explains it and suggests giving the game its own window.
 

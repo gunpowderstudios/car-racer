@@ -1824,7 +1824,7 @@ function mpCollideLocal() {
       car.impulseAt(mpN, (1 + e) * closing * mu, mpP);
       if (closing > 1 && now - (p.lastHitSent || 0) > 250) {
         p.lastHitSent = p.ownContactAt = now;
-        const rawHp = crashDamage(mu, closing);
+        const rawHp = crashDamage(mu, closing) * Math.min(2.5, Math.max(0.35, Math.sqrt(theirs.mass / car.mass)));
         mpCarHitDamage(rawHp, closing, mine, car.pos.x - nx, car.pos.z - nz, mpP.x, mpP.y + 0.5, mpP.z);
         net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * theirShare, speed: Math.min(30, closing), attackerVehicleId: mine.id });
       }
@@ -2114,7 +2114,7 @@ const mpHandlers = {
 
     // Same energy-based crash curve as the derby, converted to the multiplayer health bar.
     // The selected vehicle's multiplayer toughness then scales what actually gets through.
-    const rawHp = crashDamage(mu, speed);
+    const rawHp = crashDamage(mu, speed) * Math.min(2.5, Math.max(0.35, Math.sqrt(attacker.mass / victim.mass)));
     const amount = Math.min(MP_MAX_HIT_DAMAGE, (rawHp / MP_DAMAGE_HP_SCALE) * victim.damageMul);
     mpDentAt(car.pos.x - d.nx, car.pos.y + 0.15, car.pos.z - d.nz, rawHp);        // marked on the side that faces whoever hit us
     if (!mpTakeDamage(amount)) mpImpactFx(car.pos.x, car.pos.y + 0.6, car.pos.z, speed);

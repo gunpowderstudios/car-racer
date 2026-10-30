@@ -110,7 +110,7 @@ test('reverse is speed limited', () => {
   const track = new Track(DRAG_DEF); const car = new Vehicle();
   placeOnTrack(car, track, 1130, 0, 0);
   run(car, track, 8, () => ({ brake: 1 }));
-  assert.ok(car.fwdSpeed < -3 && car.fwdSpeed > -12, 'reverse speed ' + car.fwdSpeed);
+  assert.ok(car.fwdSpeed < -9 && car.fwdSpeed > -24, 'reverse speed ' + car.fwdSpeed);      // twice as fast as it was (it used to stop below 12 m/s)
 });
 
 test('powered drift rotates the car without requiring endless extra spin', () => {

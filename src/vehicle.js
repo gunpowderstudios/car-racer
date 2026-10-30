@@ -533,7 +533,8 @@ export class Vehicle {
       force = Math.max(0, m * MP_EQUAL.accel * (1 - (vv / MP_EQUAL.top) ** 2)) * drive + this.spec.aero.drag * vv * vv;     // (plus back what this car's own air drag takes off)
     }
     force *= 1 - 0.30 * this.hurt.roof - 0.12 * this.hurt.back - 0.06 * this.hurt.front;   // a crushed roof costs top speed; a hurt rear end or front costs a little power too
-    if (this.gear === -1 && fwd < -9) force = 0;          // reverse is slow
+    if (this.gear === -1) force *= 2;                       // reverse pulls twice as hard...
+    if (this.gear === -1 && fwd < -18) force = 0;          // ...and goes twice as fast (it was -9 m/s) - still slower than forwards
     // hill assist: on a steep climb the engine (at stall revs) and the tyres could not quite hold the car, so it slid back. Any car can climb any hill, and keep moving:
     // with the pedal down and the nose up, the pull is enough to beat gravity along the slope (for the car AND the caravan it tows) until it is doing HILL_CRAWL, about
     // 20 mph on the speedometer, then it fades out so the engine takes over (the tyres' own grip still limits it, see _tyre). Rival cars drive on this same code.
