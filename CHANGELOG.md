@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.511 — Getaway state in the F3 panel
+- The F3 debug panel now also shows, in The Getaway, whether the engine is off, the cranking time, throttle, health and whether the round is over.
+
 ## v17.510 — Track name in the film file name
 - A saved replay film is now called e.g. bangers-and-smash-the-getaway-replay.mp4 instead of the same name every time.
 

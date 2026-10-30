@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.510';
-export const NOTE = 'Saved replay films now have the track name in the file name.';
+export const VERSION = '17.511';
+export const NOTE = 'F3 debug panel shows The Getaway engine and damage state, for chasing down the stall bug.';

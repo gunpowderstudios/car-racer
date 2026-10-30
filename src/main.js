@@ -1313,7 +1313,8 @@ function debugText() {
     `slip body ${(car.sideSlip * 57.3).toFixed(1)} deg  steer ${(car.steerAngle * 57.3).toFixed(1)} deg  assist ${(car.assistAngle * 57.3).toFixed(1)}\n` +
     `wheel load  ${w.map((x) => x.load.toFixed(0).padStart(5)).join(' ')}\n` +
     `wheel slip  ${w.map((x) => (x.slipAngle * 57.3).toFixed(0).padStart(5)).join(' ')}\n` +
-    `lap ${race.laps} progress ${race.unwrapped.toFixed(0)} / ${track.length.toFixed(0)} m`;
+    `lap ${race.laps} progress ${race.unwrapped.toFixed(0)} / ${track.length.toFixed(0)} m` +
+    (getaway ? `\nGETAWAY engineOff ${car.engineOff} crank ${car.crank.toFixed(2)} throttle ${car.thr.toFixed(2)} hp ${hpOf(car).toFixed(0)} out ${getaway.out.length} over ${getaway.game.over} paused ${paused} frozen ${frozen} noStall ${Math.max(0, (derby.player?.gwNoStall || 0) - getaway.game.time).toFixed(1)}s` : '');
 }
 
 // --------------------------------------------------------------------- modes
