@@ -6,7 +6,7 @@ import { buildTrackGeometry } from './trackGeometry.js';
 import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
-import { GetawayView } from './getawayView.js';
+import { GetawayView, RETRO } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
 const SKY_TOP = 0x1f3a72, SKY_MID = 0xc2557a, SKY_LOW = 0xffa45c, FOG = 0xe39a6a;
@@ -57,6 +57,7 @@ export class Stage {
           c = mix(c, vec3(1.0, 0.93, 0.78), smoothstep(0.9988, 0.9996, sd));                                          // the sun itself
           gl_FragColor = vec4(c, 1.0); }`,
     });
+    this.skyU = skyMat.uniforms;
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(4200, 24, 14), skyMat);
     this.sky.renderOrder = -10; this.sky.frustumCulled = false;
     this.scene.add(this.sky);
@@ -305,11 +306,19 @@ export class Stage {
     return geo;
   }
 
+  /** The 1980s Getaway (?retro): a pale dusty-blue daytime sky and a warm haze instead of the pink dusk; every other track puts the dusk back. */
+  _retroSky(on) {
+    const u = this.skyU, f = this.scene.fog; if (!u || !f) return;
+    u.top.value.set(on ? 0x6f86b0 : SKY_TOP); u.mid.value.set(on ? 0xa9b6cc : SKY_MID); u.low.value.set(on ? 0xe6dcc6 : SKY_LOW);
+    f.color.set(on ? 0xd8cdb6 : FOG); f.near = on ? 120 : 240; f.far = on ? 900 : 2200;
+  }
+
   /** An open arena (see arena.js) has no road to draw: a dirt floor, a wall and stands instead. */
   _setArena(track) {
     const g = new THREE.Group(), arena = buildArena(track, this.aniso);
     g.add(arena);
     const geo = { bounds: arena.userData.bounds, arena: true };
+    this._retroSky(!!track.def.getaway && RETRO);
     if (track.def.getaway) this.getawayView = new GetawayView(track, g);          // The Getaway: the town, its bags and the safehouse (no scenery in the streets)
     else g.add(this._scenery(track, geo, arena.userData.clear));
     this.scene.add(g); this.trackGroup = g;

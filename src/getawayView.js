@@ -13,20 +13,44 @@ function canvasTex(w, h, draw, rx = 1, ry = 1) {
   return t;
 }
 
+/** The 1980s look (add ?retro to the address): faded, sooty brick and stone, boarded and broken windows, patched asphalt. Off unless asked for, so the normal town is untouched. */
+export const RETRO = typeof location !== 'undefined' && /[?&]retro\b/.test(location.search || '');
+const WALLS_RETRO = ['#7b5a48', '#8c6b56', '#a39078', '#6e5446', '#9a8a72', '#82705e', '#7a4f44', '#948068'];
+const AWN_RETRO = [['#9c3a2e', '#d9d2bf'], ['#3d5f86', '#d9d2bf'], ['#4a7050', '#d9d2bf'], ['#b88a2a', '#3a3a38'], ['#6a4a78', '#d9d2bf']];
+const WALLS_NOW = RETRO ? WALLS_RETRO : null;
 const WALLS = ['#b9674a', '#9aa3ad', '#c8b58a', '#7d8fa5', '#a8584f', '#8e9a7e', '#c49a6c', '#7a7f99'];
-const AWN = [['#d8352a', '#f4f0e6'], ['#2a6fb5', '#f4f0e6'], ['#2f8f4a', '#f4f0e6'], ['#e0a21a', '#2b2b2b'], ['#7a3fa0', '#f4f0e6']];
+const AWN_NORMAL = [['#d8352a', '#f4f0e6'], ['#2a6fb5', '#f4f0e6'], ['#2f8f4a', '#f4f0e6'], ['#e0a21a', '#2b2b2b'], ['#7a3fa0', '#f4f0e6']];
 
 /** Windows: a repeating tile 12 m wide and 8 m tall. */
+const AWN = RETRO ? AWN_RETRO : AWN_NORMAL;
+/** Dirt under every window row and along the tile's foot: a soot gradient (retro only). */
+function grime(g, w, h, r) {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(20,14,10,0)'); gr.addColorStop(0.7, 'rgba(20,14,10,.12)'); gr.addColorStop(1, 'rgba(20,14,10,.38)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 26; i++) { g.fillStyle = `rgba(25,18,12,${0.05 + r() * 0.08})`; g.fillRect(r() * w, 0, 2 + r() * 5, h * (0.3 + r() * 0.7)); }
+}
 const upperTex = (wall, seed) => canvasTex(128, 128, (g, w, h) => {
   const r = rnd(seed);
   g.fillStyle = wall; g.fillRect(0, 0, w, h);
   g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, h - 6, w, 6);
   for (let i = 0; i < 3; i++) {
+    const x = 10 + i * 40;
+    if (RETRO) {
+      const k = r();      // some are lived in, some are dark, some boarded up, some smashed
+      if (k < 0.18) { g.fillStyle = '#d9b36a'; g.fillRect(x, 22, 26, 62); }
+      else if (k < 0.5) { g.fillStyle = '#1d242c'; g.fillRect(x, 22, 26, 62); g.fillStyle = 'rgba(190,205,215,.25)'; g.fillRect(x, 22, 26, 9); }
+      else if (k < 0.75) { g.fillStyle = '#4a3a2c'; g.fillRect(x, 22, 26, 62); g.strokeStyle = '#2b2118'; g.lineWidth = 2; for (let b = 0; b < 4; b++) { g.beginPath(); g.moveTo(x, 30 + b * 15); g.lineTo(x + 26, 28 + b * 15); g.stroke(); } }
+      else { g.fillStyle = '#0c0f12'; g.fillRect(x, 22, 26, 62); g.strokeStyle = 'rgba(200,210,220,.35)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 2, 24); g.lineTo(x + 20, 60); g.moveTo(x + 24, 26); g.lineTo(x + 8, 70); g.stroke(); }
+      g.strokeStyle = '#a8a08e'; g.lineWidth = 3; g.strokeRect(x, 22, 26, 62);
+      g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x - 2, 84, 30, 4);      // the sill, with the dirt it sheds
+      continue;
+    }
     const lit = r() < 0.3;
-    g.fillStyle = lit ? '#ffe79a' : '#2c3a4a'; g.fillRect(10 + i * 40, 22, 26, 62);
-    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(10 + i * 40, 22, 26, 8);
-    g.strokeStyle = '#e9e4da'; g.lineWidth = 3; g.strokeRect(10 + i * 40, 22, 26, 62);
+    g.fillStyle = lit ? '#ffe79a' : '#2c3a4a'; g.fillRect(x, 22, 26, 62);
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x, 22, 26, 8);
+    g.strokeStyle = '#e9e4da'; g.lineWidth = 3; g.strokeRect(x, 22, 26, 62);
   }
+  if (RETRO) grime(g, w, h, r);
 });
 /** Shop fronts: glass, a door and a striped awning. Tile 14 m wide, 5 m tall. */
 const shopTex = (wall, awn, seed) => canvasTex(224, 80, (g, w, h) => {
@@ -37,6 +61,11 @@ const shopTex = (wall, awn, seed) => canvasTex(224, 80, (g, w, h) => {
     g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(x + 6, 32, 30, 40);
     g.fillStyle = '#ffdca0'; g.fillRect(x + 56, 40, 30, 36);
     for (let s = 0; s < 8; s++) { g.fillStyle = s % 2 ? awn[1] : awn[0]; g.fillRect(x - 4 + s * 13, 8, 13, 18); }
+  }
+  if (RETRO) {
+    const r = rnd(seed + 7);
+    for (let i = 0; i < 2; i++) if (r() < 0.4) { const x = i * 112 + 8; g.fillStyle = '#4a3a2c'; g.fillRect(x, 26, 96, 54); g.strokeStyle = '#2b2118'; g.lineWidth = 3; for (let b = 0; b < 5; b++) { g.beginPath(); g.moveTo(x, 32 + b * 11); g.lineTo(x + 96, 30 + b * 11); g.stroke(); } }      // a boarded-up shop
+    grime(g, w, h, r);
   }
 });
 const bankTex = () => canvasTex(512, 160, (g, w, h) => {
@@ -60,20 +89,22 @@ const sackTex = () => canvasTex(128, 128, (g, w, h) => {
 function roadTex(L) {
   const S = 4, W = Math.ceil(L.W * S), D = Math.ceil(L.D * S);        // 4 pixels to the metre
   return canvasTex(W, D, (g) => {
-    g.fillStyle = '#c9c5bb'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
+    g.fillStyle = RETRO ? '#9d998e' : '#c9c5bb'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
     const X = (x) => (x + L.W / 2) * S, Z = (z) => (z + L.D / 2) * S, ast = (L.T.street - 5) * S, k = 0.35 * S;     // the road is 2.5 m narrower each side than the street: that is the pavement
-    g.fillStyle = '#50535b';
+    const ASPH = RETRO ? '#3c3e42' : '#50535b';
+    g.fillStyle = ASPH;
     for (const z of L.zs) g.fillRect(0, Z(z) - ast / 2, W, ast);
     for (const x of L.xs) g.fillRect(X(x) - ast / 2, 0, ast, D);
     g.fillStyle = '#e9e6da';                                      // a white kerb line along both edges of every street
     for (const z of L.zs) for (const sgn of [-1, 1]) g.fillRect(0, Z(z) + sgn * ast / 2 - (sgn > 0 ? k : 0), W, k);
     for (const x of L.xs) for (const sgn of [-1, 1]) g.fillRect(X(x) + sgn * ast / 2 - (sgn > 0 ? k : 0), 0, k, D);
-    g.fillStyle = '#50535b';                                      // (the junctions are open road: no kerb across them)
+    g.fillStyle = ASPH;                                      // (the junctions are open road: no kerb across them)
     for (const x of L.xs) for (const z of L.zs) g.fillRect(X(x) - ast / 2 - 1, Z(z) - ast / 2 - 1, ast + 2, ast + 2);
-    g.fillStyle = '#e9d36a';
+    if (RETRO) { const r = rnd(77); for (let i = 0; i < 160; i++) { const px = r() * W, pz = r() * D; g.fillStyle = r() < 0.5 ? 'rgba(20,20,22,.35)' : 'rgba(95,95,100,.22)'; g.fillRect(px, pz, (3 + r() * 14) * S * 0.5, (2 + r() * 9) * S * 0.5); } }      // patched asphalt
+    g.fillStyle = RETRO ? '#b3a560' : '#e9d36a';
     for (const z of L.zs) for (let x = 0; x < L.W; x += 8) { const near = L.xs.some((xx) => Math.abs(xx - (x - L.W / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x - L.W / 2), Z(z) - 1, 4 * S, 2); }
     for (const x of L.xs) for (let z = 0; z < L.D; z += 8) { const near = L.zs.some((zz) => Math.abs(zz - (z - L.D / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x) - 1, Z(z - L.D / 2), 2, 4 * S); }
-    g.fillStyle = '#e8e8e8';                                      // zebra crossings
+    g.fillStyle = RETRO ? '#bdbab0' : '#e8e8e8';                                      // zebra crossings
     for (const x of L.xs) for (const z of L.zs) {
       for (let q = -2; q <= 2; q++) {
         g.fillRect(X(x) + q * 2.2 * S - 0.5 * S, Z(z) - ast / 2 - 3.0 * S, 1.1 * S, 2.4 * S);
@@ -89,7 +120,7 @@ export class GetawayView {
     const L = this.L = townLayout(), A = arenaInfo(track), y0 = this.y0 = A.y;
     this.group = group; this.bags = []; this.t = 0;
     const g = new THREE.Group(); group.add(g); this.g = g;
-    g.add(new THREE.HemisphereLight(0xfff1dc, 0x8a8fa8, 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
+    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 2.1 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
     const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun);
 
     // ---- the ground: one big sheet of pavement over the arena's dirt, with the streets painted on
@@ -104,7 +135,7 @@ export class GetawayView {
     const hs = L.T.height;
     const bh = [];       // each block's height, for the roof details below
     L.blocks.forEach((b, n) => {
-      const wall = WALLS[Math.floor(r() * WALLS.length)], awn = AWN[Math.floor(r() * AWN.length)], H = 17 + Math.floor(r() * 4) * 5;
+      const wall = (WALLS_NOW || WALLS)[Math.floor(r() * WALLS.length)], awn = AWN[Math.floor(r() * AWN.length)], H = 17 + Math.floor(r() * 4) * 5;
       bh.push(H);
       const w = b.hx * 2, d = b.hz * 2, shopH = 5, upH = H - shopH;
       const mk = (map, rx, ry) => { const t = map.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t }); };

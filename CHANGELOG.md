@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.521 — A 1980s town (hidden test: add ?retro)
+- Add `?retro` to the web address and The Getaway looks like a run-down 1980s American town: faded sooty brick and stone, dark, boarded-up and smashed windows with dirt under every sill, boarded shop fronts, patched grey asphalt, and a dusty-blue hazy daytime sky instead of the pink dusk. Without `?retro` nothing changes, and no other track is touched. No extra meshes were added, so it costs no more to draw.
+
 ## v17.520 — Size decides who gets hurt
 - Every vehicle goes at the same speed, but in a crash the heavier one now deals more damage and takes less, and the lighter one the reverse. A bus flattens a Panda; a Panda barely scratches a bus. Applies on every track and mode, including multiplayer (the effect is capped so nothing is invincible or made of paper).
 
