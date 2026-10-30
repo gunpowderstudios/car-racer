@@ -1375,8 +1375,8 @@ onVehicleSwap(swapVehicle);
 let pendingStart = false, waitInit = true, waitSince = performance.now();
 function loadProgress() {
   let done = visual.loaded ? 1 : 0, total = 1;
-  if (!net && derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; total++; if (views.get(f.id)?.loaded) done++; }
-  if (!net && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
+  if (!net && derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; if (getaway && f !== derby.rivals[0]) continue; total++; if (views.get(f.id)?.loaded) done++; }
+  if (!net && !getaway && (car.tow || derby.towing) && !caravanView.failed) { total++; if (caravanView.loaded) done++; }
   return { done, total };
 }
 // Menu music: the chosen tune (Lounge unless changed) plays on the loading bar and on the menu while Music is ticked, and carries on while you pick your

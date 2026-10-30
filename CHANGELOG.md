@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.505 — The Getaway loads faster
+- The Getaway used to wait for every one of its ~14 car models (1–2 MB each) to load one after another. It now starts as soon as your car and the main police car are ready; the traffic and extra police cars appear a moment after the start.
+
 ## v17.504 — Satnav line stays on the road
 - The red satnav line now runs down the middle of the streets and turns each junction corner in a neat curve, instead of sometimes cutting across a building corner. It also eases back onto the middle of the street if you are driving at the side. A new test checks 300 random routes never touch a building.
 
