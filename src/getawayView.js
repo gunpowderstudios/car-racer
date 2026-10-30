@@ -203,6 +203,59 @@ export class GetawayView {
         for (const sx of [x0 + 0.6, x1 - 0.6]) { add('cyl', sx, y0 + H / 2, z1 + 0.18, 0.13, H, 0.13, '#58595e'); add('cyl', sx, y0 + H / 2, z0 - 0.18, 0.13, H, 0.13, '#58595e'); }
         for (let k = 0; k < 4; k++) { const lx = x0 + 6 + k * ((w - 12) / 3); add('lamp', lx, y0 + 4.3, z1 + 0.3, 0.45, 0.35, 0.45, '#ffd98a'); if (Math.abs(lx - (b.cx - 8)) > 8) add('lamp', lx, y0 + 4.3, z0 - 0.3, 0.45, 0.35, 0.45, '#ffd98a'); }
       });
+      if (RETRO) {
+        // ---- 1980s street dressing (?retro): fire escapes, traffic signals, billboards, and on the pavement parked cars, bins and rubble. All of it is instanced boxes (no extra draw calls)
+        //      and none of it is solid, so it sits where a car rarely goes: on the 2.5 m pavement strip against the shop fronts, up on the walls, over the junction corners and on the roofs.
+        const r4 = rnd(1980), at = (arr) => arr[Math.floor(r4() * arr.length)], hs = L.T.street / 2;
+        const CAR_COL = ['#7a2f2a', '#3b5878', '#a8946a', '#58604a', '#8c8c86', '#2f2f33', '#9c6a2e', '#5b4a68'], BOARD = ['#8a2f2f', '#2f5d8a', '#c9a23a', '#d9d2bf', '#4a6a4a'];
+        L.blocks.forEach((b, n) => {
+          const H = bh[n], top = y0 + H, x0 = b.cx - b.hx, x1 = b.cx + b.hx, z1 = b.cz + b.hz, w = b.hx * 2;
+          if (r4() < 0.6) {           // a fire escape up the front: a landing at every floor, side rails, and a ladder drop between the landings
+            const fx = b.cx + (r4() < 0.5 ? -1 : 1) * (10 + r4() * 8);
+            for (let yy = y0 + 8; yy < top - 1; yy += 5) {
+              add('box', fx, yy, z1 + 0.75, 5, 0.14, 1.5, '#2d2d30');
+              add('box', fx, yy + 0.55, z1 + 1.45, 5, 0.1, 0.1, '#2d2d30');
+              for (const dx of [-2.4, 0, 2.4]) add('box', fx + dx, yy + 0.3, z1 + 1.45, 0.08, 0.6, 0.08, '#2d2d30');
+              for (let k = 0; k < 5; k++) add('box', fx + 1.6, yy - 0.5 - k * 0.8, z1 + 0.8 + k * 0.1, 1.0, 0.08, 0.5, '#2d2d30');      // the stairs down to the landing below, as steps
+            }
+          }
+          if (r4() < 0.4) {           // a billboard on the roof
+            const bx = b.cx + (r4() - 0.5) * (w - 24), bz = b.cz - b.hz + 4 + r4() * 6, ry = r4() < 0.5 ? 0 : Math.PI / 2;
+            add('box', bx, top + 5, bz, 11, 5, 0.35, at(BOARD), ry); add('box', bx, top + 5, bz + (ry ? 0 : -0.3), 10, 4.2, 0.1, '#e9e2d0', ry);
+            for (const dx of [-3.5, 3.5]) add('box', ry ? bx : bx + dx, top + 1.2, ry ? bz + dx : bz, 0.3, 2.4, 0.3, '#3c3c3c');
+          }
+          // the pavement along the south face (the street side with the bank door): leave the door and the bag corner clear
+          const spots = [-16, -12, 11, 15];
+          for (const sx of spots) {
+            const roll = r4(), x = b.cx + sx + (r4() - 0.5) * 2;
+            if (roll < 0.5) {         // a car parked up on the kerb, nose along the wall
+              const col2 = at(CAR_COL), cz2 = z1 + 1.7, len = 3.8 + r4() * 1.2;
+              add('box', x, y0 + 0.62, cz2, len, 0.8, 1.7, col2); add('box', x - 0.1, y0 + 1.25, cz2, len * 0.55, 0.55, 1.5, '#26303a');
+              for (const dx of [-len * 0.32, len * 0.32]) for (const dz of [-0.85, 0.85]) add('box', x + dx, y0 + 0.3, cz2 + dz, 0.6, 0.6, 0.18, '#151515');
+            } else if (roll < 0.7) { add('box', x, y0 + 0.65, z1 + 1.2, 2.2, 1.3, 1.2, '#3d5a40'); add('box', x, y0 + 1.35, z1 + 1.2, 2.3, 0.12, 1.3, '#27382a'); }      // a dumpster
+            else if (roll < 0.85) { add('pyr', x, y0 + 0.5, z1 + 1.4, 1.7, 1.0, 1.4, '#6c6459'); add('pyr', x + 1.1, y0 + 0.35, z1 + 1.6, 1.0, 0.7, 0.9, '#7d7466'); add('box', x - 0.4, y0 + 0.9, z1 + 1.3, 0.9, 0.12, 0.5, '#8a6a3a', 0.3); }      // a heap of rubble
+          }
+        });
+        // traffic signals: at two corners of every junction, a pole, an arm out over the road and a yellow box with its lamps
+        for (const nd of L.nodes) {
+          if (nd.i === 0 || nd.j === 0 || nd.i === L.xs.length - 1 || nd.j === L.zs.length - 1) continue;
+          for (const [sx, sz] of [[1, 1], [-1, -1]]) {
+            const px = nd.x + sx * (hs - 1.1), pz = nd.z + sz * (hs - 1.1);
+            add('cyl', px, y0 + 3.2, pz, 0.14, 6.4, 0.14, '#4d4f52');
+            add('box', px - sx * 3, y0 + 6.1, pz, 6, 0.18, 0.18, '#4d4f52');
+            add('box', px - sx * 5.6, y0 + 5.5, pz, 0.55, 1.4, 0.55, '#d9a920');
+            add('lamp', px - sx * 5.6, y0 + 5.95, pz + sz * 0.3, 0.3, 0.3, 0.3, '#ff3b2b'); add('lamp', px - sx * 5.6, y0 + 5.5, pz + sz * 0.3, 0.3, 0.3, 0.3, '#5a4a10'); add('lamp', px - sx * 5.6, y0 + 5.05, pz + sz * 0.3, 0.3, 0.3, 0.3, '#143a1c');
+            add('box', px - sx * 5.6, y0 + 5.5, pz, 0.7, 1.6, 0.3, '#d9a920');
+          }
+        }
+        // oil stains and dark patches on the road, flat, just above the asphalt
+        const rd = hs - 3;
+        for (let k = 0; k < 70; k++) {
+          const z = at(L.zs), x = (r4() - 0.5) * (L.W - 40);
+          if (r4() < 0.5) add('box', x, y0 + 0.075, z + (r4() - 0.5) * rd * 1.4, 2 + r4() * 3.5, 0.01, 1.2 + r4() * 2.2, '#26272a', r4() * 3);
+          else { const xx = at(L.xs), zz = (r4() - 0.5) * (L.D - 40); add('box', xx + (r4() - 0.5) * rd * 1.4, y0 + 0.075, zz, 1.2 + r4() * 2.2, 0.01, 2 + r4() * 3.5, '#26272a', r4() * 3); }
+        }
+      }
       // the skyline: dim towers well beyond the walls, so the town sits in a city instead of a box
       const R3 = rnd(311);
       for (let k = 0; k < 64; k++) {

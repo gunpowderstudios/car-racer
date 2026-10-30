@@ -738,6 +738,9 @@ export class Derby {
     return true;
   }
 
+  /** The Getaway: the third ram on the robber blows his car up there and then, whatever shape its armour is in. */
+  blowUp(f) { if (!f || f.wrecked || f.gone) return; this._wreck(f, 'front'); }
+
   _wreck(f, zone) {
     const c = f.car, rnd = this.rng;
     f.wrecked = true; f.wreckT = 0;

@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.524 — The robber explodes on the third ram
+- In The Getaway (normal and `?retro`) the third hard ram on a robber carrying a bag now blows his car up there and then, with the usual blast, and the police win the round. Before, the third ram only sent the cash back to the bank and gave a strike.
+
+## v17.523 — Retro Getaway street dressing (?retro)
+- With `?retro`, The Getaway gets 1980s street detail: fire escapes up the fronts, traffic signals at the junctions, billboards on the roofs, cars parked up on the kerb, dumpsters, heaps of rubble and oil stains on the road. All of it is drawn with the existing shared instanced meshes (no new draw calls) and none of it is solid, so the driving is unchanged. Without `?retro` nothing changes.
+
 ## v17.522 — Retro Getaway keeps the red dusk sky, gains shadows
 - `?retro` no longer changes the sky, haze or light colour: the Getaway keeps the same dusk background as the rest of the game. It now lifts the shadow-casting sun so the buildings throw shadows across the streets and onto the cars (on Medium and High graphics), and drops the extra flat light the town had. The brick, window and road looks from v17.521 are unchanged. Still only with `?retro`, and only on The Getaway.
 

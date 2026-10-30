@@ -756,7 +756,7 @@ function getawayEvents() {
   const G = getaway, g = G.game, me = G.role;
   for (const e of g.events) {
     if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! Follow the red line to the safehouse!' : 'Robbery in progress! Follow the red line!', 2400); }
-    else if (e.type === 'ram') { sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
+    else if (e.type === 'ram') { if (e.count >= e.need) derby.blowUp(G.role === 'robber' ? derby.player : derby.rivals[0]); sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
     else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
     else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { derby.repairFighter(me === 'robber' ? derby.player : derby.rivals[0]); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
