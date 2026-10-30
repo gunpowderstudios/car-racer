@@ -93,7 +93,7 @@ export class GetawayView {
     const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun);
 
     // ---- the ground: one big sheet of pavement over the arena's dirt, with the streets painted on
-    const far = 420;
+    const far = 640;
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(far, far), new THREE.MeshLambertMaterial({ color: 0x55575c }));
     floor.rotation.x = -Math.PI / 2; floor.position.set(0, y0 + 0.02, 0); floor.receiveShadow = true; g.add(floor);
     const roads = new THREE.Mesh(new THREE.PlaneGeometry(L.W, L.D), new THREE.MeshLambertMaterial({ map: roadTex(L) }));
@@ -128,7 +128,7 @@ export class GetawayView {
     });
 
     // ---- the wall of buildings round the town, carried on out to the edge of the arena so there is nothing to see beyond it
-    const OUT = 190, WH = 36, wallBox = (x0, x1, z0, z1, ox, oz) => {
+    const OUT = 280, WH = 36, wallBox = (x0, x1, z0, z1, ox, oz) => {
       const w = x1 - x0, d = z1 - z0, t = upperTex('#6f7684', 5);
       const mkm = (rx, ry) => { const c = t.clone(); c.needsUpdate = true; c.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: c }); };
       const top = new THREE.MeshLambertMaterial({ color: 0x3d4048 });

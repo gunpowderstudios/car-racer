@@ -1,6 +1,6 @@
 // The Getaway: a two-player cops-and-robbers game in a small town. No three.js in here, so it runs (and is tested) in Node.
 //
-// The town is a grid of blocks (4 across, 3 deep) with streets between and all round them. Every block has a bank; one bag of money is out at a time,
+// The town is a grid of blocks (6 across, 4 deep) with streets between and all round them. Every block has a bank; one bag of money is out at a time,
 // lying small in a corner of the street outside a bank. One player is the ROBBER (the Dodge): drive over the bag and take it to the safehouse. The other
 // is the POLICE car: ram the robber three times while he carries the bag and the robbery is stopped (the money goes back in its bank, the robber gets a
 // strike). Three bags in the safehouse and the robbers win; three strikes and the robber goes to jail.
@@ -9,7 +9,7 @@
 
 /** The town's measurements, metres. */
 export const TOWN = {
-  cols: 4, rows: 3,         // blocks across and deep
+  cols: 6, rows: 4,         // blocks across and deep (twice the size it started at)
   bx: 46, bz: 36,          // one block (x by z)
   street: 18,              // street width (a two-lane road with room to overtake)
   border: 12,              // thickness of the solid wall of buildings all round the town
@@ -28,7 +28,7 @@ const L_zs = (zs, j) => zs[j];
 const bagKey = (j, i) => j * TOWN.cols + i;
 
 /**
- * The town laid out: street centre lines (xs, zs), the 12 blocks, the 20 street junctions, the banks and where their bags lie,
+ * The town laid out: street centre lines (xs, zs), the 24 blocks, the 35 street junctions, the banks and where their bags lie,
  * the solid boxes the cars cannot enter (the blocks and the border wall) and where each side starts.
  */
 export function townLayout(T = TOWN) {

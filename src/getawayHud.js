@@ -1,7 +1,7 @@
 // The Getaway's on-screen bits: the score, a hint for what to do next, the "robbery in progress" siren, a street map that shows each side only
 // what it should know, and the result card. Plain DOM, built once inside #hud the first time it is needed.
 
-let box = null, card = null, pop = null, popTimer = 0, siren = null, compass = null, bagEl = null;
+let box = null, card = null, pop = null, popTimer = 0, siren = null, compass = null, bagEl = null, naff = null, naffN = 0;
 const canvas = () => document.getElementById('minimap');
 
 function ensure() {
@@ -33,6 +33,8 @@ function ensure() {
 #getaway-card button{font:inherit;font-size:24px;font-weight:900;padding:6px 20px;border-radius:10px;border:0;cursor:pointer;background:#ffb31f;color:#241a40;text-transform:uppercase}
 #getaway-card button.alt{background:#4b3d7a;color:#fff}
 body.getaway #minimap{border-radius:10px;width:198px;height:129px}
+#getaway-naff{position:absolute;z-index:30;pointer-events:none;text-align:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:13px;line-height:13px;letter-spacing:.2em;text-transform:uppercase;color:#ffb31f;text-shadow:0 1px 4px #000c}
+#getaway-naff[hidden]{display:none}
 #getaway-compass{position:absolute;right:244px;top:calc(max(8px,env(safe-area-inset-top)) + 52px);width:70px;height:70px;z-index:30;pointer-events:none;border-radius:50%;background:#16102acc;border:2px solid #f6d9b059;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900}
 #getaway-compass[hidden]{display:none}
 #getaway-compass .gw-dial{position:absolute;inset:0;transition:none}
@@ -53,6 +55,7 @@ body.getaway #lap-card{display:none}
   compass.innerHTML = '<div class="gw-dial"><span class="n" data-a="0">N</span><span data-a="90">E</span><span data-a="180">S</span><span data-a="270">W</span></div><div class="gw-car"></div>';
   compass.querySelectorAll('.gw-dial span').forEach((n) => { n.style.transform = `rotate(${n.dataset.a}deg) translateY(-24px) rotate(-${n.dataset.a}deg)`; });
   hud.appendChild(compass);
+  naff = document.createElement('div'); naff.id = 'getaway-naff'; naff.hidden = true; naff.textContent = 'SatNaff'; hud.appendChild(naff);
   bagEl = document.createElement('div'); bagEl.id = 'getaway-bag'; bagEl.hidden = true; bagEl.innerHTML = '<i>$</i><span></span>';
   (document.getElementById('speed-stack') || hud).insertBefore(bagEl, (document.getElementById('speed-stack') && document.getElementById('hud-logo')) || null);
   siren = document.createElement('div'); siren.id = 'getaway-siren'; siren.hidden = true; hud.appendChild(siren);
@@ -61,10 +64,18 @@ body.getaway #lap-card{display:none}
   return box;
 }
 
+/** The "SatNaff" label sits just above the map, wherever the map is (it moves with the screen size). */
+function placeNaff() {
+  const c = canvas(), h = document.getElementById('hud'); if (!c || !naff || !h) return;
+  const r = c.getBoundingClientRect(), hr = h.getBoundingClientRect(); if (!r.width) return;
+  naff.style.left = (r.left - hr.left) + 'px'; naff.style.width = r.width + 'px'; naff.style.top = (r.top - hr.top - 15) + 'px';
+}
+addEventListener('resize', () => placeNaff());
+
 /** Show or hide the whole panel (hidden on every other track). The map canvas is made wide for the town and put back when it goes. */
 export function getawayHudShow(on) {
   const el = ensure(); if (!el) return;
-  el.hidden = !on; compass.hidden = !on; if (!on && bagEl) bagEl.hidden = true; document.body.classList.toggle('getaway', !!on);
+  el.hidden = !on; compass.hidden = !on; naff.hidden = !on; if (on) { placeNaff(); setTimeout(placeNaff, 300); setTimeout(placeNaff, 1500); } if (!on && bagEl) bagEl.hidden = true; document.body.classList.toggle('getaway', !!on);
   const c = canvas(); if (c) { const w = on ? 264 : 220, h = on ? 172 : 220; if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
   if (!on) { hideGetawayResult(); siren.hidden = true; pop.hidden = true; }
 }
@@ -74,6 +85,7 @@ const pips = (n, goal) => '●'.repeat(Math.min(n, goal)) + '○'.repeat(Math.ma
 /** Score, hint and siren. `game` is the GetawayGame and `role` the side the person plays ('robber' or 'police'). */
 export function getawayHudUpdate(game, role, hp = null) {
   const el = ensure(); if (!el || el.hidden) return;
+  if ((naffN = (naffN + 1) % 30) === 1) placeNaff();       // (every half second or so: the map moves when the window does)
   const [rob, pol] = el.querySelectorAll('.gw-side');
   rob.classList.toggle('me', role === 'robber'); pol.classList.toggle('me', role === 'police');
   if (hp) for (const [side, v] of [[rob, hp.robber], [pol, hp.police]]) { const u = side.querySelector('.gw-hp u'); u.style.width = Math.max(0, Math.min(100, v)) + '%'; u.style.background = v > 60 ? '#6fd36f' : v > 25 ? '#ffb31f' : '#e8392c'; }
@@ -170,7 +182,7 @@ export function drawGetawayMap(game, role, me, foe, t = 0, line = null, cops = n
     }
     car(me, '#5aa0ff');
   } else {
-    for (const fc of (cops && cops.length ? cops : foe ? [foe] : [])) if (Math.hypot(fc.pos.x - me.pos.x, fc.pos.z - me.pos.z) < 70) { const x = X(fc.pos.x), y = Z(fc.pos.z); g.fillStyle = `rgba(80,140,255,${0.5 + 0.5 * flash})`; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.stroke(); }
+    for (const fc of (cops && cops.length ? cops : foe ? [foe] : [])) { const x = X(fc.pos.x), y = Z(fc.pos.z); g.fillStyle = `rgba(80,140,255,${0.5 + 0.5 * flash})`; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.stroke(); }
     car(me, '#e8392c');
   }
 }

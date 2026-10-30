@@ -676,7 +676,7 @@ function getawaySetup() {
     L: G.L, role: G.ai,
     makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
-    traffic: device.touch ? 3 : 7, extraPolice: device.touch ? 2 : 4,
+    traffic: device.touch ? 4 : 11, extraPolice: device.touch ? 3 : 6,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),
     rescue: (c, others) => { const p = rescuePose(G.L, c.pos.x, c.pos.z, others); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); },
   };
@@ -715,6 +715,10 @@ function gwImpact(f, kind, speed) {
   const side = gwSide(f); if (!side || G.out.some((o) => o.car === f.car)) return;
   const dmg = kind === 'wall' ? Math.max(0, speed - 3) * 1.3 : Math.max(0, speed - 4) * (side === 'cop' ? 0.8 : 2.2); if (dmg <= 0) return;       // police cars are built tougher against cars: ramming the robber is their job
   const hp = Math.max(0, hpOf(f.car) - dmg); gwHp.set(f.car, hp);
+  if (hp > 0 && speed >= (kind === 'wall' ? 13 : 12) && !f.car.engineOff) {       // a big knock stalls the engine: the player must restart it (Space / Enter / tap), the computer turns the key after a moment
+    f.car.engineOff = true; f.car.crank = 0; f.stallT = 2 + Math.random() * 2.5;
+    if (f.isPlayer) sound.hit?.(speed, 'car');
+  }
   if (hp > 0) return;
   const c = f.car, d = f.isPlayer ? 0 : Math.hypot(c.pos.x - car.pos.x, c.pos.z - car.pos.z);
   particles.blast(c.pos.x, c.pos.y, c.pos.z, 1.8); crashDebris(c.pos.x, c.pos.y + 0.4, c.pos.z, 20, f.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6); sound.explode(d);

@@ -127,7 +127,7 @@ const _bump = { h: 0, gx: 0, gz: 0 };
 
 // ---------------------------------------------------------------- buildings (The Getaway)
 /** Solid boxes cars cannot enter: { x0, x1, z0, z1 } on the ground plan (the town's blocks and its border wall). */
-export const MAX_BLOCKS = 64;
+export const MAX_BLOCKS = 128;
 export function normalizeBlocks(list) {
   const out = [];
   if (!Array.isArray(list)) return out;
@@ -244,7 +244,7 @@ export function puddleEdge(sh, angle) {
 export function normalizeTrack(input) {
   const src = input || {};
   const arena = src.mode === 'lastStanding';
-  const width = clamp(Number(src.width) || 22, 12, arena ? (src.getaway ? 280 : 120) : 40);          // an arena's 'road' is a whole dirt floor
+  const width = clamp(Number(src.width) || 22, 12, arena ? (src.getaway ? 460 : 120) : 40);          // an arena's 'road' is a whole dirt floor
   const handles = (Array.isArray(src.handles) ? src.handles : []).map((h) => ({
     x: Number(h.x) || 0,
     y: Math.max(0, Number.isFinite(+h.y) ? +h.y : 0.65),
@@ -336,7 +336,7 @@ export class Track {
   constructor(input) {
     this.def = normalizeTrack(input);
     this.apron = this.def.walls ? APRON : 0;
-    this.overshoot = this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;
+    this.overshoot = this.def.getaway ? 60 : this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;       // (the town floor is 440 m wide: far from the little centre oval the strips of neighbouring segments must overlap)
     this.bumps = this.def.bumps || null;
     this.berm = !!this.def.berm; this.margin = this.berm ? BERM_MARGIN : QUERY_MARGIN;
     this.puddles = this.def.puddles || null;

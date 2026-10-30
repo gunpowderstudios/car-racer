@@ -5,9 +5,9 @@ import { TOWN, townLayout, pickSafehouse, safehouseSpots, streetAt, nearestNode,
 const L = townLayout();
 const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
-test('the town is 4 x 3 blocks with a bank and a bag of money on every one', () => {
-  assert.equal(L.blocks.length, 12); assert.equal(L.banks.length, 12); assert.equal(L.nodes.length, 20);
-  assert.equal(new Set(L.banks.map((b) => b.id)).size, 12);
+test('the town is 6 x 4 blocks with a bank and a bag of money on every one', () => {
+  assert.equal(L.blocks.length, 24); assert.equal(L.banks.length, 24); assert.equal(L.nodes.length, 35);
+  assert.equal(new Set(L.banks.map((b) => b.id)).size, 24);
   for (const b of L.banks) {
     const s = streetAt(L, b.bag.x, b.bag.z);
     assert.ok(s, `bag ${b.id} lies on a street`);
@@ -38,7 +38,7 @@ test('the safehouse is a garage bay open to a street, never on a bag, and far fr
 test('routes go along the streets through junctions, and never through a building', () => {
   const rnd = mulberry(5);
   for (let k = 0; k < 200; k++) {
-    const a = L.nodes[Math.floor(rnd() * 20)], b = L.banks[Math.floor(rnd() * 12)].bag;
+    const a = L.nodes[Math.floor(rnd() * 35)], b = L.banks[Math.floor(rnd() * 24)].bag;
     const pts = route(L, a.x, a.z, 1, 0, b.x, b.z, 0), all = [{ x: a.x, z: a.z }, ...pts];
     assert.deepEqual(pts[pts.length - 1], { x: b.x, z: b.z });
     for (let i = 1; i < all.length; i++) {                                        // every leg is along a street, so sample it
@@ -59,7 +59,7 @@ const live = (g) => g.bags.find((b) => b.state === 'home' || b.state === 'ground
 const only = (g, k) => { for (const b of g.bags) { b.state = 'hidden'; } const b = g.bags[k]; b.state = 'home'; b.x = b.home.x; b.z = b.home.z; return b; };
 test('only one small bag is out at a time, the rest are hidden', () => {
   const g = fresh();
-  assert.equal(g.bags.filter((b) => b.state === 'home').length, 1); assert.equal(g.bags.filter((b) => b.state === 'hidden').length, 11);
+  assert.equal(g.bags.filter((b) => b.state === 'home').length, 1); assert.equal(g.bags.filter((b) => b.state === 'hidden').length, 23);
 });
 test('the robber takes the bag to the safehouse; then a new bag turns up elsewhere and the safehouse moves', () => {
   const g = fresh(), a = live(g), old = g.safehouse;
@@ -113,7 +113,7 @@ test('the town streets sit on solid arena floor', () => {
   const L = townLayout(); const q = _Track.newQuery(); let bad = 0, n = 0;
   for (let x = -L.W / 2 + 8; x <= L.W / 2 - 8; x += 4) for (let z = -L.D / 2 + 8; z <= L.D / 2 - 8; z += 4) { tr.query(x, 3, z, q, 2); n++; if (q.idx < 0) bad++; }
   assert.equal(bad, 0, bad + ' of ' + n + ' points off floor');
-  assert.equal(tr.blocks.length, 40);
+  assert.equal(tr.blocks.length, 76);
 });
 
 test('after a drop the garage door comes down behind the robber, stays shut a while, then goes up', () => {

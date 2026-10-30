@@ -515,7 +515,7 @@ function buildRandomTrack(seed) {
 /** The Getaway's town: an open flat floor (an arena, so the ground and the outer wall just work) with the town's buildings standing on it as solid blocks. */
 function getawayTrack() {
   const L = townLayout();
-  return normalizeTrack({ name: 'The Getaway', width: 280, mode: 'lastStanding', getaway: true, handles: ellipse(30, 30, 20).map((h) => ({ ...h, y: 0.65 })), blocks: L.boxes });
+  return normalizeTrack({ name: 'The Getaway', width: 440, mode: 'lastStanding', getaway: true, handles: ellipse(30, 30, 20).map((h) => ({ ...h, y: 0.65 })), blocks: L.boxes });
 }
 
 export function makeTemplate(key) {

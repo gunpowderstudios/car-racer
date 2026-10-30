@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.507 — Bigger Getaway town, stalls, SatNaff
+- The town is twice the size (6 x 4 blocks, 24 banks and garages), with more traffic and police.
+- A big knock (a hard wall hit or a proper ram) stalls the engine of the robber or a police car: you restart with Space / Enter / tap; the computer turns the key after a couple of seconds.
+- The robber now sees every police car on the map, not just the close ones.
+- The map is labelled SatNaff.
+
 ## v17.506 — Police survive ramming
 - Police cars now take far less damage from car-to-car knocks (they have to ram the robber three times), so you are no longer wrecked after a couple of rams. A wrecked police car is back after 5 seconds instead of 8. The robber's damage is unchanged.
 
