@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.530 — A lighter first load
+- Each car model is now downloaded once and shared by every car that uses it (before, every rival in the same car fetched its own copy, so one model could come down four times, about 2 MB wasted). The vehicle picker, the podium and the caravan share the same downloads, and a file that already had a version tag no longer got a second one (that made a second address for the same car and a second download). The model bytes are kept for the session, so rivals that come back after a wreck need no new download.
+- The big home-screen icon is now a WebP of about 80 KB instead of a 0.5 MB PNG (the installable-app icons are unchanged).
+
 ## v17.529 — Rivals spin out and fly less
 - Rivals now take a jump at a speed that clears it (about 70 mph) instead of at whatever speed they had, so they stop flying over jumps flat out.
 - A rival that starts sliding sideways now lifts off the throttle and steers into the slide, like a driver would, instead of keeping the pedal down and spinning.

@@ -2,6 +2,7 @@
 // multiplayerRace.js sends the finishing order (a 'carracer-race-podium' event on every player's screen); this only draws it.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltf } from './modelCache.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { vehicleById, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
@@ -40,7 +41,7 @@ function hide() { if (stop) { stop(); stop = null; } if (overlay) overlay.hidden
 
 function loadCar(id, hue = null) {
   const v = vehicleById(id), look = Number.isInteger(hue) ? RIVAL_LOOKS[hue] : null;
-  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(assetUrl(modelUrl(v.url))).then((g) => {
+  return loadGltf(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), assetUrl(modelUrl(v.url))).then((g) => {
     const m = g.scene;
     m.traverse((o) => {
       if (!o.isMesh) return;

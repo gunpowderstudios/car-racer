@@ -1,3 +1,4 @@
+import { modelBytes } from './modelCache.js';
 import { caravanBlocked, CARAVAN_DESKTOP_ONLY } from './caravanPhone.js';
 import * as THREE from 'three';
 import { CarVisual, RIVAL_LOOKS, MODEL } from './carVisual.js';
@@ -190,9 +191,9 @@ export function vehicleById(id) {
   return VEHICLES.find((v) => v.id === id) || fallback;
 }
 
-// Kick off the selected GLB request as soon as this module loads. GLTFLoader will then normally
-// hit the browser cache when the scene asks for the model a moment later, reducing the blank wait.
-try { fetch(assetUrl(modelUrl(selectedVehicle().url)), { cache: 'no-cache' }).catch(() => {}); } catch { /* preload is optional */ }
+// Kick off the selected GLB download as soon as this module loads. modelCache.js keeps the bytes, so the car's scene
+// takes them the moment it asks for the model (and never downloads them a second time), reducing the blank wait.
+try { modelBytes(assetUrl(modelUrl(selectedVehicle().url))).catch(() => {}); } catch { /* preload is optional */ }
 
 export function physicsForVehicle(config) {
   const p = vehiclePhysicsProfile(config?.physicsProfile || config?.id || 'car');

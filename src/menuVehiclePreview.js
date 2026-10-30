@@ -1,6 +1,7 @@
 import { caravanBlocked } from './caravanPhone.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltf } from './modelCache.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { VEHICLES, selectedVehicle, modelUrl } from './vehicleChoice.js';
 import { assetUrl } from './assetVersion.js';
@@ -118,7 +119,7 @@ function installPreview({
     let loadId = 0;
     const loadVehicle = () => {
     const mine = ++loadId, shown = vehicle;
-    loader.loadAsync(assetUrl(modelUrl(shown.url))).then((gltf) => {
+    loadGltf(loader, assetUrl(modelUrl(shown.url))).then((gltf) => {
       if (mine !== loadId) return;                                  // (another car was picked while this one downloaded)
       model = gltf.scene;
       model.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) tidyGltfMaterial(m); });

@@ -1,6 +1,7 @@
 // Visual car (glTF model aligned to the physics wheels) and the chase camera.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { modelBytes } from './modelCache.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CAR } from './vehicle.js';
 import { clamp, wrapPi } from './math.js';
@@ -443,7 +444,8 @@ export class CarVisual {
   async load(url = MODEL.url) {
     const t0 = performance.now();
     try {
-      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url, (e) => this.onProgress?.(e.loaded, e.total));
+      const buf = await modelBytes(url, (done, total) => this.onProgress?.(done, total));      // (one download per model, shared by every car that uses it: modelCache.js)
+      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buf.slice(0), url.slice(0, url.lastIndexOf('/') + 1));
       const model = gltf.scene;
       this.hasTexture = false;
       this.mats = [];

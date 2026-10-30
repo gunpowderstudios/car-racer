@@ -6,6 +6,7 @@
 //  * wheels are the nodes called Wheel...: they are pivoted about their own centres and spun as the caravan rolls, and where they sit gives the axle.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGltf } from './modelCache.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { assetUrl } from './assetVersion.js';
 import { recolour, CarVisual, wheelAxle } from './carVisual.js';
@@ -90,7 +91,7 @@ export class CaravanView {
     if (this._loading) return this._loading;
     this._loading = (async () => {
       try {
-        const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(assetUrl(url));
+        const gltf = await loadGltf(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), assetUrl(url));
         this._build(gltf.scene, length);
         this.loaded = true; this.root.visible = !!this._wantVisible;
         return this.dims;
