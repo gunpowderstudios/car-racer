@@ -213,7 +213,7 @@ export function createReplayMode(d) {
     };
     const finishWith = (blob) => {
       R.saving = null; syncUi();
-      const file = new File([blob], 'bangers-and-smash-replay.mp4', { type: 'video/mp4' });
+      const file = new File([blob], `bangers-and-smash-${(window.__game?.track?.def?.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'race'}-replay.mp4`, { type: 'video/mp4' });
       const give = () => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);

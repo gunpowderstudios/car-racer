@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.510 — Track name in the film file name
+- A saved replay film is now called e.g. bangers-and-smash-the-getaway-replay.mp4 instead of the same name every time.
+
 ## v17.509 — Police don't see the money
 - Playing the police, the bags in the banks, their rings and beams, and the safehouse are hidden (the robber's map already hid them). A bag lying loose on the road after a stopped robbery still shows.
 
