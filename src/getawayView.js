@@ -102,8 +102,10 @@ export class GetawayView {
     // ---- the blocks: shops along the ground floor, windows above, a roof; the south face of each is its bank
     const r = rnd(2024);
     const hs = L.T.height;
+    const bh = [];       // each block's height, for the roof details below
     L.blocks.forEach((b, n) => {
       const wall = WALLS[Math.floor(r() * WALLS.length)], awn = AWN[Math.floor(r() * AWN.length)], H = 17 + Math.floor(r() * 4) * 5;
+      bh.push(H);
       const w = b.hx * 2, d = b.hz * 2, shopH = 5, upH = H - shopH;
       const mk = (map, rx, ry) => { const t = map.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t }); };
       const roof = new THREE.MeshLambertMaterial({ color: 0x4b4e55 });
@@ -138,6 +140,56 @@ export class GetawayView {
     const hw = L.W / 2, hd = L.D / 2;
     wallBox(-OUT, OUT, -OUT, -hd); wallBox(-OUT, OUT, hd, OUT);
     wallBox(-OUT, -hw, -hd, hd); wallBox(hw, OUT, -hd, hd);
+
+    // ---- the details that make the blocks look built rather than boxes: cornices, stepped upper floors, parapets, water tanks, chimneys, aerials, drainpipes, wall lamps
+    //      and a skyline of far-off towers. All of it is drawn with a handful of instanced meshes (one draw each) and none of it is solid: the physics boxes are unchanged.
+    {
+      const r2 = rnd(77), unit = new THREE.BoxGeometry(1, 1, 1), cylG = new THREE.CylinderGeometry(1, 1, 1, 10), pyrG = new THREE.ConeGeometry(1, 1, 4);
+      const items = { box: [], cyl: [], pyr: [], lamp: [] }, col = new THREE.Color(), m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(), p3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+      const add = (kind, x, y, z, sx, sy, sz, color, ry = 0) => items[kind].push({ x, y, z, sx, sy, sz, color, ry });
+      const TRIM = ['#e8dfcc', '#d9cdb4', '#cfd3d8'], DARK = ['#4b4e55', '#5a5d66', '#3f4249'], BRICK = '#8a4a38';
+      const pick = (arr) => arr[Math.floor(r2() * arr.length)];
+      L.blocks.forEach((b, n) => {
+        const H = bh[n], w = b.hx * 2, d = b.hz * 2, top = y0 + H, x0 = b.cx - b.hx, x1 = b.cx + b.hx, z0 = b.cz - b.hz, z1 = b.cz + b.hz, trim = pick(TRIM), dark = pick(DARK);
+        // cornices: a slab over the shop fronts and a deeper one under the roof edge
+        add('box', b.cx, y0 + 5.2, b.cz, w + 0.9, 0.45, d + 0.9, trim);
+        add('box', b.cx, top - 0.5, b.cz, w + 1.6, 0.9, d + 1.6, trim);
+        // a parapet round the roof
+        add('box', b.cx, top + 0.45, z0 + 0.3, w, 0.9, 0.5, dark); add('box', b.cx, top + 0.45, z1 - 0.3, w, 0.9, 0.5, dark);
+        add('box', x0 + 0.3, top + 0.45, b.cz, 0.5, 0.9, d, dark); add('box', x1 - 0.3, top + 0.45, b.cz, 0.5, 0.9, d, dark);
+        // a smaller top floor set back on the north half of some roofs (the sign stands in the middle)
+        if (r2() < 0.5) { const th = 5 + Math.floor(r2() * 5); add('box', b.cx, top + th / 2, z0 + 8.5, w - 14, th, 11, pick(WALLS)); add('box', b.cx, top + th + 0.3, z0 + 8.5, w - 12.6, 0.6, 12.4, trim); }
+        // a water tank on legs, a chimney, aerials and air-conditioning boxes
+        if (r2() < 0.55) {
+          const tx = b.cx + b.hx - 6, tz = z0 + 6;
+          add('cyl', tx, top + 3.6, tz, 1.7, 2.6, 1.7, '#7b5a3c'); add('pyr', tx, top + 5.45, tz, 2.0, 1.4, 2.0, '#4b3a2c', Math.PI / 4);
+          for (const [dx, dz] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) add('box', tx + dx, top + 1.1, tz + dz, 0.25, 2.2, 0.25, '#3c3c3c');
+        }
+        if (r2() < 0.6) add('box', b.cx - b.hx + 5, top + 2.1, z1 - 5, 1.5, 4.2, 1.5, BRICK);
+        for (let k = 0; k < 2; k++) if (r2() < 0.7) { const ax = b.cx + (r2() - 0.5) * (w - 14), az = z1 - 3 - r2() * 3; add('box', ax, top + 1.6, az, 0.14, 3.2, 0.14, '#2c2c2c'); add('box', ax, top + 2.8, az, 1.6, 0.12, 0.12, '#2c2c2c'); }
+        for (let k = 0; k < 2; k++) if (r2() < 0.8) add('box', b.cx + (r2() - 0.5) * (w - 10), top + 0.9, b.cz + 4 + r2() * 5, 2.2, 1.0, 1.5, '#9aa0a8');
+        // drainpipes down the front corners and lamps over the shop fronts (south face has the bank, north the garage)
+        for (const sx of [x0 + 0.6, x1 - 0.6]) { add('cyl', sx, y0 + H / 2, z1 + 0.18, 0.13, H, 0.13, '#58595e'); add('cyl', sx, y0 + H / 2, z0 - 0.18, 0.13, H, 0.13, '#58595e'); }
+        for (let k = 0; k < 4; k++) { const lx = x0 + 6 + k * ((w - 12) / 3); add('lamp', lx, y0 + 4.3, z1 + 0.3, 0.45, 0.35, 0.45, '#ffd98a'); if (Math.abs(lx - (b.cx - 8)) > 8) add('lamp', lx, y0 + 4.3, z0 - 0.3, 0.45, 0.35, 0.45, '#ffd98a'); }
+      });
+      // the skyline: dim towers well beyond the walls, so the town sits in a city instead of a box
+      const R3 = rnd(311);
+      for (let k = 0; k < 64; k++) {
+        const side = k % 4, d = OUT + 30 + R3() * 110, t = (R3() * 2 - 1) * (OUT + 140), h = 45 + R3() * 85, sw = 22 + R3() * 26, sd = 22 + R3() * 26;
+        const x = side === 0 ? d : side === 1 ? -d : t, z = side === 2 ? d : side === 3 ? -d : t;
+        add('box', x, y0 + h / 2, z, sw, h, sd, ['#5f6b86', '#6c7a96', '#53607a', '#7a8499', '#4b566d'][Math.floor(R3() * 5)]);
+        if (R3() < 0.5) add('box', x, y0 + h + 3, z, sw * 0.5, 6, sd * 0.5, '#454d62');
+      }
+      const mats = { box: new THREE.MeshLambertMaterial({ color: 0xffffff }), cyl: new THREE.MeshLambertMaterial({ color: 0xffffff }), pyr: new THREE.MeshLambertMaterial({ color: 0xffffff }), lamp: new THREE.MeshBasicMaterial({ color: 0xffffff }) };
+      const geos = { box: unit, cyl: cylG, pyr: pyrG, lamp: unit };
+      for (const kind of Object.keys(items)) {
+        const list = items[kind]; if (!list.length) continue;
+        const im = new THREE.InstancedMesh(geos[kind], mats[kind], list.length);
+        list.forEach((it, i) => { q4.setFromEuler(e4.set(0, it.ry, 0)); m4.compose(p3.set(it.x, it.y, it.z), q4, s3.set(it.sx, it.sy, it.sz)); im.setMatrixAt(i, m4); im.setColorAt(i, col.set(it.color)); });
+        im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
+        im.castShadow = kind !== 'lamp'; im.receiveShadow = kind !== 'lamp'; im.frustumCulled = false; g.add(im);
+      }
+    }
 
     // ---- the bags of money: a sack with a $ on it, a ring on the road and a tall beam when one is lying loose
     const sackMap = sackTex(), sackGeo = new THREE.SphereGeometry(0.6, 16, 12), neckGeo = new THREE.CylinderGeometry(0.14, 0.26, 0.3, 10);

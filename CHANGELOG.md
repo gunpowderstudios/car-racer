@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.516 — A town that looks built
+- Every block in The Getaway gets cornices over the shops and under the roof, a roof parapet, and (on some) a set-back top floor, a water tank on legs, a chimney, aerials and air-conditioning boxes. Drainpipes run down the corners and warm lamps hang over the shop fronts. A skyline of far-off towers stands beyond the town walls.
+- All of it is drawn with a few instanced meshes and none of it is solid, so the driving and the collisions are unchanged.
+
 ## v17.515 — More high hills; Getaway score off the mirror
 - The hills have highs: now a much longer loop (about 3.7 km instead of 1.7 km) with 17 hills instead of 9, several 15-25 m high, still gentle enough to drive; the jump is kept as it was.
 - Got the hump (the random track): more of its hills are big ones (about one in three instead of one in four).
