@@ -401,6 +401,18 @@ export function createReplayMode(d) {
     return f;
   }
 
+  // Browsers stop drawing a tab you cannot see, so a film being made pauses when you look at another tab. Say so in the tab title (visible from the tab strip), and on coming back
+  // carry on exactly where it stopped (no jump forward, no lost frames) with a note saying so.
+  let hiddenWhileSaving = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (R.saving && R.saver) { hiddenWhileSaving = true; if (title0 == null) title0 = document.title; document.title = 'Film PAUSED, come back to this tab - ' + title0.replace(/^Film[^-]*- /, ''); }
+    } else if (hiddenWhileSaving) {
+      hiddenWhileSaving = false; R.wallPrev = null; R.nextT = null; R.lastPc = -1;
+      if (R.saving) d.toast('Welcome back: your film carries on from where it paused');
+      else tabTitle(null);
+    }
+  });
   /** Called by main.js right after the picture is drawn, while a video is being saved. */
   function afterRender() { if (R.saving && R.stamp) R.stamp(); }
   const turbo = () => !!(R.saving && R.saver && !R.realtime);

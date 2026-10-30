@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.518 — Films say when they are paused
+- Making a movie only moves on while its tab is on screen (browsers stop drawing hidden tabs). If you look at another tab, the tab title now reads "Film PAUSED, come back to this tab", and when you return the film carries on exactly where it stopped, with a note. The editing-room hint explains it and suggests giving the game its own window.
+
 ## v17.517 — Every vehicle is fast, and the same speed
 - All vehicles, yours and the rivals', now pull and top out at the same fast speed in every mode (races, demolition, arenas, The Getaway), the way multiplayer already did. A campervan keeps up with a sports car, and rivals no longer leave a slow vehicle behind.
 - Weight, toughness, handling and crash damage still differ per vehicle, so a bus is still tougher than a mobility vehicle.

@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.517';
-export const NOTE = 'Every vehicle now pulls and tops out at the same fast speed in every mode; weight, toughness and handling still differ.';
+export const VERSION = '17.518';
+export const NOTE = 'Making a film: the tab title says PAUSED if you look at another tab, and the film carries on cleanly when you come back.';
