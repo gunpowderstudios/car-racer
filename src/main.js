@@ -497,7 +497,7 @@ function backOnRoad() {
 function respawn(why = 'reset') {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   if (assault) { assaultRespawn(why); return; }
-  if (getaway) { placeCarInArena(null, rescuePose(getaway.L, car.pos.x, car.pos.z)); race.reverseT = 0; hud.banner('Back on your feet', 900); return; }
+  if (getaway) { placeCarInArena(null, rescuePose(getaway.L, car.pos.x, car.pos.z)); race.reverseT = 0; hud.banner(why === 'fall' ? 'Off the map - back on a street' : why === 'flip' ? 'Upside down - back on your feet' : 'Back on your feet', 1400); return; }
   if (track.def.mode === 'lastStanding') { placeCarInArena(derby.rivals.filter((f) => !f.wrecked).map((f) => f.car.pos)); race.reverseT = 0; return; }      // the arena has no road: back on a clear patch of floor, away from the rivals (the road's own line runs over the humps)
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
   placeCar((safe.s - 6 + track.length) % track.length, Math.max(-hw + 4, Math.min(hw - 4, safe.off)), 0, true);
@@ -565,7 +565,7 @@ function updateRace(dt) {
   trouble.flipped = car.ay.y < 0.5 && car.speed < 4 ? trouble.flipped + dt : 0;   // on the roof OR propped up on its side
   const q2 = track.query(car.pos.x, car.pos.y + 0.5, car.pos.z, undefined, 1.2);
   trouble.lost = q2.surface === SURF.BASE && car.pos.y < 2 ? trouble.lost + dt : 0;
-  if (trouble.flipped > 2) respawn();
+  if (!getaway && trouble.flipped > 2) respawn();            // (The Getaway has its own, gentler check: see getawayStep)
   else if (trouble.lost > 1.4 || car.pos.y < -30) respawn('fall');
 }
 
@@ -763,7 +763,7 @@ function getawayStep() {
   G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams, G.role === 'robber' ? derby.rivals.filter((x) => x.cop).map((x) => ({ x: x.car.pos.x, z: x.car.pos.z })) : null);
   getawayDoor(G); gwOutStep(G);
   if (G.game.events.length) getawayEvents();
-  if (car.ay.y < 0.15 && car.speed < 3) { G.flipT += DT; if (G.flipT > 2.5) { G.flipT = 0; respawn(); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
+  if (car.ay.y < 0.3 && car.speed < 3) { G.flipT += DT; if (G.flipT > 3) { G.flipT = 0; respawn('flip'); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
 }
 function getawayEvents() {
   const G = getaway, g = G.game, me = G.role;

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.512 — Fewer surprise resets in The Getaway
+- The general "propped on its side for 2 s" reset no longer applies in The Getaway; only a car that is properly upside down (or on its side) and nearly stopped for 3 s is stood back up, and the message now says why (upside down / off the map).
+
 ## v17.511 — Getaway state in the F3 panel
 - The F3 debug panel now also shows, in The Getaway, whether the engine is off, the cranking time, throttle, health and whether the round is over.
 
