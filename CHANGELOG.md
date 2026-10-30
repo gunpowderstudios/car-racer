@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.517 — Every vehicle is fast, and the same speed
+- All vehicles, yours and the rivals', now pull and top out at the same fast speed in every mode (races, demolition, arenas, The Getaway), the way multiplayer already did. A campervan keeps up with a sports car, and rivals no longer leave a slow vehicle behind.
+- Weight, toughness, handling and crash damage still differ per vehicle, so a bus is still tougher than a mobility vehicle.
+
 ## v17.516 — A town that looks built
 - Every block in The Getaway gets cornices over the shops and under the roof, a roof parapet, and (on some) a set-back top floor, a water tank on legs, a chimney, aerials and air-conditioning boxes. Drainpipes run down the corners and warm lamps hang over the shop fronts. A skyline of far-off towers stands beyond the town walls.
 - All of it is drawn with a few instanced meshes and none of it is solid, so the driving and the collisions are unchanged.

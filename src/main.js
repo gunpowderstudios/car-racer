@@ -108,6 +108,7 @@ const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 7000);
 const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
 const car = new Vehicle(); car.lockMul = 1.15;      // your wheels turn 15% further at low speed (tighter turns); the rivals keep the old lock, which is what their driving is tuned to
+car.mpEqual = true;                          // every vehicle pulls and tops out the same (MP_EQUAL)
 let visual = new CarVisual(stage.scene, car.restHeight);       // (let: picking another vehicle on the menu swaps it, see swapVehicle)
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
 /** Should there be a caravan on the car right now? Only if asked for and on a car that can tow it (in multiplayer too: the others see it through the state reports). */
@@ -1491,7 +1492,7 @@ function pollWait(now) {
 }
 function startDriving(newDef) {
   sound.init(); pickStartCamera();
-  car.mpEqual = false;                                                    // (multiplayer turns it back on in mpBeginDrive)
+  car.mpEqual = true;                                                     // (all vehicles share one speed now)
   if (pendingStart) return;
   if (newDef) loadTrack(newDef);
   else if (!hasPlayed && derby.enabled && (opts.mode === 'jamboree' || opts.mode === 'demolition') && !jamBuilt) derbyStart();       // (the grid behind the menu was a plain one)
@@ -1873,7 +1874,7 @@ function mpTeardown() {
   remotePlayers.clear();
   if (net) { net.leave(); net = null; mpLobbyIds = null; }
   visual.setOwnLook(null);                                    // back to your own paint
-  car.mpEqual = false;
+  car.mpEqual = true;
 }
 /** What the others need to draw our caravan: where it is, how it is turned and rocking, its wheel angle and health (a fraction). */
 const r3 = (v) => Math.round(v * 1000) / 1000;
