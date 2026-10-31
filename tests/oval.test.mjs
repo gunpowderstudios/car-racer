@@ -83,8 +83,8 @@ test('the field starts spread round the floor, standing still, every rival spoil
   assert.equal(normal.lastStanding, false);
 });
 
-test('vehicles are 20% weaker than the original, and each type has its own toughness', () => {
-  assert.equal(TOUGHNESS, 0.8);
+test('vehicles are as tough as the original (a quarter tougher than before v17.531), and each type has its own toughness', () => {
+  assert.equal(TOUGHNESS, 1);
   assert.equal(DENT.fullHp, 44, 'crumples show sooner (v17.425)');
 });
 

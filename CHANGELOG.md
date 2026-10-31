@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.531 — Tougher cars
+- Damage was too easy, so every car's armour is up: rivals and town traffic can take about 25% more ramming before they wreck, and your own car about 40% more (the 20% weakness on your car is now 10%). Each vehicle's own toughness still applies on top, and the size rule still applies (a bus still wrecks a Panda faster than the reverse).
+
 ## v17.530 — A lighter first load
 - Each car model is now downloaded once and shared by every car that uses it (before, every rival in the same car fetched its own copy, so one model could come down four times, about 2 MB wasted). The vehicle picker, the podium and the caravan share the same downloads, and a file that already had a version tag no longer got a second one (that made a second address for the same car and a second download). The model bytes are kept for the session, so rivals that come back after a wreck need no new download.
 - The big home-screen icon is now a WebP of about 80 KB instead of a 0.5 MB PNG (the installable-app icons are unchanged).
