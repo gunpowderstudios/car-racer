@@ -337,10 +337,22 @@ export function createReplayMode(d) {
     return true;
   }
 
+  // The little full-screen box: hides every control (and takes the browser full screen where it can); the same box brings them back. Esc leaves full screen and shows them again.
+  function cleanView(on) {
+    document.body.classList.toggle('rp-clean', on);
+    const b = $('rp-full'); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    try {
+      if (on && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+      else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    } catch { /* full screen is optional: the controls are hidden either way */ }
+  }
+  { const b = $('rp-full'); if (b) { b.addEventListener('pointerdown', (e) => e.preventDefault()); b.onclick = () => cleanView(!document.body.classList.contains('rp-clean')); } }
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('rp-clean')) cleanView(false); });
   function exit() {
     if (!R.active) return;
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
+    cleanView(false);
     d.sound.filmTrack?.(null); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }

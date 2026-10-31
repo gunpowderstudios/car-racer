@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.534 — Full-screen replays
+- The replay screen has a little corner box (bottom right). Click it and every control disappears, the browser goes full screen where it can, and the replay fills the screen; click the box again (or press Esc) and the controls come back. The box itself stays, faint, so you can find it.
+
 ## v17.533 — Quieter editing-room music
 - The lift music in the "Recording..." movie room is 30% quieter (volume 0.5 to 0.35). It was never recorded into the film, so the film's sound is unchanged.
 

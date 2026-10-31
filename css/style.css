@@ -733,6 +733,12 @@ html.mp-on [data-act="pause"], html.mp-on [data-act="boom"] { display: none !imp
 #replay-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; gap: 8px; justify-items: center;
   padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(27,18,51,.92), rgba(27,18,51,0)); color: var(--peach); }
 #replay-bar[hidden] { display: none; }
+/* the little full-screen box: hides every control so the replay fills the screen; the same box brings them back */
+#replay-bar #rp-full { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 32; min-width: 44px; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; opacity: .85; }
+body.rp-clean #replay-bar #rp-full { opacity: .35; }
+body.rp-clean #replay-bar #rp-full:hover { opacity: .9; }
+body.rp-clean #replay-bar { background: none; padding: 0; }
+body.rp-clean #replay-bar .rp-row, body.rp-clean #replay-bar #rp-note, body.rp-clean #replay-bar #rp-dock { display: none; }
 #replay-bar .rp-top { position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: baseline; gap: 12px;
   font-family: var(--display); letter-spacing: .08em; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
 #replay-bar .rp-top b { font-size: 28px; font-weight: 900; color: var(--red); background: rgba(27,18,51,.8); padding: 2px 10px; border-left: 4px solid var(--red); }
