@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.533 — Quieter editing-room music
+- The lift music in the "Recording..." movie room is 30% quieter (volume 0.5 to 0.35). It was never recorded into the film, so the film's sound is unchanged.
+
 ## v17.532 — Walls drawn at their true height
 - The red-and-white track walls and the arena walls are now drawn 1.25 m high, the same height cars and barrels collide with. They were drawn 1.05 m high, so the invisible wall stood 20 cm above the picture. The physics is unchanged.
 

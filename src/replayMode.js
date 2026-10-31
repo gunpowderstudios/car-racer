@@ -124,7 +124,7 @@ export function createReplayMode(d) {
   let lift = null;
   function liftMusic(on) {
     try {
-      if (on) { if (!lift) { lift = new Audio(assetUrl('sounds/editing-music.mp3')); lift.loop = true; lift.volume = 0.5; lift.onerror = () => { lift = null; }; } if (lift.paused) lift.play().catch(() => {}); }
+      if (on) { if (!lift) { lift = new Audio(assetUrl('sounds/editing-music.mp3')); lift.loop = true; lift.volume = 0.35; lift.onerror = () => { lift = null; }; } if (lift.paused) lift.play().catch(() => {}); }
       else if (lift && !lift.paused) { lift.pause(); lift.currentTime = 0; }
     } catch { /* no sound available */ }
   }
