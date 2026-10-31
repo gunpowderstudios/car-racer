@@ -96,7 +96,7 @@ export function buildArena(track, aniso = 8) {
 
   // ---- the crash wall: inner face, top, outer face
   const barrier = barrierTexture(aniso), concrete = cheap({ color: 0xb9b4aa });
-  const rIn = A.hw + WALL_GAP, rOut = rIn + WALL_T, top = y0 + Math.min(WALL_HEIGHT - 0.2, 1.05);
+  const rIn = A.hw + WALL_GAP, rOut = rIn + WALL_T, top = y0 + WALL_HEIGHT;
   ribbon(rIn, y0, rIn, top, std({ map: barrier, roughness: 0.8 }), 8, { cast: true, receive: true });
   ribbon(rIn, top, rOut, top, concrete, 8, { receive: true });
   ribbon(rOut, top, rOut, y0, concrete, 8);

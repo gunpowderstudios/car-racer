@@ -180,7 +180,7 @@ export function buildTrackGeometry(track) {
   if (walls) {
     for (const sg of [1, -1]) {
       strip(wall, (i) => {
-        const top = Math.min(WALL_HEIGHT - 0.2, 1.05);
+        const top = WALL_HEIGHT;
         const e = edge(i, sg);
         const ib = out(i, sg, WALL_GAP), ob = out(i, sg, WALL_GAP + WALL_T);
         const yt = e[1] + top;
@@ -227,7 +227,7 @@ export function buildTrackGeometry(track) {
         if (e[1] > 0.02) { const i0 = bank.vert(e[0], e[1], e[2], nn[0], nn[1], nn[2], gc), i1 = bank.vert(q[0], 0, q[2], nn[0], nn[1], nn[2], gc), i2 = bank.vert(e[0], 0, e[2], nn[0], nn[1], nn[2], gc); bank.idx.push(i0, i1, i2); }
         // barrier end
         if (walls) {
-          const top = Math.min(WALL_HEIGHT - 0.2, 1.05), ee = edge(i, sg);
+          const top = WALL_HEIGHT, ee = edge(i, sg);
           const ib = out(i, sg, WALL_GAP), ob = out(i, sg, WALL_GAP + WALL_T), yt = ee[1] + top;
           const c = Math.floor(i / 7) % 2 ? C_WALL_A : C_WALL_B;
           quad(wall, [ib[0], ib[1] - 0.1, ib[2]], [ib[0], yt, ib[2]], [ob[0], yt, ob[2]], [ob[0], ob[1] - 0.1, ob[2]], nn, c);

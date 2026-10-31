@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.532 — Walls drawn at their true height
+- The red-and-white track walls and the arena walls are now drawn 1.25 m high, the same height cars and barrels collide with. They were drawn 1.05 m high, so the invisible wall stood 20 cm above the picture. The physics is unchanged.
+
 ## v17.531 — Tougher cars
 - Damage was too easy, so every car's armour is up: rivals and town traffic can take about 25% more ramming before they wreck, and your own car about 40% more (the 20% weakness on your car is now 10%). Each vehicle's own toughness still applies on top, and the size rule still applies (a bus still wrecks a Panda faster than the reverse).
 
