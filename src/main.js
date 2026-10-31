@@ -674,9 +674,10 @@ function syncGetawayVehicle() {
 }
 function getawaySetup() {
   const G = getaway, skill = Math.max(0.3, Math.min(1, derby.skill ?? 0.7));
+  let copN = 0;                                          // (each police car gets the next job number: tail, cut off, watch the safehouse, ...)
   return {
     L: G.L, role: G.ai,
-    makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill),
+    makeDriver: (rng) => new GetawayDriver(rng, G.game, G.ai, skill, copN++),
     makeTraffic: (rng) => new TrafficDriver(rng, G.game),
     traffic: device.touch ? 4 : 11, extraPolice: device.touch ? 3 : 6,
     kind: (() => { const v = vehicleById(GW_VEHICLE[G.ai]); return { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: null }; })(),

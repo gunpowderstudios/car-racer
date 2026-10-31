@@ -8,8 +8,9 @@ import { route, streetAt, nearestNode, safehouseRoute } from './getaway.js';
 
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
-  constructor(rng, game, role, skill = 0.7) {
-    this.rng = rng; this.game = game; this.role = role; this.skill = skill;
+  /** `slot` numbers the police cars (0, 1, 2...) so they do different jobs: 0 tails the robber, 1 cuts him off at the junction ahead, 2 watches the safehouse, and so on round again. */
+  constructor(rng, game, role, skill = 0.7, slot = 0) {
+    this.rng = rng; this.game = game; this.role = role; this.skill = skill; this.slot = slot;
     this.cruise = role === 'police' ? 22 + skill * 8 : 15 + skill * 5;                    // m/s on a straight
     this.mood = 'hunt'; this.target = false; this.grudgeT = 0;
     this.stuck = 0; this.reverse = 0; this.revSteer = 0; this.steerNow = 0;
@@ -34,13 +35,25 @@ export class GetawayDriver {
       }
       return best ? { x: best.x, z: best.z, kind: 'bag' } : { x: cx, z: cz, kind: 'idle' };
     }
-    // police: with the alarm on, the shortest way to the robber; otherwise cruise past the banks, one after another
+    // police: with the alarm on, each car has its own job (see `slot`); otherwise wait near the banks where a bag is out
     if (foe && g.robberBag) {
       const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz), lead = d < 45 ? clamp(d / Math.max(car.speed + 6, 14), 0, 1.5) : 0;
-      return { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' };
+      const tail = { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' }, job = this.slot % 3;
+      if (job === 1 && d > 30) {                       // cut him off: the junction ahead of him on the way he is heading (once we are there, or he is close, it is a plain chase)
+        const sp = Math.hypot(foe.vel.x, foe.vel.z) || 1, hx = foe.vel.x / sp, hz = foe.vel.z / sp;
+        let best = null, bd = Infinity;
+        for (const n of g.L.nodes) { const ex = n.x - foe.pos.x, ez = n.z - foe.pos.z, along = ex * hx + ez * hz, dd = Math.hypot(ex, ez); if (along > 25 && along < 140 && Math.abs(ex * hz - ez * hx) < 22 && dd < bd) { bd = dd; best = n; } }
+        if (best && Math.hypot(best.x - cx, best.z - cz) > 14) return { x: best.x, z: best.z, kind: 'intercept' };
+      }
+      if (job === 2 && g.safehouse) {                  // watch the safehouse: wait at the junction nearest it, and join in when he comes close
+        const nd = g.L.nodes[nearestNode(g.L, g.safehouse.x, g.safehouse.z)];
+        if (Math.hypot(foe.pos.x - nd.x, foe.pos.z - nd.z) > 60) return { x: nd.x, z: nd.z, kind: 'guard' };
+      }
+      return tail;
     }
     if (!this.patrol || g.time > this.patrolT || Math.hypot(this.patrol.x - cx, this.patrol.z - cz) < 12) {
-      const bk = g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.bag.x, z: bk.bag.z }; this.patrolT = g.time + 25;
+      const out = g.loose(), pick = out.length && this.rng() < 0.75 ? out[Math.floor(this.rng() * out.length)] : null;       // (mostly: where a bag is out, so they are close when it is lifted)
+      const bk = pick ? { bag: { x: pick.x, z: pick.z } } : g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.bag.x, z: bk.bag.z }; this.patrolT = g.time + 25;
     }
     return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
   }
@@ -71,10 +84,13 @@ export class GetawayDriver {
       return inp;
     }
     this.backing = false;
-    let vT = G.kind === 'idle' ? 0 : this.cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), ax = G.x, az = G.z, chase = false;
+    // The police pick up speed as the robber gets bags home (a little each), ease off after a strike, and in a chase match whatever he is doing (the cars are all equally fast now)
+    const sk = clamp(this.skill + 0.06 * (g.robbed || 0) - 0.03 * (g.strikes || 0), 0.3, 1.15), cruise = this.role === 'police' ? 22 + sk * 8 : this.cruise;
+    const keepUp = (this.role === 'police' && foe && g.alarm) ? Math.min(50, Math.max(foe.speed, 0) * (0.9 + 0.2 * sk) + 3) : 0;
+    let vT = G.kind === 'idle' ? 0 : Math.max(cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), G.kind === 'robber' || G.kind === 'intercept' ? keepUp : 0), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
-    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = this.cruise * 1.25; }            // the last stretch of a chase: straight at him
+    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = Math.max(cruise * 1.25, keepUp * 1.08); }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
       const pts = G.path || (G.kind === 'safehouse' && g.safehouse.gx !== undefined ? safehouseRoute(L, g.safehouse, px, pz, fx, fz, car.speed) : route(L, px, pz, fx, fz, G.x, G.z, car.speed)), P = [{ x: px, z: pz }];
@@ -96,6 +112,8 @@ export class GetawayDriver {
       if (corner) { const vc = 14 - 8 * clamp(corner.turn / 1.57, 0, 1.2); vT = Math.min(vT, Math.sqrt(vc * vc + 14 * Math.max(corner.d - 6, 0))); }
       if (G.kind === 'safehouse' && g.safehouse.gx !== undefined) { const dg = Math.hypot(px - g.safehouse.gx, pz - g.safehouse.street); if (dg < 40) vT = Math.min(vT, 7 + dg * 0.15); }
       if (G.kind === 'bag' || G.kind === 'safehouse' || G.kind === 'bank') vT = Math.min(vT, 8 + dist * 0.7);
+      if (G.kind === 'guard' || G.kind === 'intercept') vT = Math.min(vT, 6 + dist * 0.8);      // (arrive at the junction under control, then wait there)
+      if (G.kind === 'guard' && dist < 9) vT = 0;
     }
 
     // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it (except on the way into the garage)
@@ -142,7 +160,8 @@ export class GetawayDriver {
 
     this.dbg = { vT, blocked, ang, dist, kind: G.kind };
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    inp.boost = this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
+    const ram = this.role === 'police' && chase && sk > 0.5 && dist > 6 && dist < 40 && Math.abs(ang) < 0.12 && v > 10 && car.boostFuel > 0.3;      // the last stretch of a chase: nitro, so the hit lands above ramming speed
+    inp.boost = ram || this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
     return inp;
   }
 }

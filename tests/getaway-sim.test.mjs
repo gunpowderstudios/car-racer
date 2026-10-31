@@ -72,3 +72,11 @@ if (process.env.GT_REPORT) test('report', () => {
     console.log(role, seed, 'time', r.time.toFixed(0), 'robbed', S.game.robbed, 'strikes', S.game.strikes, 'winner', S.game.winner, 'bad', r.bad, 'picks', r.picks, 'drops', S.drops || 0, 'walls', S.walls || 0, 'alarmT', (S.alarmT||0).toFixed(0), 'near', (S.near||0).toFixed(1), 'minD', (S.minD||0).toFixed(1));
   }
 });
+
+test('police cars have different jobs in a chase: tail, cut him off at the junction ahead, watch the safehouse', () => {
+  const L = townLayout(), game = new GetawayGame(L), rob = L.nodes[Math.floor(L.nodes.length / 2)];
+  const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true; game.safehouse = { x: L.policeStart.x, z: L.policeStart.z };
+  const foe = { pos: { x: rob.x - 60, z: rob.z }, vel: { x: 20, z: 0 }, speed: 20 }, cop = { pos: { x: rob.x + 120, z: rob.z + 40 }, vel: { x: 0, z: 0 }, speed: 0, fwdSpeed: 0, az: { x: 1, z: 0 } };
+  const kind = (slot) => new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind;
+  assert.equal(kind(0), 'robber'); assert.equal(kind(1), 'intercept'); assert.equal(kind(2), 'guard'); assert.equal(kind(3), 'robber');
+});

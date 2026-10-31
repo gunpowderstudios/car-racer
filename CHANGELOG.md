@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.536 — Smarter Getaway police
+- **They keep up.** In a chase the police now match the robber's speed (plus a little) instead of cruising at a fixed 60-odd mph, so a robber can no longer simply drive away from them now that every car is equally fast.
+- **Different jobs.** The police cars are no longer one queue: the first tails the robber, the second cuts him off at the junction ahead of him, the third waits at the junction nearest the safehouse and joins in when he gets close, and so on round again.
+- **Better patrols.** With no robbery on, they wait near the banks where a bag is out, so they are already close when it is lifted.
+- **Aimed rams.** On the last stretch of a chase they use their nitro so the hit lands above ramming speed.
+- **Pressure.** Each bag the robber gets home makes them a little faster and sharper, and each strike eases them off a little.
+
 ## v17.535 — The web address on every movie
 - Every saved movie (widescreen, tall 9:16, with or without the TV set) now has bangersandsmash.co.uk printed bottom right in the game's yellow (#FFB320), with a dark edge so it reads on any picture.
 
