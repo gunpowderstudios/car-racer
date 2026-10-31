@@ -195,11 +195,18 @@ export function createReplayMode(d) {
     const out = document.createElement('canvas'), plain = !tv, tall = plain && !!R.tall; out.width = tall ? 1080 : 1920; out.height = tall ? 1920 : plain ? 1080 : 1280;      // (no TV set: a plain 16:9 film, or 9:16 for Shorts and TikTok)
     const octx = out.getContext('2d'), logo = makeLogo();
     let saver = null;
+    /** The web address, bottom right of every film, in the game's yellow (#FFB320), with a dark edge so it reads on any picture. `px` is the text size, (right, bottom) the corner it sits in. */
+    const stampUrl = (px, right, bottom) => {
+      octx.save(); octx.font = `900 ${Math.round(px)}px "Barlow Condensed", "Arial Narrow", Impact, sans-serif`; octx.textAlign = 'right'; octx.textBaseline = 'alphabetic';
+      octx.lineJoin = 'round'; octx.lineWidth = Math.max(2, px * 0.16); octx.strokeStyle = 'rgba(20,12,40,.85)'; octx.strokeText('bangersandsmash.co.uk', right, bottom);
+      octx.fillStyle = '#FFB320'; octx.fillText('bangersandsmash.co.uk', right, bottom); octx.restore();
+    };
     R.stamp = () => {
       if (plain) {
         const ca = cv.width / cv.height, ta = out.width / out.height, cw = ca > ta ? cv.height * ta : cv.width, ch = ca > ta ? cv.height : cv.width / ta;
         octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, 0, 0, out.width, out.height);
         if (logo.complete && logo.naturalWidth) { const lw = out.width * (tall ? 0.32 : 0.2), lh = lw * logo.naturalHeight / logo.naturalWidth, m = out.width * 0.02; octx.drawImage(logo, out.width - lw - m, m * 0.7, lw, lh); }      // the Bangers and Smash TV logo, top right, with or without the set
+        stampUrl(out.width * (tall ? 0.05 : 0.024), out.width - out.width * 0.02, out.height - out.width * 0.02);
         if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
         return;
       }
@@ -209,6 +216,7 @@ export function createReplayMode(d) {
       octx.drawImage(cv, (cv.width - cw) / 2, (cv.height - ch) / 2, cw, ch, x, y, w, h);
       octx.drawImage(tv, 0, 0, out.width, out.height);
       if (logo.complete && logo.naturalWidth) { const lw = w * 0.287, lh = lw * logo.naturalHeight / logo.naturalWidth, m = w * 0.02 + 18 * k; octx.drawImage(logo, x + w - lw - m, y + m * 0.7, lw, lh); }
+      stampUrl(w * 0.026, x + w - w * 0.02 - 18 * k, y + h - w * 0.02 - 8 * k);
       if (saver && !R.held && !R.skip) saver.addFrame(out, R.t - R.saveStart);
     };
     const finishWith = (blob) => {

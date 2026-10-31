@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.535 — The web address on every movie
+- Every saved movie (widescreen, tall 9:16, with or without the TV set) now has bangersandsmash.co.uk printed bottom right in the game's yellow (#FFB320), with a dark edge so it reads on any picture.
+
 ## v17.534 — Full-screen replays
 - The replay screen has a little corner box (bottom right). Click it and every control disappears, the browser goes full screen where it can, and the replay fills the screen; click the box again (or press Esc) and the controls come back. The box itself stays, faint, so you can find it.
 
