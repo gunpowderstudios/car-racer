@@ -78,5 +78,24 @@ test('police cars have different jobs in a chase: tail, cut him off at the junct
   const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true; game.safehouse = { x: L.policeStart.x, z: L.policeStart.z };
   const foe = { pos: { x: rob.x - 60, z: rob.z }, vel: { x: 20, z: 0 }, speed: 20 }, cop = { pos: { x: rob.x + 120, z: rob.z + 40 }, vel: { x: 0, z: 0 }, speed: 0, fwdSpeed: 0, az: { x: 1, z: 0 } };
   const kind = (slot) => new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind;
-  assert.equal(kind(0), 'robber'); assert.equal(kind(1), 'intercept'); assert.equal(kind(2), 'guard'); assert.equal(kind(3), 'robber');
+  assert.equal(kind(0), 'robber'); assert.equal(kind(1), 'intercept'); assert.equal(kind(2), 'guard'); assert.equal(kind(3), 'block'); assert.equal(kind(4), 'intercept'); assert.equal(kind(5), 'intercept'); assert.equal(kind(6), 'robber');
+  const at = (slot) => { const t = new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe); return t; };
+  assert.notEqual(at(1).x + ',' + at(1).z, at(4).x + ',' + at(4).z, 'the net spreads over different junctions');
+  const b = at(3); assert.ok(b.x > foe.pos.x + 20 && Math.abs(b.hx) > 0.9, 'the roadblock sits ahead of the robber, across his way');
+});
+
+test('police cars are allowed the boost donut (fast U-turns and parking broadside), the AI robber is not', () => {
+  const S = setup('police', 4, 2); for (const f of S.derby.rivals) if (f.cop) assert.equal(f.car.donutOk, true);
+  const R = setup('robber', 3); assert.equal(R.derby.rivals[0].car.donutOk, false);
+});
+
+test('a police car facing away from the robber turns round with the boost donut and ends up facing him', () => {
+  const S = setup('robber', 3); const { game, car, derby, track, L } = S; const foe = derby.rivals[0];
+  const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true;
+  const drv = new GetawayDriver(rngOf(5), game, 'police', 0.8, 0); car.donutOk = true;
+  const st = L.policeStart; car.reset(new V3(st.x, track.py[0] + car.restHeight + 0.08, st.z), new V3(-st.fx || -1, 0, -st.fz || 0), new V3(0, 1, 0), 0);
+  foe.car.reset(new V3(st.x + 60 * (st.fx || 1), track.py[0] + foe.car.restHeight + 0.08, st.z + 60 * (st.fz || 0)), new V3(st.fx, 0, st.fz), new V3(0, 1, 0), 0);
+  let inp, minAng = 9, used = false; const ctx = { player: foe.car, cars: [], skill: 0.8 };
+  for (let i = 0; i < 12 / DT; i++) { if (i % 4 === 0) { inp = drv.drive(car, track, ctx, DT * 4); if (drv.dbg && drv.dbg.kind === 'uturn') used = true; minAng = Math.min(minAng, Math.abs(drv.dbg.ang)); } car.step(DT, inp, track); foe.car.step(DT, { throttle: 0, brake: 1, steer: 0, handbrake: false, boost: false }, track); }
+  assert.ok(used, 'the U-turn was used'); assert.ok(minAng < 1.0, 'it came round to face him: ' + minAng);
 });

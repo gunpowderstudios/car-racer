@@ -285,7 +285,7 @@ export class Derby {
     const S = this.getawaySetup, p = S.role === 'robber' ? S.L.robberStart : S.L.policeStart, kind = S.kind, car = new Vehicle(kind?.spec);
     car.reset(new V3(p.x, this.track.py[0] + car.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0);
     car.opts.assist = 0.7;
-    const me = this.add(car, S.makeDriver(this.rng), 1, kind); me.cop = S.role === 'police'; me.health = new Health(SPECS.player.hp);       // (the robber and the police have the player's armour, not a rival's)
+    const me = this.add(car, S.makeDriver(this.rng), 1, kind); me.cop = S.role === 'police'; car.donutOk = me.cop; me.health = new Health(SPECS.player.hp);       // (the robber and the police have the player's armour, not a rival's)
     // more police cars patrolling the streets (when the robber is the person): each starts at its own junction, away from the robber and from each other
     const extra = S.role === 'police' ? (S.extraPolice || 0) : 0, cops = [S.L.policeStart];
     for (let k = 0; k < extra; k++) {
@@ -299,7 +299,7 @@ export class Derby {
       const horiz = this.rng() < 0.5, dir = this.rng() < 0.5 ? 1 : -1, cc = new Vehicle(kind?.spec);
       cc.reset(new V3(n.x, this.track.py[0] + cc.restHeight + 0.08, n.z), new V3(horiz ? dir : 0, 0, horiz ? 0 : dir), new V3(0, 1, 0), 0);
       cc.opts.assist = 0.7;
-      { const cf = this.add(cc, S.makeDriver(this.rng), k + 2, kind); cf.cop = true; cf.health = new Health(SPECS.player.hp); }
+      { const cf = this.add(cc, S.makeDriver(this.rng), k + 2, kind); cf.cop = true; cc.donutOk = true; cf.health = new Health(SPECS.player.hp); }
     }
     // ordinary traffic wandering the streets: a few cars of a few kinds (each is a car to simulate and a model to draw, so not many)
     const spots = cops.slice(1);      // (not at a junction where a police car starts)

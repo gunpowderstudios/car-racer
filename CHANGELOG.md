@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.537 — Getaway police: net, roadblocks, U-turns, alarm
+- **U-turns.** A police car pointing the wrong way when the robber is behind it now spins round with the boost donut instead of crawling round a block.
+- **The net.** Several police cars now take up positions at different junctions ahead of the robber and hold them until he gets close. They are real cars, so he can ram his way through.
+- **Roadblocks.** One car parks broadside across the street ahead of the robber, just short of a junction, and stays there until he is past or close. It can be rammed too.
+- **Alarm.** The moment the cash is lifted the screen edges flash red and blue, the siren sounds and the pop-up says the police are alerted.
+
 ## v17.536 — Smarter Getaway police
 - **They keep up.** In a chase the police now match the robber's speed (plus a little) instead of cruising at a fixed 60-odd mph, so a robber can no longer simply drive away from them now that every car is equally fast.
 - **Different jobs.** The police cars are no longer one queue: the first tails the robber, the second cuts him off at the junction ahead of him, the third waits at the junction nearest the safehouse and joins in when he gets close, and so on round again.

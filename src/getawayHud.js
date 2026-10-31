@@ -1,7 +1,7 @@
 // The Getaway's on-screen bits: the score, a hint for what to do next, the "robbery in progress" siren, a street map that shows each side only
 // what it should know, and the result card. Plain DOM, built once inside #hud the first time it is needed.
 
-let box = null, card = null, pop = null, popTimer = 0, siren = null, compass = null, bagEl = null, naff = null, naffN = 0;
+let box = null, card = null, pop = null, popTimer = 0, siren = null, flash = null, compass = null, bagEl = null, naff = null, naffN = 0;
 const canvas = () => document.getElementById('minimap');
 
 function ensure() {
@@ -22,6 +22,9 @@ function ensure() {
 #getaway-hud .gw-hint{margin-top:5px;font-size:clamp(14px,2vw,20px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#16102a99;display:inline-block;padding:1px 14px;border-radius:8px}
 #getaway-siren{position:absolute;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 124px);transform:translateX(-50%);z-index:31;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(13px,1.6vw,19px);text-transform:uppercase;letter-spacing:.06em;padding:1px 14px;border-radius:8px;color:#fff;text-shadow:0 2px 6px #000c;animation:gw-siren .5s infinite alternate}
 #getaway-siren[hidden]{display:none}
+#getaway-flash{position:absolute;inset:0;z-index:30;pointer-events:none;animation:gw-flash .5s infinite alternate}
+#getaway-flash[hidden]{display:none}
+@keyframes gw-flash{from{box-shadow:inset 0 0 90px 10px #d4231a99}to{box-shadow:inset 0 0 90px 10px #1f5fd699}}
 @keyframes gw-siren{from{background:#d4231acc;box-shadow:0 0 28px #d4231a}to{background:#1f5fd6cc;box-shadow:0 0 28px #1f5fd6}}
 #getaway-pop{position:absolute;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 156px);transform:translateX(-50%);z-index:31;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(16px,2.3vw,26px);color:#ffd23a;text-shadow:0 3px 8px #000c;pointer-events:none;text-transform:uppercase;text-align:center}
 #getaway-pop[hidden]{display:none}
@@ -60,6 +63,7 @@ body.getaway #lap-card{display:none}
   bagEl = document.createElement('div'); bagEl.id = 'getaway-bag'; bagEl.hidden = true; bagEl.innerHTML = '<i>$</i><span></span>';
   (document.getElementById('speed-stack') || hud).insertBefore(bagEl, (document.getElementById('speed-stack') && document.getElementById('hud-logo')) || null);
   siren = document.createElement('div'); siren.id = 'getaway-siren'; siren.hidden = true; hud.appendChild(siren);
+  flash = document.createElement('div'); flash.id = 'getaway-flash'; flash.hidden = true; hud.appendChild(flash);
   pop = document.createElement('div'); pop.id = 'getaway-pop'; pop.hidden = true; hud.appendChild(pop);
   card = document.createElement('div'); card.id = 'getaway-card'; card.hidden = true; hud.appendChild(card);
   return box;
@@ -78,7 +82,7 @@ export function getawayHudShow(on) {
   const el = ensure(); if (!el) return;
   el.hidden = !on; compass.hidden = !on; naff.hidden = !on; if (on) { placeNaff(); setTimeout(placeNaff, 300); setTimeout(placeNaff, 1500); } if (!on && bagEl) bagEl.hidden = true; document.body.classList.toggle('getaway', !!on);
   const c = canvas(); if (c) { const w = on ? 264 : 220, h = on ? 172 : 220; if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
-  if (!on) { hideGetawayResult(); siren.hidden = true; pop.hidden = true; }
+  if (!on) { hideGetawayResult(); siren.hidden = true; flash.hidden = true; pop.hidden = true; }
 }
 
 const pips = (n, goal) => '●'.repeat(Math.min(n, goal)) + '○'.repeat(Math.max(0, goal - n));
@@ -99,7 +103,7 @@ export function getawayHudUpdate(game, role, hp = null) {
   el.querySelector('.gw-hint').textContent = hint;
   if (bagEl) { bagEl.hidden = !(role === 'robber' && game.robberBag); bagEl.querySelector('span').textContent = `${game.ramCount}/${need}`; }
   const on = game.alarm && !game.over;
-  siren.hidden = !on;
+  siren.hidden = !on; flash.hidden = !on;      // (lights flash red and blue round the screen for as long as the alarm is on)
   if (on) siren.textContent = role === 'police' ? 'Robbery in progress!' : 'Alarm! The police are coming';
 }
 
