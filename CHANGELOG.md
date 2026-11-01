@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.539 — Gentler boost donuts
+- The boost donut spins about a third slower (a full circle takes roughly three seconds at full steering instead of two) and the rear tyres keep more grip, so the car still swings round but is easier to control.
+
 ## v17.538 — Buckle up! honours the laps setting
 - Buckle up! was forced to a single lap whatever you chose. It now runs the number of laps you pick (1 to 5), and the button says "Quick random race".
 

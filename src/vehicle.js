@@ -350,7 +350,7 @@ export class Vehicle {
   _applyTightTurn() {
     if (!this.tight) return;
     const steer = clamp(this._in.steer, -1, 1), sp = this.speed;
-    const donut = 1.55;
+    const donut = 1.0;
     const want = steer * Math.min(1.9 * donut, 0.2 + 0.3 * sp * donut) * clamp((DONUT_MAX + 1 - sp) / 2.5, 0, 1);      // rad/s (left is positive)
     const yawRate = this.angVel.dot(this.ay);
     this.T.addScaled(this.ay, clamp((want - yawRate) * 7, -9 * donut, 9 * donut) * this.spec.inertia.y);
@@ -591,7 +591,7 @@ export class Vehicle {
     const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
     const muBase = w.front ? ty.muFront * GRIP_BOOST : ty.muRear * GRIP_BOOST_REAR;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
-    const donutGrip = !w.front && this.tight ? 0.5 : 1;      // Boost at walking pace while steering: the rear tyres let go and spin
+    const donutGrip = !w.front && this.tight ? 0.7 : 1;      // Boost at walking pace while steering: the rear tyres let go and spin
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
     const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
