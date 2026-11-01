@@ -132,7 +132,14 @@ html.invite-loading #invite-loading {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=mobile-fix-20261101">
+<style>
+/* Prevent an older cached stylesheet from hiding the game on touchscreens. */
+@media (max-width: 1024px) and (pointer: coarse) {
+  body > :not(#mobile-screen-notice):not(noscript) { visibility: visible !important; }
+  #mobile-screen-notice { display: none !important; }
+}
+</style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script data-goatcounter="https://gunpowder.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
