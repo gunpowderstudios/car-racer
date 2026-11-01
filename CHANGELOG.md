@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.543 — Heavier over humps
+- On tracks with road humps (the dirt stages and Got the hump), gravity pulls 30% harder while a car is in the air, so it comes back down off a hump sooner and lands closer instead of floating. A 0.6 m hump at 25 m/s used to give about 0.63 s of air; it now gives about 0.5 s. Tracks without humps, and the big gap jumps, are unchanged.
+
 ## v17.542 — Sound effects balanced
 Every effect was measured and brought closer together.
 - **Quieter:** the flame (about 7 steps), the engine start (about 6), fireworks and boulders (a little), horns and the start-light beeps (about 3).

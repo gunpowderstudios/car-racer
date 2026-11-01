@@ -17,6 +17,7 @@ import { V3, Q, clamp, lerp, wrapPi } from './math.js';
 import { Track, SURF } from './track.js';
 
 const G = 9.81;
+export const AIR_WEIGHT = 1.3;      // gravity pulls this much harder while a car is in the air: a heavy-feeling car comes back down off a hump instead of floating over it
 /** Every vehicle's tyres grip this much more than its profile says (one place to turn all the grip up or down). */
 export const GRIP_BOOST = 1.15;
 export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it than the front ones, so the extra grip makes the cars steadier rather than spinnier
@@ -186,7 +187,7 @@ export class Vehicle {
     this.roadMu = track && track.def && track.def.dirt ? 0.9 : 1;       // loose dirt grips less than asphalt
     const sp = this.spec;
     this._axes();
-    this.F.set(0, -this.mass * G, 0);
+    this.F.set(0, -this.mass * G * (this.onGround || !(track && track.bumps) ? 1 : AIR_WEIGHT), 0);
     this.T.set(0, 0, 0);
     if (this.tow) this.tow.applyTo(this, dt);                 // a caravan on the hitch (see caravan.js): its pull goes on F and T
 
