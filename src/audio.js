@@ -224,7 +224,7 @@ export class Sound {
         ? car.brk * clamp01((car.speed - 4) / 12)
         : 0;
       const tyreNoise = Math.max(Math.min(1, car.skidLevel), brakeSkid * 0.72);
-      this.screech.gain.gain.setTargetAtTime(on * tyreNoise * 0.55, t, 0.05);
+      this.screech.gain.gain.setTargetAtTime(on * tyreNoise * 1.0, t, 0.05);
     }
     if (this.rush) {
       const b = on && car.boosting ? 1 : 0;
@@ -239,7 +239,7 @@ export class Sound {
     const near = clamp01(1 - dist / 90); if (near < 0.03) return;       // a crash across the track is quieter
     const b = this.buf[speed > 9 ? 'crash' : 'shunt'] || this.buf.crash; if (!b) return;
     const s = this.ctx.createBufferSource(), g = this.ctx.createGain();
-    s.buffer = b; s.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = Math.min(1, 0.25 + speed / 18) * (kind === 'ground' ? 0.7 : 1) * near;
+    s.buffer = b; s.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = Math.min(1, 0.45 + speed / 18) * (kind === 'ground' ? 0.7 : 1) * near;
     s.connect(g).connect(this.sfx); s.start();
   }
 
@@ -250,7 +250,7 @@ export class Sound {
   _shot(name, gain, rate, dist = 0, cut = 0) {
     if (!this.ready || !this.sfxOn) return;
     const b = this.buf[name]; if (!b) return;
-    const g = gain * clamp01(1 - dist / 90); if (g < 0.02) return;
+    const g = gain * (TRIM[name] ?? 1) * clamp01(1 - dist / 90); if (g < 0.02) return;      // (TRIM evens out the loudness of the different files)
     const s = this.ctx.createBufferSource(), gn = this.ctx.createGain(), t = this.ctx.currentTime;
     s.buffer = b; s.playbackRate.value = rate; gn.gain.setValueAtTime(g, t);
     if (cut) gn.gain.setTargetAtTime(0, t + cut, cut * 0.35);
@@ -261,7 +261,7 @@ export class Sound {
   /** A barrel going off. */
   explode(dist = 0) { this._shot('explosion', 1, 0.92 + Math.random() * 0.16, dist); }
   /** A drum being knocked about: a clang whose loudness follows how hard it was hit. */
-  clang(speed, dist = 0) { this._shot('barrel', Math.min(1, 0.4 + speed / 12), 0.85 + Math.random() * 0.4, dist, 0.6); }
+  clang(speed, dist = 0) { this._shot('barrel', Math.min(1, 0.55 + speed / 12), 0.85 + Math.random() * 0.4, dist, 0.6); }
   /** A car horn: two close notes (a major third) in a buzzy, squashed tone. `pitch` makes each car's horn a little different. */
   _hornVoice(gain, pitch) {
     const c = this.ctx, t = c.currentTime, g = c.createGain(), lp = c.createBiquadFilter(), oscs = [];
@@ -278,7 +278,7 @@ export class Sound {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return null;
     if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, 0); return { stop() {} }; }      // the Rootmaster rings its bell instead of honking (once per press)
     if (vehicleId === 'police' && this.buf.policeSiren) return this._siren();      // Hills Street Blue wails its siren for as long as H is held
-    const v = this._hornVoice(0.269, 1); v.stop(1.6); return v;
+    const v = this._hornVoice(0.18, 1); v.stop(1.6); return v;
   }
   /** The police car's siren: the clip loops while the key is down (and stops by itself after a few seconds, like a horn). */
   _siren() {
@@ -310,12 +310,12 @@ export class Sound {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return;
     if (vehicleId === 'bus' && this.buf.busBell) { this._shot('busBell', 0.9, 1, dist); return; }                         // (the replay: the Rootmaster's bell...
     if (vehicleId === 'police' && this.buf.policeSiren) { this._shot('policeSiren', 0.6, 1, dist, 1.2); return; }          // ...and the police siren, one wail for the press)
-    const gain = 0.32 * clamp01(1 - dist / 70); if (gain < 0.03) return;
+    const gain = 0.22 * clamp01(1 - dist / 70); if (gain < 0.03) return;
     const a = this._hornVoice(gain, pitch); a.stop(0.16);
     setTimeout(() => { if (this.ctx) { const b = this._hornVoice(gain, pitch); b.stop(0.2); } }, 230);
   }
   /** A short pure beep (the start lights): `freq` Hz for `dur` seconds. */
-  beep(freq = 440, dur = 0.18, gain = 0.3) {
+  beep(freq = 440, dur = 0.18, gain = 0.2) {
     if (!this.ready || !this.sfxOn || !this.ctx) return;
     const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
     o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.01); g.gain.setTargetAtTime(0, t + dur * 0.6, dur * 0.2);
@@ -323,9 +323,12 @@ export class Sound {
   }
   /** A friendly two-note chime: someone has joined the multiplayer room. */
   join() {
-    this.beep(660, 0.16, 0.3);
-    setTimeout(() => this.beep(880, 0.26, 0.3), 140);
+    this.beep(660, 0.16, 0.2);
+    setTimeout(() => this.beep(880, 0.26, 0.2), 140);
   }
 }
+
+/** Per-sample volume trim, measured from the files so that they sit together (flame and engine start were far louder than a crash; the barrel clang far quieter). */
+const TRIM = { flame: 0.45, engineStart: 0.5, fireworks: 0.7, boulder: 0.8, barrel: 1.5 };
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);

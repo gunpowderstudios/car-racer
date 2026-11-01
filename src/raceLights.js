@@ -47,7 +47,7 @@ export function startRaceLights(go, beep, hold01 = Math.random()) {
   cols.slice(0, reds).forEach((c, i) => timers.push(setTimeout(() => { c.classList.add('on'); beep?.(440, 0.2); }, 600 + i * step)));
   const hold = 500 + Math.min(1, Math.max(0, +hold01 || 0)) * 1100;                       // the last red holds for a random moment: no jumping the start
   timers.push(setTimeout(() => {
-    cols.forEach((c) => c.classList.remove('on')); cols[reds].classList.add('green'); msg.textContent = 'Go!'; beep?.(880, 0.5, 0.35);
+    cols.forEach((c) => c.classList.remove('on')); cols[reds].classList.add('green'); msg.textContent = 'Go!'; beep?.(880, 0.5, 0.24);
     const f = onDone; onDone = null; f?.();
     timers.push(setTimeout(() => { el.hidden = true; }, 1000));
   }, 600 + reds * step + hold));

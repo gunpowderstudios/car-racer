@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.542 — Sound effects balanced
+Every effect was measured and brought closer together.
+- **Quieter:** the flame (about 7 steps), the engine start (about 6), fireworks and boulders (a little), horns and the start-light beeps (about 3).
+- **Louder:** the tyre screech (so donuts and skids are heard), barrel clangs, and small bumps (a low-speed shunt was almost silent).
+
 ## v17.541 — Donut back to full strength
 - The gentler boost donut of v17.539 stopped the car completing a full circle, so the spin rate and rear grip are back to how they were in v17.538.
 

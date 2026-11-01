@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.541';
-export const NOTE = 'Boost donuts are back to the full-strength spin (the gentler setting stopped a full donut).';
+export const VERSION = '17.542';
+export const NOTE = 'Sound effects balanced: flame, engine start, horn and beeps quieter; tyre screech, barrel clangs and small bumps louder.';

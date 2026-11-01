@@ -460,9 +460,9 @@ const assaultBest = () => store.get('cr.apple', {}).best ?? null;
 /** What the course did this step: hits, checkpoints, penalties, the finish. */
 function assaultEvents() {
   for (const e of assault.events) {
-    if (e.type === 'start') { hud.banner('Go!', 800); sound.beep(880, 0.3, 0.3); }
+    if (e.type === 'start') { hud.banner('Go!', 800); sound.beep(880, 0.3, 0.2); }
     else if (e.type === 'checkpoint') {
-      derby.repairPlayer(); sound.beep(660, 0.15, 0.3); setTimeout(() => sound.beep(990, 0.25, 0.3), 140);
+      derby.repairPlayer(); sound.beep(660, 0.15, 0.2); setTimeout(() => sound.beep(990, 0.25, 0.2), 140);
       assaultPop(`Checkpoint ${e.index}/${e.of} - repaired! Next stage ${assault.limit}s`, 1900);
     } else if (e.type === 'sfx') {
       sound.cue(e.name, e.name === 'hammer' ? 0.9 : 1, e.dist);
@@ -702,7 +702,7 @@ function getawayBegin() {
   hud.banner(G.role === 'robber' ? 'ROBBER: grab a bag, reach the safehouse!' : 'POLICE: stop the robbers!', 2400);
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
-const gwChime = (notes, gap = 130, g = 0.3) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
+const gwChime = (notes, gap = 130, g = 0.2) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
 // ---- wear and tear: The Getaway uses the same damage as the other races (zones, dents, holes, stalls, wrecks - see derby.js). Every car is hurt, the town traffic too (a wrecked town car is replaced elsewhere after 12 s).
 // A wrecked robber means the police win; a wrecked police car is out for 6 s and then back at the police start. A drop in the garage repairs the robber.
 const gwPct = (f) => (f && f.health ? Math.round(100 * f.health.worst) : 100);
