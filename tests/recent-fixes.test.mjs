@@ -367,3 +367,9 @@ test('Test my hardware graph: draws a series, marks its peak and dip', async () 
   assert.equal(r.min, 20); assert.equal(r.max, 61); assert.equal(calls.length, 2, 'a dot on the peak and one on the dip');
   assert.deepEqual(drawGraph(cv, [5], [], {}), { min: 0, max: 0 });
 });
+
+test('Buckle up! follows the laps the player picked (it is no longer forced to one lap)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/raceSettings.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /quickRace\)\s*return 1/);
+});

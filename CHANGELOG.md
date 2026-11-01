@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.538 — Buckle up! honours the laps setting
+- Buckle up! was forced to a single lap whatever you chose. It now runs the number of laps you pick (1 to 5), and the button says "Quick random race".
+
 ## v17.537 — Getaway police: net, roadblocks, U-turns, alarm
 - **U-turns.** A police car pointing the wrong way when the robber is behind it now spins round with the boost donut instead of crawling round a block.
 - **The net.** Several police cars now take up positions at different junctions ahead of the robber and hold them until he gets close. They are real cars, so he can ram his way through.
