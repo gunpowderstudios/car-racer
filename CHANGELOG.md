@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.545 — No early win message
+- The race counts laps by the furthest point you have reached along the road, so cutting across the grass at a bend could add distance and bring the "You won!" / finish message up while you were still short of the line. The message now waits until the car is actually over the line.
+
 ## v17.544 — One site address
 - The page's canonical link, share-card images, search-engine data and the address shown on phones now all say bangersandsmash.co.uk (without www), matching how the domain is set up. The site-address test now expects that too, so the tests check goes green again.
 

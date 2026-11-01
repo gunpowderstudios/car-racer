@@ -384,3 +384,8 @@ test('cars come down faster off road humps (extra weight in the air, only on tra
   assert.match(v, /export const AIR_WEIGHT = 1\.3;/);
   assert.match(v, /this\.onGround \|\| !\(track && track\.bumps\) \? 1 : AIR_WEIGHT/);
 });
+
+test('the win message waits until the car is really over the line (a shortcut cannot finish the race early)', () => {
+  assert.match(solo, /tr\.progressAt\(me\.pos\.x, me\.pos\.y, me\.pos\.z\) < tr\.length \/ 2/);
+  assert.match(solo, /game\.race\.index >= raceLaps\(\) && \(past \|\| finishShown\)/);
+});

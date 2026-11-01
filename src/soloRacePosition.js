@@ -209,7 +209,10 @@ function update() {
 
   // Finish detection is independent of the rival field. That way a completed race
   // always produces a result even if the AI list is briefly empty while cars respawn/wreck.
-  const finished = !!game?.race && !game?.derby?.demolition && game.race.index >= raceLaps();
+  // The lap count is the furthest the car has got along the road, so a shortcut across the grass can add some distance early. The message waits until the car is
+  // really over the line: just past it (the first half of the lap), not still on the last stretch before it.
+  const tr = game?.track, me = game?.car, past = !(tr && me && tr.length > 0) || tr.progressAt(me.pos.x, me.pos.y, me.pos.z) < tr.length / 2;
+  const finished = !!game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && (past || finishShown);
   if (finished && !finishShown) {
     finishShown = true;
     showFinish(lastPlace, lastTotal);
