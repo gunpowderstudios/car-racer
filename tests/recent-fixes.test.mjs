@@ -373,3 +373,8 @@ test('Buckle up! follows the laps the player picked (it is no longer forced to o
   const src = readFileSync(new URL('../src/raceSettings.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /quickRace\)\s*return 1/);
 });
+
+test('a boost donut paints skid marks from the rear tyres', () => {
+  const vehicle = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
+  assert.match(vehicle, /this\.tight && !w\.front\) w\.skid = Math\.max\(w\.skid, 0\.85\)/);
+});

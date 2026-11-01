@@ -642,6 +642,7 @@ export class Vehicle {
       w.slipAngle = alpha;
       const lat = clamp((Math.abs(alpha) - 0.14) / 0.22, 0, 1) * clamp(this.speed / 3, 0, 1);
       w.skid = Math.max(lat, spinning ? clamp(1 - this.speed / 14, 0.25, 1) : 0);
+      if (this.tight && !w.front) w.skid = Math.max(w.skid, 0.85);      // a boost donut burns black rings into the road
     }
     if (w.driven) this.spinFactor += ((spinning ? 1 : 0) - this.spinFactor) * Math.min(1, 8 * dt) / 2;
 

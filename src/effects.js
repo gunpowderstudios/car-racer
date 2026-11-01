@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { puffTexture } from './textures.js';
 
 export class SkidMarks {
-  constructor(scene, capacity = 2600) {
+  constructor(scene, capacity = 4500) {
     this.cap = capacity; this.i = 0; this.count = 0;
     const geo = new THREE.PlaneGeometry(0.3, 0.9).rotateX(-Math.PI / 2);
     const mat = new THREE.MeshBasicMaterial({ color: 0x0b0a0d, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });

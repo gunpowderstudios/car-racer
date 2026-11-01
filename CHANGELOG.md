@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.540 — Donut skid marks
+- A boost donut now burns black rings into the road from the rear tyres, and the road remembers more marks before the oldest fade (4500 instead of 2600).
+
 ## v17.539 — Gentler boost donuts
 - The boost donut spins about a third slower (a full circle takes roughly three seconds at full steering instead of two) and the rear tyres keep more grip, so the car still swings round but is easier to control.
 
