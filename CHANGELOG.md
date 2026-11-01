@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.541 — Donut back to full strength
+- The gentler boost donut of v17.539 stopped the car completing a full circle, so the spin rate and rear grip are back to how they were in v17.538.
+
 ## v17.540 — Donut skid marks
 - A boost donut now burns black rings into the road from the rear tyres, and the road remembers more marks before the oldest fade (4500 instead of 2600).
 
