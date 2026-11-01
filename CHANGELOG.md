@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.544 — One site address
+- The page's canonical link, share-card images, search-engine data and the address shown on phones now all say bangersandsmash.co.uk (without www), matching how the domain is set up. The site-address test now expects that too, so the tests check goes green again.
+
 ## v17.543 — Heavier over humps
 - On tracks with road humps (the dirt stages and Got the hump), gravity pulls 30% harder while a car is in the air, so it comes back down off a hump sooner and lands closer instead of floating. A 0.6 m hump at 25 m/s used to give about 0.63 s of air; it now gives about 0.5 s. Tracks without humps, and the big gap jumps, are unchanged.
 
