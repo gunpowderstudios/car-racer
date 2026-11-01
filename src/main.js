@@ -314,6 +314,7 @@ function syncSoundUI() {
   $('eq-fx').value = sound.sfxVol; $('eq-bts').value = sound.musicVol; $('eq-music').setAttribute('aria-pressed', String(sound.musicOn));
   $('hud-sfxvol').value = sound.sfxVol; $('hud-musicvol').value = sound.musicVol;
   $('cog').classList.toggle('off', !sound.sfxOn && !sound.musicOn);
+  $('mq-music').classList.toggle('off', !sound.musicOn); $('mq-music').setAttribute('aria-pressed', String(sound.musicOn));
   menuMusic();
 }
 // On touch screens the action buttons (restart, camera...) move under the cog and open with it; desktop keeps its bar.
@@ -324,6 +325,8 @@ $('cog').addEventListener('click', (e) => { e.stopPropagation(); setSoundPop($('
 for (const [id, kind] of [['hud-sfx', 'sfx'], ['hud-music', 'music']]) {
   $(id).addEventListener('change', (e) => { sound.setEnabled(kind, e.target.checked); syncSoundUI(); e.target.blur(); });   // blur so Space stays the handbrake
 }
+$('mq-music').addEventListener('pointerdown', (e) => e.preventDefault());       // (never take focus, so Space stays the boost)
+$('mq-music').addEventListener('click', (e) => { const on = !sound.musicOn; if (on && sound.musicVol === 0) sound.setVolume('music', 0.5); sound.setEnabled('music', on); syncSoundUI(); e.currentTarget.blur(); });
 { // the little 80s equaliser (desktop): bars follow the master output
   const bars = []; for (let i = 0; i < 14; i++) { const b = document.createElement('i'); $('eq-bars').appendChild(b); bars.push(b); }
   const data = new Uint8Array(32);
@@ -349,7 +352,7 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
   b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); if (cogMenuOnly) setSoundPop(false); });
 }
-for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-boom', 'boom']]) {
+for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-restart', 'restart'], ['mq-boom', 'boom']]) {
   const b = $(id); if (!b) continue;
   b.addEventListener('pointerdown', (e) => e.preventDefault());
   b.addEventListener('click', () => { if (mode === 'drive') controlActions[act](); b.blur(); });

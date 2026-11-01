@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.547 — Music button and restart button
+- A white **musical notes** button turns the music on and off in one tap. On a phone it is the last of the round buttons on the left; on a computer it sits on its own at the left of the screen. A line through it shows when the music is off.
+- The round-arrow button now **restarts the race** and has moved to the top right, under the cog, so it is hard to press by accident (the map moves down a little to make room). "Back on road" is still in the cog menu, and B on a keyboard.
+
 ## v17.546 — A clearer phone screen
 - On phones (all tracks): the speedometer and the damage chart are gone, and the round buttons (mirror, back on road, explode, horn) sit lower, just above the steering.
 - The Getaway on a phone: the satnav and its compass are top left, the two score boxes are smaller and sit beside them, and the hint, alarm banner and pop-up messages are smaller so they fit neatly.
