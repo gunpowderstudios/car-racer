@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.546 — A clearer phone screen
+- On phones (all tracks): the speedometer and the damage chart are gone, and the round buttons (mirror, back on road, explode, horn) sit lower, just above the steering.
+- The Getaway on a phone: the satnav and its compass are top left, the two score boxes are smaller and sit beside them, and the hint, alarm banner and pop-up messages are smaller so they fit neatly.
+- Tablets and computers are unchanged.
+
 ## v17.545 — No early win message
 - The race counts laps by the furthest point you have reached along the road, so cutting across the grass at a bend could add distance and bring the "You won!" / finish message up while you were still short of the line. The message now waits until the car is actually over the line.
 
