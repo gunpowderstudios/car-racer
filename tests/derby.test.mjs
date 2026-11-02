@@ -824,7 +824,8 @@ test('no spanners in the racing games: one wreck ends the race (and shows no scr
   assert.ok(a.derby.events.some((e) => e.type === 'over' && !e.scrap));
 });
 
-test('coming back after an off-track 3-2-1 sends a repaired event, so the dents clear with the damage chart', () => {
+test('coming back after an off-track 3-2-1 keeps your damage exactly as it was (no repair)', () => {
   const src = readFileSync(new URL('../src/derbyOffTrackRecovery.js', import.meta.url), 'utf8');
-  assert.match(src, /type: 'repaired', id: f\.id, isPlayer: true/);
+  const fin = src.slice(src.indexOf('function finishPlayerReset'), src.indexOf('function stepPlayerRecovery'));
+  assert.ok(!/new Health/.test(fin) && !/repaired/.test(fin));
 });

@@ -191,13 +191,11 @@ function finishPlayerReset(derby, f, r) {
   f.wreckT = 0;
   f.flash = 0;
   f.lastHit = null;
-  f.health = new Health(SPECS.player.hp);
-  derby.over = !!r.oldOver;
+  derby.over = !!r.oldOver;      // (the damage is kept exactly as it was: coming back from the track edge is not a repair)
   placeOnRoad(f.car, derby.track, r.s, 0, 0);
   derby._pose(f, f.cur);
   derby._pose(f, f.prev);
   derby._refreshCars();
-  derby.events.push({ type: 'repaired', id: f.id, isPlayer: true });      // (the dents, burnt look and damage chart all reset together)
 }
 
 function stepPlayerRecovery(derby, dt) {

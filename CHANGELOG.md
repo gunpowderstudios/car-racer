@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.554 — Damage kept after coming off the track
+- After the 3-2-1 that puts you back on the road, your damage stays exactly as it was (the chart and the dents), and you carry on with the health you had left. If you were already destroyed, the race is over as before. (This replaces v17.553, which repaired the car.)
+
 ## v17.553 — Repaired for real after coming off the track
 - After the 3-2-1 that puts you back on the road, the car's dents, burnt look and missing wheels are repaired along with the damage chart (before, the chart reset but the car still looked damaged). Rivals put back on the road are repaired the same way.
 
