@@ -468,3 +468,15 @@ test('online Getaway waits for a player whose window is in the background instea
   assert.match(main, /net\.staleMs = trackDef && trackDef\.getaway \? 45000 : null/);
   assert.match(main, /Waiting for the other player/);
 });
+
+test('pulling away hard leaves skid marks', () => {
+  const v = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
+  assert.match(v, /w\.driven && this\.fwdSpeed > 0 && this\.speed < 7 && this\.thr > 0\.9 && !this\.tight/);
+});
+
+test('the version files are never empty, and the home preview fits the whole vehicle', () => {
+  const v = readFileSync(new URL('../src/version.js', import.meta.url), 'utf8'), a = readFileSync(new URL('../src/assetVersion.js', import.meta.url), 'utf8');
+  assert.match(v, /export const VERSION = '\d+\.\d+'/); assert.match(a, /export const ASSET_VERSION = '\d+\.\d+'/);
+  const pv = readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8');
+  assert.match(pv, /const fits = \(d\) =>/); assert.match(pv, /fitBox && Math\.abs\(camera\.aspect - fitAspect\)/);
+});

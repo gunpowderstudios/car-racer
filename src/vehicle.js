@@ -644,6 +644,7 @@ export class Vehicle {
       const lat = clamp((Math.abs(alpha) - 0.14) / 0.22, 0, 1) * clamp(this.speed / 3, 0, 1);
       w.skid = Math.max(lat, spinning ? clamp(1 - this.speed / 14, 0.25, 1) : 0);
       if (this.tight && !w.front) w.skid = Math.max(w.skid, 0.85);      // a boost donut burns black rings into the road
+      if (w.driven && this.fwdSpeed > 0 && this.speed < 7 && this.thr > 0.9 && !this.tight) w.skid = Math.max(w.skid, this.boosting ? 0.75 : 0.36 * clamp(1.4 - this.speed / 5, 0, 1));      // pulling away hard leaves black marks (a burnout with boost, a short pair on a flat-out start)
     }
     if (w.driven) this.spinFactor += ((spinning ? 1 : 0) - this.spinFactor) * Math.min(1, 8 * dt) / 2;
 

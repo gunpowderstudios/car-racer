@@ -105,13 +105,37 @@ function installPreview({
       next.position.y += size.y * 0.02;
       next.updateMatrixWorld(true);
 
-      const framed = new THREE.Box3().setFromObject(next);
-      const framedSize = framed.getSize(new THREE.Vector3());
-      const radius = Math.max(framedSize.x, framedSize.y, framedSize.z) * 0.55 * room;   // (was 0.66: the model fills more of its window)
-      camera.position.set(radius * 1.48, radius * 0.64, radius * 1.92);
-      camera.lookAt(0, framedSize.y * 0.015, 0);
-      camera.near = Math.max(0.01, radius / 50);
-      camera.far = Math.max(100, radius * 20);
+      fitBox = new THREE.Box3().setFromObject(next); fitRoom = room;
+      fit();
+    };
+    // The camera backs off until the whole vehicle, turned to any angle as it rotates, fits inside the window (and above the name and blurb at the bottom).
+    let fitBox = null, fitRoom = 1, fitAspect = 0;
+    const fit = () => {
+      if (!fitBox) return;
+      fitAspect = camera.aspect;
+      const size = fitBox.getSize(new THREE.Vector3()), c = fitBox.getCenter(new THREE.Vector3());
+      const dir = new THREE.Vector3(1.48, 0.64, 1.92).normalize(), corners = [];
+      for (const x of [fitBox.min.x, fitBox.max.x]) for (const y of [fitBox.min.y, fitBox.max.y]) for (const z of [fitBox.min.z, fitBox.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      const eul = new THREE.Euler(pitch, 0, 0), tmp = new THREE.Vector3(), target = new THREE.Vector3(0, size.y * 0.015, 0);
+      const fits = (d) => {
+        camera.position.copy(dir).multiplyScalar(d).add(target); camera.lookAt(target); camera.updateMatrixWorld(true); camera.updateProjectionMatrix();
+        for (let k = 0; k < 12; k++) {
+          eul.y = (k / 12) * Math.PI * 2;
+          for (const q of corners) {
+            tmp.copy(q).applyEuler(eul).project(camera);
+            if (Math.abs(tmp.x) > 0.95 || Math.abs(tmp.y) > 0.72) return false;
+          }
+        }
+        return true;
+      };
+      const R = Math.max(size.x, size.y, size.z);
+      let d = R * 0.8;
+      for (let i = 0; i < 160 && !fits(d); i++) d *= 1.03;
+      d *= 1 + (fitRoom - 1) * 0.3;
+      camera.position.copy(dir).multiplyScalar(d).add(target);
+      const drop = 0.24 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));        // (the vehicle sits in the upper part of the window, clear of the text under it)
+      target.y -= drop; camera.position.y -= drop; camera.lookAt(target);
+      camera.near = Math.max(0.01, d / 50); camera.far = Math.max(100, d * 20);
       camera.updateProjectionMatrix();
     };
 
@@ -189,7 +213,7 @@ function installPreview({
       const dpr = renderer.getPixelRatio();
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         renderer.setSize(w, h, false);
-        camera.aspect = w / h;
+        camera.aspect = w / h; if (fitBox && Math.abs(camera.aspect - fitAspect) > 0.02) fit();
         camera.updateProjectionMatrix();
       }
     };

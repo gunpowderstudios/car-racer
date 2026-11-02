@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.559 — Skid marks when pulling away, bigger home preview
+- A flat-out start from a standstill leaves a short pair of black marks, and a start with boost leaves a proper burnout. (Donuts already did.)
+- The rotating vehicle preview on the home page now always shows the whole vehicle, whichever way it is turned (the big bus was being cut off): the camera backs off just far enough, and it re-fits if the window changes shape.
+- IMPORTANT FIX: v17.558 was published with its version files accidentally emptied, which stopped the game starting. This release puts them back.
+
 ## v17.558 — Online Getaway waits for you
 - Switching to another window or app for a bit no longer throws the other player out of an online Getaway: the game waits up to 45 seconds (instead of 5), pauses the rules, and shows "Waiting for the other player..." until they are back.
 
