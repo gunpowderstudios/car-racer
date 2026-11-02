@@ -426,3 +426,31 @@ test('a Race Day championship shows the podium only after the last stage, with t
   assert.match(story, /const finale = through && i === stages\(\)\.length - 1 && !state\.single/);
   assert.match(story, /carracer-race-podium/);
 });
+
+test('The Getaway online: roles, snapshots and the mirror game', async () => {
+  const { pickRoles, snapshotGame, applySnapshot, cleanSnapshot } = await import('../src/getawayNet.js');
+  const { GetawayGame, townLayout } = await import('../src/getaway.js');
+  assert.deepEqual(pickRoles(['b', 'a'], () => 0), { robber: 'a', police: 'b' });
+  assert.deepEqual(pickRoles(['b', 'a'], () => 0.9), { robber: 'b', police: 'a' });
+  const L = townLayout(), host = new GetawayGame(L), guest = new GetawayGame(L);
+  const bag = host.loose()[0];
+  host.step(0.1, { x: bag.x, z: bag.z }, { x: 0, z: 0 });                   // the robber takes the bag
+  const wire = JSON.parse(JSON.stringify(snapshotGame(host, 1)));
+  assert.ok(cleanSnapshot(wire, host.bags.length));
+  assert.equal(cleanSnapshot({ ...wire, bags: [] }, host.bags.length), null);
+  applySnapshot(guest, wire);
+  assert.equal(guest.robberBag.id, bag.id); assert.equal(guest.alarm, true);
+  assert.equal(guest.safehouse.x, host.safehouse.x); assert.equal(guest.bags.length, host.bags.length);
+  for (let i = 0; i < 3; i++) { host.ramCoolUntil = 0; host.step(0.1, { x: 0, z: 0 }, { x: 0, z: 0 }, [12]); }     // three hard rams: the robbery is stopped
+  applySnapshot(guest, JSON.parse(JSON.stringify(snapshotGame(host, 2))));
+  assert.equal(guest.strikes, 1); assert.equal(guest.robberBag, null); assert.equal(guest.alarm, false);
+});
+
+test('The Getaway online is wired into the multiplayer lobby and the game loop', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const on = readFileSync(new URL('../src/getawayOnline.js', import.meta.url), 'utf8');
+  assert.match(main, /value="getaway">The Getaway \(exactly 2 players\)/);
+  assert.match(main, /gwRobber: pickRoles\(/); assert.match(main, /getaway\.online\) gwOnlineStep\(\)/);
+  assert.match(main, /if \(getaway\) gwOnlineContact\(closing\)/); assert.match(main, /onGetaway: \(fromId, m\)/);
+  assert.match(on, /t: 'gw', k: 'snap'/); assert.match(on, /k: 'ram'/);
+});

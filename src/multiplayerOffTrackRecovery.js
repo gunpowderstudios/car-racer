@@ -89,6 +89,7 @@ export function updateMultiplayerOffTrack(outgoingState) {
   if (typeof window === 'undefined') return outgoingState;
   const game = window.__game;
   if (!game?.track || !game.car || !game.derby) return outgoingState;
+  if (game.getaway) return outgoingState;                              // The Getaway (online): the town has its own 'back on a street' recovery and nobody is wrecked
   if (getCurrentLife()?.out) return outgoingState;                       // knocked out of a derby: no cinematic reset, no coming back
 
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();

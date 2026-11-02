@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.556 — The Getaway online, for two players
+- In Multiplayer, pick **The Getaway (exactly 2 players)** as the track and start: one of you is the robber (the Dodge) and the other the police (the police car), picked at random each round. The same town, bags, safehouse, satnav and map as the one-player game.
+- The host's game runs the rules (pickups, rams, strikes, deliveries, the safehouse moving, who wins) and the other screen follows it. Three hard rams from the police stop a robbery (the robber goes back to his start); three bags safe and the robbers win, three strikes and the robber is in jail.
+- After a round the host can start another one (new random sides). Cars are not damaged in this online game: it is all about the rams.
+- Not in yet: the town's computer-driven traffic (the online town is empty for now) and replays.
+
 ## v17.555 — Race Day podium at the very end
 - In the Race Day championship the podium no longer pops up after every stage: you get the stage results, and the podium is shown once, with the overall standings, after the final stage. A single Race Day race still shows its podium. Health still starts fresh on each stage.
 

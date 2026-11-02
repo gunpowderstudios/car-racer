@@ -23,6 +23,8 @@ import { SkidMarks, Particles, Scorch, Debris } from './effects.js';
 import { Props } from './props.js';
 import { Assault, COURSE } from './assault.js';
 import { GetawayGame, townLayout, rescuePose, route, safehouseRoute, roundRoute } from './getaway.js';
+import './getawayOnline.js';
+import { pickRoles, snapshotGame, applySnapshot, cleanSnapshot } from './getawayNet.js';
 import { GetawayDriver, TrafficDriver } from './getawayAI.js';
 import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGetawayResult, drawGetawayMap, getawayCompass } from './getawayHud.js';
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
@@ -382,7 +384,7 @@ function loadTrack(newDef) {
   stage.setTrack(track);
   assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
   document.body.classList.toggle('course', !!assault);
-  getaway = def.getaway && !net ? makeGetaway() : null; getawayHudShow(!!getaway); syncGetawayVehicle();
+  getaway = def.getaway ? makeGetaway() : null; getawayHudShow(!!getaway); gwRoster(getaway); syncGetawayVehicle();
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
   props.load(track, def.props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 3 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 1.5 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 0.75 : 1); propsView.build(props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza');      // (the pizza's drums are green, like peppers)
@@ -438,6 +440,7 @@ function raceStartLights() {
 function restartRace() {
   setPaused(false);
   if (getaway && getaway.game.over) return;            // the result card is up: only its buttons carry on
+  if (getaway && getaway.online) return;               // (online, only the host starts another round, from the result card)
   if (getaway) { getawayRound(getaway.role); return; }
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
   skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
@@ -609,7 +612,7 @@ function stepPhysics(dt) {
     }
     if (assault) { assault.step(DT, car, race.unwrapped, derby); if (assault.events.length) assaultEvents(); }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
-    if (getaway) getawayStep();
+    if (getaway) { if (getaway.online) gwOnlineStep(); else getawayStep(); }
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
     props.step(DT, derby.enabled ? derby.cars : car);
     syncPose(); acc -= DT; n++; simTime += DT / GAME_SPEED;
@@ -670,9 +673,32 @@ function caravanEvent(e) {
 const GW_VEHICLE = { robber: 'car', police: 'police' };                 // the robber is the Dodge, the police the police car
 const TRAFFIC_CARS = ['big-apple', 'mini', 'volvo', 'panda', 'bmw'];      // the ordinary cars that drive about the town (a few kinds, so few models to load)
 const gwOther = (r) => (r === 'robber' ? 'police' : 'robber');
+let gwOnlineRobber = null;       // online: who the host made the robber this round (it comes with the start message)
 function makeGetaway() {
-  const role = store.get('cr.gwRole', 'robber') === 'police' ? 'police' : 'robber', L = townLayout();
+  const L = townLayout();
+  if (net) {                      // two players online: you and the one other driver in the room, roles from the host's start message
+    const foeId = [...net.players.keys()].find((id) => id !== net.selfId) || null, role = gwOnlineRobber === net.selfId ? 'robber' : 'police';
+    return { L, role, ai: null, online: true, foeId, seq: 0, snapAt: 0, game: new GetawayGame(L), rams: [], flipT: 0, resultAt: 0, card: null, t: 0, out: [], pending: [] };
+  }
+  const role = store.get('cr.gwRole', 'robber') === 'police' ? 'police' : 'robber';
   return { L, role, ai: gwOther(role), game: new GetawayGame(L), rams: [], flipT: 0, resultAt: 0, card: null, t: 0, out: [] };
+}
+/** Online, each side's car is its role's (the Dodge or the police car) on both screens: the roster is set from the roles, and put back afterwards. */
+const gwRosterSaved = new Map();
+function gwRoster(G) {
+  if (!net) { gwRosterSaved.clear(); return; }
+  if (G && G.online) {
+    for (const p of net.players.values()) {
+      if (!gwRosterSaved.has(p.id)) gwRosterSaved.set(p.id, p.vehicleId);
+      p.vehicleId = p.id === gwOnlineRobber ? GW_VEHICLE.robber : GW_VEHICLE.police;
+      if (Number.isInteger(p.hue) && RIVAL_LOOKS[p.hue]) RIVAL_LOOKS[p.hue].vehicleId = p.vehicleId;
+    }
+    for (const rp of remotePlayers.values()) mpReleasePlayer(rp);        // (their car is drawn again as the right one)
+  } else if (gwRosterSaved.size) {
+    for (const p of net.players.values()) if (gwRosterSaved.has(p.id)) { p.vehicleId = gwRosterSaved.get(p.id); if (Number.isInteger(p.hue) && RIVAL_LOOKS[p.hue]) RIVAL_LOOKS[p.hue].vehicleId = vehicleById(p.vehicleId).id; }
+    gwRosterSaved.clear();
+    for (const rp of remotePlayers.values()) mpReleasePlayer(rp);
+  }
 }
 /** The Getaway has its own cars: the Dodge for the robber, the police car for the police (and the vehicle you chose comes back afterwards). */
 function syncGetawayVehicle() {
@@ -756,7 +782,8 @@ function getawayDoor(G) {
   if (!shut && G.doorBlock) { const i = track.blocks.indexOf(G.doorBlock); if (i >= 0) track.blocks.splice(i, 1); G.doorBlock = null; }
   if (d.moved || g.time < d.t + 1.5 || g.over) return;
   d.moved = true;
-  const me = G.role === 'robber', foe = derby.rivals[0], police = me ? foe?.car : car, rob = me ? car : foe?.car;
+  const me = G.role === 'robber', foe = G.online ? null : derby.rivals[0], foeCar = G.online ? gwFoeCar() : foe?.car, police = me ? foeCar : car, rob = me ? car : foeCar;
+  if (G.online && !me) return;                           // (online, the robber's own screen is the one that moves him; the police just see him go)
   if (!rob || !police) return;
   const cands = G.L.nodes.filter((n) => Math.hypot(n.x - police.pos.x, n.z - police.pos.z) > 90 && Math.hypot(n.x - d.gx, n.z - d.mouth) > 45);
   const n = (cands.length ? cands : G.L.nodes)[Math.floor(Math.random() * (cands.length || G.L.nodes.length))], p = rescuePose(G.L, n.x, n.z, derby.cars.filter((c) => c !== rob));
@@ -778,10 +805,10 @@ function getawayEvents() {
   const G = getaway, g = G.game, me = G.role;
   for (const e of g.events) {
     if (e.type === 'pickup') { gwChime([660, 990]); getawayPop(me === 'robber' ? 'Got the cash! The police are alerted - sirens on! Follow the red line!' : 'Robbery in progress! Follow the red line!', 2400); }
-    else if (e.type === 'ram') { if (e.count >= e.need) { G.ramBlow = true; derby.blowUp(G.role === 'robber' ? derby.player : derby.rivals[0]); } sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
+    else if (e.type === 'ram') { if (e.count >= e.need && !G.online) { G.ramBlow = true; derby.blowUp(G.role === 'robber' ? derby.player : derby.rivals[0]); } sound.hit(14, 'car'); getawayPop(me === 'police' ? `Hit! ${e.count}/${e.need}` : `Rammed! ${e.count}/${e.need}`, 1100); }
     else if (e.type === 'wrecked') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robber blown up! Strike ${e.count}/${g.L.T.jail}` : `Your car blew up! Strike ${e.count}/${g.L.T.jail} - back in 6 seconds`, 2800); }
-    else if (e.type === 'stopped') { gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
-    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { derby.repairFighter(me === 'robber' ? derby.player : derby.rivals[0]); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
+    else if (e.type === 'stopped') { if (G.online && me === 'robber') { placeCarInArena(null, G.L.robberStart); car.boostFuel = 1; } gwChime([440, 330, 220], 100); getawayPop(me === 'police' ? `Robbery stopped! Strike ${e.count}/${g.L.T.jail}` : `Robbery stopped! Strike ${e.count}/${g.L.T.jail} - the cash is back in the bank`, 2600); }
+    else if (e.type === 'deliver') { gwChime([523, 659, 784, 1047], 110); { if (!G.online) derby.repairFighter(me === 'robber' ? derby.player : derby.rivals[0]); } getawayPop(g.over ? `Safe! ${e.count}/${g.goal}` : `Safe! ${e.count}/${g.goal} - the safehouse has moved!`, 2400); }
     else if (e.type === 'spawn' && g.time > 0.5) { gwChime([880], 100, 0.18); }
     else if (e.type === 'win') getawayFinish(e);
   }
@@ -794,17 +821,68 @@ function getawayFinish(e) {
   const wrecked = e.why === 'wrecked';
   const title = rob ? (me === 'robber' ? 'You got away with it!' : 'They got away!') : wrecked ? (me === 'police' ? 'Robber wrecked!' : 'Wrecked! Busted!') : (me === 'police' ? 'Robber busted!' : 'Busted! Off to jail');
   G.card = {
-    title, again: `Play again as ${gwOther(me)} (Enter)`,
+    title, again: G.online ? (net?.isHost ? 'Play again (random sides)' : 'Waiting for the host to start the next round') : `Play again as ${gwOther(me)} (Enter)`,
     lines: [rob ? `${e.robbed} bags safe in the safehouse` : wrecked ? `The getaway car is a wreck` : `Three strikes - the robber is in jail`, `Bags safe ${e.robbed} · strikes ${e.strikes}`, `Time ${mm}:${ss}`],
   };
   G.resultAt = performance.now() + 1700; sound.sirenLoop(null);
 }
-function showGetawayCard() { const G = getaway; if (G?.card) showGetawayResult(G.card, () => getawayRound(gwOther(G.role)), showMenu, startReplay); }
+function showGetawayCard() {
+  const G = getaway; if (!G?.card) return;
+  if (G.online) showGetawayResult(G.card, () => { if (net?.isHost) gwOnlineAgain(); }, showMenu, null);       // (no replay online; only the host can start the next round)
+  else showGetawayResult(G.card, () => getawayRound(gwOther(G.role)), showMenu, startReplay);
+}
+// ---- online (two players): the host runs the rules from both cars, the other screen mirrors them (getawayNet.js, getawayOnline.js)
+const gwFoeShim = { pos: { x: 0, y: 0, z: 0 }, az: { x: 1, z: 0 } }, gwFoeObj = { car: gwFoeShim };
+/** The other driver's car as something with a position, or null while there is no one (or no report from them yet). */
+function gwFoeCar() {
+  const G = getaway, p = G && G.foeId ? remotePlayers.get(G.foeId) : null, c = p && p.cur;
+  if (!c) return null;
+  gwFoeShim.pos.x = c.x; gwFoeShim.pos.y = c.y; gwFoeShim.pos.z = c.z;
+  gwFoeShim.az.x = 2 * (c.qx * c.qz + c.qw * c.qy); gwFoeShim.az.z = 1 - 2 * (c.qx * c.qx + c.qy * c.qy);
+  return gwFoeShim;
+}
+const G_foe = (G) => (G.online ? (gwFoeCar() ? gwFoeObj : null) : derby.rivals[0]);
+function gwOnlineStep() {
+  const G = getaway, g = G.game, host = net.isHost;
+  if (host && !g.over) {
+    const foe = gwFoeCar();
+    if (foe) {
+      const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: foe.pos.x, z: foe.pos.z }, rob = G.role === 'robber';
+      g.step(DT, rob ? mine : theirs, rob ? theirs : mine, G.rams, null);
+    }
+    G.rams.length = 0;
+    const ev = g.events.length ? g.events.map((e) => ({ ...e })) : null;
+    if (ev || ++G.snapAt % 6 === 0) net.sendGetawaySnap(snapshotGame(g, ++G.seq), ev);
+  } else if (!host && !g.over) g.time += DT;             // (the host's snapshots set the clock a few times a second; in between it just runs on)
+  getawayDoor(G);
+  if (g.events.length) getawayEvents();
+  if (car.ay.y < 0.3 && car.speed < 3) { G.flipT += DT; if (G.flipT > 3) { G.flipT = 0; respawn('flip'); } } else G.flipT = 0;
+}
+/** A hard knock between the two cars was felt on this screen (mpCollideLocal): if you are the robber, it is a ram. */
+function gwOnlineContact(closing) {
+  const G = getaway; if (!G || !G.online || G.role !== 'robber' || G.game.over) return;
+  if (net.isHost) G.rams.push(closing); else net.sendGetawayRam(closing);
+}
+/** Host only: another round, new random sides, for both screens. */
+function gwOnlineAgain() {
+  const ids = [...net.players.keys()], r = pickRoles(ids);
+  hideGetawayResult();
+  net.startGame({ ...makeTemplate('getaway'), gwRobber: r.robber });
+}
+function gwOnlineMessage(fromId, m) {
+  const G = getaway; if (!G || !G.online) return;
+  if (m.k === 'ram') { if (net.isHost && G.role === 'police' && !G.game.over) G.rams.push(m.speed); }
+  else if (m.k === 'snap' && !net.isHost) {
+    const s = cleanSnapshot(m.s, G.game.bags.length); if (!s) return;
+    applySnapshot(G.game, s);
+    for (const e of m.ev) G.game.events.push(e);
+  }
+}
 function getawayFrame() {
-  const G = getaway, f = derby.rivals[0]; G.t += 1 / 60;
+  const G = getaway, f = G_foe(getaway); G.t += 1 / 60;
   { const rf = G.role === 'robber' ? derby.player : f, pf = G.role === 'police' ? derby.player : f; getawayHudUpdate(G.game, G.role, { robber: gwPct(rf), police: gwPct(pf) }); }
   getawayCompass(car.az.x, car.az.z);
-  sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
+  sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : G.online ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;
     if (!g.over) { if (G.role === 'robber') { const b = g.robberBag ? g.safehouse : g.loose()[0]; if (b) to = { x: b.x, z: b.z }; } else if (g.alarm && f) to = { x: f.car.pos.x, z: f.car.pos.z }; }
@@ -828,7 +906,7 @@ function derbyStart() {
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
   const solo = !!assault;                       // Apple Crumple: no rivals, but the car takes real damage and is wrecked and respawned like any race
-  const gw = !!getaway;                         // The Getaway: exactly one computer car, the other side, and nobody is hurt
+  const gw = !!getaway && !getaway.online;      // The Getaway: exactly one computer car, the other side, and nobody is hurt (online there are no computer cars: the other side is a person)
   derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); if (gw) derby.enabled = !net; derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
   const mixedKinds = derby.enabled && !solo && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
@@ -1527,7 +1605,7 @@ function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
   if (!net) { const k = ownLinkKey(); setHash(k ? slugOf(k) : ''); }        // the address bar shows this game's own link, ready to copy and send (nothing for an edited or random track)
   if (assault) { assaultCountdown(); return; }
-  if (getaway) { getawayBegin(); return; }
+  if (getaway) { if (!getaway.online) getawayBegin(); return; }        // (online, mpBeginDrive does the banner and the lights, so both screens start together)
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
   raceStartLights();
 }
@@ -1782,6 +1860,7 @@ function mpImpactFx(x, y, z, speed) {
 }
 /** Take health off the local player. Returns true if this was the blow that finished them (they explode). */
 function mpTakeDamage(amount) {
+  if (getaway) return false;                                  // (The Getaway online: the cars are not hurt, only rammed)
   if (life.damage(amount, simTime) !== 'died') return false;
   mpExplodeAt(car.pos.x, car.pos.y, car.pos.z); wheelFlyers.launch(visual, car.vel);
   if (life.out) hud.banner("You're out! Watch the rest battle it out (C = next player)", 4500);
@@ -1850,6 +1929,7 @@ function mpCollideLocal() {
         const rawHp = crashDamage(mu, closing) * Math.min(2.5, Math.max(0.35, Math.sqrt(theirs.mass / car.mass)));
         mpCarHitDamage(rawHp, closing, mine, car.pos.x - nx, car.pos.z - nz, mpP.x, mpP.y + 0.5, mpP.z);
         net.sendHit(id, { nx: -nx, nz: -nz, overlap: overlap * theirShare, speed: Math.min(30, closing), attackerVehicleId: mine.id });
+        if (getaway) gwOnlineContact(closing);
       }
     }
   }
@@ -2020,12 +2100,15 @@ function mpSendOpts() {
 function mpBeginDrive(trackDef) {
   life.reset(); mpFinished = false; mpRaceStart = null; mpBoomSeen.clear();
   const mine = net.players.get(net.selfId);
+  gwOnlineRobber = trackDef && trackDef.getaway ? trackDef.gwRobber || null : null;
+  hideGetawayResult();                                              // (a result card from the round before)
   startDriving(trackDef || makeTemplate('speedway'));
   car.mpEqual = true;                                               // every car pulls and tops out the same in multiplayer (MP_EQUAL, vehicle.js)
-  life.elimination = track.def.mode === 'lastStanding'; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out
+  life.elimination = track.def.mode === 'lastStanding' && !getaway; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out
   if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
-  mpPlaceOnGrid();
-  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200);
+  if (getaway) { placeCarInArena(null, getaway.role === 'robber' ? getaway.L.robberStart : getaway.L.policeStart); car.boostFuel = 1; hud.banner(getaway.role === 'robber' ? 'ROBBER: grab a bag, reach the safehouse!' : 'POLICE: stop the robbers!', 2400); }
+  else { mpPlaceOnGrid();
+  hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200); }
   frozen = true;                                                    // held on the grid until the lights go out, same as Race Day
   startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g), trackDef?.lightHold);
 }
@@ -2091,7 +2174,7 @@ const mpHandlers = {
   onOpts: (o) => { $('mp-track-fixed').textContent = `The host picked: ${o.track} \u00b7 ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`; },
   onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {
-    if (id === net.selfId) return;
+    if (!net || id === net.selfId) return;
     let p = remotePlayers.get(id);
     if (!p) { const info = net.players.get(id); p = { name: info ? info.name : 'Driver', hue: info ? info.hue : 0 }; remotePlayers.set(id, p); }
     const rx = performance.now(), ts = Number.isFinite(s.ts) ? s.ts : rx;
@@ -2102,6 +2185,7 @@ const mpHandlers = {
     p.cur = s; p.recvAt = rx;
   },
   onPlayerLeft: (id) => {
+    if (getaway && getaway.online && !getaway.game.over) { hud.banner('The other player has left', 3000); getaway.game.over = true; getaway.game.events.length = 0; setTimeout(() => { if (getaway && getaway.online) showMenu(); }, 3200); }
     const p = remotePlayers.get(id);
     if (p) {
       // A departing player's car goes out with a bang at its last known position instead of just vanishing.
@@ -2114,6 +2198,7 @@ const mpHandlers = {
       remotePlayers.delete(id);
     }
   },
+  onGetaway: (fromId, m) => gwOnlineMessage(fromId, m),
   onRoll: (fromId, i) => track && track.rollerGo(i),
   onBoom: (fromId, i) => { if (!mpBoomSeen.has(i)) { mpBoomSeen.add(i); props.igniteRemote(i); } },
   onHit: (fromId, d) => {
@@ -2150,12 +2235,12 @@ const mpHandlers = {
   onError: (msg) => { toast(msg); showMenu(); },
 };
 function bindMultiplayer() {
-  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('');
+  $('mp-track').innerHTML = TEMPLATE_KEYS.map((k) => `<option value="${k}">${k === 'random' ? 'Got the hump' : makeTemplate(k).name}</option>`).join('') + '<option value="getaway">The Getaway (exactly 2 players)</option>';
   $('mp-track').value = 'random';
   // the same track and laps choice up on the first multiplayer screen, so the host sets the game up before creating the room
   $('mp-home-track').innerHTML = $('mp-track').innerHTML;
   const savedTrack = store.get('cr.mptrack', 'random');
-  $('mp-home-track').value = TEMPLATE_KEYS.includes(savedTrack) ? savedTrack : 'random';
+  $('mp-home-track').value = TEMPLATE_KEYS.includes(savedTrack) || savedTrack === 'getaway' ? savedTrack : 'random';
   $('mp-home-laps').value = String(mpRaceLaps());
   const homeToLobby = () => { $('mp-track').value = $('mp-home-track').value; store.set('cr.mptrack', $('mp-home-track').value); window.__raceLaps?.set?.(+$('mp-home-laps').value); $('mp-laps').value = $('mp-home-laps').value; mpSendOpts(); };
   $('mp-home-track').onchange = homeToLobby; $('mp-home-laps').onchange = homeToLobby;
@@ -2197,7 +2282,9 @@ function bindMultiplayer() {
   $('mp-start').onclick = () => {
     if (!net) return;
     const key = $('mp-track').value;
+    if (key === 'getaway' && net.players.size !== 2) { toast('The Getaway is for exactly 2 players: one robber, one police. Pick another track for a bigger room.'); return; }
     clearSavedRoom();                                           // a started race is not something to resume
+    if (key === 'getaway') { net.startGame({ ...makeTemplate('getaway'), gwRobber: pickRoles([...net.players.keys()]).robber }); return; }       // (the host picks who is the robber, at random)
     net.startGame(key === 'random' ? makeRandomTrack() : makeTemplate(key));
   };
   const inviteUrl = () => `${location.origin}${location.pathname}?room=${net.roomCode}`;
