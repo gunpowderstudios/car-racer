@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.555 — Race Day podium at the very end
+- In the Race Day championship the podium no longer pops up after every stage: you get the stage results, and the podium is shown once, with the overall standings, after the final stage. A single Race Day race still shows its podium. Health still starts fresh on each stage.
+
 ## v17.554 — Damage kept after coming off the track
 - After the 3-2-1 that puts you back on the road, your damage stays exactly as it was (the chart and the dents), and you carry on with the health you had left. If you were already destroyed, the race is over as before. (This replaces v17.553, which repaired the car.)
 

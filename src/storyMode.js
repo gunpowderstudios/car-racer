@@ -166,6 +166,22 @@ function finishStage(detail) {
   if (state.single) { /* a single race leaves any championship you have on the go alone */ }
   else if (through) store.set({ ...b, best: Math.max(b.best || 0, i + 1), champ: keep ? { stage: i + 1, table: state.table, alive: state.alive } : null });
   else store.set({ ...b, champ: null });
+  const finale = through && i === stages().length - 1 && !state.single;
+  if (finale && typeof window.__soloPodiumList === 'function') {                      // the podium waits for the very last stage, and shows the overall standings
+    const slots = ranked.map((r) => (r.id === 'you' ? 0 : rv.indexOf(r.id) + 1)).filter((n) => n >= 0);
+    const list = window.__soloPodiumList(slots);
+    if (list.length) {
+      window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: 'player', derby: false } }));
+      const afterPodium = () => {
+        if (!state.active) return;
+        const pod = document.getElementById('podium');
+        if (pod && !pod.hidden) { resultTimer = setTimeout(afterPodium, 400); return; }
+        show('through', place, ranked, keep || null);
+      };
+      resultTimer = setTimeout(afterPodium, 600);
+      return;
+    }
+  }
   show(through ? 'through' : 'out', place, ranked, keep || null);
 }
 

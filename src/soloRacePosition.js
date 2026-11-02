@@ -147,6 +147,8 @@ function soloPodiumList(order) {
   });
 }
 
+window.__soloPodiumList = soloPodiumList;      // (Race Day builds its championship podium with this)
+
 function showFinish(place, total) {
   const box = document.getElementById('solo-race-finish');
   const title = document.getElementById('solo-finish-title');
@@ -169,8 +171,8 @@ function showFinish(place, total) {
   const list = soloPodiumList(order);
   podiumTimer = setTimeout(() => {
     const game = window.__game;
-    // (Race Day shows this podium too: its stage results wait until the podium is closed, see storyMode.js.)
-    if (!getCurrentMultiplayer() && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
+    // (A Race Day championship shows no podium per stage: storyMode.js shows one, for the overall standings, after the last stage. A single Race Day race shows this one.)
+    if (!getCurrentMultiplayer() && !(window.__story?.active && !window.__story.single) && game?.race && !game?.derby?.demolition && game.race.index >= raceLaps() && list.length) {
       window.dispatchEvent(new CustomEvent('carracer-race-podium', { detail: { list, selfId: 'player', derby: false } }));
     }
   }, 5000);

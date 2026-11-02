@@ -418,3 +418,11 @@ test('the replay shows a lap timer for your own car', () => {
   assert.match(main, /type: 'lap', idx/); assert.match(html, /id="rp-lap"/);
   assert.match(rp, /function lapText/); assert.match(rp, /el\.lap\.textContent/);
 });
+
+test('a Race Day championship shows the podium only after the last stage, with the overall standings', () => {
+  const solo = readFileSync(new URL('../src/soloRacePosition.js', import.meta.url), 'utf8');
+  const story = readFileSync(new URL('../src/storyMode.js', import.meta.url), 'utf8');
+  assert.match(solo, /!\(window\.__story\?\.active && !window\.__story\.single\)/);
+  assert.match(story, /const finale = through && i === stages\(\)\.length - 1 && !state\.single/);
+  assert.match(story, /carracer-race-podium/);
+});
