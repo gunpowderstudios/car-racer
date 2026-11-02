@@ -766,7 +766,7 @@ test('Last One Standing is single-life: the first wreck ends your round (no span
   const P = a.derby.player;
   a.derby._damage(P, 'front', 5000, null);
   assert.equal(a.derby.over, true, 'first wreck: out');
-  assert.ok(a.derby.events.some((e) => e.type === 'over' && e.scrap));
+  assert.ok(a.derby.events.some((e) => e.type === 'over'));
 });
 
 test('a rival that was wrecked comes back behind its wreck - never ahead of where it died, or ahead of a player who is past it', () => {
@@ -815,4 +815,11 @@ test('Demolition Day: rivals are tougher and drive at full skill; every other ga
   };
   assert.ok(DERBY.brutalArmour > 0 && DERBY.brutalArmour < 1);
   assert.ok(run(true) > run(false), 'the same hit costs a brutal rival less');
+});
+
+test('no spanners in the racing games: one wreck ends the race (and shows no scrap message)', () => {
+  const a = arena(-300, 0, 'race'); a.derby.repairsMax = 0; a.derby.start(a.track, a.car, 0, 7, 'race'); a.derby.time = DERBY.grace + 1;
+  a.derby._damage(a.derby.player, 'front', 5000, null);
+  assert.equal(a.derby.over, true);
+  assert.ok(a.derby.events.some((e) => e.type === 'over' && !e.scrap));
 });

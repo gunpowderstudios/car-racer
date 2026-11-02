@@ -413,7 +413,7 @@ test('main.js runs the course: no rivals but real damage, lights, checkpoints, p
   assert.match(main, /if \(!assault && idx > race\.index\)/, 'no laps are counted on the course');
   assert.match(main, /stage\.updateAssault\(assault\)/);
   assert.match(main, /e\.type === 'repaired'/);
-  assert.match(main, /\(solo \? DERBY\.repairs : opts\.mode === 'demolition'/, 'three spanners on the course');
+  assert.match(main, /derby\.repairsMax = derby\.enabled && !arena && !window\.__story\?\.active \? 0 : Infinity/, 'no spanners: one wreck ends the run');
   assert.match(main, /e\.type === 'over' && assault\) \{\s*assault\.scrap\(\)/, 'out of spanners ends the run');
   assert.match(main, /const costs = !assault && /, 'a reset on the course costs time, not a spanner');
   assert.match(main, /k === 'apple' \? \[\['Choose'/, 'the course has no Edit button');

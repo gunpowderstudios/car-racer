@@ -840,7 +840,7 @@ function derbyStart() {
   derby.damageEnabled = derby.enabled;
   derby.getawaySetup = gw ? getawaySetup() : null;
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
-  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? (solo ? DERBY.repairs : opts.mode === 'demolition' ? DERBY.repairsDemolition : DERBY.repairs) : Infinity;      // Race/Jamboree get repairs; Last One Standing gets zero, so the first wreck ends your round
+  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? 0 : Infinity;      // no spanners (lives) in any racing game: the first wreck ends your round
   if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();
@@ -895,7 +895,7 @@ function derbyEvents() {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
     } else if (e.type === 'over' && assault) {
-      assault.scrap(); hud.banner('No spanners left!', 1700);                // the course ends with the car scrapped (the result card shows)
+      assault.scrap(); hud.banner('Wrecked!', 1700);                // the course ends with the car scrapped (the result card shows)
     } else if (e.type === 'over') {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
       if (isBest) { all[key] = e.score; store.set('cr.derby', all); }

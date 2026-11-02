@@ -775,7 +775,7 @@ export class Derby {
       if (Number.isFinite(this.repairsMax)) {
         if (this.repairs <= 0) {
           this.over = true;                                           // no spanners left: the car is scrap (and stays on the track, burnt out)
-          this.events.push({ type: 'over', scrap: true, zone, score: this.score, takedowns: this.takedowns });
+          this.events.push({ type: 'over', scrap: this.repairsMax > 0, zone, score: this.score, takedowns: this.takedowns });
         } else { this.repairs--; f.respawnAt = this.time + DERBY.respawnDelay; }           // a spanner is used: repaired and back on the road shortly
       } else if (this.demolition) {
         this.over = true;

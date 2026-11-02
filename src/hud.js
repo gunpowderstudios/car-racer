@@ -78,7 +78,7 @@ export class Hud {
     const k = left + '/' + max;
     if (k === this._last.rep) return;
     this._last.rep = k;
-    el.hidden = !Number.isFinite(max);
+    el.hidden = !(Number.isFinite(max) && max > 0);      // (no spanners in the racing games now: nothing to show)
     if (el.hidden) return;
     const box = $('rep-pips');
     if (box.children.length !== max) { box.textContent = ''; for (let i = 0; i < max; i++) box.insertAdjacentHTML('beforeend', SPANNER); }

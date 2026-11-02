@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.552 — No spanners: one wreck and it's over
+- The three spanners (lives) are gone from every racing game. Once your car is destroyed the race is over. Falling off the track is not a wreck: you still get the 3-2-1 and go back on the road, and the Back on the road button is free. Rivals are unchanged.
+
 ## v17.551 — Lap timer in the replay
 - While you watch your own car in a replay, the top bar shows the lap number and a running lap time ("Lap 2/3  0:41.2"), and "Finished" with your last lap time at the end.
 
