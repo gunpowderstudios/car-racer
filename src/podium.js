@@ -90,7 +90,8 @@ export function showPodium(list, selfId, derby = false) {
   scene.add(new THREE.HemisphereLight(0xffe2b4, 0x25163e, 2.4));
   const key = new THREE.DirectionalLight(0xffffff, 3.2); key.position.set(3, 7, 6); scene.add(key);
   const rim = new THREE.DirectionalLight(0xff7a47, 1.5); rim.position.set(-5, 3, -4); scene.add(rim);
-  cam.position.set(0, 3.4, 12.5); cam.lookAt(0, 0.7, 0); cam.updateMatrixWorld(true);
+  const ZOOM = 1.3;                                                      // (the camera comes in 30% closer: a bigger podium in the same space)
+  cam.position.set(0, 0.7 + 2.7 / ZOOM, 12.5 / ZOOM); cam.lookAt(0, 0.7, 0); cam.updateMatrixWorld(true);
   const spinners = [];
   for (const slot of SLOTS) {
     const who = top[slot.place]; if (!who) continue;

@@ -404,3 +404,9 @@ test('a music notes button sits with the round buttons, and the round-arrow butt
   assert.match(main, /\['mq-reset', 'reset'\]/); assert.match(main, /Tap again to restart/);
   assert.match(main, /\$\('mq-music'\)\.classList\.toggle\('off', !sound\.musicOn\)/);
 });
+
+test('the winners podium is drawn 30% bigger', () => {
+  const pod = readFileSync(new URL('../src/podium.js', import.meta.url), 'utf8');
+  assert.match(pod, /const ZOOM = 1\.3;/);
+  assert.match(pod, /cam\.position\.set\(0, 0\.7 \+ 2\.7 \/ ZOOM, 12\.5 \/ ZOOM\)/);
+});

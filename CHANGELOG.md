@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.550 — Bigger podium
+- The winners podium, with its cars and blocks, is drawn 30% bigger on every screen (the camera comes in closer). The names move with it.
+
 ## v17.549 — Tablets match phones
 - Tablets (any touch screen) now have exactly the same screen as phones, same sizes and positions, not a bigger version: no speedometer or damage chart, the round buttons low on the left, restart top right, and in The Getaway the satnav top left with the scores beside it.
 
