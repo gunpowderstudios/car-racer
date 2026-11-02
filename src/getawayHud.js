@@ -51,12 +51,13 @@ body.getaway #lap-card{display:none}
 #getaway-bag i{display:block;width:20px;height:20px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 35% 30%,#e8c46a,#a8741f);border:1px solid #fff8;text-align:center;font-style:normal;font-size:13px;line-height:19px;color:#3a2800}
 @media (pointer:fine) and (min-width:761px){#speed-stack #getaway-bag{position:static;align-self:flex-end;margin-bottom:-2px}}
 @media (max-width:900px){body.getaway #minimap{width:132px;height:86px}#getaway-compass{right:150px;top:calc(max(8px,env(safe-area-inset-top)) + 48px);width:54px;height:54px}#getaway-compass .gw-dial span{font-size:11px}#getaway-compass .gw-dial span.n{font-size:16px}#getaway-hud .gw-side{min-width:96px;padding:1px 8px}}
+@media (pointer:coarse){#getaway-compass{top:calc(max(8px,env(safe-area-inset-top)) + 100px)}}      /* (the restart button is top right, so the map and its compass sit a little lower) */
 @media (pointer:coarse) and (max-width:760px){
 body.getaway #minimap{left:8px;right:auto;top:calc(max(8px,env(safe-area-inset-top)) + 24px);width:108px;height:70px}
 #getaway-naff{font-size:10px;line-height:10px;letter-spacing:.16em}
-#getaway-compass{left:122px;right:auto;top:calc(max(8px,env(safe-area-inset-top)) + 26px);width:44px;height:44px}
+#getaway-compass{left:130px;right:auto;top:calc(max(8px,env(safe-area-inset-top)) + 26px);width:44px;height:44px}
 #getaway-compass .gw-dial span{font-size:9px}#getaway-compass .gw-dial span.n{font-size:13px}
-#getaway-hud{left:176px;right:104px;top:calc(max(8px,env(safe-area-inset-top)) - 2px);width:auto;transform:none}
+#getaway-hud{left:182px;right:104px;top:calc(max(8px,env(safe-area-inset-top)) - 2px);width:auto;transform:none}
 #getaway-hud .gw-row{gap:4px}
 #getaway-hud .gw-side{min-width:0;flex:1;padding:0 4px;border-width:2px;border-radius:8px;font-size:12px;letter-spacing:.03em;line-height:1.15}
 #getaway-hud .gw-pips{font-size:15px;letter-spacing:.08em}

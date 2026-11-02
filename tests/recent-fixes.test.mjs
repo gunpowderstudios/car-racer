@@ -400,7 +400,7 @@ test('on phones the speedometer and damage chart are hidden and the Getaway satn
 test('a music notes button sits with the round buttons, and the round-arrow button restarts the race from the top right', () => {
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="mq-music"/); assert.match(html, /id="mq-restart"/); assert.doesNotMatch(html, /id="mq-reset"/);
-  assert.match(main, /\['mq-restart', 'restart'\]/);
+  assert.match(html, /id="mq-music"/); assert.match(html, /id="mq-restart"/); assert.match(html, /id="mq-reset"/);
+  assert.match(main, /\['mq-reset', 'reset'\]/); assert.match(main, /Tap again to restart/);
   assert.match(main, /\$\('mq-music'\)\.classList\.toggle\('off', !sound\.musicOn\)/);
 });

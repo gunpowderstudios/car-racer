@@ -1110,5 +1110,6 @@ body.mode-edit #home-btn { display: none; }   /* (the editor has its own Menu bu
     border: 1.5px solid rgba(255,255,255,.9); border-radius: 50%; background: rgba(0,0,0,.28); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.28); touch-action: none; -webkit-tap-highlight-color: transparent; }
   #mq-restart svg { width: 100%; height: 100%; fill: currentColor; }
   #mq-restart:active { background: rgba(255,255,255,.2); }
+  #mq-restart.armed { background: #ffb31f; border-color: #ffb31f; color: #2a1a00; }
   body.mode-drive #minimap { top: calc(max(8px, env(safe-area-inset-top)) + 100px); }      /* (the map moves down to make room) */
 }

@@ -352,10 +352,21 @@ for (const b of document.querySelectorAll('#controls button[data-act]')) {
   b.addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
   b.addEventListener('click', () => { if (mode === 'drive') controlActions[b.dataset.act](); b.blur(); if (cogMenuOnly) setSoundPop(false); });
 }
-for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-restart', 'restart'], ['mq-boom', 'boom']]) {
+for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-boom', 'boom']]) {
   const b = $(id); if (!b) continue;
   b.addEventListener('pointerdown', (e) => e.preventDefault());
   b.addEventListener('click', () => { if (mode === 'drive') controlActions[act](); b.blur(); });
+}
+{ // Restart sits in the corner and asks twice: the first tap lights it up, a second tap within a few seconds restarts (so a stray thumb cannot lose the race)
+  const rb = $('mq-restart'); let armed = 0;
+  rb.addEventListener('pointerdown', (e) => e.preventDefault());
+  rb.addEventListener('click', () => {
+    if (mode !== 'drive') return;
+    if (armed && performance.now() < armed) { armed = 0; rb.classList.remove('armed'); controlActions.restart(); rb.blur(); return; }
+    armed = performance.now() + 2800; rb.classList.add('armed'); hud.banner('Tap again to restart', 1400);
+    setTimeout(() => { if (performance.now() >= armed) { armed = 0; rb.classList.remove('armed'); } }, 2900);
+    rb.blur();
+  });
 }
 
 // --------------------------------------------------------------------- track
