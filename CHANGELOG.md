@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.553 — Repaired for real after coming off the track
+- After the 3-2-1 that puts you back on the road, the car's dents, burnt look and missing wheels are repaired along with the damage chart (before, the chart reset but the car still looked damaged). Rivals put back on the road are repaired the same way.
+
 ## v17.552 — No spanners: one wreck and it's over
 - The three spanners (lives) are gone from every racing game. Once your car is destroyed the race is over. Falling off the track is not a wreck: you still get the 3-2-1 and go back on the road, and the Back on the road button is free. Rivals are unchanged.
 

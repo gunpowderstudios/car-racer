@@ -133,6 +133,7 @@ function finishRivalReset(derby, f, r) {
     f.driver.grudgeT = 0;
   }
   placeOnRoad(f.car, derby.track, r.s, 0, (f.driver ? f.driver.cruise : 20) * 0.55);
+  derby.events.push({ type: 'repaired', id: f.id, isPlayer: false });
   derby._pose(f, f.cur);
   derby._pose(f, f.prev);
   derby._refreshCars();
@@ -196,6 +197,7 @@ function finishPlayerReset(derby, f, r) {
   derby._pose(f, f.cur);
   derby._pose(f, f.prev);
   derby._refreshCars();
+  derby.events.push({ type: 'repaired', id: f.id, isPlayer: true });      // (the dents, burnt look and damage chart all reset together)
 }
 
 function stepPlayerRecovery(derby, dt) {
