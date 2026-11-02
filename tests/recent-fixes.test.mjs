@@ -480,3 +480,8 @@ test('the version files are never empty, and the home preview fits the whole veh
   const pv = readFileSync(new URL('../src/menuVehiclePreview.js', import.meta.url), 'utf8');
   assert.match(pv, /const fits = \(d\) =>/); assert.match(pv, /fitBox && Math\.abs\(camera\.aspect - fitAspect\)/);
 });
+
+test('the home page vehicle is 50% bigger on a computer', () => {
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(css, /@media \(min-width: 981px\) \{ #menu-vehicle-preview \{ width: clamp\(540px, 50vw, 1050px\)/);
+});

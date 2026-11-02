@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.560 — Bigger home vehicle
+- On a computer, the rotating vehicle on the home page is 50% bigger (it still always fits whole, and sits clear of the logo on smaller screens). Phones and tablets are unchanged.
+
 ## v17.559 — Skid marks when pulling away, bigger home preview
 - A flat-out start from a standstill leaves a short pair of black marks, and a start with boost leaves a proper burnout. (Donuts already did.)
 - The rotating vehicle preview on the home page now always shows the whole vehicle, whichever way it is turned (the big bus was being cut off): the camera backs off just far enough, and it re-fits if the window changes shape.
