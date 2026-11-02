@@ -843,7 +843,10 @@ function gwFoeCar() {
 }
 const G_foe = (G) => (G.online ? (gwFoeCar() ? gwFoeObj : null) : derby.rivals[0]);
 function gwOnlineStep() {
-  const G = getaway, g = G.game, host = net.isHost;
+  const G = getaway, g = G.game, host = net.isHost, now = performance.now();
+  const fp = G.foeId ? remotePlayers.get(G.foeId) : null, quiet = host ? !!fp && now - (fp.recvAt || now) > 2500 : !!G.lastSnapAt && now - G.lastSnapAt > 2500 && now - (fp?.recvAt || now) > 2500;
+  if (quiet !== !!G.waiting) { G.waiting = quiet; if (quiet) hud.banner('Waiting for the other player\u2026 (their window may be in the background)', 60000); else hud.banner('Back in action!', 1200); }
+  if (quiet) return;                                    // (the rules stand still until they are back)
   if (host && !g.over) {
     const foe = gwFoeCar();
     if (foe) {
@@ -874,6 +877,7 @@ function gwOnlineMessage(fromId, m) {
   if (m.k === 'ram') { if (net.isHost && G.role === 'police' && !G.game.over) G.rams.push(m.speed); }
   else if (m.k === 'snap' && !net.isHost) {
     const s = cleanSnapshot(m.s, G.game.bags.length); if (!s) return;
+    G.lastSnapAt = performance.now();
     applySnapshot(G.game, s);
     for (const e of m.ev) G.game.events.push(e);
   }
@@ -2103,6 +2107,7 @@ function mpBeginDrive(trackDef) {
   const mine = net.players.get(net.selfId);
   gwOnlineRobber = trackDef && trackDef.getaway ? trackDef.gwRobber || null : null;
   hideGetawayResult();                                              // (a result card from the round before)
+  net.staleMs = trackDef && trackDef.getaway ? 45000 : null;          // (The Getaway: a player whose tab or app is in the background for a while is waited for, not dropped after 5 s)
   startDriving(trackDef || makeTemplate('speedway'));
   car.mpEqual = true;                                               // every car pulls and tops out the same in multiplayer (MP_EQUAL, vehicle.js)
   life.elimination = track.def.mode === 'lastStanding' && !getaway; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out

@@ -150,7 +150,7 @@ export class Multiplayer {
       if (!this.isHost || !this.started) return;
       const now = performance.now();
       for (const id of [...this.conns.keys()]) {
-        const limit = this._gotState.has(id) ? STALE_PLAYER_MS : STALE_FIRST_MS;
+        const limit = this._gotState.has(id) ? (this.staleMs || STALE_PLAYER_MS) : STALE_FIRST_MS;      // (staleMs: the Getaway waits much longer, so a player who has switched to another window or app for a bit is not thrown out)
         if (now - (this._lastSeen.get(id) || now) > limit) this._playerLeft(id);
       }
     }, 1000);

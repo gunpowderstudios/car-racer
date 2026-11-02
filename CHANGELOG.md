@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.558 — Online Getaway waits for you
+- Switching to another window or app for a bit no longer throws the other player out of an online Getaway: the game waits up to 45 seconds (instead of 5), pauses the rules, and shows "Waiting for the other player..." until they are back.
+
 ## v17.557 — Online Getaway: no laps, original colours
 - No Laps choice when The Getaway is picked in Multiplayer (it has no laps).
 - Online, the robber is always the original orange Dodge and the police car keeps its livery, instead of being painted in each player's colour.

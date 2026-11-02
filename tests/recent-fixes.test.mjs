@@ -460,3 +460,11 @@ test('online Getaway: no laps choice, and cars keep their original paint', () =>
   assert.match(main, /const gwLaps = \(\) =>/); assert.match(main, /\/\^The Getaway\/\.test\(o\.track\)/);
   assert.match(main, /const look = plain \? null :/); assert.match(main, /visual\.setOwnLook\(getaway \? null : RIVAL_LOOKS\[mine\.hue\]\)/);
 });
+
+test('online Getaway waits for a player whose window is in the background instead of dropping them', () => {
+  const mp = readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(mp, /this\.staleMs \|\| STALE_PLAYER_MS/);
+  assert.match(main, /net\.staleMs = trackDef && trackDef\.getaway \? 45000 : null/);
+  assert.match(main, /Waiting for the other player/);
+});
