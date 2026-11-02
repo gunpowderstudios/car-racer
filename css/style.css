@@ -140,7 +140,7 @@ body:not(.mode-menu) #menu { display: none; }
   aspect-ratio: 1.55 / 1;
 }
 #menu-vehicle-preview { top: clamp(190px, 28vh, 280px); }      /* the car sits below the TV and its tagline (the track preview keeps its place) */
-@media (min-width: 981px) { #menu-vehicle-preview { width: clamp(540px, 50vw, 1050px); top: clamp(70px, 12vh, 200px); } }      /* on a computer the rotating vehicle is 50% bigger */
+@media (min-width: 981px) { #menu-vehicle-preview { width: clamp(540px, 50vw, 1050px); top: clamp(150px, 23vh, 290px); } #menu-vehicle-preview .menu-vehicle-stage { aspect-ratio: 2.15 / 1; } }      /* on a computer the rotating vehicle is 50% bigger */
 #menu-vehicle-canvas {
   display: block;
   width: 100%;

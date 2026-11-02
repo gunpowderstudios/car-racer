@@ -123,7 +123,7 @@ function installPreview({
           eul.y = (k / 12) * Math.PI * 2;
           for (const q of corners) {
             tmp.copy(q).applyEuler(eul).project(camera);
-            if (Math.abs(tmp.x) > 0.95 || Math.abs(tmp.y) > 0.72) return false;
+            if (Math.abs(tmp.x) > 0.95 || Math.abs(tmp.y) > 0.9) return false;
           }
         }
         return true;
@@ -133,7 +133,7 @@ function installPreview({
       for (let i = 0; i < 160 && !fits(d); i++) d *= 1.03;
       d *= 1 + (fitRoom - 1) * 0.3;
       camera.position.copy(dir).multiplyScalar(d).add(target);
-      const drop = 0.24 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));        // (the vehicle sits in the upper part of the window, clear of the text under it)
+      const drop = -0.07 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));        // (the vehicle sits in the upper part of the window, clear of the text under it)
       target.y -= drop; camera.position.y -= drop; camera.lookAt(target);
       camera.near = Math.max(0.01, d / 50); camera.far = Math.max(100, d * 20);
       camera.updateProjectionMatrix();
