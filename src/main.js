@@ -1956,10 +1956,10 @@ function mpVanContacts() {
     carHitsRemoteVan(car, c.van, caravan.spec, mine);
   }
 }
-function mpMakeView(hue, vid) {
-  const key = hue + ':' + vid;                                   // a spare view only goes back to a player with the same car (and colour)
+function mpMakeView(hue, vid, plain = false) {
+  const key = plain ? 'plain:' + vid : hue + ':' + vid;                                   // a spare view only goes back to a player with the same car (and colour)
   let v = (mpViewPool[key] || (mpViewPool[key] = [])).pop();
-  if (!v) { v = new CarVisual(stage.scene, car.restHeight); v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; v.poolKey = key; }
+  if (!v) { v = new CarVisual(stage.scene, car.restHeight); if (!plain) v.setPaint(RIVAL_LOOKS[hue].tint); v.hue = hue; v.poolKey = key; }
   v.root.visible = true; v.root.scale.setScalar(1); v.clearDents();
   return v;
 }
@@ -2005,9 +2005,10 @@ function mpSyncRemote() {
   for (const [pid, p] of remotePlayers) {
     if (!p.cur || !p.buf || !p.buf.length) continue;
     const vid = vehicleById(net?.players.get(pid)?.vehicleId).id;        // the car THEY chose, not ours
-    if (!p.view) p.view = mpMakeView(p.hue, vid);
+    const plain = !!(getaway && getaway.online);                              // (The Getaway: the robber is always the original orange Dodge and the police car keeps its livery, nobody's player colour)
+    if (!p.view) p.view = mpMakeView(p.hue, vid, plain);
     if (!p.view.loaded) {
-      const look = { ...RIVAL_LOOKS[p.hue], vehicleId: vid };
+      const look = plain ? null : { ...RIVAL_LOOKS[p.hue], vehicleId: vid };
       if (vid === selectedVehicle().id) { if (visual.loaded) p.view.adopt(visual, look); }
       else { const src = kindSource(vid); if (src.loaded) p.view.adopt(src, look); }      // each other kind is loaded once and cloned, as in Jamboree
     }
@@ -2105,7 +2106,7 @@ function mpBeginDrive(trackDef) {
   startDriving(trackDef || makeTemplate('speedway'));
   car.mpEqual = true;                                               // every car pulls and tops out the same in multiplayer (MP_EQUAL, vehicle.js)
   life.elimination = track.def.mode === 'lastStanding' && !getaway; mpSpecId = null;     // an arena (the Bed Pan, Deep Pan Pizza) is a last-one-standing derby: wrecked means out
-  if (mine) visual.setOwnLook(RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
+  if (mine) visual.setOwnLook(getaway ? null : RIVAL_LOOKS[mine.hue]);       // your car, in the colour everyone else sees you in
   if (getaway) { placeCarInArena(null, getaway.role === 'robber' ? getaway.L.robberStart : getaway.L.policeStart); car.boostFuel = 1; hud.banner(getaway.role === 'robber' ? 'ROBBER: grab a bag, reach the safehouse!' : 'POLICE: stop the robbers!', 2400); }
   else { mpPlaceOnGrid();
   hud.banner(`Room ${net.roomCode} \u00b7 ${net.players.size} drivers`, 2200); }
@@ -2171,7 +2172,7 @@ const mpHandlers = {
     mpLobbyIds = ids;
     mpRenderLobby(players, hostId);
   },
-  onOpts: (o) => { $('mp-track-fixed').textContent = `The host picked: ${o.track} \u00b7 ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`; },
+  onOpts: (o) => { $('mp-track-fixed').textContent = /^The Getaway/.test(o.track) ? `The host picked: ${o.track}` : `The host picked: ${o.track} \u00b7 ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`; },
   onStart: (trackDef) => mpBeginDrive(trackDef),
   onState: (id, s) => {
     if (!net || id === net.selfId) return;
@@ -2277,6 +2278,8 @@ function bindMultiplayer() {
     catch (e) { mpStatus(null); mpErr('mp-join-error', e.message); net = null; }
     $('mp-join-go').disabled = false;
   };
+  const gwLaps = () => { const gw = $('mp-track').value === 'getaway', h = $('mp-home-track').value === 'getaway'; for (const [id, on] of [['mp-laps', gw], ['mp-home-laps', h]]) { const el = $(id); if (el) { el.hidden = on; if (el.previousElementSibling && el.previousElementSibling.tagName === 'LABEL') el.previousElementSibling.hidden = on; if (el.parentElement && el.parentElement.tagName === 'LABEL') el.parentElement.hidden = on; } } };
+  $('mp-track').addEventListener('change', gwLaps); $('mp-home-track').addEventListener('change', gwLaps); gwLaps();
   $('mp-track').onchange = mpSendOpts;
   $('mp-laps').onchange = () => { window.__raceLaps?.set?.(+$('mp-laps').value); mpSendOpts(); };
   $('mp-start').onclick = () => {
