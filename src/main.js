@@ -554,7 +554,7 @@ function updateRace(dt) {
   if (race.unwrapped > race.max) race.max = race.unwrapped;
   const idx = lapped ? Math.floor(race.max / L) : race.index;    // laps only count on a circuit; an arena stays at its start index
   if (!assault && idx > race.index) {
-    race.index = idx;
+    race.index = idx; replayRec.event(simTime, { type: 'lap', idx });       // (the replay shows the lap timer from these)
     if (idx === 0) { race.lapStart = simTime; race.laps = 1; if (net) mpRaceStart = simTime; hud.banner('Go!', 900); }
     else if (idx > 0 && race.lapStart != null) {
       const t = simTime - race.lapStart; race.lastTime = t;

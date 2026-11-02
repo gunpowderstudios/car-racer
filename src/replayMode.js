@@ -15,7 +15,7 @@ export function createReplayMode(d) {
   const $ = d.$;
   let wake = null, title0 = null;
   const desktop = !matchMedia('(pointer: coarse)').matches;           // making films is for a computer: a phone is for quick racing in your pocket
-  const el = { bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), tvset: $('rp-tvset'), size: $('rp-size'), shape: $('rp-shape'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
+  const el = { lap: $('rp-lap'), bar: $('replay-bar'), play: $('rp-play'), seek: $('rp-seek'), time: $('rp-time'), speed: $('rp-speed'), view: $('rp-view-btn'), next: $('rp-next'), save: $('rp-save'), tvset: $('rp-tvset'), size: $('rp-size'), shape: $('rp-shape'), edit: $('rp-editing'), editFill: $('re-fill'), editPct: $('re-pct'), editCancel: $('re-cancel'), ready: $('rp-ready'), readyInfo: $('rr-info'), readySave: $('rr-save'), readyClose: $('rr-close'), note: $('rp-note'), prev: $('rp-prev'), track: $('rp-track'), fx: $('rp-fx'), exit: $('rp-exit'), label: $('rp-label') };
   const R = { active: false, player: null, cams: null, t: 0, evT: 0, playing: true, speed: 2, view: VIEWS.indexOf('Mix'), focusId: 'p', dragging: false, savedMode: 0, savedFov: 62, seen: new Set(), lastFocus: null, fv: new THREE.Vector3(), seekUi: 0, opening: false, lastV: { x: 0, z: 0 } };
   const fakeCar = { steerAngle: 0, wheels: [{ spin: 0 }, { spin: 0 }, { spin: 0 }, { spin: 0 }] };
   const fakeVan = { axle: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, roll: 0, spin: 0, sway: 0, health: 1, spec: { hp: 1 } };
@@ -47,6 +47,16 @@ export function createReplayMode(d) {
     else if (e.type === 'hit') { if (fx) d.fx.hit(e); }
     else if (e.type === 'prop') { if (fx) d.fx.prop(e); }
     else if (e.type === 'honk') { if (fx) d.fx.honk(e); }
+  }
+  // ---- the lap timer: the recorded lap events (crossing the line) give the lap number and the time since the last one, for your own car
+  const lapFmt = (s) => { s = Math.max(0, s); return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
+  function lapText(t) {
+    const laps = d.rec.events.filter((e) => e.type === 'lap'); let k = -1;
+    for (let i = 0; i < laps.length; i++) { if (laps[i].t <= t) k = i; else break; }
+    if (k < 0) return laps.length ? 'Get to the line' : '';
+    const e = laps[k], total = window.__raceLaps?.get?.() || 1;
+    if (e.idx >= total) return `Finished ${lapFmt(e.t - (laps[k - 1] ? laps[k - 1].t : e.t))}`;
+    return `Lap ${e.idx + 1}/${total}  ${lapFmt(t - e.t)}`;
   }
   /** Put every car's dents and wheels as they were at time t (after a jump), without any noise or smoke. */
   function rebuildTo(t) {
@@ -412,6 +422,7 @@ export function createReplayMode(d) {
     d.particles.update(dt * SPEEDS[R.speed]); d.debris.update(dt * SPEEDS[R.speed], d.debrisGround); d.wheelFlyers.update(dt * SPEEDS[R.speed], d.debrisGround);
     if (!R.dragging) el.seek.value = String(Math.round((R.t - p.t0) / Math.max(0.001, p.duration) * 1000));
     el.time.textContent = `${fmt(R.t - p.t0)} / ${fmt(p.duration)}`;
+    if (el.lap) el.lap.textContent = R.focusId === 'p' ? lapText(R.t) : '';
     R.lastF = f;
     if (R.saving && R.saveWall0) {
       const pc = Math.max(0, Math.min(100, Math.round((R.t - R.saveStart) / Math.max(0.001, R.saveEnd - R.saveStart) * 100)));

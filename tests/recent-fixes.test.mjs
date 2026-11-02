@@ -410,3 +410,11 @@ test('the winners podium is drawn 30% bigger', () => {
   assert.match(pod, /const ZOOM = 1\.3;/);
   assert.match(pod, /cam\.position\.set\(0, 0\.7 \+ 2\.7 \/ ZOOM, 12\.5 \/ ZOOM\)/);
 });
+
+test('the replay shows a lap timer for your own car', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const rp = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(main, /type: 'lap', idx/); assert.match(html, /id="rp-lap"/);
+  assert.match(rp, /function lapText/); assert.match(rp, /el\.lap\.textContent/);
+});

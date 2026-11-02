@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.551 — Lap timer in the replay
+- While you watch your own car in a replay, the top bar shows the lap number and a running lap time ("Lap 2/3  0:41.2"), and "Finished" with your last lap time at the end.
+
 ## v17.550 — Bigger podium
 - The winners podium, with its cars and blocks, is drawn 30% bigger on every screen (the camera comes in closer). The names move with it.
 
