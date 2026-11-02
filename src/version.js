@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.548';
-export const NOTE = 'Back-on-the-road button (white road icon), restart asks for a second tap, compass tidied.';
+export const VERSION = '17.549';
+export const NOTE = 'Tablets get the same clear layout as phones: no speedo or damage chart, buttons lower, restart top right, Getaway satnav top left.';

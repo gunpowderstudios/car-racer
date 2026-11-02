@@ -392,7 +392,7 @@ test('the win message waits until the car is really over the line (a shortcut ca
 
 test('on phones the speedometer and damage chart are hidden and the Getaway satnav sits top left', () => {
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
-  assert.match(css, /max-width: 760px\) \{\s*#speed-plate, #dmg-card \{ display: none !important; \}/);
+  assert.match(css, /\(pointer: coarse\) \{\s*#speed-plate, #dmg-card \{ display: none !important; \}/);
   const gw = readFileSync(new URL('../src/getawayHud.js', import.meta.url), 'utf8');
   assert.match(gw, /body\.getaway #minimap\{left:8px;right:auto/);
 });

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.549 — Tablets match phones
+- Tablets (any touch screen) now have exactly the same screen as phones, same sizes and positions, not a bigger version: no speedometer or damage chart, the round buttons low on the left, restart top right, and in The Getaway the satnav top left with the scores beside it.
+
 ## v17.548 — Back on the road button, safer restart
 - A little white **road in perspective** button on the left puts the car back on the road in one tap (on touch screens).
 - The top-right **restart** button now asks twice: the first tap lights it up and says "Tap again to restart", and a second tap within a few seconds restarts the race.

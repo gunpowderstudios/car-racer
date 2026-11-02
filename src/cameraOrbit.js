@@ -50,7 +50,7 @@ function installResetButton() {
     }
     #reset-view:hover { border-color:#ffb31f; color:#ffb31f; }
     #reset-view:active { transform:scale(.94); }
-    @media (pointer: coarse) and (max-width: 760px) {
+    @media (pointer: coarse) {
       #mirror {
         top:calc(max(14px, env(safe-area-inset-top)) + 188px) !important;
       }
