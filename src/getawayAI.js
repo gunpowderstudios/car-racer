@@ -6,6 +6,16 @@
 import { clamp } from './math.js';
 import { route, streetAt, nearestNode, safehouseRoute } from './getaway.js';
 
+/** How far (m, up to `max`) a car can go from (x,z) in direction (dx,dz) before it would touch a building or wall, keeping `m` clear at the sides. */
+export function clearAhead(L, x, z, dx, dz, max, m = 1.4) {
+  const px = -dz, pz = dx;
+  for (let d = 2; d <= max; d += 2) for (const o of [0, m, -m]) {
+    const qx = x + dx * d + px * o, qz = z + dz * d + pz * o;
+    for (const b of L.boxes) if (qx > b.x0 && qx < b.x1 && qz > b.z0 && qz < b.z1) return d - 2;
+  }
+  return max;
+}
+
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
   /** `slot` numbers the police cars (0, 1, 2...) so they do different jobs: 0 tails the robber, 1 cuts him off at the junction ahead, 2 watches the safehouse, and so on round again. */
@@ -17,6 +27,15 @@ export class GetawayDriver {
     this.lane = role === 'traffic' ? 4 : 3.4;      // metres to the left of the middle of the street (keep left, like the traffic)
     this.patrol = null; this.patrolT = 0; this.goal = null; this.path = []; this.repathT = 0;
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
+  }
+
+  /** A fast U-turn swings the car across the street: only do it near the middle of a street (or junction) with clear road about it. */
+  _roomToSpin(L, px, pz, sA) {
+    if (!sA) return false;
+    if (sA.kind === 'h' && Math.abs(pz - L.zs[sA.j]) > 3.2) return false;
+    if (sA.kind === 'v' && Math.abs(px - L.xs[sA.i]) > 3.2) return false;
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; if (clearAhead(L, px, pz, Math.cos(a), Math.sin(a), 9, 1.2) < 9) return false; }
+    return true;
   }
 
   /** Where this side wants to go right now, and whether it is a straight-line chase. */
@@ -104,7 +123,7 @@ export class GetawayDriver {
     let vT = G.kind === 'idle' ? 0 : Math.max(cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), G.kind === 'robber' || G.kind === 'intercept' ? keepUp : 0), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
-    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40) { chase = true; vT = Math.max(cruise * 1.25, keepUp * 1.08); }            // the last stretch of a chase: straight at him
+    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40 && clearAhead(L, px, pz, (G.x - px) / (dist || 1), (G.z - pz) / (dist || 1), dist, 2.2) >= dist - 2) { chase = true; vT = Math.max(cruise * 1.25, keepUp * 1.08); }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
       const pts = G.path || (G.kind === 'safehouse' && g.safehouse.gx !== undefined ? safehouseRoute(L, g.safehouse, px, pz, fx, fz, car.speed) : route(L, px, pz, fx, fz, G.x, G.z, car.speed)), P = [{ x: px, z: pz }];
@@ -153,6 +172,12 @@ export class GetawayDriver {
     if (this.waitT > 2.5) { this.shove = 3.5; this.waitT = 0; }               // a jam: just edge forward for a moment
     if (this.shove > 0) { this.shove -= dt; vT = Math.min(vT, 6); }
 
+    // never drive into a building: look along the car's heading (and where it is pointing the way it is going) and slow to a stop that fits the gap
+    if (G.kind !== 'idle' && !garage && v > 4) {
+      const free = clearAhead(L, px, pz, fx, fz, 10 + v * 2.2, 2.1);
+      if (free < 10 + v * 2.2) vT = Math.min(vT, 5 + Math.sqrt(2 * 8 * Math.max(free - 4, 0)));
+    }
+
     const dx = ax - px, dz = az - pz;
     const ang = Math.atan2(fz * dx - fx * dz, fx * dx + fz * dz);          // + = the aim point is on our left
     const maxS = clamp(1.25 - Math.max(v, 0) / 40, 0.45, 1);
@@ -181,7 +206,7 @@ export class GetawayDriver {
         const al = Math.abs(fx * G.hx + fz * G.hz);
         if (al <= 0.3) { this.spinDir = 0; inp.throttle = 0; inp.brake = 1; inp.steer = 0; inp.boost = false; this.dbg = { vT: 0, ang, dist, kind: 'block-hold' }; return inp; }       // (across the street: stay put)
         if (dist < 9 && car.speed < 12) { spin(this.spinDir = this.spinDir || (this.rng() < 0.5 ? 1 : -1)); this.dbg = { vT, ang, dist, kind: 'block-spin' }; return inp; }
-      } else if ((G.kind === 'robber' || G.kind === 'intercept') && Math.abs(ang) > 2.0 && dist > 18 && car.speed < 13 && car.boostFuel > 0.15) {
+      } else if ((G.kind === 'robber' || G.kind === 'intercept') && Math.abs(ang) > 2.0 && dist > 18 && car.speed < 8 && car.boostFuel > 0.15 && this._roomToSpin(L, px, pz, sA)) {
         spin(ang > 0 ? 1 : -1); this.dbg = { vT, ang, dist, kind: 'uturn' }; return inp;
       }
     }

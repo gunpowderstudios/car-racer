@@ -155,7 +155,7 @@ export function createReplayMode(d) {
     if ($('re-sub')) $('re-sub').textContent = 'Pressing PLAY and RECORD at the same time is a little clunky, so keep this window open while we make your BLOCKBUSTER video!';
     el.view.textContent = VIEWS[R.view];
     const n = d.rec.table.find((c) => c.id === R.focusId);
-    el.label.textContent = R.focusId === 'p' ? 'You' : 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId));
+    el.label.textContent = R.focusId === 'p' ? 'You' : (window.__rivalName?.(R.focusId) || 'Rival ' + (1 + d.rec.table.filter((c) => !c.isPlayer).findIndex((c) => c.id === R.focusId)));
   }
   function togglePlay() {
     if (R.saving) return;

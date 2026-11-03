@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.561 — Police drive better, rivals have names
+- The Getaway: computer police cars crash into buildings and walls far less. They look ahead and slow for what is in the way, no longer charge straight at the robber through a corner, and only do the fast boost U-turn on open road, near the middle of a street
+- In the replay, the car being watched is now called by its vehicle's name (Cuddly Panda and so on) instead of Rival 1 or Rival 2
+
 ## v17.560 — Bigger home vehicle
 - On a computer, the rotating vehicle on the home page is 50% bigger (it still always fits whole), sits lower on the page, and its name and description now sit close underneath it instead of far below. Phones and tablets are unchanged.
 

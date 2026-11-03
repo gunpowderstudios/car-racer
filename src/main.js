@@ -183,6 +183,7 @@ const views = new Map();            // rival id -> CarVisual
 const towHit = { closing: 0, mu: 0, x: 0, y: 0, z: 0 };
 const towViews = new Map();         // rivals' caravan pictures, by rival id
 const rivalKind = new Map();     // rival id -> vehicle id (kept after it is gone, so the replay can still show it)
+window.__rivalName = (id) => { const k = rivalKind.get(id); return k ? vehicleById(k)?.name || null : null; };      // (the replay and podium call a rival by its vehicle's name)
 const kindSrc = new Map();       // vehicle id -> hidden CarVisual
 const jamLooks = new Map();
 const viewPool = [];                // visuals of rivals that have gone, ready to be reused

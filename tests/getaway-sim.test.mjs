@@ -99,3 +99,18 @@ test('a police car facing away from the robber turns round with the boost donut 
   for (let i = 0; i < 12 / DT; i++) { if (i % 4 === 0) { inp = drv.drive(car, track, ctx, DT * 4); if (drv.dbg && drv.dbg.kind === 'uturn') used = true; minAng = Math.min(minAng, Math.abs(drv.dbg.ang)); } car.step(DT, inp, track); foe.car.step(DT, { throttle: 0, brake: 1, steer: 0, handbrake: false, boost: false }, track); }
   assert.ok(used, 'the U-turn was used'); assert.ok(minAng < 1.0, 'it came round to face him: ' + minAng);
 });
+
+test('computer police hit buildings rarely at speed (the look-ahead brake and the clear-road check)', () => {
+  let hard = 0;
+  for (const seed of [3, 8]) {
+    const S = setup('robber', seed); const L = S.L, car = S.car; let orig = car.step.bind(car);
+    car.step = (dt, inp, tr) => { orig(dt, inp, tr); for (const e of car.events) if (e.type === 'wall' && e.speed > 9) hard++; };
+    play(S, 150);
+  }
+  assert.ok(hard <= 6, 'police hit walls hard ' + hard + ' times');
+});
+
+test('clearAhead sees a building in the way', async () => {
+  const { clearAhead } = await import('../src/getawayAI.js'); const L = townLayout(), b = L.boxes[0];
+  assert.ok(clearAhead(L, (b.x0 + b.x1) / 2, b.z0 - 20, 0, 1, 40) < 40);
+});
