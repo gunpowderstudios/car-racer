@@ -10,7 +10,7 @@ export class Sound {
   constructor() {
     this.ctx = null; this.ready = false;
     this.sfxOn = localStorage.getItem('cr.sfx') !== '0';
-    this.musicOn = localStorage.getItem('cr.music') !== '0';                        // (on unless the player has turned it off)
+    this.musicOn = localStorage.getItem('cr.music') === '1';                        // (off unless the player has turned it on)
     this.sfxVol = +(localStorage.getItem('cr.sfxvol') ?? 0.8);                      // (effects at 80% unless the player changes it)
     this.musicVol = +(localStorage.getItem('cr.musicvol') ?? 0.5);                  // (in-game music at 50% unless the player changes it; the menu has its own volume)
     this.track = TRACKS.includes(localStorage.getItem('cr.musictrack')) ? localStorage.getItem('cr.musictrack') : 'lounge';

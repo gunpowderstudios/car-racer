@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.563 — Music off by default
+- Music starts switched off on every device until you turn it on (your own choice is still remembered)
+
 ## v17.562 — No multiplayer on phones and tablets (for now)
 - The Multiplayer button is hidden on phones and tablets, and an invite link opened on one just says multiplayer is for computers for now
 

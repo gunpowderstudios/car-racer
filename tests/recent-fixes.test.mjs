@@ -490,3 +490,8 @@ test('multiplayer is switched off on touch screens', async () => {
   const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.ok(/const MP_OFF = isPhone/.test(s) && /MP_OFF\) \$\('btn-multiplayer-top'\)\.hidden = true/.test(s) && /MP_OFF\) \{ toast\('Multiplayer is for computers/.test(s));
 });
+
+test('music is off until the player turns it on', async () => {
+  const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.ok(/this\.musicOn = localStorage\.getItem\('cr\.music'\) === '1'/.test(s));
+});
