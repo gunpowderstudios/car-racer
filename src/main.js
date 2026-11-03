@@ -219,6 +219,7 @@ const adapt = new AdaptiveRes({ min: tier.minScale });
 function applyResolution() { renderer.setPixelRatio(baseRatio * adapt.scale); }
 const powerHint = new PowerSaveHint();
 const isPhone = matchMedia('(pointer: coarse)').matches;
+const MP_OFF = isPhone;           // multiplayer is off on phones and tablets (any touch screen) for now
 function adaptFeed(rawDt) {
   if (isPhone && powerHint.feed(rawDt)) toast('Running at 30 fps? Turn off Low Power Mode (iPhone) or Battery Saver (Android) for smoother play.');
   const r = adapt.feed(rawDt);
@@ -1797,6 +1798,7 @@ function bindMenu() {
   $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
+  if (MP_OFF) $('btn-multiplayer-top').hidden = true;                           // (multiplayer is switched off on phones and tablets for now)
   $('import-file').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
@@ -2252,7 +2254,7 @@ function bindMultiplayer() {
   const homeToLobby = () => { $('mp-track').value = $('mp-home-track').value; store.set('cr.mptrack', $('mp-home-track').value); window.__raceLaps?.set?.(+$('mp-home-laps').value); $('mp-laps').value = $('mp-home-laps').value; mpSendOpts(); };
   $('mp-home-track').onchange = homeToLobby; $('mp-home-laps').onchange = homeToLobby;
   homeToLobby();
-  $('btn-multiplayer').onclick = () => { setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); updateResume(); };
+  $('btn-multiplayer').onclick = () => { if (MP_OFF) { toast('Multiplayer is for computers for now.'); return; } setMode('mp'); mpShow('mp-home'); $('mp-name').value = store.get('cr.mpname', ''); updateResume(); };
   $('mp-back').onclick = () => { clearSavedRoom(); showMenu(); };
   $('mp-create').onclick = async () => {
     const name = $('mp-name').value.trim();
@@ -2338,6 +2340,8 @@ const params = new URLSearchParams(location.search);
 if (params.get('track') && TEMPLATE_KEYS.includes(params.get('track'))) {
   const key = params.get('track'), d = key === 'random' ? makeRandomTrack() : makeTemplate(key);
   if (params.get('edit')) openEditor(d); else if (params.get('drive') !== '0') startDriving(d);
+} else if (MP_OFF && (params.get('room') || savedRoom())) {
+  toast('Multiplayer is for computers for now. Open this invite on a computer to join.');
 } else if (!params.get('room') && savedRoom()) {
   const r = savedRoom();                                        // you were hosting a room and the page went away: offer to bring it back
   setMode('mp'); mpShow('mp-home'); $('mp-name').value = r.name; updateResume();

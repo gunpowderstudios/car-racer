@@ -485,3 +485,8 @@ test('the home page vehicle is 50% bigger on a computer', () => {
   const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(css, /@media \(min-width: 981px\) \{ #menu-vehicle-preview \{ width: clamp\(540px, 50vw, 1050px\)/);
 });
+
+test('multiplayer is switched off on touch screens', async () => {
+  const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.ok(/const MP_OFF = isPhone/.test(s) && /MP_OFF\) \$\('btn-multiplayer-top'\)\.hidden = true/.test(s) && /MP_OFF\) \{ toast\('Multiplayer is for computers/.test(s));
+});
