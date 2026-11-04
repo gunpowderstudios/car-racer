@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.564 — Smaller 70s Saloon
+- The 70s Saloon model is about 17% smaller to download (fewer polygons, same look), so it loads faster
+
 ## v17.563 — Music off by default
 - Music starts switched off on every device until you turn it on (your own choice is still remembered)
 
