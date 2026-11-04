@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.565 — Multiplayer back on phones and tablets
+- Multiplayer is back on phones and tablets. The Getaway is not offered in multiplayer there for now (it is still on computers)
+- Opening an invite link no longer risks a blank "Loading your multiplayer invite" screen for ever: after 12 seconds it says it is still loading, a game file that fails to load shows the error straight away, and after 45 seconds the cover is lifted so you can see what is going on
+
 ## v17.564 — Smaller 70s Saloon
 - The 70s Saloon model is about 17% smaller to download (fewer polygons, same look), so it loads faster
 

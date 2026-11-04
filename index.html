@@ -8,6 +8,12 @@
   try {
     if (!new URLSearchParams(location.search).get('room')) return;
     document.documentElement.classList.add('invite-loading');
+    // The cover must never hide a failure: if the game has not started after a while, or a game file fails to load, say so and let the player through.
+    const drop = () => document.documentElement.classList.remove('invite-loading');
+    const say = (t) => { const p = document.querySelector('#invite-loading p'); if (p) p.textContent = t; };
+    addEventListener('error', (e) => { const t = e.target && e.target !== window ? e.target : null, from = (t && (t.src || t.href)) || e.filename || ''; if (from.includes('/src/') || /three@/.test(from)) { drop(); } }, true);
+    setTimeout(() => { if (document.documentElement.classList.contains('invite-loading')) say('Still loading\u2026 a slow connection can take a minute. Keep this page open.'); }, 12000);
+    setTimeout(() => { if (document.documentElement.classList.contains('invite-loading')) drop(); }, 45000);
     document.addEventListener('DOMContentLoaded', () => {
       const ready = () => {
         if (!document.body.classList.contains('mode-mp')) return false;

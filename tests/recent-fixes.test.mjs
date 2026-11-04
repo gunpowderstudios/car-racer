@@ -486,9 +486,10 @@ test('the home page vehicle is 50% bigger on a computer', () => {
   assert.match(css, /@media \(min-width: 981px\) \{ #menu-vehicle-preview \{ width: clamp\(540px, 50vw, 1050px\)/);
 });
 
-test('multiplayer is switched off on touch screens', async () => {
-  const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.ok(/const MP_OFF = isPhone/.test(s) && /MP_OFF\) \$\('btn-multiplayer-top'\)\.hidden = true/.test(s) && /MP_OFF\) \{ toast\('Multiplayer is for computers/.test(s));
+test('multiplayer is on for touch screens, but The Getaway is not offered there, and the invite cover cannot hide a failure', async () => {
+  const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), h = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!/MP_OFF\b(?<!GETAWAY_MP_OFF)/.test(s.replace(/GETAWAY_MP_OFF/g, '')) && /GETAWAY_MP_OFF \? ''/.test(s));
+  assert.ok(/setTimeout\(\(\) => \{ if \(document\.documentElement\.classList\.contains\('invite-loading'\)\) drop\(\)/.test(h));
 });
 
 test('music is off until the player turns it on', async () => {
