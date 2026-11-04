@@ -109,6 +109,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 7000);
 const stage = new Stage(renderer, tier);
 stage.setShadows(opts.shadow);
+// Coming back to the game (from another app, or after the phone dropped the graphics context) rebuilds the shadow map, so the scene can not stay black
+document.addEventListener('visibilitychange', () => { if (!document.hidden) stage.resetShadowMap(); });
+renderer.domElement.addEventListener('webglcontextlost', (e) => e.preventDefault(), false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { stage.resetShadowMap(); }, false);
 const car = new Vehicle(); car.lockMul = 1.15;      // your wheels turn 15% further at low speed (tighter turns); the rivals keep the old lock, which is what their driving is tuned to
 car.mpEqual = true;                          // every vehicle pulls and tops out the same (MP_EQUAL)
 car.donutOk = true;                          // Boost at walking pace swings the back end round (the player only)

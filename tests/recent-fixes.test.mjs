@@ -496,3 +496,8 @@ test('music is off until the player turns it on', async () => {
   const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
   assert.ok(/this\.musicOn = localStorage\.getItem\('cr\.music'\) === '1'/.test(s));
 });
+
+test('the shadow map is rebuilt when the game comes back, so the scene cannot stay black', async () => {
+  const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), g = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
+  assert.ok(/visibilitychange', \(\) => \{ if \(!document\.hidden\) stage\.resetShadowMap\(\)/.test(s) && /webglcontextrestored/.test(s) && /resetShadowMap\(\) \{/.test(g));
+});

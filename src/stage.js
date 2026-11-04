@@ -86,7 +86,15 @@ export class Stage {
     this.textures = { road: roadTexture(aniso) };
   }
 
-  setShadows(on) { this.sun.castShadow = on; this.renderer.shadowMap.enabled = on; }
+  setShadows(on) { this.sun.castShadow = on; this.renderer.shadowMap.enabled = on; if (on) this.resetShadowMap(); }
+
+  /** Throw the sun's shadow map away so it is built again from scratch. A phone that has been in the background (or short of graphics memory) can come back with a
+   *  broken one, and then everything near the car is black while the far distance is lit. Cheap: it is rebuilt on the next frame. */
+  resetShadowMap() {
+    const sh = this.sun && this.sun.shadow; if (!sh) return;
+    if (sh.map) { sh.map.dispose(); sh.map = null; }
+    if (sh.mapPass) { sh.mapPass.dispose(); sh.mapPass = null; }
+  }
 
   /** Follow the camera/car so the sky, ground and shadow box never run out. */
   update(focus, camPos) {

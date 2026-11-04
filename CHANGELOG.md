@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.566 — Against the black scene on phones
+- The sun's shadow map is now rebuilt whenever the game comes back to the front (after another app), when the phone gives the graphics back after losing them, and whenever Shadows is switched on. A broken shadow map left everything near the car black while the far buildings stayed lit. If it ever happens again, switching Shadows off and on in the settings brings the lighting back
+
 ## v17.565 — Multiplayer back on phones and tablets
 - Multiplayer is back on phones and tablets. The Getaway is not offered in multiplayer there for now (it is still on computers)
 - Opening an invite link no longer risks a blank "Loading your multiplayer invite" screen for ever: after 12 seconds it says it is still loading, a game file that fails to load shows the error straight away, and after 45 seconds the cover is lifted so you can see what is going on
