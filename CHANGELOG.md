@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.571 — Cars put back
+- All 16 car models are back to the earlier versions (the newer ones lost surface detail: flat body panels and plain wheel rims). Smaller than the originals, with no separate phone copies
+
 ## v17.570 — Rounder wheels
 - All the cars have new models with much smoother, rounder wheels (about 7,000 polygons a wheel instead of about 2,700), still one file per car, 1.1-1.6 MB each
 
