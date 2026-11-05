@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.573 — Bumper camera off
+- The C key no longer goes to the bumper camera: it now cycles Chase, High, Bonnet and Helicopter
+
 ## v17.572 — New German Beema
 - The German Beema (BMW) has a new model made from the original scan: rounder wheels with clear spokes, a cleaner body, and more surface detail (80,000 polygons, 1.1 MB)
 

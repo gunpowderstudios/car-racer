@@ -227,7 +227,7 @@ npm test                        # node --test tests/*.test.mjs  (Node 20 or newe
 
 <section id="cameras">
   <h2>Cameras and controls</h2>
-  <p>Press <kbd>C</kbd> to cycle: <b>Chase</b> (desktop default), <b>High</b> (phone default), <b>Bumper</b>, <b>Bonnet</b>, <b>Helicopter</b> (about 28 m up and 24 m back, zoomed in 32%, following the car, &nbsp;set in <code>ChaseCamera.update</code>). The chase camera drops back and up when you tow. <kbd>R</kbd> (or <kbd>0</kbd>) resets the view.</p>
+  <p>Press <kbd>C</kbd> to cycle: <b>Chase</b> (desktop default), <b>High</b> (phone default), <b>Bonnet</b>, <b>Helicopter</b> (about 28 m up and 24 m back, zoomed in 32%, following the car, &nbsp;set in <code>ChaseCamera.update</code>). The chase camera drops back and up when you tow. <kbd>R</kbd> (or <kbd>0</kbd>) resets the view.</p>
   <h3>The bonnet camera</h3>
   <p><code>src/bonnetCam.js</code> works out where to put it from the model itself, so it needs no per-car setting. It lines up the highest surface along the middle of the car and walks back from the nose: a bonnet is a low stretch followed by the windscreen climbing at least 0.28 m. The camera sits 0.1 m in front of that step and 0.3 m above the bonnet, tilted so the nose of the bonnet fills about an eighth of the screen. A bus, campervan or motorhome has a flat or steeply sloped nose, so it is skipped and <kbd>C</kbd> goes straight on.</p>
   <h3>Keys</h3>

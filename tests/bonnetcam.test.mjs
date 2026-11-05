@@ -32,15 +32,16 @@ test('a low-poly body with gaps in the vertices still finds its bonnet', () => {
 test('the camera cycle skips the bonnet view for a vehicle without one', async () => {
   const { readFileSync } = await import('node:fs');
   const js = readFileSync(new URL('../src/cameraChoice.js', import.meta.url), 'utf8');
-  assert.match(js, /while \(m === 3 && !this\.bonnet\)/);
+  assert.match(js, /\(m === 3 && !this\.bonnet\)/);
   assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /chase\.bonnet = visual\.loaded \? visual\.bonnetCam : null/);
 });
 
-test('the C key cycles Chase, High, Bumper, Bonnet, Helicopter (the bonnet is skipped on a vehicle without one)', async () => {
+test('the C key cycles Chase, High, Bonnet, Helicopter: the Bumper view is skipped for now, and so is the bonnet on a vehicle without one', async () => {
   const { readFileSync } = await import('node:fs');
   const choice = readFileSync(new URL('../src/cameraChoice.js', import.meta.url), 'utf8'), view = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
   assert.match(choice, /\['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter'\]/);
   assert.match(choice, /m = \(m \+ 1\) % 5/);
+  assert.match(choice, /while \(m === 2 \|\| \(m === 3 && !this\.bonnet\)\)/, 'the Bumper view (mode 2) is stepped over');
   assert.match(view, /const heli = this\.mode === 4/);
   assert.match(view, /h = heli \? 28/, 'the helicopter is about 28 m up');
   assert.match(view, /HELI_ZOOM = 1\.09/, 'zoomed in about 9%');
