@@ -197,6 +197,11 @@ export class GetawayDriver {
       this.stuck += dt;
       if (this.stuck > 1.6) { this.reverse = 1.1; this.revSteer = steer || (this.rng() < 0.5 ? 1 : -1); }
     } else this.stuck = Math.max(0, this.stuck - dt * 2);
+    // wanting to go but sitting still for seconds (a car parked in the way, two cars nose to nose, a wall): back off, then edge round it
+    if (G.kind !== 'idle' && !garage && car.speed < 1 && (blocked || throttle > 0.3) && this.reverse <= 0) {
+      this.stillT = (this.stillT || 0) + dt;
+      if (this.stillT > 4) { this.stillT = 0; this.reverse = 1.4; this.revSteer = (this.rng() < 0.5 ? 1 : -1); this.shove = 5; }
+    } else this.stillT = Math.max(0, (this.stillT || 0) - dt * 2);
 
     // The police only: a roadblock is parked broadside to his heading (a donut spin with the boost swings the back end round), and a car facing the wrong way
     // when the robber is behind it does a fast U-turn the same way (the player's boost-donut handling, see Vehicle.donutOk)

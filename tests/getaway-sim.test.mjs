@@ -13,12 +13,12 @@ const DT = 1 / 120;
 function rngOf(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 let S_rescue = null;
-function setup(aiRole, seed = 3, extra = 0) {
+function setup(aiRole, seed = 3, extra = 0, traffic = 5) {
   const L = townLayout(), track = new Track(makeTemplate('getaway')), game = new GetawayGame(L, { rng: rngOf(seed) });
   const mine = aiRole === 'robber' ? 'police' : 'robber', st = mine === 'robber' ? L.robberStart : L.policeStart;
   const car = new Vehicle(); car.reset(new V3(st.x, track.py[0] + car.restHeight + 0.08, st.z), new V3(st.fx, 0, st.fz), new V3(0, 1, 0), 0);
   const derby = new Derby(); derby.enabled = true; derby.damageEnabled = false;
-  derby.getawaySetup = { L, role: aiRole, extraPolice: extra, kind: null, traffic: 5, makeTraffic: (r) => new TrafficDriver(r, game), makeDriver: (r) => new GetawayDriver(r, game, aiRole), rescue: (c, others) => { const p = rescuePose(L, c.pos.x, c.pos.z, others); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); } };
+  derby.getawaySetup = { L, role: aiRole, extraPolice: extra, kind: null, traffic, makeTraffic: (r) => new TrafficDriver(r, game), makeDriver: (r) => new GetawayDriver(r, game, aiRole), rescue: (c, others) => { const p = rescuePose(L, c.pos.x, c.pos.z, others); c.reset(new V3(p.x, track.py[0] + c.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); } };
   derby.start(track, car, 1, 5);
   const me = new GetawayDriver(rngOf(9), game, mine); car.aiRollGuard = 0.48;
   S_rescue = derby.getawaySetup.rescue;
@@ -64,6 +64,15 @@ test('computer police against a computer robber: the same', () => {
 test('four more police cars patrol the streets and none of them ends up in a building', () => {
   const S = setup('police', 4, 4); assert.equal(S.derby.rivals.filter((f) => f.cop).length, 5);
   const r = play(S, 150); assert.equal(r.bad, 0, 'a car ended up inside a building');
+});
+
+test('a computer robber is never stuck for ever behind a parked car: it backs off and goes round to the bag', () => {
+  for (const seed of [1, 3, 6]) {      // (the busy town: 11 other cars)
+    const S = setup('robber', seed, 0, 11), b = S.game.bags.find((x) => x.state === 'home');
+    S.car.reset(new V3(b.x + 6, S.track.py[0] + S.car.restHeight + 0.08, b.z), new V3(1, 0, 0), new V3(0, 1, 0), 0);       // (the person's police car, parked beside the bag with the handbrake on)
+    S.me.drive = () => ({ throttle: 0, brake: 1, steer: 0, handbrake: true, boost: false });
+    const r = play(S, 100); assert.ok(r.picks >= 1, 'seed ' + seed + ': the robber never got the bag');
+  }
 });
 
 if (process.env.GT_REPORT) test('report', () => {

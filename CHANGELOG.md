@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.574 — Getaway robber unstuck
+- The Getaway: when you play the police, the computer robber could freeze (front wheels turning, car not moving) behind a parked car, such as yours, or nose to nose with a town car. After a few seconds it now reverses, then edges round and carries on with the robbery
+
 ## v17.573 — Bumper camera off
 - The C key no longer goes to the bumper camera: it now cycles Chase, High, Bonnet and Helicopter
 
