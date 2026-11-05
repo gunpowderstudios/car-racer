@@ -28,11 +28,11 @@ export class ReplayRecorder {
 
   /** Note the cars at game time `t` (seconds). Returns false when it is too soon after the last note. `ents` is a list of
    *  { id, hue, isPlayer, x, y, z, qx, qy, qz, qw, steer, spin: [4], health, wrecked, van: [9] | null }. */
-  record(t, ents, hazard) {
+  record(t, ents, hazard, alarm) {
     if (t < this.lastT) { this.reset(); }                                    // the clock went backwards: a new race
     if (t - this.lastT < 1 / this.hz - 1e-6) return false;
     this.lastT = t;
-    for (const e of ents) if (!this.index.has(e.id)) { this.index.set(e.id, this.table.length); this.table.push({ id: e.id, hue: e.hue ?? 0, isPlayer: !!e.isPlayer }); }
+    for (const e of ents) if (!this.index.has(e.id)) { this.index.set(e.id, this.table.length); this.table.push({ id: e.id, hue: e.hue ?? 0, isPlayer: !!e.isPlayer, cop: !!e.cop }); }
     const a = new Float64Array(this.table.length * STRIDE);
     for (const e of ents) {
       const o = this.index.get(e.id) * STRIDE;
@@ -44,7 +44,9 @@ export class ReplayRecorder {
       if (e.van) { a[o + 15] = 1; for (let i = 0; i < 9; i++) a[o + 16 + i] = e.van[i]; }
       a[o + 25] = e.rpm || 0; a[o + 26] = e.thr || 0; a[o + 27] = e.skid || 0; a[o + 28] = e.boost | 0;
     }
-    this.frames.push(hazard === undefined ? { t, a } : { t, a, h: hazard });             // (h: the clock of the track's moving hazards, Apple Crumple)
+    const fr = hazard === undefined ? { t, a } : { t, a, h: hazard };             // (h: the clock of the track's moving hazards, Apple Crumple)
+    if (alarm) fr.al = 1;                                                           // (al: The Getaway's alarm was on: sirens and flashing lights)
+    this.frames.push(fr);
     // keep a rolling window: forget what is older than maxSeconds
     while (this.frames.length - this.head > 2 && t - this.frames[this.head].t > this.maxSeconds) this.head++;
     if (this.head > 1500) { this.frames.splice(0, this.head); this.head = 0; }
@@ -79,6 +81,12 @@ export class ReplayPlayer {
     return lo;
   }
 
+  /** Was The Getaway's alarm (a robbery in progress) on at replay time t? */
+  alarmAt(t) {
+    const rec = this.rec; if (rec.empty) return false;
+    return rec.frames[this._find(t)].al === 1;
+  }
+
   /** The clock of the track's moving hazards (Apple Crumple's hammers, spinners, rocks and presses) at replay time t, or null if none was recorded. */
   hazardAt(t) {
     const rec = this.rec, F = rec.frames;
@@ -103,7 +111,7 @@ export class ReplayPlayer {
       const hasB = o < B.a.length && B.a[o] === 1, b = hasB ? B.a : a, kk = hasB ? k : 0;
       let e = out[out.length] = this._ent(c);
       const m = (j) => a[o + j] + (b[o + j] - a[o + j]) * kk;
-      e.idx = c; e.id = rec.table[c].id; e.hue = rec.table[c].hue; e.isPlayer = rec.table[c].isPlayer;
+      e.idx = c; e.id = rec.table[c].id; e.hue = rec.table[c].hue; e.isPlayer = rec.table[c].isPlayer; e.cop = rec.table[c].cop;
       e.x = m(1); e.y = m(2); e.z = m(3);
       // quaternion: a straight blend (the notes are close together), flipped to the near side and renormalised
       let qx = a[o + 4], qy = a[o + 5], qz = a[o + 6], qw = a[o + 7];

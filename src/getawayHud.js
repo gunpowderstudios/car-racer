@@ -123,6 +123,21 @@ export function getawayHudUpdate(game, role, hp = null) {
   if (on) siren.textContent = role === 'police' ? 'Robbery in progress!' : 'Alarm! The police are coming';
 }
 
+/** The Getaway replay: the red and blue flashing screen and the "robbery" label while the alarm was on (the game's own HUD is hidden during a replay). */
+let rpFlash = null;
+export function replayAlarmFlash(on) {
+  if (typeof document === 'undefined') return;
+  if (!rpFlash) {
+    if (!on) return;
+    const st = document.createElement('style');
+    st.textContent = '#getaway-replay-flash{position:fixed;inset:0;z-index:40;pointer-events:none;animation:gw-rflash .5s infinite alternate}#getaway-replay-flash[hidden]{display:none}#getaway-replay-flash b{position:absolute;left:50%;top:70px;transform:translateX(-50%);font:900 clamp(13px,1.6vw,19px) "Big Shoulders Display",Impact,sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:1px 14px;border-radius:8px;color:#fff;text-shadow:0 2px 6px #000c;background:#d4231acc}@keyframes gw-rflash{from{box-shadow:inset 0 0 90px 10px #d4231a99}to{box-shadow:inset 0 0 90px 10px #1f5fd699}}';
+    document.head.appendChild(st);
+    rpFlash = document.createElement('div'); rpFlash.id = 'getaway-replay-flash'; rpFlash.hidden = true; rpFlash.innerHTML = '<b>Robbery in progress!</b>';
+    document.body.appendChild(rpFlash);
+  }
+  rpFlash.hidden = !on;
+}
+
 /** A big word in the middle of the screen for a moment. */
 export function getawayPop(text, ms = 1600) {
   ensure(); if (!pop) return;

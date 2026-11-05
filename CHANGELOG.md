@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.575 — Sirens in the Getaway replay
+- The replay of a Getaway now has the police siren and the flashing red and blue screen, with a Robbery in progress label, for as long as the alarm was on. The siren gets louder as a police car comes close to the camera, and is also in saved films
+
 ## v17.574 — Getaway robber unstuck
 - The Getaway: when you play the police, the computer robber could freeze (front wheels turning, car not moving) behind a parked car, such as yours, or nose to nose with a town car. After a few seconds it now reverses, then edges round and carries on with the robbery
 

@@ -242,3 +242,19 @@ test('the replay remembers the clock of the moving hazards (Apple Crumple) and g
   const plain = new ReplayRecorder(); plain.record(1, ent); plain.record(1.05, ent);
   assert.equal(new ReplayPlayer(plain).hazardAt(1.02), null, 'no hazards on an ordinary track');
 });
+
+test('The Getaway: the replay remembers when the alarm was on and which cars are police, for the sirens and flashing lights', () => {
+  const r = new ReplayRecorder();
+  r.record(0, [car('p', 0), car('c1', 5, { cop: true })], undefined, false);
+  r.record(1, [car('p', 1), car('c1', 6, { cop: true })], undefined, true);
+  r.record(2, [car('p', 2), car('c1', 7, { cop: true })], undefined, true);
+  r.record(3, [car('p', 3), car('c1', 8, { cop: true })], undefined, false);
+  const p = new ReplayPlayer(r);
+  assert.equal(p.alarmAt(0.5), false); assert.equal(p.alarmAt(1.2), true); assert.equal(p.alarmAt(2.5), true); assert.equal(p.alarmAt(3), false);
+  const s = p.sample(1.5); assert.equal(s.find((e) => e.id === 'c1').cop, true); assert.equal(s.find((e) => e.id === 'p').cop, false);
+  assert.equal(new ReplayPlayer(new ReplayRecorder()).alarmAt(0), false, 'an empty replay has no alarm');
+  const mode = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
+  assert.match(mode, /d\.sound\.sirenLoop\?\.\(sd\)/); assert.match(mode, /sirenLoop\?\.\(null\); replayAlarmFlash\(false\)/, 'silenced when the replay is closed');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /getaway\.game\.alarm && !getaway\.game\.over\)\);/);
+});

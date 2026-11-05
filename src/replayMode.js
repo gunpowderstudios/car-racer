@@ -5,6 +5,7 @@ import { ReplayPlayer, ReplayCams, VIEWS } from './replay.js';
 import { createMp4Saver, videoBitrate, WHATSAPP_BYTES, BIG_BYTES } from './mp4Save.js';
 import { pickBestBit } from './bestBit.js';
 import { assetUrl } from './assetVersion.js';
+import { replayAlarmFlash } from './getawayHud.js';
 
 const SPEEDS = [0.25, 0.5, 1, 2];
 const fmt = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -371,7 +372,7 @@ export function createReplayMode(d) {
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
     cleanView(false);
-    d.sound.filmTrack?.(null); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
+    d.sound.filmTrack?.(null); d.sound.sirenLoop?.(null); replayAlarmFlash(false); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
     rebuildTo(Infinity);
@@ -413,6 +414,12 @@ export function createReplayMode(d) {
     for (const e of ents) R.seen.add(e.id);
     const f = aim(ents, dt);
     if (f) listen(f, R.lastV.x, R.lastV.z, dt); else d.sound.update(hear, 0, false);
+    {                                                            // The Getaway: while the alarm was on there are sirens and flashing lights, as in the game (louder the nearer a police car is to the camera)
+      const alarm = !!(R.player && R.playing && p.alarmAt(R.t));
+      let sd = null;
+      if (alarm) { sd = 120; const cam = d.camera.position; for (const e of ents) if (e.cop && !e.wrecked) sd = Math.min(sd, Math.hypot(e.x - cam.x, e.y - cam.y, e.z - cam.z)); }
+      d.sound.sirenLoop?.(sd); replayAlarmFlash(!!(p.alarmAt(R.t)));
+    }
     R.fresh = false;
     for (const e of ents) place(e);
     if (R.fresh) rebuildTo(R.t);

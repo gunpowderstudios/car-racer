@@ -1201,7 +1201,7 @@ function effects(dt) {
 // While you drive, a quiet recorder notes where every car is about 20 times a second (see replay.js); "Replay" plays it back from TV cameras.
 const replayRec = new ReplayRecorder({ maxSeconds: tierName === 'low' ? 90 : 240 });
 const rpEnts = [];                                                 // reused every note, so recording makes no garbage
-function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, rpm: 0, thr: 0, skid: 0, boost: false, _van: new Array(9).fill(0) }); }
+function rpEnt(i) { return rpEnts[i] || (rpEnts[i] = { id: 0, hue: 0, isPlayer: false, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, steer: 0, spin: [0, 0, 0, 0], health: 1, wrecked: false, van: null, rpm: 0, thr: 0, skid: 0, boost: false, cop: false, _van: new Array(9).fill(0) }); }
 function rpFill(e, id, hue, isPlayer, c, health, wrecked) {
   e.rpm = c.rpm; e.thr = c.thr; e.boost = (c.boosting ? 1 : 0) + (c.scraping ? 2 : 0);          // (bit 2: scraping along a wall)
   const brakeSkid = c.gear > 0 && c.onGround && c.speed > 4 ? (c.brk || 0) * Math.min(1, Math.max(0, (c.speed - 4) / 12)) : 0;     // the same braking squeal the live sound makes
@@ -1232,10 +1232,10 @@ function recordReplay() {
     return;
   }
   let n = 0;
-  rpFill(rpEnt(n++), 'p', 0, true, car, derby.damageEnabled ? derby.player.health.worst : 1, !!(derby.enabled && derby.player.wrecked));
-  if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; rpFill(rpEnt(n++), f.id, f.hue, false, f.car, f.health.worst, !!f.wrecked); }
+  { const pe = rpEnt(n++); rpFill(pe, 'p', 0, true, car, derby.damageEnabled ? derby.player.health.worst : 1, !!(derby.enabled && derby.player.wrecked)); pe.cop = !!(getaway && getaway.role === 'police'); }
+  if (derby.enabled) for (const f of derby.fighters) { if (f.isPlayer || f.gone) continue; const fe = rpEnt(n++); rpFill(fe, f.id, f.hue, false, f.car, f.health.worst, !!f.wrecked); fe.cop = !!(getaway && f.cop); }
   rpEnts.length = n;
-  replayRec.record(simTime, rpEnts, assault ? assault.t : undefined);          // (Apple Crumple: and where its hammers and spinners were)
+  replayRec.record(simTime, rpEnts, assault ? assault.t : undefined, !!(getaway && getaway.game.alarm && !getaway.game.over));          // (Apple Crumple: and where its hammers and spinners were)
 }
 const replayDof = new ReplayDof(renderer);
 // Sounds in the replay: knocks and landings, the van's knocks, barrels, honks. A knock the live game reports twice (derby and car) is logged once.
