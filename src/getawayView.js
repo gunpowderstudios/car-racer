@@ -13,8 +13,8 @@ function canvasTex(w, h, draw, rx = 1, ry = 1) {
   return t;
 }
 
-/** The 1980s look (add ?retro to the address): faded, sooty brick and stone, boarded and broken windows, patched asphalt. Off unless asked for, so the normal town is untouched. */
-export const RETRO = typeof location !== 'undefined' && /[?&]retro\b/.test(location.search || '');
+/** The 1980s look: faded, sooty brick and stone, boarded and broken windows, patched asphalt, street dressing. It is now the look of The Getaway; add ?noretro to the address for the old clean town. */
+export const RETRO = !(typeof location !== 'undefined' && /[?&]noretro\b/.test(location.search || ''));
 const WALLS_RETRO = ['#7b5a48', '#8c6b56', '#a39078', '#6e5446', '#9a8a72', '#82705e', '#7a4f44', '#948068'];
 const AWN_RETRO = [['#9c3a2e', '#d9d2bf'], ['#3d5f86', '#d9d2bf'], ['#4a7050', '#d9d2bf'], ['#b88a2a', '#3a3a38'], ['#6a4a78', '#d9d2bf']];
 const WALLS_NOW = RETRO ? WALLS_RETRO : null;

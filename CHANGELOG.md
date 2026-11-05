@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.579 — The Getaway is retro
+- The 1980s look (sooty brick, boarded and broken windows, patched road, fire escapes, signals, billboards, the shadow-casting sun) is now how The Getaway always looks, with no `?retro` needed. Add `?noretro` to the address to see the old clean town. No other track is affected
+
 ## v17.578 — Depth of field in more replays
 - The replay's soft background blur (depth of field) now also works on the Medium graphics setting on desktop, and on the chase view as well as the trackside TV camera. It is gentle: strongest on the TV camera, lighter on the chase view, and the car and what is next to it stay sharp. The top view stays sharp, and phones and tablets are unchanged
 

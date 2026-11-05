@@ -502,3 +502,8 @@ test('the shadow map is rebuilt when the game comes back, so the scene cannot st
   const { readFileSync } = await import('node:fs'); const s = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), g = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
   assert.ok(/visibilitychange', \(\) => \{ if \(!document\.hidden\) stage\.resetShadowMap\(\)/.test(s) && /webglcontextrestored/.test(s) && /resetShadowMap\(\) \{/.test(g));
 });
+
+test('The Getaway has the 1980s look by default, and ?noretro brings back the clean town', () => {
+  const view = readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8');
+  assert.match(view, /export const RETRO = !\(typeof location !== 'undefined' && \/\[\?&\]noretro\\b\/\.test\(location\.search \|\| ''\)\);/);
+});
