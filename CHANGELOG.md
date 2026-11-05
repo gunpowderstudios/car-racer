@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.567 — Smaller vehicles
+- Every vehicle model is about 30% smaller to download (the French Cheese van more than half), with fewer polygons and the same textures, so the game loads faster and uses less memory on phones
+- Phones no longer get the older 'lite' copy of the Bus, Saab, BMW and Motorhome, because the new full model is now the smaller file
+
 ## v17.566 — Against the black scene on phones
 - The sun's shadow map is now rebuilt whenever the game comes back to the front (after another app), when the phone gives the graphics back after losing them, and whenever Shadows is switched on. A broken shadow map left everything near the car black while the far buildings stayed lit. If it ever happens again, switching Shadows off and on in the settings brings the lighting back
 
