@@ -17,6 +17,7 @@ import { Driver, IDLE, AI } from './ai.js';
 import { Caravan } from './caravan.js';
 import { ArenaDriver, arenaInfo, arenaSpawn } from './arena.js';
 import { Health, SPECS, DAMAGE, ZONES, NEIGHBOURS, zoneAt, crashDamage, wallDamage, blastDamage, roofDentHp } from './damage.js';
+const ROADBLOCK_MUL = 1.7;      // The Getaway: a car that crashes into a police roadblock takes this much more damage than a normal crash
 
 /** Points for each kind of thing worth points. Add a new kind here, then call derby.award('kind'). */
 export const POINTS = {
@@ -537,8 +538,9 @@ export class Derby {
           if (hp > 0) {
             // Same speed for every vehicle, but size decides who suffers: the heavier one gives out more damage and takes less (a bus flattens a Panda; a Panda barely scratches a bus).
             const ma = a.car.mass, mb = b.car.mass, share = (mine, theirs) => Math.min(2.5, Math.max(0.35, Math.sqrt(theirs / mine)));
-            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp * share(ma, mb), b, H.x, H.y, H.z);
-            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp * share(mb, ma), a, H.x, H.y, H.z);
+            const ba = b.driver && b.driver.isRoadblock ? ROADBLOCK_MUL : 1, bb = a.driver && a.driver.isRoadblock ? ROADBLOCK_MUL : 1;      // (a police roadblock across the street: you can smash through it, but it costs you more)
+            this._damage(a, zoneAt(a.car, H.x, H.y, H.z), hp * share(ma, mb) * ba, b, H.x, H.y, H.z);
+            this._damage(b, zoneAt(b.car, H.x, H.y, H.z), hp * share(mb, ma) * bb, a, H.x, H.y, H.z);
           }
         }
       }

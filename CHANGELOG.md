@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.577 — Raised pavements and Getaway fixes
+- The Getaway: the pavements are now raised (about 17 cm, with a rounded edge), so you bump up and over a kerb. They are level across the junctions and in front of each garage
+- The computer cars now take the middle of a junction when they turn, so they stay on the road far more (they were swinging up onto the pavements)
+- The bank sign now hangs out in front of the cornice instead of having a bar running across it
+- Crashing into a police roadblock (a police car parked sideways across the street) now costs you 1.7 times the usual damage; you can still smash through
+- The garage bays are 12 m wide instead of 10, which stops the robber circling and clipping the edge of its lock-up
+
 ## v17.576 — Retro town brighter
 - `?retro` Getaway: the shadows and textures stay, but the town is lighter overall (a stronger fill light in the shadows and a lighter road), and the blocky box cars parked on the pavements are gone
 

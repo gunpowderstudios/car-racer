@@ -20,7 +20,7 @@ export const TOWN = {
   rams: 3,                 // rams on the robber (while he carries a bag) that stop the robbery
   jail: 3,                 // stopped robberies (strikes) that put the robber in jail
   ramCool: 1.2,            // seconds before another ram can count
-  garageW: 10, garageD: 15, safeR: 4.5,   // the safehouse is a garage cut into a building: a bay this wide and deep, and you must drive in this close to its middle
+  garageW: 12, garageD: 15, safeR: 4.5,   // the safehouse is a garage cut into a building: a bay this wide and deep, and you must drive in this close to its middle
   height: 11,              // how tall the buildings stand (the solid part; the view makes them different)
 };
 
@@ -62,6 +62,42 @@ export function townLayout(T = TOWN) {
     policeStart: { x: xs[cols] - 14, z: zs[0], fx: -1, fz: 0 },                // ...and the police at the opposite end
   };
   return L;
+}
+
+// ---------------------------------------------------------------- raised pavements
+export const KERB_H = 0.17;        // how high the pavement stands above the road
+export const KERB_W = 2.5;         // how wide it is (the road is 2.5 m narrower each side than the street)
+export const KERB_RAMP = 0.6;      // the rounded edge of the kerb: a car drives up it as a bump, not a wall
+let _kL = null;
+/**
+ * The height of the pavement at (x, z) and its slope, written into `out` ({ h, gx, gz }): every block stands on a pavement slab KERB_W wide all round it, KERB_H high, with a
+ * short rounded edge. It is dropped where a garage bay opens on to the street, so the way in is flat. Used by Track for the physics and by GetawayView for the picture.
+ */
+export function townKerb(x, z, out) {
+  const L = _kL || (_kL = townLayout());
+  out.h = 0; out.gx = 0; out.gz = 0;
+  const R = KERB_W, lim = R + 0.2;
+  // the blocks are a grid: only the one or two nearest need a look
+  for (const b of L.blocks) {
+    const dx = Math.abs(x - b.cx) - b.hx, dz = Math.abs(z - b.cz) - b.hz;
+    if (dx > lim || dz > lim) continue;
+    if (dx <= 0 && dz <= 0) continue;                               // (inside the block: only a garage bay, whose floor is level with the road)
+    const ox = Math.max(dx, 0), oz = Math.max(dz, 0), d = Math.hypot(ox, oz);
+    if (d >= R) continue;
+    let h = KERB_H, slope = 0;
+    const e = R - d;                                                // how far in from the kerb edge
+    if (e < KERB_RAMP) { const u = e / KERB_RAMP; h = KERB_H * 0.5 * (1 - Math.cos(Math.PI * u)); slope = -KERB_H * 0.5 * Math.PI / KERB_RAMP * Math.sin(Math.PI * u); }      // (slope: change of height as d grows)
+    // the garage bay in the north face: the kerb is dropped along the whole forecourt in front of it, where the car swings in (and eased in on each side)
+    let f = 1;
+    if (z < b.cz - b.hz + 0.01) { const gx = b.cx - 8, k = (Math.abs(x - gx) - L.T.garageW / 2 - 7) / 3; f = k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k); }
+    if (f <= 0) continue;
+    h *= f; slope *= f;
+    if (h > out.h) {
+      out.h = h;
+      if (d > 1e-6) { out.gx = slope * (x >= b.cx ? ox : -ox) / d * (dx > 0 ? 1 : 0); out.gz = slope * (z >= b.cz ? oz : -oz) / d * (dz > 0 ? 1 : 0); } else { out.gx = 0; out.gz = 0; }
+    }
+  }
+  return out;
 }
 
 /** Where the safehouse can go: the middle of every vertical street's segments and of the top street's (no bag ever lies there), so never on a bank's bag. */

@@ -9,6 +9,7 @@
 //   d     > 0  means a point lies to the LEFT of the centreline
 
 import { clamp, lerp, smoothstep, wrapPi } from './math.js';
+import { townKerb } from './getaway.js';
 
 export const TRACK_VERSION = 6;
 export const SURF = { ROAD: 0, VERGE: 1, BASE: 2 };
@@ -338,6 +339,7 @@ export class Track {
     this.apron = this.def.walls ? APRON : 0;
     this.overshoot = this.def.getaway ? 60 : this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;       // (the town floor is 440 m wide: far from the little centre oval the strips of neighbouring segments must overlap)
     this.bumps = this.def.bumps || null;
+    this.kerbs = !!this.def.getaway;                                          // (The Getaway: the town's pavements stand a little above the road, see townKerb)
     this.berm = !!this.def.berm; this.margin = this.berm ? BERM_MARGIN : QUERY_MARGIN;
     this.puddles = this.def.puddles || null;
     this.blocks = null;                                                       // (set below, once the floor height is known)
@@ -581,6 +583,7 @@ export class Track {
     if (ad <= hw) {
       yc = Cy - (Nx * (x - cx) + Nz * (z - cz)) / Ny; yEdge = yc;
       if (this.bumps) { bumpAt(this.bumps, x, z, _bump); yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; }
+      if (this.kerbs) { townKerb(x, z, _bump); if (_bump.h > 0) { yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; } }
     } else {
       const sg = d < 0 ? -1 : 1;
       yEdge = Cy - (Nx * Lx * hw * sg + Nz * Lz * hw * sg) / Ny;

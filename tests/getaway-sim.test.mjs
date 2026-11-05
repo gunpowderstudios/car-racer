@@ -123,3 +123,39 @@ test('clearAhead sees a building in the way', async () => {
   const { clearAhead } = await import('../src/getawayAI.js'); const L = townLayout(), b = L.boxes[0];
   assert.ok(clearAhead(L, (b.x0 + b.x1) / 2, b.z0 - 20, 0, 1, 40) < 40);
 });
+
+test('raised pavements: a kerb round every block, level in the street, and dropped in front of the garage bays', async () => {
+  const { townKerb, KERB_H } = await import('../src/getaway.js');
+  const L = townLayout(), b = L.blocks[8], o = { h: 0, gx: 0, gz: 0 };
+  const z1 = b.cz + b.hz, x = b.cx + 20;
+  assert.equal(townKerb(x, z1 + 1, o).h, KERB_H, 'on the pavement');
+  assert.equal(townKerb(x, z1 + 6, o).h, 0, 'the road is level');
+  assert.equal(townKerb(L.xs[2], L.zs[2], o).h, 0, 'the junction is level');
+  assert.ok(townKerb(x, z1 + 2.3, o).h > 0 && o.gz < 0, 'a rounded edge, falling away from the building');
+  assert.equal(townKerb(b.cx - 8, b.cz - b.hz - 1, o).h, 0, 'no kerb in front of the garage');
+  assert.equal(townKerb(b.cx - 8, b.cz - b.hz + 5, o).h, 0, 'the bay floor is level');
+  const track = new Track(makeTemplate('getaway')), base = track.query(x, 5, z1 + 6).y, kerb = track.query(x, 5, z1 + 1).y;
+  assert.ok(Math.abs(kerb - base - KERB_H) < 1e-6, 'the physics ground stands up on the pavement');
+});
+
+test('the computer cars stay off the pavements nearly all the time (they take the middle of a junction in a turn)', () => {
+  const S = setup('police', 12, 0, 11), { townKerb } = S.mod || {};
+  let on = 0, n = 0;
+  return import('../src/getaway.js').then(({ townKerb: tk }) => {
+    const o = {};
+    for (let k = 0; k < 100; k++) { play(S, 1); for (const f of S.derby.fighters) { if (f.isPlayer) continue; n++; tk(f.car.pos.x, f.car.pos.z, o); if (o.h > 0.05 && f.car.speed > 2) on++; } }
+    assert.ok(on / n < 0.04, 'on the pavement ' + (100 * on / n).toFixed(1) + '% of the time');
+  });
+});
+
+test('a police roadblock is told apart, so crashing into one can cost more damage', async () => {
+  const { readFileSync } = await import('node:fs');
+  const g = new GetawayGame(townLayout()), d = new GetawayDriver(rngOf(1), g, 'police', 0.7, 3);
+  assert.equal(d.isRoadblock, false); d.dbg = { kind: 'block-hold' }; assert.equal(d.isRoadblock, true); d.dbg = { kind: 'chase' }; assert.equal(d.isRoadblock, false);
+  assert.match(readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8'), /ROADBLOCK_MUL/);
+});
+
+test('the bank sign hangs out in front of the cornice, not behind it like a bar', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.match(readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), /sign\.position\.set\(b\.cx, y0 \+ 6\.6, b\.cz \+ b\.hz \+ 0\.8\)/);
+});

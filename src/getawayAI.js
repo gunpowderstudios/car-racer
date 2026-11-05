@@ -38,6 +38,9 @@ export class GetawayDriver {
     return true;
   }
 
+  /** Is this police car parked across the street as a roadblock right now? (a car that crashes into it takes extra damage, see Derby) */
+  get isRoadblock() { return !!this.dbg && (this.dbg.kind === 'block-hold' || this.dbg.kind === 'block-spin'); }
+
   /** Where this side wants to go right now, and whether it is a straight-line chase. */
   think(car, foe) {
     const g = this.game, cx = car.pos.x, cz = car.pos.z;
@@ -141,7 +144,8 @@ export class GetawayDriver {
       if (corner && corner.d > 7 && corner.d < Ld + 6) Ld = corner.d - 0.5;                    // do not look round a corner before reaching it: aim for the corner, then turn (so the inside kerb is not clipped)
       const A = this._along(P, Ld);
       const toGoal = Math.hypot(G.x - A.x, G.z - A.z), lane = G.kind === 'safehouse' ? 0 : G.kind === 'drive' ? this.lane : this.lane * clamp((toGoal - 6) / 14, 0, 1);
-      ax = A.x + A.dz * lane; az = A.z - A.dx * lane;
+      const laneNow = corner && corner.d < 22 ? lane * clamp((corner.d - 3) / 18, 0.15, 1) : lane;          // (round a corner the car takes the middle of the junction, not the lane: a tight lane-to-lane turn swings it up over the kerb)
+      ax = A.x + A.dz * laneNow; az = A.z - A.dx * laneNow;
       if (corner) { const vc = 14 - 8 * clamp(corner.turn / 1.57, 0, 1.2); vT = Math.min(vT, Math.sqrt(vc * vc + 14 * Math.max(corner.d - 6, 0))); }
       if (G.kind === 'safehouse' && g.safehouse.gx !== undefined) { const dg = Math.hypot(px - g.safehouse.gx, pz - g.safehouse.street); if (dg < 40) vT = Math.min(vT, 7 + dg * 0.15); }
       if (G.kind === 'bag' || G.kind === 'safehouse' || G.kind === 'bank') vT = Math.min(vT, 8 + dist * 0.7);

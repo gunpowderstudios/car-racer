@@ -1,7 +1,7 @@
 // What The Getaway looks like: a small town of shops and banks, painted roads, the bags of money and the safehouse.
 // The solid parts (the blocks and the wall) are the boxes in getaway.js that the physics uses, so what you see is what you hit.
 import * as THREE from 'three';
-import { townLayout, TOWN } from './getaway.js';
+import { townLayout, TOWN, KERB_H, KERB_W, KERB_RAMP } from './getaway.js';
 import { arenaInfo } from './arena.js';
 
 const rnd = (seed) => { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -130,6 +130,18 @@ export class GetawayView {
     const roads = new THREE.Mesh(new THREE.PlaneGeometry(L.W, L.D), new THREE.MeshLambertMaterial({ map: roadTex(L) }));
     roads.rotation.x = -Math.PI / 2; roads.position.set(0, y0 + 0.04, 0); roads.receiveShadow = true; g.add(roads);
 
+    // ---- the raised pavements: a low slab all round every block (the physics is townKerb in getaway.js), open across each garage mouth. One instanced mesh: a single draw call
+    {
+      const P = KERB_W - KERB_RAMP / 2, strips = [];
+      for (const b of L.blocks) {
+        const x0 = b.cx - b.hx, x1 = b.cx + b.hx, z0 = b.cz - b.hz, z1 = b.cz + b.hz, gx = b.cx - 8, gw = L.T.garageW / 2 + 8.5;
+        strips.push([x0 - P, x1 + P, z1, z1 + P], [x0 - P, x0, z0, z1], [x1, x1 + P, z0, z1], [x0 - P, gx - gw, z0 - P, z0], [gx + gw, x1 + P, z0 - P, z0]);
+      }
+      const curb = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: RETRO ? 0x9d998e : 0xc9c5bb }), strips.length), m4k = new THREE.Matrix4();
+      strips.forEach(([ax, bx_, az, bz_], i) => { m4k.makeScale(bx_ - ax, KERB_H, bz_ - az); m4k.setPosition((ax + bx_) / 2, y0 + KERB_H / 2, (az + bz_) / 2); curb.setMatrixAt(i, m4k); });
+      curb.receiveShadow = true; curb.castShadow = false; curb.frustumCulled = false; g.add(curb);
+    }
+
     // ---- the blocks: shops along the ground floor, windows above, a roof; the south face of each is its bank
     const r = rnd(2024);
     const hs = L.T.height;
@@ -154,7 +166,7 @@ export class GetawayView {
       upBox.position.set(b.cx, y0 + shopH + upH / 2, b.cz); upBox.castShadow = upBox.receiveShadow = true; g.add(upBox);
       // the bank's sign over the door (south face) and a bigger one on the roof
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(16, 5), new THREE.MeshBasicMaterial({ map: bankTex() }));
-      sign.position.set(b.cx, y0 + 6.6, b.cz + b.hz + 0.2); g.add(sign);
+      sign.position.set(b.cx, y0 + 6.6, b.cz + b.hz + 0.8);      // (out in front of the cornice slab, which sticks out 0.45 m: it used to run across the sign like a bar) g.add(sign);
       const rs = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: roofSignTex(), side: THREE.DoubleSide }));
       rs.position.set(b.cx, y0 + H + 4.5, b.cz); g.add(rs);
       for (const sx of [-5, 5]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4, 0.4), roof); post.position.set(b.cx + sx, y0 + H + 2, b.cz); g.add(post); }
