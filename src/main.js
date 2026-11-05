@@ -747,6 +747,7 @@ function getawayBegin() {
   const G = getaway;
   hud.banner(G.role === 'robber' ? 'ROBBER: grab a bag, reach the safehouse!' : 'POLICE: stop the robbers!', 2400);
   frozen = true; startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
+  if (G.role === 'police') sound.preloadRadio();           // (the police radio chatter is a big clip: fetched only for the police player)
 }
 const gwChime = (notes, gap = 130, g = 0.2) => notes.forEach((f, i) => setTimeout(() => sound.beep(f, 0.2, g), i * gap));
 // ---- wear and tear: The Getaway uses the same damage as the other races (zones, dents, holes, stalls, wrecks - see derby.js). Every car is hurt, the town traffic too (a wrecked town car is replaced elsewhere after 12 s).
@@ -830,7 +831,7 @@ function getawayFinish(e) {
     title, again: G.online ? (net?.isHost ? 'Play again (random sides)' : 'Waiting for the host to start the next round') : `Play again as ${gwOther(me)} (Enter)`,
     lines: [rob ? `${e.robbed} bags safe in the safehouse` : wrecked ? `The getaway car is a wreck` : `Three strikes - the robber is in jail`, `Bags safe ${e.robbed} · strikes ${e.strikes}`, `Time ${mm}:${ss}`],
   };
-  G.resultAt = performance.now() + 1700; sound.sirenLoop(null);
+  G.resultAt = performance.now() + 1700; sound.sirenLoop(null); sound.radioLoop(false);
 }
 function showGetawayCard() {
   const G = getaway; if (!G?.card) return;
@@ -892,6 +893,7 @@ function getawayFrame() {
   const G = getaway, f = G_foe(getaway); G.t += 1 / 60;
   { const rf = G.role === 'robber' ? derby.player : f, pf = G.role === 'police' ? derby.player : f; getawayHudUpdate(G.game, G.role, { robber: gwPct(rf), police: gwPct(pf) }); }
   getawayCompass(car.az.x, car.az.z);
+  sound.radioLoop(G.role === 'police' && G.game.alarm && !G.game.over && !paused && mode === 'drive');      // (the radio crackles while a robbery is on, as well as the siren)
   sound.sirenLoop(f && G.game.alarm && !G.game.over && !paused && mode === 'drive' ? (G.role === 'police' ? 30 : G.online ? Math.hypot(f.car.pos.x - car.pos.x, f.car.pos.z - car.pos.z) : Math.min(...derby.rivals.filter((x) => x.cop).map((x) => Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z)))) : null);       // the police siren sounds only during a robbery (you carry a bag): you hear it from anywhere, louder the nearer it is
   if ((G.lineT = (G.lineT || 0) + 1) % 4 === 0 || !G.line) {            // the red satnav line: the robber follows it to the bag and then the safehouse, the police to the robber (only during a robbery)
     const g = G.game; let to = null;
@@ -1439,7 +1441,7 @@ function selfDestruct() {
 function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
   setPaused(false);
-  if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); }
+  if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); sound.radioLoop(false); }
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '') + (getaway ? ' getaway' : '');
   $('hud').hidden = m !== 'drive';
@@ -1451,7 +1453,7 @@ function setMode(m) {
 }
 function showMenu() {
   mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false);
-  sound.sirenLoop(null);
+  sound.sirenLoop(null); sound.radioLoop(false);
   if (getaway) { hideGetawayResult(); menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false; }      // (the town is left behind: your own car comes back, and the home screen has a plain track under it)
   setMode('menu'); renderMenu(); setHash('');
 }

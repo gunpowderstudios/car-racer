@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const solo = readFileSync(new URL('../src/soloRacePosition.js', import.meta.url), 'utf8');
@@ -507,4 +507,15 @@ test('The Getaway always has the 1980s look: no ?retro switch is left', () => {
   const view = readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), stg = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
   assert.doesNotMatch(view, /\bRETRO\b/); assert.doesNotMatch(stg, /\bRETRO\b/); assert.doesNotMatch(view + stg, /noretro/);
   assert.match(view, /WALLS_RETRO\[Math\.floor\(r\(\) \* WALLS_RETRO\.length\)\]/); assert.match(stg, /this\._retroSky\(!!track\.def\.getaway\)/);
+});
+
+test('The Getaway: the police player hears the police radio (sounds/police-radio.mp3) during a robbery, as well as the siren', () => {
+  const aud = readFileSync(new URL('../src/audio.js', import.meta.url), 'utf8');
+  assert.match(aud, /fetch\('sounds\/police-radio\.mp3'\)/); assert.match(aud, /radioLoop\(on\)/);
+  assert.match(aud, /s\.start\(t, Math\.random\(\) \* Math\.max\(0, b\.duration - 45\)\)/, 'a different bit of the clip each time');
+  assert.doesNotMatch(aud, /load\('policeRadio'/, 'not fetched for everyone: only the police player');
+  assert.match(main, /sound\.radioLoop\(G\.role === 'police' && G\.game\.alarm && !G\.game\.over && !paused && mode === 'drive'\)/);
+  assert.match(main, /if \(G\.role === 'police'\) sound\.preloadRadio\(\)/);
+  assert.ok((main.match(/sound\.radioLoop\(false\)/g) || []).length >= 3, 'stopped when the game ends, the menu opens or the mode changes');
+  assert.ok(existsSync(new URL('../sounds/police-radio.mp3', import.meta.url)));
 });

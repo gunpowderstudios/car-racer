@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.581 — Police radio
+- The Getaway: when you play the police and the robber picks up the cash, you now hear the police radio chatter (sounds/police-radio.mp3) as well as the sirens, for as long as the robbery goes on. It starts at a different place in the recording each time. The recording is only downloaded for the police player
+
 ## v17.580 — Old Getaway look removed
 - The clean, non-retro version of The Getaway's town is gone from the code, along with the `?noretro` switch. The 1980s look is the only look. Nothing changes on screen
 

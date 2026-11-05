@@ -305,6 +305,28 @@ export class Sound {
     this._sirenV.g.gain.setTargetAtTime(want, this.ctx.currentTime, 0.12);
     this._sirenV.s.playbackRate.setTargetAtTime(1 + 0.08 * near, this.ctx.currentTime, 0.2);
   }
+  /** Fetch the police radio chatter (a long clip: it is only wanted by someone playing the police in The Getaway, so it is not part of the normal sound load). */
+  async preloadRadio() {
+    if (this.buf.policeRadio || this._radioLoading || !this.ready) return;
+    this._radioLoading = true;
+    try { const r = await fetch('sounds/police-radio.mp3'); this.buf.policeRadio = await this.ctx.decodeAudioData(await r.arrayBuffer()); } catch { /* no radio then */ }
+    this._radioLoading = false;
+  }
+  /** The police radio in The Getaway, heard by the police player for as long as a robbery goes on: it starts part way into the clip (a different bit each time), once per robbery, and `false` stops it. */
+  radioLoop(on) {
+    if (!on || !this.ready || !this.sfxOn) {
+      if (!on) this._radioUsed = false;
+      if (this._radioV) { const v = this._radioV; this._radioV = null; const n = this.ctx.currentTime; v.g.gain.cancelScheduledValues(n); v.g.gain.setTargetAtTime(0, n, 0.15); try { v.s.stop(n + 0.8); } catch { /* already stopped */ } }
+      return;
+    }
+    if (this._radioV || this._radioUsed) return;
+    if (!this.buf.policeRadio) { this.preloadRadio(); return; }
+    const c = this.ctx, b = this.buf.policeRadio, s = c.createBufferSource(), g = c.createGain(), t = c.currentTime;
+    s.buffer = b; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.7, t + 0.4); s.connect(g).connect(this.sfx);
+    s.start(t, Math.random() * Math.max(0, b.duration - 45));
+    const v = this._radioV = { s, g }; this._radioUsed = true;
+    s.onended = () => { if (this._radioV === v) this._radioV = null; };
+  }
   /** A rival's short honk (two toots), quieter with distance. */
   honk(dist = 0, pitch = 1, vehicleId = null) {
     if (!this.ready || !this.sfxOn || this.hornOn === false) return;
