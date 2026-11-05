@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.568 — One set of car models
+- The separate lighter phone copies of the cars are gone: phones and computers now load the same (new, smaller) car files, which have the same textures. This also removes about 11 MB from the site
+
 ## v17.567 — Smaller vehicles
 - Every vehicle model is about 30% smaller to download (the French Cheese van more than half), with fewer polygons and the same textures, so the game loads faster and uses less memory on phones
 - Phones no longer get the older 'lite' copy of the Bus, Saab, BMW and Motorhome, because the new full model is now the smaller file

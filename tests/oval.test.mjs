@@ -371,17 +371,12 @@ test('Rootmaster (the London bus) is a listed vehicle with its own heavy profile
   assert.ok(b && b.mass > mh.mass && b.steer.max < mh.steer.max, 'heavier and slower to turn than the motorhome');
 });
 
-test('heavy car models have light copies for phones, and every listed light copy exists', async () => {
-  const { readFileSync, existsSync, statSync } = await import('node:fs');
+test('there are no separate light car copies: every device loads the same files', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
-  const list = /LITE_MODELS = \[([^\]]+)\]/.exec(src)[1].match(/cars\/[^']+/g);
-  assert.ok(list.length >= 6);
-  for (const u of list) {
-    const lite = new URL('../' + u.replace('cars/', 'cars/lite/'), import.meta.url), full = new URL('../' + u, import.meta.url);
-    assert.ok(existsSync(lite), `${u} has a light copy`);
-    assert.ok(statSync(lite).size < statSync(full).size, 'and it is smaller');
-  }
-  assert.match(readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8'), /out\.offset\.copy\(tex\.offset\)/, 'rival paint keeps the light models\' UV transform');
+  assert.ok(!/LITE_MODELS/.test(src) && /export function modelUrl\(url\) \{ return url; \}/.test(src));
+  assert.ok(!existsSync(new URL('../cars/lite', import.meta.url)));
+  assert.match(readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8'), /out\.offset\.copy\(tex\.offset\)/, 'rival paint keeps the models\' UV transform');
 });
 
 test('every race starts on the Chase camera on a computer and the High camera on a touch screen', async () => {
@@ -409,8 +404,8 @@ test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and c
   assert.ok(existsSync(new URL('../src/wheelDebris.js', import.meta.url)));
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /visual\.setWheels\(car\)/); assert.match(main, /wheelFlyers\.launch/);
-  // the light copy of the Mini keeps its named wheels
-  const buf = readFileSync(new URL('../cars/lite/mini-SHRINK.glb', import.meta.url));
+  // the Mini keeps its named wheels
+  const buf = readFileSync(new URL('../cars/mini-SHRINK.glb', import.meta.url));
   const json = JSON.parse(buf.slice(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
   const names = json.nodes.map((n) => n.name).filter(Boolean);
   for (const n of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) assert.ok(names.includes(n), n);
@@ -429,7 +424,6 @@ test('Mobile Chariot (the three-wheeled mobility car) is listed, has its own pro
   assert.match(src, /id: 'mobility-car',\s*name: 'Mobile Chariot',\s*description: 'A fiberglass deathtrap which rolled with the times\.\.\. literally!'/);
   assert.match(src, /url: 'cars\/mobility-car-SHRINK\.glb'/);
   assert.ok(existsSync(new URL('../cars/mobility-car-SHRINK.glb', import.meta.url)));
-  assert.ok(existsSync(new URL('../cars/lite/mobility-car-SHRINK.glb', import.meta.url)));
   assert.ok(existsSync(new URL('../cars/thumbs/mobility-car.webp', import.meta.url)));
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const m = vehiclePhysicsProfile('mobility-car');
@@ -442,7 +436,7 @@ test('WASAABI (the Saab turbo) is a listed vehicle with its own profile, model, 
   const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
   assert.match(src, /id: 'saab',\s*name: 'WASAABI',\s*description: 'I used to be a JET you know!'/);
-  for (const f of ['cars/saab-SHRINK.glb', 'cars/lite/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
+  for (const f of ['cars/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const sa = vehiclePhysicsProfile('saab');
   assert.ok(sa && sa.mass > 1100 && sa.mass < 1400 && sa.boost.accel > 5);
@@ -562,8 +556,8 @@ test('wheels: the visual finds Wheel_* nodes, turns them from the physics, and c
   assert.ok(existsSync(new URL('../src/wheelDebris.js', import.meta.url)));
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /visual\.setWheels\(car\)/); assert.match(main, /wheelFlyers\.launch/);
-  // the light copy of the Mini keeps its named wheels
-  const buf = readFileSync(new URL('../cars/lite/mini-SHRINK.glb', import.meta.url));
+  // the Mini keeps its named wheels
+  const buf = readFileSync(new URL('../cars/mini-SHRINK.glb', import.meta.url));
   const json = JSON.parse(buf.slice(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
   const names = json.nodes.map((n) => n.name).filter(Boolean);
   for (const n of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) assert.ok(names.includes(n), n);
@@ -582,7 +576,6 @@ test('Mobile Chariot (the three-wheeled mobility car) is listed, has its own pro
   assert.match(src, /id: 'mobility-car',\s*name: 'Mobile Chariot',\s*description: 'A fiberglass deathtrap which rolled with the times\.\.\. literally!'/);
   assert.match(src, /url: 'cars\/mobility-car-SHRINK\.glb'/);
   assert.ok(existsSync(new URL('../cars/mobility-car-SHRINK.glb', import.meta.url)));
-  assert.ok(existsSync(new URL('../cars/lite/mobility-car-SHRINK.glb', import.meta.url)));
   assert.ok(existsSync(new URL('../cars/thumbs/mobility-car.webp', import.meta.url)));
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const m = vehiclePhysicsProfile('mobility-car');
@@ -595,7 +588,7 @@ test('WASAABI (the Saab turbo) is a listed vehicle with its own profile, model, 
   const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
   assert.match(src, /id: 'saab',\s*name: 'WASAABI',\s*description: 'I used to be a JET you know!'/);
-  for (const f of ['cars/saab-SHRINK.glb', 'cars/lite/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
+  for (const f of ['cars/saab-SHRINK.glb', 'cars/thumbs/saab.webp']) assert.ok(existsSync(new URL('../' + f, import.meta.url)), f);
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
   const sa = vehiclePhysicsProfile('saab');
   assert.ok(sa && sa.mass > 1100 && sa.mass < 1400 && sa.boost.accel > 5);

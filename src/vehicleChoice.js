@@ -132,24 +132,9 @@ export const VEHICLES = [
   },
 ];
 
-// Lighter copies of the heavy models (cars/lite/, about 30-50k triangles instead of 100-320k, made with gltfpack) for phones and
-// other non-'high' devices. `url` stays the car's identity (multiplayer matches on it); only the file that gets fetched changes.
-// ?lite=1 / ?lite=0 forces it on or off for testing.
-export const LITE_MODELS = ['cars/mini-SHRINK.glb', 'cars/french-cheese-SHRINK.glb', 'cars/campervan-shrink.glb', 'cars/panda-SHRINK.glb', 'cars/volvo-SHRINK.glb', 'cars/mobility-car-SHRINK.glb', 'cars/dodge-shrink.glb', 'cars/escort-shrink.glb', 'cars/v8-pilot-SHRINK.glb'];
-function wantLite() {
-  try {
-    const qs = new URLSearchParams(location.search), force = qs.get('lite');
-    if (force === '1') return true;
-    if (force === '0') return false;
-    const q = qs.get('q'); let saved = null;
-    try { saved = JSON.parse(localStorage.getItem('cr.opts'))?.quality; } catch { /* no saved options */ }
-    const forced = TIER_NAMES.includes(q) ? q : TIER_NAMES.includes(saved) ? saved : null;
-    const dev = probeDevice();
-    return dev.touch || detectTier({ forced, ...dev }) !== 'high';      // a touch screen always gets the lighter car models, whatever its quality tier
-  } catch { return false; }
-}
-const USE_LITE = wantLite();
-export function modelUrl(url) { return USE_LITE && LITE_MODELS.includes(url) ? url.replace('cars/', 'cars/lite/') : url; }
+// Every device now loads the same car files (they are small enough: about 0.5-1.5 MB each, the same textures on phones and computers).
+// modelUrl stays as the one place that turns a car's identity (`url`, which multiplayer matches on) into the file to fetch.
+export function modelUrl(url) { return url; }
 
 const KEY = 'cr.vehicle';
 const MP_RESTORE_KEY = 'cr.mpVehicleRestore';
