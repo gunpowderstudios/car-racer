@@ -151,10 +151,10 @@ test('replay: Save video button is wired, and airborne wheels keep spinning', as
   assert.ok(/!w\.contact\) \{[^}]*w\.spin \+=/.test(veh));
 });
 
-test('replay: depth of field is High-tier desktop only and freed outside the replay', async () => {
+test('replay: depth of field is High and Medium tier on desktop only and freed outside the replay', async () => {
   const fs = await import('node:fs');
   const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.ok(/tierName === 'high' && !device\.touch/.test(main));
+  assert.ok(/\(tierName === 'high' \|\| tierName === 'medium'\) && !device\.touch/.test(main));
   assert.ok(main.includes('if (replayDof.on) replayDof.disable();'));
 });
 

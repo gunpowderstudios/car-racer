@@ -40,9 +40,9 @@ export class ReplayDof {
     this.renderer = renderer; this.rt = null; this.mat = null; this.scene = null; this.cam = null; this.size = new THREE.Vector2();
   }
   get on() { return !!this.rt; }
-  enable() {
+  enable(samples = 4) {
     if (this.rt) return;
-    this.rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4, depthBuffer: true });
+    this.rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples, depthBuffer: true });
     this.rt.depthTexture = new THREE.DepthTexture(4, 4);
     this.rt.depthTexture.type = THREE.UnsignedIntType;
     this.mat = new THREE.ShaderMaterial({
@@ -61,14 +61,14 @@ export class ReplayDof {
     this.rt = this.mat = this.scene = this.quad = this.cam = null;
   }
   /** Draw the scene with depth of field, focused `focus` metres in front of the camera. */
-  render(scene, camera, focus) {
+  render(scene, camera, focus, strength = 1.4) {
     const r = this.renderer; r.getDrawingBufferSize(this.size);
     const w = this.size.x, h = this.size.y;
     if (this.rt.width !== w || this.rt.height !== h) { this.rt.setSize(w, h); this.rt.depthTexture.image.width = w; this.rt.depthTexture.image.height = h; }
     r.setRenderTarget(this.rt); r.clear(); r.render(scene, camera); r.setRenderTarget(null);
     const u = this.mat.uniforms;
     u.tColor.value = this.rt.texture; u.tDepth.value = this.rt.depthTexture;
-    u.focus.value = Math.max(2, focus); u.near.value = camera.near; u.far.value = camera.far; u.texel.value.set(1 / w, 1 / h);
+    u.strength.value = strength; u.focus.value = Math.max(2, focus); u.near.value = camera.near; u.far.value = camera.far; u.texel.value.set(1 / w, 1 / h);
     r.render(this.scene, this.cam);
   }
 }

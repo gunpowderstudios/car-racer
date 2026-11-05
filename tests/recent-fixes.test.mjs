@@ -350,12 +350,13 @@ test('Test my hardware: the cog has the button and the verdict is plain English'
   assert.equal(verdict(60, 55).cls, 'ok'); assert.equal(verdict(40, 20).cls, 'meh'); assert.equal(verdict(18, 10).cls, 'bad'); assert.equal(verdict(0, 0).cls, 'meh');
 });
 
-test('Test Drive from the editor has no rivals, and the replay blur is for the TV camera only', () => {
+test('Test Drive from the editor has no rivals, and the replay blur is for the TV and chase cameras (not the top view)', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="ed-drive"[^>]*>Test Drive</);
   assert.match(main, /derby\.enabled = !net && \(\(!testDrive/);
   assert.match(main, /pendingTest = true; startDriving\(d\)/);
-  assert.match(main, /replay\(\)\.state\.camMode === 'TV'/);
+  assert.match(main, /dofCam === 'TV' \|\| dofCam === 'Chase'/); assert.doesNotMatch(main, /dofCam === 'Top'/);
+  assert.match(main, /tierName === 'high' \|\| tierName === 'medium'\) && !device\.touch/, 'desktop only');
   assert.match(readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /R\.camMode = mode/);
 });
 

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.578 — Depth of field in more replays
+- The replay's soft background blur (depth of field) now also works on the Medium graphics setting on desktop, and on the chase view as well as the trackside TV camera. It is gentle: strongest on the TV camera, lighter on the chase view, and the car and what is next to it stay sharp. The top view stays sharp, and phones and tablets are unchanged
+
 ## v17.577 — Raised pavements and Getaway fixes
 - The Getaway: the pavements are now raised (about 17 cm, with a rounded edge), so you bump up and over a kerb. They are level across the junctions and in front of each garage
 - The computer cars now take the middle of a junction when they turn, so they stay on the road far more (they were swinging up onto the pavements)
