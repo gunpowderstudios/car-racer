@@ -341,6 +341,7 @@ export function createReplayMode(d) {
   function enter() {
     if (R.active || d.rec.empty) return false;
     R.player = new ReplayPlayer(d.rec);
+    R.policeView = R.player.cars.some((c) => c.isPlayer && c.cop); if (R.policeView) d.sound.preloadRadio?.();
     const tr = d.getTrack();
     R.cams = new ReplayCams(tr, d.derby.lastStanding ? d.arenaInfo(tr) : null);
     R.savedMode = d.chase.mode; R.savedFov = d.camera.fov;
@@ -372,7 +373,7 @@ export function createReplayMode(d) {
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
     cleanView(false);
-    d.sound.filmTrack?.(null); d.sound.sirenLoop?.(null); replayAlarmFlash(false); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
+    d.sound.filmTrack?.(null); d.sound.sirenLoop?.(null); d.sound.radioLoop?.(false); replayAlarmFlash(false); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }
     rebuildTo(Infinity);
@@ -419,6 +420,7 @@ export function createReplayMode(d) {
       let sd = null;
       if (alarm) { sd = 120; const cam = d.camera.position; for (const e of ents) if (e.cop && !e.wrecked) sd = Math.min(sd, Math.hypot(e.x - cam.x, e.y - cam.y, e.z - cam.z)); }
       d.sound.sirenLoop?.(sd); replayAlarmFlash(!!(p.alarmAt(R.t)));
+      d.sound.radioLoop?.(alarm && R.policeView);                // (the police radio too, when the person was playing the police)
     }
     R.fresh = false;
     for (const e of ents) place(e);

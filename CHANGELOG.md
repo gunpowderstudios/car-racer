@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.582 — Police radio in the replay
+- The Getaway replay now plays the police radio chatter along with the sirens, during a robbery, when you were playing the police
+
 ## v17.581 — Police radio
 - The Getaway: when you play the police and the robber picks up the cash, you now hear the police radio chatter (sounds/police-radio.mp3) as well as the sirens, for as long as the robbery goes on. It starts at a different place in the recording each time. The recording is only downloaded for the police player
 

@@ -254,7 +254,7 @@ test('The Getaway: the replay remembers when the alarm was on and which cars are
   const s = p.sample(1.5); assert.equal(s.find((e) => e.id === 'c1').cop, true); assert.equal(s.find((e) => e.id === 'p').cop, false);
   assert.equal(new ReplayPlayer(new ReplayRecorder()).alarmAt(0), false, 'an empty replay has no alarm');
   const mode = readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8');
-  assert.match(mode, /d\.sound\.sirenLoop\?\.\(sd\)/); assert.match(mode, /sirenLoop\?\.\(null\); replayAlarmFlash\(false\)/, 'silenced when the replay is closed');
+  assert.match(mode, /d\.sound\.sirenLoop\?\.\(sd\)/); assert.match(mode, /d\.sound\.radioLoop\?\.\(alarm && R\.policeView\)/); assert.match(mode, /radioLoop\?\.\(false\); replayAlarmFlash\(false\)/); assert.match(mode, /sirenLoop\?\.\(null\); d\.sound\.radioLoop\?\.\(false\); replayAlarmFlash\(false\)/, 'silenced when the replay is closed');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /getaway\.game\.alarm && !getaway\.game\.over\)\);/);
 });
