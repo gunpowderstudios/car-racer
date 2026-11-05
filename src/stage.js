@@ -318,6 +318,7 @@ export class Stage {
    *  so the buildings throw shadows across the streets and onto the cars. Every other track puts the low dusk sun back. */
   _retroSky(on) {
     this.sunOffset.set(...(on ? [-120, 170, -80] : SUN_OFFSET));
+    this.hemi.intensity = on ? 1.15 : 0.3;                // (the town in shadow was too dark: a stronger cool fill lifts the shadows and keeps their direction)
   }
 
   /** An open arena (see arena.js) has no road to draw: a dirt floor, a wall and stands instead. */

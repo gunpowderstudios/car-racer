@@ -91,7 +91,7 @@ function roadTex(L) {
   return canvasTex(W, D, (g) => {
     g.fillStyle = RETRO ? '#9d998e' : '#c9c5bb'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
     const X = (x) => (x + L.W / 2) * S, Z = (z) => (z + L.D / 2) * S, ast = (L.T.street - 5) * S, k = 0.35 * S;     // the road is 2.5 m narrower each side than the street: that is the pavement
-    const ASPH = RETRO ? '#3c3e42' : '#50535b';
+    const ASPH = RETRO ? '#4a4d52' : '#50535b';
     g.fillStyle = ASPH;
     for (const z of L.zs) g.fillRect(0, Z(z) - ast / 2, W, ast);
     for (const x of L.xs) g.fillRect(X(x) - ast / 2, 0, ast, D);
@@ -120,7 +120,7 @@ export class GetawayView {
     const L = this.L = townLayout(), A = arenaInfo(track), y0 = this.y0 = A.y;
     this.group = group; this.bags = []; this.t = 0;
     const g = new THREE.Group(); group.add(g); this.g = g;
-    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 0.8 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
+    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 1.5 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
     if (!RETRO) { const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun); }      // (?retro uses the stage's own sun instead, the one that casts the shadows)
 
     // ---- the ground: one big sheet of pavement over the arena's dirt, with the streets painted on
@@ -228,11 +228,9 @@ export class GetawayView {
           const spots = [-16, -12, 11, 15];
           for (const sx of spots) {
             const roll = r4(), x = b.cx + sx + (r4() - 0.5) * 2;
-            if (roll < 0.5) {         // a car parked up on the kerb, nose along the wall
-              const col2 = at(CAR_COL), cz2 = z1 + 1.7, len = 3.8 + r4() * 1.2;
-              add('box', x, y0 + 0.62, cz2, len, 0.8, 1.7, col2); add('box', x - 0.1, y0 + 1.25, cz2, len * 0.55, 0.55, 1.5, '#26303a');
-              for (const dx of [-len * 0.32, len * 0.32]) for (const dz of [-0.85, 0.85]) add('box', x + dx, y0 + 0.3, cz2 + dz, 0.6, 0.6, 0.18, '#151515');
-            } else if (roll < 0.7) { add('box', x, y0 + 0.65, z1 + 1.2, 2.2, 1.3, 1.2, '#3d5a40'); add('box', x, y0 + 1.35, z1 + 1.2, 2.3, 0.12, 1.3, '#27382a'); }      // a dumpster
+            if (roll < 0.25) {        // (the blocky parked cars were taken out: they looked wrong next to the real car models)
+              /* nothing here: an empty stretch of pavement */
+            } else if (roll < 0.6) { add('box', x, y0 + 0.65, z1 + 1.2, 2.2, 1.3, 1.2, '#3d5a40'); add('box', x, y0 + 1.35, z1 + 1.2, 2.3, 0.12, 1.3, '#27382a'); }      // a dumpster
             else if (roll < 0.85) { add('pyr', x, y0 + 0.5, z1 + 1.4, 1.7, 1.0, 1.4, '#6c6459'); add('pyr', x + 1.1, y0 + 0.35, z1 + 1.6, 1.0, 0.7, 0.9, '#7d7466'); add('box', x - 0.4, y0 + 0.9, z1 + 1.3, 0.9, 0.12, 0.5, '#8a6a3a', 0.3); }      // a heap of rubble
           }
         });

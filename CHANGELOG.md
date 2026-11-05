@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.576 — Retro town brighter
+- `?retro` Getaway: the shadows and textures stay, but the town is lighter overall (a stronger fill light in the shadows and a lighter road), and the blocky box cars parked on the pavements are gone
+
 ## v17.575 — Sirens in the Getaway replay
 - The replay of a Getaway now has the police siren and the flashing red and blue screen, with a Robbery in progress label, for as long as the alarm was on. The siren gets louder as a police car comes close to the camera, and is also in saved films
 
