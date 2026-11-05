@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.572 — New German Beema
+- The German Beema (BMW) has a new model made from the original scan: rounder wheels with clear spokes, a cleaner body, and more surface detail (80,000 polygons, 1.1 MB)
+
 ## v17.571 — Cars put back
 - All 16 car models are back to the earlier versions (the newer ones lost surface detail: flat body panels and plain wheel rims). Smaller than the originals, with no separate phone copies
 
