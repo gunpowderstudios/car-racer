@@ -81,6 +81,7 @@ test('the TV camera stands beside the road ahead of the car, then cuts to a new 
     assert.ok(o.fov >= 12 && o.fov <= 58);
     const d = Math.hypot(o.px - g.x, o.pz - g.z);
     assert.ok(d < 200, 'never far from the car: ' + d);
+    assert.ok(o.py - g.y > 1.9, 'the camera is 30% higher than the old 1.5 m minimum: ' + (o.py - g.y));
   }
   assert.ok(cuts >= 5 && cuts <= 40, 'cut ' + cuts + ' times in 40 s');
   assert.ok(shots.size >= 5);

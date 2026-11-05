@@ -153,7 +153,7 @@ export class ReplayCams {
   }
   reset() { this.shot = null; this.time = 0; this.n = 0; this.tx = this.ty = this.tz = null; this.fov = 50; this.top = null; }
 
-  /** TV: a trackside camera. Cuts to a new one ahead of the car once the car has gone past, or got too far away. */
+  /** TV: a trackside camera, 30% higher than it was (2-5.6 m above the road) so the track walls block the view less. Raise the 1.3 if they still do. Cuts to a new one ahead of the car once the car has gone past, or got too far away. */
   _newShot(fc, s) {
     const tr = this.track, speed = Math.hypot(fc.vx, fc.vz);
     this.n++;
@@ -164,11 +164,11 @@ export class ReplayCams {
       for (let k = 0; k < 8; k++) { const th = k / 8 * Math.PI * 2 + 0.2; spots.push({ x: A.cx + Math.cos(th) * (A.ax * 1.08 + 4), z: A.cz + Math.sin(th) * (A.az * 1.08 + 4) }); }
       let best = null, bd = Infinity;
       for (const p of spots) { const d = (p.x - fc.x) ** 2 + (p.z - fc.z) ** 2 - (this.shot && p.x === this.shot.x && p.z === this.shot.z ? 1e12 : 0); if (d < bd) { bd = d; best = p; } }
-      return { x: best.x, y: A.y + 5 + h * 4, z: best.z, s: 0, born: this.time, hold: 4 };
+      return { x: best.x, y: A.y + (5 + h * 4) * 1.3, z: best.z, s: 0, born: this.time, hold: 4 };
     }
     const L = tr.length, lead = clamp(28 + speed * 1.5, 38, 85);
     const f = tr.frameAt((s + lead) % L, this._f), off = f.hw + 3.5 + h * 7;
-    return { x: f.x + f.lx * side * off, y: f.y + f.ly * side * off + 1.5 + h * 2.8, z: f.z + f.lz * side * off, s: (s + lead) % L, born: this.time, hold: 1.4 };
+    return { x: f.x + f.lx * side * off, y: f.y + f.ly * side * off + (1.5 + h * 2.8) * 1.3, z: f.z + f.lz * side * off, s: (s + lead) % L, born: this.time, hold: 1.4 };
   }
   _needsCut(fc, s) {
     const sh = this.shot, age = this.time - sh.born;

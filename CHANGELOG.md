@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.569 — Higher TV camera
+- The TV replay camera is 30% higher (2-5.6 m above the road instead of 1.5-4.3 m), so the track walls block the view less
+
 ## v17.568 — One set of car models
 - The separate lighter phone copies of the cars are gone: phones and computers now load the same (new, smaller) car files, which have the same textures. This also removes about 11 MB from the site
 
