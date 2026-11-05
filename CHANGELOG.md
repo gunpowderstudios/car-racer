@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.570 — Rounder wheels
+- All the cars have new models with much smoother, rounder wheels (about 7,000 polygons a wheel instead of about 2,700), still one file per car, 1.1-1.6 MB each
+
 ## v17.569 — Higher TV camera
 - The TV replay camera is 30% higher (2-5.6 m above the road instead of 1.5-4.3 m), so the track walls block the view less
 
