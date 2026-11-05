@@ -503,7 +503,8 @@ test('the shadow map is rebuilt when the game comes back, so the scene cannot st
   assert.ok(/visibilitychange', \(\) => \{ if \(!document\.hidden\) stage\.resetShadowMap\(\)/.test(s) && /webglcontextrestored/.test(s) && /resetShadowMap\(\) \{/.test(g));
 });
 
-test('The Getaway has the 1980s look by default, and ?noretro brings back the clean town', () => {
-  const view = readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8');
-  assert.match(view, /export const RETRO = !\(typeof location !== 'undefined' && \/\[\?&\]noretro\\b\/\.test\(location\.search \|\| ''\)\);/);
+test('The Getaway always has the 1980s look: no ?retro switch is left', () => {
+  const view = readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), stg = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(view, /\bRETRO\b/); assert.doesNotMatch(stg, /\bRETRO\b/); assert.doesNotMatch(view + stg, /noretro/);
+  assert.match(view, /WALLS_RETRO\[Math\.floor\(r\(\) \* WALLS_RETRO\.length\)\]/); assert.match(stg, /this\._retroSky\(!!track\.def\.getaway\)/);
 });

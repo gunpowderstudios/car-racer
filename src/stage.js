@@ -6,7 +6,7 @@ import { buildTrackGeometry } from './trackGeometry.js';
 import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
-import { GetawayView, RETRO } from './getawayView.js';
+import { GetawayView } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
 const SKY_TOP = 0x1f3a72, SKY_MID = 0xc2557a, SKY_LOW = 0xffa45c, FOG = 0xe39a6a;
@@ -314,7 +314,7 @@ export class Stage {
     return geo;
   }
 
-  /** The 1980s Getaway (?retro): the sky, fog and golden light stay exactly as in the rest of the game; only the sun is lifted (about 50 degrees, the sky's own glow stays where it was)
+  /** The Getaway: the sky, fog and golden light stay exactly as in the rest of the game; only the sun is lifted (about 50 degrees, the sky's own glow stays where it was)
    *  so the buildings throw shadows across the streets and onto the cars. Every other track puts the low dusk sun back. */
   _retroSky(on) {
     this.sunOffset.set(...(on ? [-120, 170, -80] : SUN_OFFSET));
@@ -326,7 +326,7 @@ export class Stage {
     const g = new THREE.Group(), arena = buildArena(track, this.aniso);
     g.add(arena);
     const geo = { bounds: arena.userData.bounds, arena: true };
-    this._retroSky(!!track.def.getaway && RETRO);
+    this._retroSky(!!track.def.getaway);
     if (track.def.getaway) this.getawayView = new GetawayView(track, g);          // The Getaway: the town, its bags and the safehouse (no scenery in the streets)
     else g.add(this._scenery(track, geo, arena.userData.clear));
     this.scene.add(g); this.trackGroup = g;

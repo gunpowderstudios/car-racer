@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.580 — Old Getaway look removed
+- The clean, non-retro version of The Getaway's town is gone from the code, along with the `?noretro` switch. The 1980s look is the only look. Nothing changes on screen
+
 ## v17.579 — The Getaway is retro
 - The 1980s look (sooty brick, boarded and broken windows, patched road, fire escapes, signals, billboards, the shadow-casting sun) is now how The Getaway always looks, with no `?retro` needed. Add `?noretro` to the address to see the old clean town. No other track is affected
 

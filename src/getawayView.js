@@ -13,16 +13,13 @@ function canvasTex(w, h, draw, rx = 1, ry = 1) {
   return t;
 }
 
-/** The 1980s look: faded, sooty brick and stone, boarded and broken windows, patched asphalt, street dressing. It is now the look of The Getaway; add ?noretro to the address for the old clean town. */
-export const RETRO = !(typeof location !== 'undefined' && /[?&]noretro\b/.test(location.search || ''));
+/** The 1980s look of the town: faded, sooty brick and stone, boarded and broken windows, patched asphalt, street dressing. */
 const WALLS_RETRO = ['#7b5a48', '#8c6b56', '#a39078', '#6e5446', '#9a8a72', '#82705e', '#7a4f44', '#948068'];
 const AWN_RETRO = [['#9c3a2e', '#d9d2bf'], ['#3d5f86', '#d9d2bf'], ['#4a7050', '#d9d2bf'], ['#b88a2a', '#3a3a38'], ['#6a4a78', '#d9d2bf']];
-const WALLS_NOW = RETRO ? WALLS_RETRO : null;
 const WALLS = ['#b9674a', '#9aa3ad', '#c8b58a', '#7d8fa5', '#a8584f', '#8e9a7e', '#c49a6c', '#7a7f99'];
-const AWN_NORMAL = [['#d8352a', '#f4f0e6'], ['#2a6fb5', '#f4f0e6'], ['#2f8f4a', '#f4f0e6'], ['#e0a21a', '#2b2b2b'], ['#7a3fa0', '#f4f0e6']];
 
 /** Windows: a repeating tile 12 m wide and 8 m tall. */
-const AWN = RETRO ? AWN_RETRO : AWN_NORMAL;
+const AWN = AWN_RETRO;
 /** Dirt under every window row and along the tile's foot: a soot gradient (retro only). */
 function grime(g, w, h, r) {
   const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(20,14,10,0)'); gr.addColorStop(0.7, 'rgba(20,14,10,.12)'); gr.addColorStop(1, 'rgba(20,14,10,.38)');
@@ -35,7 +32,7 @@ const upperTex = (wall, seed) => canvasTex(128, 128, (g, w, h) => {
   g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, h - 6, w, 6);
   for (let i = 0; i < 3; i++) {
     const x = 10 + i * 40;
-    if (RETRO) {
+    {
       const k = r();      // some are lived in, some are dark, some boarded up, some smashed
       if (k < 0.18) { g.fillStyle = '#d9b36a'; g.fillRect(x, 22, 26, 62); }
       else if (k < 0.5) { g.fillStyle = '#1d242c'; g.fillRect(x, 22, 26, 62); g.fillStyle = 'rgba(190,205,215,.25)'; g.fillRect(x, 22, 26, 9); }
@@ -43,14 +40,9 @@ const upperTex = (wall, seed) => canvasTex(128, 128, (g, w, h) => {
       else { g.fillStyle = '#0c0f12'; g.fillRect(x, 22, 26, 62); g.strokeStyle = 'rgba(200,210,220,.35)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 2, 24); g.lineTo(x + 20, 60); g.moveTo(x + 24, 26); g.lineTo(x + 8, 70); g.stroke(); }
       g.strokeStyle = '#a8a08e'; g.lineWidth = 3; g.strokeRect(x, 22, 26, 62);
       g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x - 2, 84, 30, 4);      // the sill, with the dirt it sheds
-      continue;
     }
-    const lit = r() < 0.3;
-    g.fillStyle = lit ? '#ffe79a' : '#2c3a4a'; g.fillRect(x, 22, 26, 62);
-    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x, 22, 26, 8);
-    g.strokeStyle = '#e9e4da'; g.lineWidth = 3; g.strokeRect(x, 22, 26, 62);
   }
-  if (RETRO) grime(g, w, h, r);
+  grime(g, w, h, r);
 });
 /** Shop fronts: glass, a door and a striped awning. Tile 14 m wide, 5 m tall. */
 const shopTex = (wall, awn, seed) => canvasTex(224, 80, (g, w, h) => {
@@ -62,7 +54,7 @@ const shopTex = (wall, awn, seed) => canvasTex(224, 80, (g, w, h) => {
     g.fillStyle = '#ffdca0'; g.fillRect(x + 56, 40, 30, 36);
     for (let s = 0; s < 8; s++) { g.fillStyle = s % 2 ? awn[1] : awn[0]; g.fillRect(x - 4 + s * 13, 8, 13, 18); }
   }
-  if (RETRO) {
+  {
     const r = rnd(seed + 7);
     for (let i = 0; i < 2; i++) if (r() < 0.4) { const x = i * 112 + 8; g.fillStyle = '#4a3a2c'; g.fillRect(x, 26, 96, 54); g.strokeStyle = '#2b2118'; g.lineWidth = 3; for (let b = 0; b < 5; b++) { g.beginPath(); g.moveTo(x, 32 + b * 11); g.lineTo(x + 96, 30 + b * 11); g.stroke(); } }      // a boarded-up shop
     grime(g, w, h, r);
@@ -89,9 +81,9 @@ const sackTex = () => canvasTex(128, 128, (g, w, h) => {
 function roadTex(L) {
   const S = 4, W = Math.ceil(L.W * S), D = Math.ceil(L.D * S);        // 4 pixels to the metre
   return canvasTex(W, D, (g) => {
-    g.fillStyle = RETRO ? '#9d998e' : '#c9c5bb'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
+    g.fillStyle = '#9d998e'; g.fillRect(0, 0, W, D);              // pavement everywhere; the streets go over it
     const X = (x) => (x + L.W / 2) * S, Z = (z) => (z + L.D / 2) * S, ast = (L.T.street - 5) * S, k = 0.35 * S;     // the road is 2.5 m narrower each side than the street: that is the pavement
-    const ASPH = RETRO ? '#4a4d52' : '#50535b';
+    const ASPH = '#4a4d52';
     g.fillStyle = ASPH;
     for (const z of L.zs) g.fillRect(0, Z(z) - ast / 2, W, ast);
     for (const x of L.xs) g.fillRect(X(x) - ast / 2, 0, ast, D);
@@ -100,11 +92,11 @@ function roadTex(L) {
     for (const x of L.xs) for (const sgn of [-1, 1]) g.fillRect(X(x) + sgn * ast / 2 - (sgn > 0 ? k : 0), 0, k, D);
     g.fillStyle = ASPH;                                      // (the junctions are open road: no kerb across them)
     for (const x of L.xs) for (const z of L.zs) g.fillRect(X(x) - ast / 2 - 1, Z(z) - ast / 2 - 1, ast + 2, ast + 2);
-    if (RETRO) { const r = rnd(77); for (let i = 0; i < 160; i++) { const px = r() * W, pz = r() * D; g.fillStyle = r() < 0.5 ? 'rgba(20,20,22,.35)' : 'rgba(95,95,100,.22)'; g.fillRect(px, pz, (3 + r() * 14) * S * 0.5, (2 + r() * 9) * S * 0.5); } }      // patched asphalt
-    g.fillStyle = RETRO ? '#b3a560' : '#e9d36a';
+    { const r = rnd(77); for (let i = 0; i < 160; i++) { const px = r() * W, pz = r() * D; g.fillStyle = r() < 0.5 ? 'rgba(20,20,22,.35)' : 'rgba(95,95,100,.22)'; g.fillRect(px, pz, (3 + r() * 14) * S * 0.5, (2 + r() * 9) * S * 0.5); } }      // patched asphalt
+    g.fillStyle = '#b3a560';
     for (const z of L.zs) for (let x = 0; x < L.W; x += 8) { const near = L.xs.some((xx) => Math.abs(xx - (x - L.W / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x - L.W / 2), Z(z) - 1, 4 * S, 2); }
     for (const x of L.xs) for (let z = 0; z < L.D; z += 8) { const near = L.zs.some((zz) => Math.abs(zz - (z - L.D / 2 + 2)) < L.T.street / 2 + 1); if (!near) g.fillRect(X(x) - 1, Z(z - L.D / 2), 2, 4 * S); }
-    g.fillStyle = RETRO ? '#bdbab0' : '#e8e8e8';                                      // zebra crossings
+    g.fillStyle = '#bdbab0';                                      // zebra crossings
     for (const x of L.xs) for (const z of L.zs) {
       for (let q = -2; q <= 2; q++) {
         g.fillRect(X(x) + q * 2.2 * S - 0.5 * S, Z(z) - ast / 2 - 3.0 * S, 1.1 * S, 2.4 * S);
@@ -120,8 +112,7 @@ export class GetawayView {
     const L = this.L = townLayout(), A = arenaInfo(track), y0 = this.y0 = A.y;
     this.group = group; this.bags = []; this.t = 0;
     const g = new THREE.Group(); group.add(g); this.g = g;
-    g.add(new THREE.HemisphereLight(RETRO ? 0xf3e6cc : 0xfff1dc, RETRO ? 0x8a8478 : 0x8a8fa8, RETRO ? 1.5 : 2.4));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
-    if (!RETRO) { const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 120, 40); g.add(sun); }      // (?retro uses the stage's own sun instead, the one that casts the shadows)
+    g.add(new THREE.HemisphereLight(0xf3e6cc, 0x8a8478, 1.5));          // (the arena is lit for a dirt floor at dusk: the town needs daylight)
 
     // ---- the ground: one big sheet of pavement over the arena's dirt, with the streets painted on
     const far = 640;
@@ -137,7 +128,7 @@ export class GetawayView {
         const x0 = b.cx - b.hx, x1 = b.cx + b.hx, z0 = b.cz - b.hz, z1 = b.cz + b.hz, gx = b.cx - 8, gw = L.T.garageW / 2 + 8.5;
         strips.push([x0 - P, x1 + P, z1, z1 + P], [x0 - P, x0, z0, z1], [x1, x1 + P, z0, z1], [x0 - P, gx - gw, z0 - P, z0], [gx + gw, x1 + P, z0 - P, z0]);
       }
-      const curb = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: RETRO ? 0x9d998e : 0xc9c5bb }), strips.length), m4k = new THREE.Matrix4();
+      const curb = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0x9d998e }), strips.length), m4k = new THREE.Matrix4();
       strips.forEach(([ax, bx_, az, bz_], i) => { m4k.makeScale(bx_ - ax, KERB_H, bz_ - az); m4k.setPosition((ax + bx_) / 2, y0 + KERB_H / 2, (az + bz_) / 2); curb.setMatrixAt(i, m4k); });
       curb.receiveShadow = true; curb.castShadow = false; curb.frustumCulled = false; g.add(curb);
     }
@@ -147,7 +138,7 @@ export class GetawayView {
     const hs = L.T.height;
     const bh = [];       // each block's height, for the roof details below
     L.blocks.forEach((b, n) => {
-      const wall = (WALLS_NOW || WALLS)[Math.floor(r() * WALLS.length)], awn = AWN[Math.floor(r() * AWN.length)], H = 17 + Math.floor(r() * 4) * 5;
+      const wall = WALLS_RETRO[Math.floor(r() * WALLS_RETRO.length)], awn = AWN[Math.floor(r() * AWN.length)], H = 17 + Math.floor(r() * 4) * 5;
       bh.push(H);
       const w = b.hx * 2, d = b.hz * 2, shopH = 5, upH = H - shopH;
       const mk = (map, rx, ry) => { const t = map.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t }); };
@@ -215,8 +206,8 @@ export class GetawayView {
         for (const sx of [x0 + 0.6, x1 - 0.6]) { add('cyl', sx, y0 + H / 2, z1 + 0.18, 0.13, H, 0.13, '#58595e'); add('cyl', sx, y0 + H / 2, z0 - 0.18, 0.13, H, 0.13, '#58595e'); }
         for (let k = 0; k < 4; k++) { const lx = x0 + 6 + k * ((w - 12) / 3); add('lamp', lx, y0 + 4.3, z1 + 0.3, 0.45, 0.35, 0.45, '#ffd98a'); if (Math.abs(lx - (b.cx - 8)) > 8) add('lamp', lx, y0 + 4.3, z0 - 0.3, 0.45, 0.35, 0.45, '#ffd98a'); }
       });
-      if (RETRO) {
-        // ---- 1980s street dressing (?retro): fire escapes, traffic signals, billboards, and on the pavement parked cars, bins and rubble. All of it is instanced boxes (no extra draw calls)
+      {
+        // ---- 1980s street dressing (the 1980s look): fire escapes, traffic signals, billboards, and on the pavement parked cars, bins and rubble. All of it is instanced boxes (no extra draw calls)
         //      and none of it is solid, so it sits where a car rarely goes: on the 2.5 m pavement strip against the shop fronts, up on the walls, over the junction corners and on the roofs.
         const r4 = rnd(1980), at = (arr) => arr[Math.floor(r4() * arr.length)], hs = L.T.street / 2;
         const CAR_COL = ['#7a2f2a', '#3b5878', '#a8946a', '#58604a', '#8c8c86', '#2f2f33', '#9c6a2e', '#5b4a68'], BOARD = ['#8a2f2f', '#2f5d8a', '#c9a23a', '#d9d2bf', '#4a6a4a'];
