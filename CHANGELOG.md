@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.586 — No black scene when shadows switch off
+- When the game turned Shadows off to keep things smooth ("Shadows turned off to keep the game smooth"), the materials were not rebuilt, so they kept reading a shadow map that no longer existed and the car, trees and buildings went black while the road stayed lit. The materials are now rebuilt whenever Shadows is switched on or off
+
 ## v17.585 — Phones back on Medium graphics
 - Phones and tablets start on Medium again. On High an iPhone went black (car, trees and buildings dark while the road stayed lit), the sign of the sun's shadow map failing. High can still be picked in the settings
 
