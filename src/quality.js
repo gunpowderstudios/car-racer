@@ -35,12 +35,12 @@ const OLD_GPU = /adreno[^0-9]*[2-5]\d\d\b|mali-?(4\d\d|t\d+)|powervr\s*(sgx|ge8)
 
 /**
  * Pick a starting tier. `forced` (from ?q= or the settings menu) wins. Otherwise it is simple: a computer starts on high,
- * any touch device (phone or tablet) on medium. (The adaptive resolution controller still backs off if the frame rate sags.)
+ * every device, phone or tablet included, on high. (The adaptive resolution controller still backs off if the frame rate sags.)
  * The other hints (memory, cores, GPU, data saver) are still read by probeDevice but not used yet: they are for tuning mobile later.
  */
 export function detectTier({ forced, touch = false } = {}) {
   if (forced && TIERS[forced]) return forced;
-  return touch ? 'medium' : 'high';
+  return 'high';
 }
 
 /** An older, low-memory or data-saving touch device (used to keep the caravan off phones that cannot cope with it; no longer picks the quality tier). */

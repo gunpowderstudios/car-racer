@@ -14,11 +14,11 @@ test('tiers get cheaper from high to low in every setting that costs frames', ()
   assert.equal(high.aa, true); assert.equal(low.aa, false);
 });
 
-test('device detection: computers start on high, touch devices on medium, a forced tier wins', () => {
+test('device detection: every device starts on high (phones too), a forced tier wins', () => {
   assert.equal(detectTier({ touch: false, memory: 2, cores: 2 }), 'high');
-  assert.equal(detectTier({ touch: true, memory: 8, cores: 8 }), 'medium');
-  assert.equal(detectTier({ touch: true }), 'medium');
-  assert.equal(detectTier({ touch: true, phone: true, memory: 2, cores: 2, saveData: true, gpu: 'Adreno (TM) 506' }), 'medium');   // (no old-phone special cases for now)
+  assert.equal(detectTier({ touch: true, memory: 8, cores: 8 }), 'high');
+  assert.equal(detectTier({ touch: true }), 'high');
+  assert.equal(detectTier({ touch: true, phone: true, memory: 2, cores: 2, saveData: true, gpu: 'Adreno (TM) 506' }), 'high');   // (no old-phone special cases for now)
   assert.equal(detectTier({ forced: 'high', touch: true, memory: 2 }), 'high');
   assert.equal(detectTier({ forced: 'low', touch: false }), 'low');
   assert.equal(detectTier({ forced: 'nonsense', touch: false }), 'high');

@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.584 — Phones start on High graphics
+- Phones and tablets now start on High graphics like a computer (sharper picture, soft shadows, full-detail cars and a full rear-view mirror), instead of Medium. If the frame rate sags the game still lowers the resolution by itself, and you can pick another quality in the settings
+
 ## v17.583 — No pop-up on phones
 - Phones no longer show the "Running at 30 fps? Turn off Low Power Mode" message while you drive, as it got in the way of the game
 
