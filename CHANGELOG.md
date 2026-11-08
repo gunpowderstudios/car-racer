@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.588 — Original bus back
+- The double-decker bus is back to its original, smoother model. The lighter version looked crinkled and blurry close up in the game
+
 ## v17.587 — Lighter bus
 - The double-decker bus has a new, much lighter model: 30,000 vertices instead of 287,000, and a 0.6 MB file instead of 3.3 MB. It looks the same and is the same size, so it loads faster and is kinder to phones
 
