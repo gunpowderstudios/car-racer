@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.590 — German Beema uses less memory
+- The German Beema has a new export with the standard texture layout (two 1024 px maps and one 512 px map instead of three 1024 px maps): about 4 MB less graphics memory, and it looks the same
+
 ## v17.589 — Lighter bus (30% detail)
 - The double-decker bus has a lighter model again, this time exported at 30% detail: 187,000 vertices instead of 287,000 and a 2.2 MB file instead of 3.3 MB, and it looks as smooth as the original close up
 
