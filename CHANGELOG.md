@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.595 — Lighter Yellow taxi and Volvo
+- The Yellow taxi has a lighter model (57,000 vertices instead of 93,000, a 1.0 MB file instead of 1.4 MB) and so does the Volvo (60,000 instead of 67,000), both with the standard texture layout. They look the same
+
 ## v17.594 — Lighter Panda
 - The Panda has a lighter model: 51,000 vertices instead of 64,000 and a 0.9 MB file instead of 1.05 MB, with the standard texture layout. It looks the same
 
