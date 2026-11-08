@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.587 — Lighter bus
+- The double-decker bus has a new, much lighter model: 30,000 vertices instead of 287,000, and a 0.6 MB file instead of 3.3 MB. It looks the same and is the same size, so it loads faster and is kinder to phones
+
 ## v17.586 — No black scene when shadows switch off
 - When the game turned Shadows off to keep things smooth ("Shadows turned off to keep the game smooth"), the materials were not rebuilt, so they kept reading a shadow map that no longer existed and the car, trees and buildings went black while the road stayed lit. The materials are now rebuilt whenever Shadows is switched on or off
 
