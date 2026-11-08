@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.593 — Lighter Mini and Mobility car
+- The Mini has a lighter model (54,000 vertices instead of 71,000) and so does the Mobility car (54,000 instead of 65,000), with the standard texture layout. Both look the same
+
 ## v17.592 — Lighter bus
 - The double-decker bus has a lighter model: 55,000 vertices instead of 187,000 and a 0.9 MB file instead of 2.2 MB. It looks the same
 
