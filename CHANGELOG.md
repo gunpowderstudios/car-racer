@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.583 — No pop-up on phones
+- Phones no longer show the "Running at 30 fps? Turn off Low Power Mode" message while you drive, as it got in the way of the game
+
 ## v17.582 — Police radio in the replay
 - The Getaway replay now plays the police radio chatter along with the sirens, during a robbery, when you were playing the police
 
