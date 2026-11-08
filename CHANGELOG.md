@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.585 — Phones back on Medium graphics
+- Phones and tablets start on Medium again. On High an iPhone went black (car, trees and buildings dark while the road stayed lit), the sign of the sun's shadow map failing. High can still be picked in the settings
+
 ## v17.584 — Phones start on High graphics
 - Phones and tablets now start on High graphics like a computer (sharper picture, soft shadows, full-detail cars and a full rear-view mirror), instead of Medium. If the frame rate sags the game still lowers the resolution by itself, and you can pick another quality in the settings
 
