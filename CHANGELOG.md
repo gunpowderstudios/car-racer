@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.592 — Lighter bus
+- The double-decker bus has a lighter model: 55,000 vertices instead of 187,000 and a 0.9 MB file instead of 2.2 MB. It looks the same
+
 ## v17.591 — Lighter German Beema
 - The German Beema has a lighter model: 45,000 vertices instead of 118,000 and a 0.7 MB file instead of 1.5 MB. It looks the same
 
