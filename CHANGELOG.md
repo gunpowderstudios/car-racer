@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.596 — Blur on the TV view only, no shadows message
+- The replay's depth-of-field blur is now only on the trackside TV camera. The chase view stays sharp
+- The "Shadows turned off to keep the game smooth" message no longer pops up (the game still switches shadows off by itself when it has to)
+
 ## v17.595 — Lighter Yellow taxi and Volvo
 - The Yellow taxi has a lighter model (57,000 vertices instead of 93,000, a 1.0 MB file instead of 1.4 MB) and so does the Volvo (60,000 instead of 67,000), both with the standard texture layout. They look the same
 

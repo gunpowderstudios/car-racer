@@ -228,7 +228,7 @@ function adaptFeed(rawDt) {
   if (!r) return;
   if (r === 'floor') {
     if (particles.density > 0.35) { particles.density = Math.max(0.3, particles.density * 0.6); return; }          // thin out the smoke first: it costs a draw call per puff and is the least missed
-    if (opts.shadow) { opts.shadow = false; stage.setShadows(false); $('opt-shadow').checked = false; toast('Shadows turned off to keep the game smooth.'); }
+    if (opts.shadow) { opts.shadow = false; stage.setShadows(false); $('opt-shadow').checked = false; }
     else if (mirror.on) { toggleMirror(); toast('Mirror turned off to keep the game smooth.'); }
     return;
   }
@@ -1327,10 +1327,10 @@ function frame(now) {
       stage.update(drawPos, camera.position); stage.updateRollers();
       if (assault) { const at = replay().state.player?.hazardAt(replay().state.t); if (at != null) stage.updateAssault(Object.assign(Object.create(assault), { t: at })); }      // the hammers, spinners, rocks and presses move as they did in the run
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
-      const dofCam = replay().state.camMode, dofOk = (tierName === 'high' || tierName === 'medium') && !device.touch && adapt.scale >= 0.8 && (dofCam === 'TV' || dofCam === 'Chase');      // (the trackside TV camera and the chase view get a gentle blur; the top view stays sharp)
+      const dofCam = replay().state.camMode, dofOk = (tierName === 'high' || tierName === 'medium') && !device.touch && adapt.scale >= 0.8 && dofCam === 'TV';      // (only the trackside TV camera gets the blur; the chase, top and every other view stay sharp)
       if (dofOk) {
         if (!replayDof.on) replayDof.enable(tierName === 'high' ? 4 : 2);
-        replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20, dofCam === 'TV' ? (tierName === 'high' ? 1.4 : 1.1) : 0.7);
+        replayDof.render(stage.scene, camera, f ? camera.position.distanceTo(drawPos) : 20, tierName === 'high' ? 1.4 : 1.1);
       } else { if (replayDof.on) replayDof.disable(); renderer.render(stage.scene, camera); }
       replay().afterRender();
     };

@@ -355,7 +355,7 @@ test('Test Drive from the editor has no rivals, and the replay blur is for the T
   assert.match(html, /id="ed-drive"[^>]*>Test Drive</);
   assert.match(main, /derby\.enabled = !net && \(\(!testDrive/);
   assert.match(main, /pendingTest = true; startDriving\(d\)/);
-  assert.match(main, /dofCam === 'TV' \|\| dofCam === 'Chase'/); assert.doesNotMatch(main, /dofCam === 'Top'/);
+  assert.match(main, /&& dofCam === 'TV';/); assert.doesNotMatch(main, /dofCam === 'Chase'/); assert.doesNotMatch(main, /Shadows turned off to keep the game smooth/);
   assert.match(main, /tierName === 'high' \|\| tierName === 'medium'\) && !device\.touch/, 'desktop only');
   assert.match(readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /R\.camMode = mode/);
 });
