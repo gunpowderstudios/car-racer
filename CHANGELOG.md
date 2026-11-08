@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.597 — Cleaner wheels
+- Wheels no longer carry loose scraps of car body (shards beside the tyre, like on the French Cheese) that spun round with them. Small separate pieces sticking out past the tyre are removed from every wheel
+
 ## v17.596 — Blur on the TV view only, no shadows message
 - The replay's depth-of-field blur is now only on the trackside TV camera. The chase view stays sharp
 - The "Shadows turned off to keep the game smooth" message no longer pops up (the game still switches shadows off by itself when it has to)

@@ -93,6 +93,38 @@ export function trimWheel(geo, ax) {
   geo.setIndex(out);
   geo.userData.wheelCut = (n - out.length) / 3;
 }
+/** A wheel cut out of a car can still carry loose scraps of the body (a flap of bumper or arch floating beside the tyre, a separate little piece of its own).
+ *  They show up as black shards sticking out past the tyre and spin round with it. Find the pieces of the wheel that are not joined to each other and drop every small
+ *  one (under 5% of the wheel) that reaches out past the tyre. The big piece (the wheel itself) and anything small tucked inside the tyre (hub bolts, a valve) stay. */
+export function trimWheelPieces(geo, ax) {
+  if (geo.userData.wheelPieces || !(ax.r > 0)) return;
+  geo.userData.wheelPieces = true;
+  const a = geo.attributes.position, idx = geo.index ? geo.index.array : null, n = idx ? idx.length : a.count, nT = n / 3;
+  if (nT < 40) return;
+  const id = new Map(), vid = new Int32Array(a.count);
+  for (let i = 0; i < a.count; i++) { const k = Math.round(a.getX(i) * 2000) + ',' + Math.round(a.getY(i) * 2000) + ',' + Math.round(a.getZ(i) * 2000); let v = id.get(k); if (v === undefined) { v = id.size; id.set(k, v); } vid[i] = v; }
+  const par = new Int32Array(id.size); for (let i = 0; i < par.length; i++) par[i] = i;
+  const find = (x) => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  const at = (t, c) => (idx ? idx[t * 3 + c] : t * 3 + c);
+  for (let t = 0; t < nT; t++) { const r = find(vid[at(t, 0)]); par[find(vid[at(t, 1)])] = r; par[find(vid[at(t, 2)])] = r; }
+  const comp = new Map();
+  for (let t = 0; t < nT; t++) {
+    const r = find(vid[at(t, 0)]); let e = comp.get(r); if (!e) comp.set(r, e = { n: 0, reach: 0 });
+    e.n++;
+    for (let c = 0; c < 3; c++) { const i = at(t, c); e.reach = Math.max(e.reach, Math.hypot(a.getX(i) - ax.x, a.getY(i) - ax.y)); }
+  }
+  if (comp.size < 2) return;
+  let main = null; for (const e of comp.values()) if (!main || e.n > main.n) main = e;
+  const out = [];
+  for (let t = 0; t < nT; t++) {
+    const e = comp.get(find(vid[at(t, 0)]));
+    if (e !== main && e.n < nT * 0.05 && e.reach > ax.r * 0.97) continue;
+    out.push(at(t, 0), at(t, 1), at(t, 2));
+  }
+  if (out.length === n) return;
+  geo.setIndex(out);
+  geo.userData.wheelPiecesCut = (n - out.length) / 3;
+}
 const RIVAL_TEX_MAX = 1024;
 /** Phones: shrink a car's 2048px textures to `max` px before they go to the graphics card (a quarter of the memory and bandwidth). */
 function shrinkTexture(t, max) {
@@ -340,6 +372,7 @@ export class CarVisual {
       // Even a Shrink wheel can have its origin a few percent of the radius off the real hub, which makes it wobble as it turns: move the pivot onto the fitted hub
       // (only when the fit is believable and close; the mesh is never trimmed or changed).
       let ax = wheelAxle(m.geometry);
+      trimWheelPieces(m.geometry, ax);                                         // loose scraps of the body left beside the tyre (every wheel, Shrink or not)
       if (exact) ax = ax.r > 0 && Math.hypot(ax.x, ax.y) < ax.r * 0.15 ? { x: ax.x, y: ax.y, z: 0, r: 0 } : { x: 0, y: 0, z: 0, r: 0 };
       if (!exact) trimWheel(m.geometry, ax);
       const P = new THREE.Vector3(ax.x, ax.y, ax.z).applyMatrix4(m.matrix);
