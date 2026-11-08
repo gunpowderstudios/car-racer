@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.591 — Lighter German Beema
+- The German Beema has a lighter model: 45,000 vertices instead of 118,000 and a 0.7 MB file instead of 1.5 MB. It looks the same
+
 ## v17.590 — German Beema uses less memory
 - The German Beema has a new export with the standard texture layout (two 1024 px maps and one 512 px map instead of three 1024 px maps): about 4 MB less graphics memory, and it looks the same
 
