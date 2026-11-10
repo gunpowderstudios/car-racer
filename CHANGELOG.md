@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.602 — Cars put back
+- All the cars are back to the models they had before the rebuilds (police car, Mini, Panda, BMW, Escort, French Cheese, Saab, V8 Pilot, Volvo and Yellow Taxi). The loose-wheel-scrap clean-up from v17.597 stays
+
 ## v17.601 — More cars with clean wheels
 - The BMW, Escort, French Cheese, Saab, V8 Pilot, Volvo and Yellow Taxi are rebuilt from their original models, each with one clean round wheel on all four corners and a lighter file (the French Cheese is about 1.1 MB instead of 1.6 MB)
 
