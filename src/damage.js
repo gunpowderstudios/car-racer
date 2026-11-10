@@ -20,7 +20,8 @@ const tough = (hp, k = 1) => Object.fromEntries(Object.entries(hp).map(([zone, v
 
 /** Hit points per zone. */
 export const ARMOUR = {
-  player: tough({ front: 320, back: 160, left: 180, right: 180, roof: 150 }, PLAYER_TOUGHNESS),
+  // `core` is the weak middle of the car (engine, cabin, driver). The outer zones are its armour: one that is used up no longer wrecks the car, it just stops protecting the core.
+  player: tough({ front: 320, back: 160, left: 180, right: 180, roof: 150, core: 110 }, PLAYER_TOUGHNESS),
   rival: tough({ front: 95, back: 85, left: 85, right: 85, roof: 75 }),
 };
 
@@ -117,18 +118,30 @@ export class Health {
     this.last = null;              // the zone hit most recently
     this.wrecked = null;           // the zone that gave out, once one has
   }
-  /** Take `amount` off `zone`. Returns the amount actually taken. */
+  /** Take `amount` off `zone`. Returns the amount actually taken.
+   *  A car with a `core` (the player's) is only wrecked when the core is gone: whatever a used-up zone can no longer
+   *  soak up goes through to the core. A car without one (the rivals) is wrecked as soon as any zone gives out. */
   hit(zone, amount) {
     if (this.wrecked || amount <= 0) return 0;
     const took = Math.min(amount, this.hp[zone]);
     this.hp[zone] -= took;
     this.last = zone;
-    if (this.hp[zone] <= 1e-6) { this.hp[zone] = 0; this.wrecked = zone; }
-    return took;
+    if (!(this.max.core > 0)) {
+      if (this.hp[zone] <= 1e-6) { this.hp[zone] = 0; this.wrecked = zone; }
+      return took;
+    }
+    if (this.hp[zone] <= 1e-6) this.hp[zone] = 0;
+    const through = Math.min(amount - took, this.hp.core);
+    this.hp.core -= through;
+    if (this.hp.core <= 1e-6) { this.hp.core = 0; this.wrecked = zone; }
+    return took + through;
   }
   frac(zone) { return this.hp[zone] / this.max[zone]; }
   /** The weakest zone as a fraction of its own maximum: what decides when the car goes up. */
-  get worst() { let w = 1; for (const z of ZONES) w = Math.min(w, this.frac(z)); return w; }
+  get worst() {
+    let w = 1; for (const z of ZONES) w = Math.min(w, this.frac(z));
+    return this.max.core > 0 ? Math.min(this.hp.core / this.max.core, 0.25 + 0.75 * w) : w;      // (a used-up zone reads as a badly hurt car, not a dead one)
+  }
   get worstZone() { let w = 2, k = 'front'; for (const z of ZONES) { const f = this.frac(z); if (f < w) { w = f; k = z; } } return k; }
   reset() { this.hp = { ...this.max }; this.last = null; this.wrecked = null; }
 }

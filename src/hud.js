@@ -99,11 +99,19 @@ export class Hud {
   setDamage(health, hitZone = null) {
     const parts = [];
     for (const z of ZONES) parts.push(Math.round(health.frac(z) * 100));
+    const core = health.max.core > 0 ? Math.round(health.hp.core / health.max.core * 100) : null;
     if (hitZone) { this._flash[hitZone] = performance.now() + 220; }
     const now = performance.now();
-    const k = parts.join(',') + '|' + ZONES.map((z) => (this._flash[z] > now ? 1 : 0)).join('');
+    const k = parts.join(',') + ',' + core + '|' + ZONES.map((z) => (this._flash[z] > now ? 1 : 0)).join('');
     if (k === this._last.dmg) return;
     this._last.dmg = k;
+    const ce = $('dz-core'), ct = $('dt-core');
+    if (ce && ct) {            // the weak centre: it only shows once an outer zone has gone and it has started to take hits
+      const open = core !== null && core < 100;
+      ce.style.fill = open ? `hsl(${Math.round(core * 1.15)} 78% ${core < 30 ? 42 : 38}%)` : '';
+      ce.classList.toggle('low', open && core > 0 && core < 30);
+      ct.textContent = open ? (core <= 0 ? '\u2716' : String(core)) : '';
+    }
     ZONES.forEach((z, i) => {
       const pct = parts[i], el = this.dz[z];
       el.style.fill = pct <= 0 ? '#120a0a' : `hsl(${Math.round(pct * 1.15)} 78% ${pct < 30 ? 42 : 38}%)`;

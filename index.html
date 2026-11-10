@@ -213,17 +213,18 @@ html.invite-loading #invite-loading {
   <div id="dmg-card" hidden>
     <div class="dmg-title">Damage</div>
     <div id="repairs" hidden title="Repairs left: every wreck uses one"><span>Repairs</span><div id="rep-pips"></div></div>
-    <svg id="dmg-svg" viewBox="0 0 120 172" role="img" aria-label="Damage to the front, rear, left and right of your car">
+    <svg id="dmg-svg" viewBox="0 0 120 172" role="img" aria-label="Damage to the front, rear, left and right of your car, and the weak centre">
       <rect class="wheel" x="14" y="26" width="14" height="28" rx="4"/><rect class="wheel" x="92" y="26" width="14" height="28" rx="4"/>
       <rect class="wheel" x="14" y="118" width="14" height="28" rx="4"/><rect class="wheel" x="92" y="118" width="14" height="28" rx="4"/>
       <polygon id="dz-front" class="dz" points="34,10 86,10 92,26 92,56 28,56 28,26"/>
       <polygon id="dz-back" class="dz" points="28,114 92,114 92,144 86,160 34,160 28,144"/>
       <polygon id="dz-left" class="dz" points="28,58 44,58 44,112 28,112"/>
       <polygon id="dz-right" class="dz" points="76,58 92,58 92,112 76,112"/>
-      <polygon class="cabin" points="46,58 74,58 74,112 46,112"/>
+      <polygon id="dz-core" class="cabin" points="46,58 74,58 74,112 46,112"/>
       <line class="bar" x1="30" y1="6" x2="90" y2="6"/>
       <text id="dt-front" class="dt" x="60" y="38">100</text>
       <text id="dt-back" class="dt" x="60" y="141">100</text>
+      <text id="dt-core" class="dt sm" x="60" y="86"></text>
       <text id="dt-left" class="dt sm" x="36" y="88">100</text>
       <text id="dt-right" class="dt sm" x="84" y="88">100</text>
     </svg>

@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.603 — A weak core, not a dead corner
+- Your car can now keep driving with parts destroyed. Front, rear, sides and roof are armour around a weak core in the middle (the centre of the damage chart). A used-up part stops protecting the core, and further hits on it go straight through; the car is only wrecked when the core is gone
+- The core shows on the damage chart once it starts taking hits. Rivals work as before
+
 ## v17.602 — Cars put back
 - All the cars are back to the models they had before the rebuilds (police car, Mini, Panda, BMW, Escort, French Cheese, Saab, V8 Pilot, Volvo and Yellow Taxi). The loose-wheel-scrap clean-up from v17.597 stays
 
