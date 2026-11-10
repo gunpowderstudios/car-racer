@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.600';
-export const NOTE = 'Mini and Panda rebuilt with one clean wheel.';
+export const VERSION = '17.601';
+export const NOTE = 'More cars rebuilt with one clean wheel.';

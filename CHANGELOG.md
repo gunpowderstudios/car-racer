@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.601 — More cars with clean wheels
+- The BMW, Escort, French Cheese, Saab, V8 Pilot, Volvo and Yellow Taxi are rebuilt from their original models, each with one clean round wheel on all four corners and a lighter file (the French Cheese is about 1.1 MB instead of 1.6 MB)
+
 ## v17.600 — Mini, Panda and police wheels
 - The Mini and the Panda are rebuilt from their original models, each with one clean round wheel used on all four corners (a smooth tyre with the real rim and hub), and a lighter body
 - The police car's wheels are narrower (the tyre was about 60% too wide) and sit properly in the wheel arches
