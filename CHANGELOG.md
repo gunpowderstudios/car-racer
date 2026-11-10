@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.600 — Mini, Panda and police wheels
+- The Mini and the Panda are rebuilt from their original models, each with one clean round wheel used on all four corners (a smooth tyre with the real rim and hub), and a lighter body
+- The police car's wheels are narrower (the tyre was about 60% too wide) and sit properly in the wheel arches
+
 ## v17.599 — One clean wheel on the police car
 - The police car now has one properly built wheel (a smooth round tyre with the real rim and hub), used on all four corners, instead of four rough cut-outs. Smaller again, about 680 KB
 
