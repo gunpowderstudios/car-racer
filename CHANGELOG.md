@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.598 — Police car rebuilt from the original
+- The police car is now rebuilt straight from the original model: the wheels are cut out as four separate wheels, the body is cut down to about 36,000 triangles with the texture mapping kept, and the wheels are smoother. A little smaller to download than before
+
 ## v17.597 — Cleaner wheels
 - Wheels no longer carry loose scraps of car body (shards beside the tyre, like on the French Cheese) that spun round with them. Small separate pieces sticking out past the tyre are removed from every wheel
 
