@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.599 — One clean wheel on the police car
+- The police car now has one properly built wheel (a smooth round tyre with the real rim and hub), used on all four corners, instead of four rough cut-outs. Smaller again, about 680 KB
+
 ## v17.598 — Police car rebuilt from the original
 - The police car is now rebuilt straight from the original model: the wheels are cut out as four separate wheels, the body is cut down to about 36,000 triangles with the texture mapping kept, and the wheels are smoother. A little smaller to download than before
 
