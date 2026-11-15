@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.605 — Less clutter
+- The "Desktop / Tablet / Mobile Edition" badge and version number are gone from the top right of the home page
+
 ## v17.604 — The house everywhere
 - The little house (back to the home page) is now on the replay and the multiplayer screens too, not just in the game. On the replay it sits just under the Bangers and Smash TV logo so they never overlap. Only the home page itself and the track editor (which has its own Menu button) go without it
 
