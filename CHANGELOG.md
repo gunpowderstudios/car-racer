@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.604 — The house everywhere
+- The little house (back to the home page) is now on the replay and the multiplayer screens too, not just in the game. On the replay it sits just under the Bangers and Smash TV logo so they never overlap. Only the home page itself and the track editor (which has its own Menu button) go without it
+
 ## v17.603 — A weak core, not a dead corner
 - Your car can now keep driving with parts destroyed. Front, rear, sides and roof are armour around a weak core in the middle (the centre of the damage chart). A used-up part stops protecting the core, and further hits on it go straight through; the car is only wrecked when the core is gone
 - The core shows on the damage chart once it starts taking hits. Rivals work as before
