@@ -138,7 +138,7 @@ test('the replay screen carries the Bangers and Smash TV logo, top right, and a 
   assert.match(html, /BANGERS<\/text>/); assert.match(html, /AND SMASH!<\/text>/);
   assert.ok(html.indexOf('id="rp-logo"') > html.indexOf('id="replay-bar"'), 'the logo is part of the replay screen, so it only shows there');
   assert.match(css, /#rp-logo \{[^}]*position: fixed;[^}]*top:[^}]*right:/);
-  assert.match(rm, /v\._wheelsOff && !ent\.wrecked/);
+  assert.match(rm, /v\._wheelsOff && !v\._rpLost && !ent\.wrecked/);   // (only a wreck, or a wheel knocked off, goes without wheels)
 });
 
 test('replay: Save video button is wired, and airborne wheels keep spinning', async () => {

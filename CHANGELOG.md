@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.606 — Wheels come off one at a time
+- A wheel can now come off on its own, where the car was hit: when a zone's armour is used up, or on a big single knock (about every other time). It is the wheel nearest the hit, on that side. The wheel flies off with sparks and a clang, and it comes off in the replay too
+- The corner without a wheel drops: only a small hub is left, so the body dips towards it, drags with little grip, and throws sparks from the road
+- A wrecked car has no wheels at all, so its body now sits down on the road instead of hovering where the wheels were
+- Mending the car (repair, back on the road after a wreck) puts every wheel back
+
 ## v17.605 — Less clutter
 - The "Desktop / Tablet / Mobile Edition" badge and version number are gone from the top right of the home page
 

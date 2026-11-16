@@ -28,6 +28,7 @@ export const POINTS = {
   //   barrel: 25,    (an explosive barrel set off)
 };
 
+const WHEELS_OF = { front: [0, 1], back: [2, 3], left: [0, 2], right: [1, 3] };      // (wheel 0 front left, 1 front right, 2 rear left, 3 rear right)
 export const DERBY = {
   rivals: 6,             // how many live rivals the derby tries to keep in play
   hornClosing: 7,        // a rival honks when it is closing on you at least this fast (m/s)...
@@ -36,6 +37,8 @@ export const DERBY = {
   hornGap: 4,            // seconds between honks from the whole field: no continuous horning
   wrongWayTime: 14,      // a rival still facing the wrong way after this long (it has had a good go at turning round: see ai.js) is put back on the road facing forwards...
   stuckTime: 10,         // ...and so is one that has been stuck (hardly moving) this long
+  wheelPopFrac: 0.3,     // one hit this big (as a share of that zone's armour) can knock the wheel nearest it clean off...
+  wheelPopChance: 0.5,   // ...about every other time (a wheel also comes off when its zone's armour is used up)
   stallFrac: 0.14,       // one hit this big (as a share of that zone's armour) stalls your engine: a hard wall hit, a proper T-bone
   stallFracRival: 0.28,  // ...rivals have far less armour, so it takes a bigger bang to stall one
   grace: 3,              // seconds after the start before anything can hurt you
@@ -626,6 +629,7 @@ export class Derby {
 
   /** Race mode: the wrecked player comes back with full health and a few seconds' protection. main.js puts the car back on the road. */
   _revivePlayer(f) {
+    this._wheelsOn(f);
     f.health = new Health(SPECS.player.hp);
     f.wrecked = false; f.wreckT = 0; f.respawnAt = Infinity; f.graceUntil = this.time + DERBY.respawnGrace; f.flipT = 0; f.flash = 0;
     this.events.push({ type: 'respawn', id: f.id, isPlayer: true });
@@ -633,6 +637,7 @@ export class Derby {
 
   /** The Getaway: a wrecked computer car is mended and driven again (main.js puts it back at its start). */
   reviveFighter(f) {
+    this._wheelsOn(f);
     f.health = new Health(SPECS.player.hp); f.wrecked = false; f.wreckT = 0; f.flash = 0; f.flipT = 0; f.graceUntil = this.time + DERBY.respawnGrace;
     f.car.engineOff = false; f.car.crank = 0; f.stallT = 0;
     this.events.push({ type: 'respawn', id: f.id, isPlayer: false });
@@ -641,6 +646,7 @@ export class Derby {
   /** The Getaway: the robber's drop in the garage patches the car up (a computer car too, not only the player's). */
   repairFighter(f) {
     if (!f || f.wrecked || !this.damageEnabled) return;
+    this._wheelsOn(f);
     f.health = new Health(SPECS.player.hp); f.flash = 0; f.car.engineOff = false; f.car.crank = 0;
     this.events.push({ type: 'repaired', id: f.id, isPlayer: !!f.isPlayer });
   }
@@ -649,6 +655,7 @@ export class Derby {
   repairPlayer() {
     const f = this.player;
     if (!f || f.wrecked || !this.damageEnabled) return;
+    this._wheelsOn(f);
     f.health = new Health(SPECS.player.hp); f.flash = 0; f.car.engineOff = false;
     this.events.push({ type: 'repaired', id: f.id, isPlayer: true });
   }
@@ -728,7 +735,28 @@ export class Derby {
     }
     this.events.push(ev);
     if (f.health.wrecked) this._wreck(f, f.health.wrecked);
+    else this._maybeLoseWheel(f, zone, hp * (f.spec.mul?.[zone] ?? 1), ev.lx, ev.lz);
   }
+
+  /** A wheel can come off on its own: when a zone's armour is used up, or when one hit is a big fraction of it. It is the wheel nearest the hit, among those on that side of the car. */
+  _maybeLoseWheel(f, zone, hp, lx, lz) {
+    const cand = WHEELS_OF[zone];
+    if (!cand || !f.car.wheels) return;
+    const gone = f.health.hp[zone] <= 0, big = hp >= DERBY.wheelPopFrac * f.health.max[zone];
+    if (!gone && !(big && this.rng() < DERBY.wheelPopChance)) return;
+    let best = -1, bd = Infinity;
+    for (const i of cand) {
+      const w = f.car.wheels[i]; if (!w || w.lost) continue;
+      const d = lx === undefined ? this.rng() : (w.local.x - lx) ** 2 + (w.local.z - lz) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best < 0) return;
+    const w = f.car.wheels[best]; w.lost = true;
+    this.events.push({ type: 'wheelOff', id: f.id, isPlayer: f.isPlayer, i: best, x: w.mount.x, y: w.mount.y, z: w.mount.z });
+  }
+
+  /** The car is mended or back on the road: every wheel is on again. */
+  _wheelsOn(f) { if (f && f.car && f.car.wheels) for (const w of f.car.wheels) w.lost = false; }
 
   /** X: blow your own car up (stuck, wedged, or just for fun). Goes through the normal wreck, so a race puts you back on the road. */
   selfDestruct() {

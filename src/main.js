@@ -954,7 +954,15 @@ function derbyEvents() {
     } else if (e.type === 'damage') {
       if (e.isPlayer) hud.setDamage(derby.player.health, e.zone);
       if (e.lx !== undefined) { const v = e.isPlayer ? visual : views.get(e.id); if (v && v.loaded) v.addDent(e.lx, e.ly, e.lz, e.dentHp ?? e.hp); replayRec.event(simTime, { type: 'dent', id: e.isPlayer ? 'p' : e.id, lx: e.lx, ly: e.ly, lz: e.lz, hp: e.dentHp ?? e.hp }); }   // a visible dent where it hit
+    } else if (e.type === 'wheelOff') {
+      const wf = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id), wv = e.isPlayer ? visual : views.get(e.id);
+      if (wv) wheelFlyers.launchOne(wv, e.i, wf && wf.car.vel);
+      for (let k = 0; k < 14; k++) particles.spark(e.x, e.y - 0.2, e.z, (Math.random() - 0.5) * 8 + (wf ? wf.car.vel.x * 0.5 : 0), 2 + Math.random() * 4, (Math.random() - 0.5) * 8 + (wf ? wf.car.vel.z * 0.5 : 0));
+      sound.clang(14, e.dist ?? (e.isPlayer ? 0 : derby._dist(e.x, e.y, e.z)));
+      if (e.isPlayer) chase.impact(10);
+      replayRec.event(simTime, { type: 'wheelOff', id: e.isPlayer ? 'p' : e.id, i: e.i, vx: wf ? wf.car.vel.x : 0, vz: wf ? wf.car.vel.z : 0 });
     } else if (e.type === 'wreck') {
+      { const wf0 = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id); if (wf0) for (const w of wf0.car.wheels) w.lost = true; }      // (a wrecked car has no wheels: its body sits down on the road)
       if (e.isPlayer && assault) { assault.penalise('wreck'); }
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
@@ -1113,7 +1121,7 @@ function syncViews(a) {
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
-    if (v._wheelsOff && !f.wrecked) v.restoreWheels();                         // safety net: only a wreck goes without wheels
+    if (v._wheelsOff && !f.wrecked && !f.car.wheelsLost) v.restoreWheels();     // safety net: only a wreck, or a wheel knocked off, goes without wheels
     if (d2 < 60 * 60) v.setWheels(f.car);                                      // wheels steer and spin on the cars near enough to see them
     const lod = derby.lastStanding ? tier.arenaLod : tier.lodDist;                          // the arena is all in view, so far cars go to boxes sooner
     if (lod) v.setFar(!(nearSet && nearSet.has(f.id)) && d2 > (v._far ? lod * 0.7 : lod) ** 2);   // wide hysteresis stops LOD flicker near the boundary
@@ -1194,6 +1202,10 @@ function effects(dt) {
     }
   }
   if (car.scraping && wallSpot && simTime - wallSpot.t < 0.4 && Math.random() < 40 * dt) particles.spark(wallSpot.x, wallSpot.y, wallSpot.z, car.vel.x * 0.2, 1.5, car.vel.z * 0.2);
+  if (derby.enabled) for (const f of derby.fighters) {                              // a wheel that has come off: the hub scrapes along the road and throws sparks
+    const c = f.car; if (!c.wheelsLost || c.speed < 4) continue;
+    for (const w of c.wheels) if (w.lost && w.contact && Math.random() < dt * Math.min(30, 4 + c.speed)) particles.spark(w.contactPoint.x, w.contactPoint.y + 0.05, w.contactPoint.z, c.vel.x * 0.3 + (Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, c.vel.z * 0.3 + (Math.random() - 0.5) * 4);
+  }
   particles.update(dt); debris.update(dt, debrisGround); wheelFlyers.update(dt, debrisGround);
 }
 
@@ -1398,7 +1410,7 @@ function frame(now) {
     sound.update(car, 0, false);
   }
   visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
-  if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
+  if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead) && !(derby.enabled && car.wheelsLost)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
   visual.setWheels(car);
   if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }
   vanHud(car.tow);

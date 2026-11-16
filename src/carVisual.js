@@ -387,27 +387,34 @@ export class CarVisual {
   }
   /** Turn the wheels to match the physics car: front wheels steer, all four roll. Cheap; call it every frame for cars you can see up close. */
   setWheels(car) {
-    if (!this.wheelNodes || this._wheelsOff || !car || !car.wheels) return;
-    const st = car.steerAngle || 0, n = this.wheelNodes;
+    if (!this.wheelNodes || !car || !car.wheels) return;
+    const st = car.steerAngle || 0, n = this.wheelNodes, off = this._offNodes;
     for (let i = 0; i < 4; i++) {
-      if (i === 1 && n[1] === n[0]) continue;                                 // one front wheel: set once, from the average of the two
+      if (i === 1 && n[1] === n[0]) continue;
+      if (off && off.has(n[i])) continue;                                   // (that one has come off)                                 // one front wheel: set once, from the average of the two
       const w = car.wheels[i], spin = n[1] === n[0] && i === 0 ? (w.spin + car.wheels[1].spin) / 2 : w.spin;
       n[i].rotation.set(0, i < 2 ? st : 0, spin % (Math.PI * 2));
     }
   }
-  /** Tear the wheels off into the scene and hand them back as { node, radius } so wheelDebris.js can throw them. */
+  /** Tear the wheels that are still on off into the scene and hand them back as { node, radius } so wheelDebris.js can throw them. */
   detachWheels() {
-    if (!this.wheelNodes || this._wheelsOff || !this.root.parent) return null;
+    if (!this.wheelNodes || !this.root.parent) return null;
+    const out = [];
+    for (let i = 0; i < 4; i++) { const w = this.detachWheel(i); if (w) out.push(w); }
+    return out.length ? out : null;
+  }
+  /** Tear ONE wheel off (0 front left, 1 front right, 2 rear left, 3 rear right). */
+  detachWheel(i) {
+    const node = this.wheelNodes && this.wheelNodes[i];
+    if (!node || !this.root.parent) return null;
+    if (!this._offNodes) this._offNodes = new Set();
+    if (this._offNodes.has(node)) return null;
     this.root.updateWorldMatrix(true, true);
-    const scene = this.root.parent, box = new THREE.Box3(), out = [];
-    for (const n of new Set(this.wheelNodes)) {
-      box.setFromObject(n);
-      const r = Math.max(0.15, (box.max.y - box.min.y) / 2);
-      scene.attach(n);
-      out.push({ node: n, radius: r });
-    }
-    this._wheelsOff = true;
-    return out;
+    const box = new THREE.Box3().setFromObject(node);
+    const r = Math.max(0.15, (box.max.y - box.min.y) / 2);
+    this.root.parent.attach(node);
+    this._offNodes.add(node); this._wheelsOff = true;
+    return { node, radius: r };
   }
   /** Put the wheels back on the car (a respawn, or the car going back in the pool). */
   restoreWheels() {
@@ -418,7 +425,7 @@ export class CarVisual {
       n.position.copy(r.pos); n.quaternion.copy(r.quat); n.scale.copy(r.scale); n.visible = true;
       n.rotation.order = 'YZX';
     });
-    this._wheelsOff = false;
+    this._wheelsOff = false; if (this._offNodes) this._offNodes.clear();
   }
 
   // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.

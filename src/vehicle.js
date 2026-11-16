@@ -92,9 +92,12 @@ class Wheel {
     this.contact = false; this.compress = 0; this.load = 0; this.surface = SURF.ROAD;
     this.slipAngle = 0; this.skid = 0; this.locked = false; this.longSpeed = 0;
     this.spin = 0;   // visual roll angle
+    this.lost = false;   // the wheel has come off: only the hub is left, so that corner sits down on the road and drags
   }
 }
 
+/** What is left of a wheel that has come off: the hub, a third of the wheel's radius, so that corner of the car drops by the rest. Its grip is a scrape. */
+const LOST_WHEEL_R = 0.34, LOST_WHEEL_GRIP = 0.3;
 const WATER_DRAG = 0.35;      // 1/s: deceleration per m/s of speed while a wheel is in standing water
 export class Vehicle {
   constructor(spec = CAR) {
@@ -438,7 +441,7 @@ export class Vehicle {
 
   // ------------------------------------------------------ wheel probing
   _probeWheel(w, track) {
-    const sp = this.spec.susp, R = this.spec.wheelRadius;
+    const sp = this.spec.susp, R = w.lost ? this.spec.wheelRadius * LOST_WHEEL_R : this.spec.wheelRadius;
     this.toWorld(w.local, w.mount);
     w.contact = false; w.load = 0;
     if (this.ay.y < 0.15) return;                       // upside down: wheels can't carry the car
@@ -596,7 +599,8 @@ export class Vehicle {
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
     const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
-    const mu = muBase * surfMu * driftRearGrip * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const lostGrip = w.lost ? LOST_WHEEL_GRIP : 1;
+    const mu = lostGrip * muBase * surfMu * driftRearGrip * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.
@@ -830,6 +834,8 @@ export class Vehicle {
   // ----------------------------------------------------------- helpers
   /** World-space up vector y component: 1 = upright, -1 = on the roof. */
   get uprightness() { return this.ay.y; }
+  /** Has any wheel come off? */
+  get wheelsLost() { for (const w of this.wheels) if (w.lost) return true; return false; }
   get skidLevel() { return Math.max(...this.wheels.map((w) => w.skid)); }
   get loadedWheels() { return this.wheels.filter((w) => w.contact).length; }
 }

@@ -125,6 +125,7 @@ function finishRivalReset(derby, f, r) {
   f.flash = 0;
   f.age = 0;
   f.health = new Health(SPECS.rival.hp);
+  derby._wheelsOn(f);
   f.lastHit = null;
   f.idleT = f.offT = f.flipT = 0;
   if (f.driver) {
@@ -191,6 +192,7 @@ function finishPlayerReset(derby, f, r) {
   f.wreckT = 0;
   f.flash = 0;
   f.lastHit = null;
+  derby._wheelsOn(f);
   derby.over = !!r.oldOver;      // (the damage is kept exactly as it was: coming back from the track edge is not a repair)
   placeOnRoad(f.car, derby.track, r.s, 0, 0);
   derby._pose(f, f.cur);

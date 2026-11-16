@@ -10,7 +10,17 @@ export class WheelFlyers {
 
   /** Throw the wheels of `visual`. `vel` is the car's velocity ({x,y,z}); `kick` 0..1 scales how hard they fly. */
   launch(visual, vel, kick = 1) {
-    const wheels = visual.detachWheels();
+    this._throw(visual, visual.detachWheels(), vel, kick);
+  }
+
+  /** Throw just ONE wheel (0 front left, 1 front right, 2 rear left, 3 rear right): it came off in a knock. */
+  launchOne(visual, i, vel, kick = 0.8) {
+    if (!visual.detachWheel) return;
+    const w = visual.detachWheel(i);
+    if (w) this._throw(visual, [w], vel, kick);
+  }
+
+  _throw(visual, wheels, vel, kick) {
     if (!wheels) return;
     visual.root.getWorldPosition(tmpPos);
     const cx = tmpPos.x, cz = tmpPos.z, R = Math.random;
