@@ -150,6 +150,8 @@ html.invite-loading #invite-loading {
 <script data-goatcounter="https://gunpowder.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body class="mode-menu">
+<div id="version-tag" aria-label="Game version"></div>
+
 <noscript><p style="padding:24px;font:18px/1.5 system-ui,sans-serif;color:#f6d9b0;background:#1b1233">Bangers and Smash! is a free destruction derby racing game that runs in your browser. Please turn on JavaScript to play: no download, no login.</p></noscript>
 <div id="invite-loading" role="status" aria-live="polite">
   <div class="invite-card">
@@ -619,7 +621,7 @@ html.invite-loading #invite-loading {
 
 <script type="module">
   import { VERSION } from './src/version.js';
-  document.documentElement.dataset.version = VERSION;      // (no badge on screen any more: the version is on the page's html tag, for anyone who needs to check it)
+  document.documentElement.dataset.version = VERSION; document.getElementById('version-tag').textContent = 'v' + VERSION;      // (no badge on screen any more: the version is on the page's html tag, for anyone who needs to check it)
 </script>
 <script type="module" src="src/main.js"></script>
 </body>

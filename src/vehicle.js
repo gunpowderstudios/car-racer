@@ -96,8 +96,8 @@ class Wheel {
   }
 }
 
-/** What is left of a wheel that has come off: the hub, a third of the wheel's radius, so that corner of the car drops by the rest. Its grip is a scrape. */
-const LOST_WHEEL_R = 0.34, LOST_WHEEL_GRIP = 0.3;
+/** What is left of a wheel that has come off: a bare hub (about an eighth of the wheel's radius) on a spring that has given way, so that corner of the car sinks right down onto the road and the car tilts. Its grip is a scrape. */
+const LOST_WHEEL_R = 0.12, LOST_WHEEL_GRIP = 0.3, LOST_WHEEL_SPRING = 0.3, LOST_WHEEL_FREE = 1;
 const WATER_DRAG = 0.35;      // 1/s: deceleration per m/s of speed while a wheel is in standing water
 export class Vehicle {
   constructor(spec = CAR) {
@@ -445,7 +445,8 @@ export class Vehicle {
     this.toWorld(w.local, w.mount);
     w.contact = false; w.load = 0;
     if (this.ay.y < 0.15) return;                       // upside down: wheels can't carry the car
-    const maxLen = sp.free + R;
+    const free = w.lost ? sp.free * LOST_WHEEL_FREE : sp.free;        // (a collapsed suspension reaches less far: the corner sinks)
+    const maxLen = free + R;
     const dir = tmpA.set(-this.ay.x, -this.ay.y, -this.ay.z);
     let t = maxLen;
     const P = tmpB;
@@ -460,7 +461,7 @@ export class Vehicle {
       h = P.y - w.q.y;
     }
     const L = t - R;
-    const compress = sp.free - L;
+    const compress = free - L;
     if (compress < -0.02) { w.compress = 0; return; }
     if (compress > sp.travel + 0.22) { w.compress = 0; return; }   // wheel is inside a vertical face (lip), not on a surface
     w.contact = true; w.compress = Math.max(0, compress);
@@ -473,8 +474,9 @@ export class Vehicle {
     tmpC.copy(P).sub(this.pos);
     this._velAt(tmpC, tmpD);
     const vn = tmpD.dot(w.normal);
-    const k = w.front ? sp.kFront : sp.kRear;
-    const cC = w.front ? sp.cCompFront : sp.cCompRear, cR = w.front ? sp.cRebFront : sp.cRebRear;
+    const kk = w.lost ? LOST_WHEEL_SPRING : 1;
+    const k = (w.front ? sp.kFront : sp.kRear) * kk;
+    const cC = (w.front ? sp.cCompFront : sp.cCompRear) * kk, cR = (w.front ? sp.cRebFront : sp.cRebRear) * kk;
     let F = k * w.compress - (vn < 0 ? cC : cR) * vn;
     if (w.compress > sp.travel) F += sp.bump * (w.compress - sp.travel) + (vn < 0 ? -sp.bumpDamp * vn : 0);
     w.load = clamp(F, 0, 32000);
@@ -482,6 +484,7 @@ export class Vehicle {
 
   _arb(iL, iR, k) {
     const L = this.wheels[iL], R = this.wheels[iR];
+    if (L.lost || R.lost) return;                     // (a corner that has lost its wheel is not held up by the anti-roll bar)
     const diff = k * (L.compress - R.compress);
     if (L.contact) L.load = Math.max(0, L.load + diff);
     if (R.contact) R.load = Math.max(0, R.load - diff);

@@ -49,4 +49,6 @@ test('the wheels have a way off one at a time, and the safety nets leave a car w
   assert.match(src('wheelDebris.js'), /launchOne\(/);
   assert.match(src('main.js'), /!f\.car\.wheelsLost\) v\.restoreWheels/);
   assert.match(src('replayMode.js'), /e\.type === 'wheelOff'/);
+  assert.match(src('replayMode.js'), /leanOnLostWheels/);   // (the lean is in the replay too)
+  assert.match(src('main.js'), /leanOnLostWheels/);
 });

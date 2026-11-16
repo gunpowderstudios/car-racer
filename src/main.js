@@ -1120,6 +1120,7 @@ function syncViews(a) {
     v.root.scale.setScalar(1);
     const dx = v.root.position.x - camera.position.x, dz = v.root.position.z - camera.position.z;
     const d2 = dx * dx + dz * dz;
+    v.leanOnLostWheels?.();
     v.root.visible = d2 < 300 * 300;                                           // 200,000 triangles each: skip the far ones
     if (v._wheelsOff && !f.wrecked && !f.car.wheelsLost) v.restoreWheels();     // safety net: only a wreck, or a wheel knocked off, goes without wheels
     if (d2 < 60 * 60) v.setWheels(f.car);                                      // wheels steer and spin on the cars near enough to see them
@@ -1409,7 +1410,7 @@ function frame(now) {
     }
     sound.update(car, 0, false);
   }
-  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ);
+  visual.root.position.copy(drawPos); visual.root.quaternion.copy(drawQ); visual.leanOnLostWheels?.();
   if (visual._wheelsOff && !(derby.enabled && derby.player?.wrecked) && !(net && life.dead) && !(derby.enabled && car.wheelsLost)) visual.restoreWheels();   // safety net: a car that is not wrecked always has its wheels on
   visual.setWheels(car);
   if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }

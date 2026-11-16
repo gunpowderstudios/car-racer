@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.607 — Version number back, and a car leans onto a lost wheel
+- The version number is back in the top right of the home page, as small plain text (no edition badge)
+- A car that has lost a wheel now leans onto that corner and sits lower: the body dips towards the missing wheel (more with each wheel lost), in the game and in the replay. The hub is smaller, its spring has given way, and it no longer gets help from the anti-roll bar
+
 ## v17.606 — Wheels come off one at a time
 - A wheel can now come off on its own, where the car was hit: when a zone's armour is used up, or on a big single knock (about every other time). It is the wheel nearest the hit, on that side. The wheel flies off with sparks and a clang, and it comes off in the replay too
 - The corner without a wheel drops: only a small hub is left, so the body dips towards it, drags with little grip, and throws sparks from the road

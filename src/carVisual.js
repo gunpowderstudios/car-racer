@@ -96,6 +96,9 @@ export function trimWheel(geo, ax) {
 /** A wheel cut out of a car can still carry loose scraps of the body (a flap of bumper or arch floating beside the tyre, a separate little piece of its own).
  *  They show up as black shards sticking out past the tyre and spin round with it. Find the pieces of the wheel that are not joined to each other and drop every small
  *  one (under 5% of the wheel) that reaches out past the tyre. The big piece (the wheel itself) and anything small tucked inside the tyre (hub bolts, a valve) stay. */
+// The lean of a car that has lost a wheel (on top of what the physics gives): radians of roll and pitch per lost wheel, and how far the body sinks.
+const LEAN_ROLL = 0.07, LEAN_PITCH = 0.045, LEAN_DROP = 0.03;
+const leanQ = new THREE.Quaternion(), leanE = new THREE.Euler();
 export function trimWheelPieces(geo, ax) {
   if (geo.userData.wheelPieces || !(ax.r > 0)) return;
   geo.userData.wheelPieces = true;
@@ -414,7 +417,19 @@ export class CarVisual {
     const r = Math.max(0.15, (box.max.y - box.min.y) / 2);
     this.root.parent.attach(node);
     this._offNodes.add(node); this._wheelsOff = true;
+    (this._offIdx || (this._offIdx = new Set())).add(i);
     return { node, radius: r };
+  }
+  /** A car without a wheel leans onto that corner and sits lower, easing over in a moment. Call it every frame, after the pose has been set. */
+  leanOnLostWheels() {
+    const off = this._offIdx, t = this._lean || (this._lean = { r: 0, p: 0, d: 0 });
+    let r = 0, p = 0, d = 0;
+    if (off && off.size && this._wheelsOff) for (const i of off) { r -= (i % 2 === 0 ? 1 : -1) * LEAN_ROLL; p += (i < 2 ? 1 : -1) * LEAN_PITCH; d += LEAN_DROP; }
+    t.r += (r - t.r) * 0.15; t.p += (p - t.p) * 0.15; t.d += (Math.min(d, LEAN_DROP * 3) - t.d) * 0.15;
+    if (Math.abs(t.r) + Math.abs(t.p) + t.d < 1e-4) return;
+    leanQ.setFromEuler(leanE.set(t.p, 0, t.r));
+    this.root.quaternion.multiply(leanQ);
+    this.root.position.y -= t.d;
   }
   /** Put the wheels back on the car (a respawn, or the car going back in the pool). */
   restoreWheels() {
@@ -425,7 +440,7 @@ export class CarVisual {
       n.position.copy(r.pos); n.quaternion.copy(r.quat); n.scale.copy(r.scale); n.visible = true;
       n.rotation.order = 'YZX';
     });
-    this._wheelsOff = false; if (this._offNodes) this._offNodes.clear();
+    this._wheelsOff = false; if (this._offNodes) this._offNodes.clear(); if (this._offIdx) this._offIdx.clear();
   }
 
   // ---- crash dents (see dents.js). All of this is a no-op on the low tier, where CarVisual.dentMax is 0.

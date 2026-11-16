@@ -81,7 +81,7 @@ export function createReplayMode(d) {
     if (!v) return null;
     if (v._wheelsOff && !v._rpLost && !ent.wrecked && R.t - (v._rpWreckT ?? -1e9) > 0.5) v.restoreWheels();      // (as in the live game: only a wreck goes without wheels)
     if (v.loaded && !v._rpReady) { v._rpReady = true; R.fresh = true; }          // a car that has only just been built (or finished loading): it needs its dents so far
-    v.root.visible = true; v.root.position.set(ent.x, ent.y, ent.z); v.root.quaternion.set(ent.qx, ent.qy, ent.qz, ent.qw); v.root.scale.setScalar(1);
+    v.root.visible = true; v.root.position.set(ent.x, ent.y, ent.z); v.root.quaternion.set(ent.qx, ent.qy, ent.qz, ent.qw); v.root.scale.setScalar(1); v.leanOnLostWheels?.();
     fakeCar.steerAngle = ent.steer; for (let i = 0; i < 4; i++) fakeCar.wheels[i].spin = ent.spin[i];
     v.setWheels(fakeCar);
     if (v.loaded) {

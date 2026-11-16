@@ -1067,3 +1067,11 @@ body.rp-clean #home-btn:hover { opacity: .9; }
   #mq-restart.armed { background: #ffb31f; border-color: #ffb31f; color: #2a1a00; }
   body.mode-drive #minimap { top: calc(max(8px, env(safe-area-inset-top)) + 100px); }      /* (the map moves down to make room) */
 }
+
+/* The version number: small plain text, top right of the home page only. */
+#version-tag {
+  position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 26;
+  pointer-events: none; font-family: var(--cond); font-size: 15px; font-weight: 600; letter-spacing: .08em;
+  color: rgba(246,217,176,.6); text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+body:not(.mode-menu) #version-tag { display: none; }
