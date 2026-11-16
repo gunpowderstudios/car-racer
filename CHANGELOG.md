@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.609 — More sparks from a lost wheel
+- A car dragging a bare hub now throws sparks at walking pace too (they used to need about 9 mph, which a demolition derby car being shoved around rarely reaches), and a hub that is bouncing just off the road still sparks
+
 ## v17.608 — Limping rivals
 - A rival that has lost a wheel now drives like a real driver would: about 70% of its pace with one wheel gone, half with two, a crawl after that
 - A rival that has lost both wheels of an axle, or three wheels, cannot be driven on, so it is out (wrecked) even if it has not exploded. You keep control of your own car however many wheels it has lost

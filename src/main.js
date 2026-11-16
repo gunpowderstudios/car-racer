@@ -1204,8 +1204,13 @@ function effects(dt) {
   }
   if (car.scraping && wallSpot && simTime - wallSpot.t < 0.4 && Math.random() < 40 * dt) particles.spark(wallSpot.x, wallSpot.y, wallSpot.z, car.vel.x * 0.2, 1.5, car.vel.z * 0.2);
   if (derby.enabled) for (const f of derby.fighters) {                              // a wheel that has come off: the hub scrapes along the road and throws sparks
-    const c = f.car; if (!c.wheelsLost || c.speed < 4) continue;
-    for (const w of c.wheels) if (w.lost && w.contact && Math.random() < dt * Math.min(30, 4 + c.speed)) particles.spark(w.contactPoint.x, w.contactPoint.y + 0.05, w.contactPoint.z, c.vel.x * 0.3 + (Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, c.vel.z * 0.3 + (Math.random() - 0.5) * 4);
+    const c = f.car; if (!c.wheelsLost || c.speed < 1) continue;                        // (slow shoves in a derby count: the hub still grinds)
+    const rate = Math.min(40, 8 + c.speed * 3);
+    for (const w of c.wheels) {
+      if (!w.lost || Math.random() >= dt * rate) continue;
+      const px = w.contact ? w.contactPoint.x : w.mount.x, py = w.contact ? w.contactPoint.y : w.mount.y - 0.3, pz = w.contact ? w.contactPoint.z : w.mount.z;      // (a hub bouncing just off the road still sparks)
+      particles.spark(px, py + 0.05, pz, c.vel.x * 0.3 + (Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, c.vel.z * 0.3 + (Math.random() - 0.5) * 4);
+    }
   }
   particles.update(dt); debris.update(dt, debrisGround); wheelFlyers.update(dt, debrisGround);
 }
