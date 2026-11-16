@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.608 — Limping rivals
+- A rival that has lost a wheel now drives like a real driver would: about 70% of its pace with one wheel gone, half with two, a crawl after that
+- A rival that has lost both wheels of an axle, or three wheels, cannot be driven on, so it is out (wrecked) even if it has not exploded. You keep control of your own car however many wheels it has lost
+
 ## v17.607 — Version number back, and a car leans onto a lost wheel
 - The version number is back in the top right of the home page, as small plain text (no edition badge)
 - A car that has lost a wheel now leans onto that corner and sits lower: the body dips towards the missing wheel (more with each wheel lost), in the game and in the replay. The hub is smaller, its spring has given way, and it no longer gets help from the anti-roll bar

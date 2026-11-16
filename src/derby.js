@@ -28,6 +28,10 @@ export const POINTS = {
   //   barrel: 25,    (an explosive barrel set off)
 };
 
+/** How hard a driver pushes a car that has lost wheels: about 70% of the pace with one wheel gone, half with two, a crawl after that. */
+const limpFactor = (car) => { let n = 0; for (const w of car.wheels) if (w.lost) n++; return n ? Math.max(0.3, 1 - 0.3 * n) : 1; };
+/** A car cannot be driven on without both wheels of an axle, or with only one wheel left. */
+const immobilised = (car) => { const l = car.wheels.map((w) => w.lost); return (l[0] && l[1]) || (l[2] && l[3]) || l.filter(Boolean).length >= 3; };
 const WHEELS_OF = { front: [0, 1], back: [2, 3], left: [0, 2], right: [1, 3] };      // (wheel 0 front left, 1 front right, 2 rear left, 3 rear right)
 export const DERBY = {
   rivals: 6,             // how many live rivals the derby tries to keep in play
@@ -477,6 +481,7 @@ export class Derby {
       ctx.skill = slotSkill && slotSkill[f.raceSlot] != null ? Math.max(0, Math.min(1, baseSkill + slotSkill[f.raceSlot])) : baseSkill;
       if (f.driver && !f.wrecked && (this._tick + f.id) % 4 === 0) {
         if (this.lastStanding) ctx.player = this._nearestFoe(f);         // everyone is everyone's target
+        f.driver.limp = limpFactor(f.car);                   // a rival that has lost a wheel drives gently, like a real driver would
         f.inp = f.driver.drive(f.car, T, ctx, dt * 4);
         if (this.lastStanding) ctx.player = P.wrecked ? null : P.car;
       }
@@ -753,6 +758,10 @@ export class Derby {
     if (best < 0) return;
     const w = f.car.wheels[best]; w.lost = true;
     this.events.push({ type: 'wheelOff', id: f.id, isPlayer: f.isPlayer, i: best, x: w.mount.x, y: w.mount.y, z: w.mount.z });
+    if (!f.isPlayer && immobilised(f.car)) {                 // a rival that cannot be driven on is out, exploded or not (you keep control of your own car, however badly it handles)
+      f.health.hp[zone] = 0; f.health.wrecked = zone;
+      this._wreck(f, zone);
+    }
   }
 
   /** The car is mended or back on the road: every wheel is on again. */

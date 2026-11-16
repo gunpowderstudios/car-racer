@@ -52,3 +52,19 @@ test('the wheels have a way off one at a time, and the safety nets leave a car w
   assert.match(src('replayMode.js'), /leanOnLostWheels/);   // (the lean is in the replay too)
   assert.match(src('main.js'), /leanOnLostWheels/);
 });
+
+test('a rival that has lost a wheel drives gently, and one that cannot be driven on is out', () => {
+  const track = new Track(makeRandomTrack(5)), car = new Vehicle(), rv = new Vehicle();
+  placeOnTrack(car, track, 40, 0, 0); placeOnTrack(rv, track, 60, 0, 20);
+  const d = new Derby(); d.enabled = true; d.repairsMax = 0; d.start(track, car, 1, 7, 'race'); d.time = DERBY.grace + 1;
+  const r = d.fighters.find((x) => !x.isPlayer);
+  for (let k = 0; k < 40; k++) { r.car.step(DT, IDLE, track); car.step(DT, IDLE, track); }
+  const hit = (i) => { const w = r.car.wheels[i]; d._damage(r, 'back', r.health.max.back * 3, null, w.mount.x, w.mount.y, w.mount.z); };
+  d._maybeLoseWheel(r, 'left', 1e6, undefined, undefined);
+  assert.equal(r.car.wheels.filter((w) => w.lost).length, 1);
+  assert.equal(r.wrecked, false);
+  d._maybeLoseWheel(r, 'right', 1e6, undefined, undefined);   // a wheel on the other side too, but not the same axle by luck
+  const lost = r.car.wheels.map((w) => w.lost);
+  const sameAxle = (lost[0] && lost[1]) || (lost[2] && lost[3]);
+  assert.equal(r.wrecked, !!sameAxle, 'out only when both wheels of one axle are gone');
+});
