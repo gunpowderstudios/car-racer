@@ -12,11 +12,11 @@ export const WEEVAL = {
   stages: 10, tries: 3,
   showBuses: true,                   // the row of parked buses in the gap (one more each stage)
   runStep: 10, riseStep: 5,          // each stage the long ramp is this much longer and the whole thing this much higher
-  deckBelow: 8,                      // the buses stand on a platform this far below the takeoff lip, so you can see them from the ramp
+  deckBelow: 4,                      // the buses stand on a platform this far below the takeoff lip: their roofs are about level with it, so a low jump hits them
   gapStart: 70, gapStep: 30,         // the gap (m, lip to lip) on stage 1, and how much longer it gets each stage
   zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
   width: 18,                         // the road is this wide
-  bus: { w: 2.6, len: 10.5, h: 4.4 }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
+  bus: { w: 2.6, len: 9, h: 4.7, flip: false }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
   top: 60,                           // the start platform's height on stage 1
   lipY: 20,                          // the takeoff lip's height on stage 1
   lowY: 6,                           // the landing ramp's low end and the run-out: this height whatever the stage
@@ -122,7 +122,7 @@ export class Weeval {
       this.slow = car.speed < 3 ? this.slow + dt : 0;
       if (this.slow > 1.2 && x >= L.gapEnd - 2) { this.state = 'landed'; this._touch(car, health); return; }      // (down on the ramp but wheels-up: it counts as landed, and then as flipped)
       if (this.air > 14) { this._fail('short'); return; }
-      if (car.pos.y < L.deckTop + 5 && x < L.gapEnd + 1) this._fail('short');
+      if (car.pos.y < L.deckTop + 3 && x > L.lipX + 2 && x < L.gapEnd + 1) this._fail('short');
       else if (car.pos.y < GROUND_Y - 5) this._fail('short');
       return;
     }

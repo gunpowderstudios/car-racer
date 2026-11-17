@@ -2,6 +2,10 @@
 // the concrete under the jump, pylons holding the long ramp up and the signs. The solid parts (buses, barrier) are the boxes weeval.js puts in the
 // track's `blocks`, so what you see is what you hit.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { loadGltf } from './modelCache.js';
+import { assetUrl } from './assetVersion.js';
 import { Track, GROUND_Y } from './track.js';
 import { WEEVAL, stageLayout } from './weeval.js';
 
@@ -83,9 +87,10 @@ export class WeevalView {
     const w = B.w * 0.94, bodyG = new THREE.BoxGeometry(w, B.h - 0.5, B.len), glassLo = new THREE.BoxGeometry(w + 0.06, 0.85, B.len - 1.6), glassHi = new THREE.BoxGeometry(w + 0.06, 0.85, B.len - 1.6);
     const roofG = new THREE.BoxGeometry(w * 0.86, 0.14, B.len - 0.5), whG = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14); whG.rotateZ(Math.PI / 2);
     const frontG = new THREE.PlaneGeometry(w * 0.9, 0.9), lampG = new THREE.CircleGeometry(0.17, 10), grilleG = new THREE.PlaneGeometry(w * 0.5, 0.5);
+    const slots = [];
     for (const b of L.busList) {
       const cx = (b.x0 + b.x1) / 2, mat = new THREE.MeshStandardMaterial({ color: BUS_COLOURS[b.i % BUS_COLOURS.length], roughness: 0.55, metalness: 0.15 }), y0 = deck + 0.5;
-      const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = geo.type === 'BoxGeometry'; o.frustumCulled = false; g.add(o); return o; };
+      const bg = new THREE.Group(); g.add(bg); slots.push({ bg, cx }); const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = geo.type === 'BoxGeometry'; o.frustumCulled = false; bg.add(o); return o; };
       add(bodyG, mat, cx, y0 + (B.h - 0.5) / 2, 0);
       add(glassLo, this.mat.glass, cx, y0 + 1.3, 0); add(glassHi, this.mat.glass, cx, y0 + 3.0, 0);                          // a row of windows downstairs and another up
       add(roofG, this.mat.white, cx, y0 + B.h - 0.5 + 0.07, 0);
@@ -95,6 +100,24 @@ export class WeevalView {
       add(grilleG, this.mat.dark, cx, y0 + 0.4, zf, Math.PI);
       for (const sx of [-1, 1]) add(lampG, this.mat.yellow, cx + sx * w * 0.36, y0 + 0.4, zf - 0.01, Math.PI);
     }
+    this._busModel(slots, deck);
+  }
+
+  /** Swap the plain boxes for the real Rootmaster from the main game once its model has loaded (the boxes stay if it cannot be loaded). */
+  async _busModel(slots, deck) {
+    try {
+      const gltf = await loadGltf(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), assetUrl('cars/bus-SHRINK.glb'));
+      const model = gltf.scene, box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+      const alongX = size.x > size.z, k = WEEVAL.bus.len / (alongX ? size.x : size.z);
+      model.traverse((o) => { if (o.isMesh) { if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals(); o.castShadow = true; o.frustumCulled = false; } });
+      slots.forEach(({ bg, cx }, i) => {
+        const m = i === 0 ? model : model.clone(true);
+        const holder = new THREE.Group(); m.position.set(-mid.x, -box.min.y, -mid.z); holder.add(m); holder.scale.setScalar(k);
+        holder.rotation.y = alongX ? (WEEVAL.bus.flip ? -Math.PI / 2 : Math.PI / 2) : (WEEVAL.bus.flip ? 0 : Math.PI);          // (the nose points the way -z, to the left looking down the ramp)
+        holder.position.set(cx, deck, 0);
+        bg.clear(); bg.add(holder);
+      });
+    } catch (e) { console.warn('Could not load the bus model; plain boxes will do.', e); }
   }
 
   /** The painted target, draped over the landing ramp so it follows the slope. */

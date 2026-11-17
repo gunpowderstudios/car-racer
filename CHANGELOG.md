@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.614 — Weeval Knievel: real buses in the way
+- The parked buses are now the Rootmaster double-decker from the main game (the plain boxes stay as a fallback if the model cannot load), nose to the left looking down the ramp.
+- They are raised so their roofs are level with the takeoff lip: they sit right in your flight path, so a low jump crashes into them (a try is lost if you drop into them).
+
 ## v17.613 — Weeval Knievel: the buses are back
 - A row of red double-decker buses sits in the gap, side-on to the ramp with their noses to the left, on a raised platform so you can see them from the run-up. One more bus each stage (3 on stage 1, 12 on stage 10).
 - Each stage the long ramp is 10 m longer and the whole thing (start, takeoff lip, kicker) is 5 m higher; the landing ramp stays put and gets 20 m longer, so the drop to it grows.
