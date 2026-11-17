@@ -6,6 +6,7 @@ import { buildTrackGeometry } from './trackGeometry.js';
 import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
 import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
+import { WeevalView } from './weevalView.js';
 import { GetawayView } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
@@ -169,7 +170,7 @@ export class Stage {
   }
 
   clearTrack() {
-    this.fish = null; this.assaultView = null; this.getawayView = null;
+    this.fish = null; this.assaultView = null; this.weevalView = null; this.getawayView = null;
     if (!this.trackGroup) return;
     this.scene.remove(this.trackGroup);
     this.trackGroup.traverse((o) => {
@@ -313,6 +314,7 @@ export class Stage {
 
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
+    if (track.def.weeval) this.weevalView = new WeevalView(track, g);          // Weeval Keneval: the buses, the bullseye and the barrier
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;

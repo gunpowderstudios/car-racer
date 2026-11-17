@@ -29,6 +29,8 @@ import { GetawayDriver, TrafficDriver } from './getawayAI.js';
 import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGetawayResult, drawGetawayMap, getawayCompass } from './getawayHud.js';
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
 import { startRaceLights, cancelRaceLights } from './raceLights.js';
+import { Weeval, WEEVAL, weevalDef, newRun } from './weeval.js';
+import { weevalHudShow, weevalHudUpdate, weevalPop, showWeevalCard, hideWeevalCard } from './weevalHud.js';
 import { PropsView } from './propsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound, musicGain } from './audio.js';
@@ -377,6 +379,7 @@ for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-bo
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
+let weeval = null, weevalRun = null;      // Weeval Keneval: the bus jump (weeval.js) - null on every other track; weevalRun is the whole ten-stage run, which outlives each stage's track
 let assault = null;     // Apple Crumple: the solo obstacle course (assault.js) - null on every other track
 let testDrive = false, pendingTest = false;      // Test Drive from the editor: just your own car on the track, no rivals (any other way of loading a track clears it)
 function loadTrack(newDef) {
@@ -387,7 +390,8 @@ function loadTrack(newDef) {
   chase.low = !!def.lowCam; chase.arena = def.mode === 'lastStanding' ? arenaInfo(track) : null;      // (see pickStartCamera)
   stage.setTrack(track);
   assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
-  document.body.classList.toggle('course', !!assault);
+  weeval = def.weeval && !net ? new Weeval(track, weevalRun || (weevalRun = newRun())) : null; if (!weeval) weevalRun = null; weevalHudShow(!!weeval);
+  document.body.classList.toggle('course', !!(assault || weeval));
   getaway = def.getaway ? makeGetaway() : null; getawayHudShow(!!getaway); gwRoster(getaway); syncGetawayVehicle();
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
@@ -396,7 +400,7 @@ function loadTrack(newDef) {
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
   derbyStart();
-  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, get assault() { return assault; }, get getaway() { return getaway; }, get arena() { return track?.def?.mode === 'lastStanding'; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
+  window.__game = { caravan, caravanView, wheelFlyers, get chatUI() { return chatUI; }, get net() { return net; }, set net(v) { net = v; }, get remotePlayers() { return remotePlayers; }, get mpHandlers() { return mpHandlers; }, debris, tier, adaptFeed, car, camera, visual, get track() { return track; }, get assault() { return assault; }, get weeval() { return weeval; }, get getaway() { return getaway; }, get arena() { return track?.def?.mode === 'lastStanding'; }, race, opts, renderer, stage, sim, respawn, props, derby, views };
 }
 
 function placeCar(s, offset = 0, speed = 0, keepRace = false) {
@@ -436,7 +440,7 @@ function placeCarInArena(away, spot) {
 
 /** Red, Red, Green! on the grid for any race against rivals (Race Day and multiplayer run their own; Demolition, arenas and Apple Crumple are not races). */
 function raceStartLights() {
-  if (net || assault || !derby.enabled || derby.demolition || track?.def?.mode === 'lastStanding' || window.__story?.active) return;
+  if (net || assault || weeval || !derby.enabled || derby.demolition || track?.def?.mode === 'lastStanding' || window.__story?.active) return;
   frozen = true;
   startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
@@ -446,6 +450,7 @@ function restartRace() {
   if (getaway && getaway.game.over) return;            // the result card is up: only its buttons carry on
   if (getaway && getaway.online) return;               // (online, only the host starts another round, from the result card)
   if (getaway) { getawayRound(getaway.role); return; }
+  if (weeval) { weevalNew(); return; }
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
   skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
   placeCar(track.startS(12), 0, 0);
@@ -509,8 +514,57 @@ function assaultEvents() {
   assault.events.length = 0;
 }
 
+// ------------------------------------------------------- Weeval Keneval (the bus jump, see weeval.js)
+let weevalCard = null;                                    // the last result card's contents (it comes back after a replay)
+const weevalStore = () => store.get('cr.weeval', {});
+/** A fresh attempt at this stage: the car back on the platform, repaired. `how`: 'first' (the lights), 'retry' (after a failed try) or 'reset' (put back before the jump, free). */
+function weevalAttempt(how) {
+  hideWeevalCard(); weevalCard = null; setPaused(false); cancelRaceLights();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
+  placeCar(track.startS(12), 0, 0);
+  car.boostFuel = 1; race.reverseT = 0;
+  derbyStart();
+  weeval.reset(); frozen = true;
+  const go = () => { if (weeval && weeval.state === 'ready') { frozen = false; weeval.go(); } };
+  if (how === 'first') { hud.banner(`Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }
+  else { hud.banner(how === 'retry' ? `Try again - ${weeval.tries} ${weeval.tries === 1 ? 'try' : 'tries'} left` : 'Back at the top', 1100); setTimeout(go, 900); }
+}
+/** A whole new run from stage 1. */
+function weevalNew() { weevalRun = newRun(); loadTrack(weevalDef(1)); weevalAttempt('first'); }
+/** On to the next stage: a new track (more buses, a longer gap), the same run. */
+function weevalNext() { if (!weeval.advance()) { weevalNew(); return; } loadTrack(weevalDef(weevalRun.stage)); weevalAttempt('first'); }
+const RING_WORDS = ['BULLSEYE!', 'So close!', 'On target', 'Outer ring'];
+function weevalEvents() {
+  for (const e of weeval.events) {
+    if (e.type === 'launch') hud.banner('Airborne!', 900);
+    else if (e.type === 'touch') {
+      weevalPop(e.ring >= 0 ? RING_WORDS[e.ring] : 'On the ramp', `${e.points} pts` + (e.flat ? ' + flat landing' : ' - bumpy landing'));
+      chase.impact(Math.min(14, 3 + e.air * 2));
+    } else if (e.type === 'clear') {
+      const st = weevalStore(), best = Math.max(st.best || 0, e.total), stage = Math.max(st.stage || 0, e.stage + (e.done ? 0 : 0));
+      store.set('cr.weeval', { best, stage });
+      const lines = [e.ring >= 0 ? `${RING_WORDS[e.ring]} ${e.ringPoints} pts` : `On the ramp ${e.ringPoints} pts`, e.flat ? 'Level landing +' + WEEVAL.flatBonus : 'Bumpy landing - no bonus', e.clean ? 'No damage +' + WEEVAL.cleanBonus : 'Car damaged - no bonus', `Total ${e.total}` + (e.total >= best ? ' - best ever!' : ` - best ${best}`)];
+      weevalCard = e.done
+        ? { title: 'Weeval Keneval complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
+      setTimeout(() => { if (weeval && weeval.state === 'clear' && mode === 'drive') showWeevalCardNow(); }, 1600);
+    } else if (e.type === 'fail') {
+      const why = { short: 'Too short - you landed in the buses!', wrecked: 'Wrecked!', flipped: 'You landed upside down!', reset: 'Reset' }[e.why] || 'Missed!';
+      const total = weeval.run.total, best = Math.max(weevalStore().best || 0, total);
+      if (e.over) store.set('cr.weeval', { best, stage: Math.max(weevalStore().stage || 0, e.stage) });
+      weevalCard = e.over
+        ? { title: 'Run over!', big: `${total}`, lines: [why, `Out of tries on stage ${e.stage}`, total >= best && total > 0 ? 'New best score!' : `Best ${best}`], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        : { title: why, lines: [`Stage ${e.stage}: ${e.tries} ${e.tries === 1 ? 'try' : 'tries'} left`], buttons: [{ label: 'Try again (Enter)', run: () => weevalAttempt('retry') }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
+      setTimeout(() => { if (weeval && (weeval.state === 'failed' || weeval.state === 'over') && mode === 'drive') showWeevalCardNow(); }, e.why === 'short' || e.why === 'wrecked' ? 1500 : 1000);
+    }
+  }
+  weeval.events.length = 0;
+}
+function showWeevalCardNow() { if (weevalCard) showWeevalCard(weevalCard); }
+
 /** The player asked to be put back on the road (B or the pad's Y): it costs a spanner while there are any left. (A recovery the game does by itself is free.) */
 function backOnRoad() {
+  if (weeval) { if (weeval.state === 'run') weevalAttempt('reset'); return; }         // (a reset before the jump just takes you back to the top, free; after it there is no going back)
   if (assault && !assault.active) return;
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;
   const costs = !assault && derby.enabled && Number.isFinite(derby.repairsMax) && derby.repairs > 0;      // (on the obstacle course a reset costs time, not a spanner)
@@ -520,6 +574,7 @@ function backOnRoad() {
 function respawn(why = 'reset') {
   if (derby.over || (derby.enabled && derby.player?.wrecked)) return;      // a wreck stays put until its respawn is due
   if (assault) { assaultRespawn(why); return; }
+  if (weeval) { if (weeval.state === 'run') weevalAttempt('reset'); return; }
   if (getaway) { placeCarInArena(null, rescuePose(getaway.L, car.pos.x, car.pos.z)); race.reverseT = 0; hud.banner(why === 'fall' ? 'Off the map - back on a street' : why === 'flip' ? 'Upside down - back on your feet' : 'Back on your feet', 1400); return; }
   if (track.def.mode === 'lastStanding') { placeCarInArena(derby.rivals.filter((f) => !f.wrecked).map((f) => f.car.pos)); race.reverseT = 0; return; }      // the arena has no road: back on a clear patch of floor, away from the rivals (the road's own line runs over the humps)
   const hw = track.hw[Math.floor(safe.s / track.ds) % track.n];
@@ -596,7 +651,7 @@ function updateRace(dt) {
 function stepPhysics(dt) {
   if (frozen || paused) return;                                            // the story-mode results panel is up: hold the race still
   const raw = input.read();
-  const inp = derby.over || (derby.enabled && derby.player?.wrecked) || (assault && !assault.active && assault.state !== 'ready') || (getaway && getaway.game.over) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
+  const inp = derby.over || (derby.enabled && derby.player?.wrecked) || (assault && !assault.active && assault.state !== 'ready') || (weeval && !weeval.active && weeval.state !== 'ready') || (getaway && getaway.game.over) ? IDLE : net && life.dead ? MP_WRECKED_INPUT : raw;   // once you are wrecked, nobody is driving
   throttleNow = inp.throttle;
   if (raw.horn && !hornVoice && hornOn()) { hornVoice = sound.hornStart(selectedVehicle().id) || {}; replayRec.event(simTime, { type: 'honk', x: car.pos.x, y: car.pos.y, z: car.pos.z, pitch: 1, own: true, veh: selectedVehicle().id }); } else if (!raw.horn && hornVoice) { hornVoice.stop?.(); hornVoice = null; }   // hold H to honk (stops by itself after a moment)
   acc += dt * GAME_SPEED; let n = 0;                         // (the whole game runs a little faster than the clock on the wall)
@@ -615,6 +670,7 @@ function stepPhysics(dt) {
       else if (r.state !== 'roll') r.heard = false;
     }
     if (assault) { assault.step(DT, car, race.unwrapped, derby); if (assault.events.length) assaultEvents(); }
+    if (weeval) { weeval.step(DT, car, derby.player?.health); if (weeval.events.length) weevalEvents(); }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (getaway) { if (getaway.online) gwOnlineStep(); else getawayStep(); }
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
@@ -915,7 +971,7 @@ function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  const solo = !!assault;                       // Apple Crumple: no rivals, but the car takes real damage and is wrecked and respawned like any race
+  const solo = !!(assault || weeval);                       // Apple Crumple: no rivals, but the car takes real damage and is wrecked and respawned like any race
   const gw = !!getaway && !getaway.online;      // The Getaway: exactly one computer car, the other side, and nobody is hurt (online there are no computer cars: the other side is a person)
   derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); if (gw) derby.enabled = !net; derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
@@ -964,6 +1020,7 @@ function derbyEvents() {
     } else if (e.type === 'wreck') {
       { const wf0 = e.isPlayer ? derby.player : derby.fighters.find((x) => x.id === e.id); if (wf0) for (const w of wf0.car.wheels) w.lost = true; }      // (a wrecked car has no wheels: its body sits down on the road)
       if (e.isPlayer && assault) { assault.penalise('wreck'); }
+      if (e.isPlayer && weeval) weeval.wreck();
       particles.blast(e.x, e.y, e.z, e.isPlayer ? 2 : 1.6);
       crashDebris(e.x, e.y + 0.4, e.z, 20, e.isPlayer ? PAINTS[opts.paint][1] : rivalPaint(), 0, 0, 2.6);
       const g = track.groundAt(e.x, e.z, e.y + 0.6, groundQ);
@@ -990,6 +1047,8 @@ function derbyEvents() {
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
+    } else if (e.type === 'over' && weeval) {
+      weeval.wreck();                                              // (no spanners: the first wreck ends the try; the result card comes from weevalEvents)
     } else if (e.type === 'over' && assault) {
       assault.scrap(); hud.banner('Wrecked!', 1700);                // the course ends with the car scrapped (the result card shows)
     } else if (e.type === 'over') {
@@ -1382,6 +1441,7 @@ function frame(now) {
 
       maxLap: net ? mpRaceLaps() : null, finished: mpFinished });
     if (assault) assaultHudUpdate(assault);
+    if (weeval) weevalHudUpdate(weeval, opts.kmh, car.fwdSpeed);
     if (derby.damageEnabled) {
       hud.setScore(derby.score, derby.takedowns, derby.alive);
       hud.setRepairs(derby.repairs, derby.repairsMax);
@@ -1460,17 +1520,19 @@ function setMode(m) {
   if (m !== 'drive') camera.up.set(0, 1, 0);                                                  // (the Overhead camera turns the camera's up round)
   if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); sound.radioLoop(false); }
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
-  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '') + (getaway ? ' getaway' : '');
+  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + ((assault || weeval) ? ' course' : '') + (getaway ? ' getaway' : '');
   $('hud').hidden = m !== 'drive';
   if (m === 'drive' && assault && !assault.active && assaultCard) showAssaultCard();
+  if (m === 'drive' && weeval && weevalCard && (weeval.state === 'clear' || weeval.state === 'failed' || weeval.state === 'over')) showWeevalCardNow();       // back from the replay: the card is still there
   if (m === 'drive' && getaway && getaway.game.over && getaway.card) showGetawayCard();       // back from the replay: the result card is still there       // back from the replay: the result card is still there
   $('touch').hidden = !(m === 'drive' && matchMedia('(pointer: coarse)').matches);
   input.enabled = m === 'drive';
   menuMusic();
 }
 function showMenu() {
-  mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false);
+  mpTeardown(); cancelRaceLights(); frozen = false; assaultHudShow(false); weevalHudShow(false);
   sound.sirenLoop(null); sound.radioLoop(false);
+  if (weeval) { weevalRun = null; menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false; }      // (the high ramp is left behind: the home screen has a plain track under it)
   if (getaway) { hideGetawayResult(); menuBackdrop = true; loadTrack(makeTemplate('speedway')); menuBackdrop = false; }      // (the town is left behind: your own car comes back, and the home screen has a plain track under it)
   setMode('menu'); renderMenu(); setHash('');
 }
@@ -1636,6 +1698,7 @@ function beginDriving() {
   hasPlayed = true; setMode('drive'); last = performance.now();
   if (!net) { const k = ownLinkKey(); setHash(k ? slugOf(k) : ''); }        // the address bar shows this game's own link, ready to copy and send (nothing for an edited or random track)
   if (assault) { assaultCountdown(); return; }
+  if (weeval) { weevalAttempt('first'); return; }
   if (getaway) { if (!getaway.online) getawayBegin(); return; }        // (online, mpBeginDrive does the banner and the lights, so both screens start together)
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
   raceStartLights();
@@ -1820,6 +1883,7 @@ function bindMenu() {
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; startDriving(d); };
+  $('btn-weeval').onclick = () => { weevalRun = newRun(); startDriving(weevalDef(1)); };      // Weeval Keneval: the bus jump, from stage 1
   $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!

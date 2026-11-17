@@ -17,6 +17,7 @@ import { V3, Q, clamp, lerp, wrapPi } from './math.js';
 import { Track, SURF } from './track.js';
 
 const G = 9.81;
+export const AIR_PITCH = 2.4;       // rad/s per second of tilt the driver can put on in mid-air (Weeval Keneval only)
 export const AIR_WEIGHT = 1.3;      // gravity pulls this much harder while a car is in the air: a heavy-feeling car comes back down off a hump instead of floating over it
 /** Every vehicle's tyres grip this much more than its profile says (one place to turn all the grip up or down). */
 export const GRIP_BOOST = 1.15;
@@ -229,6 +230,7 @@ export class Vehicle {
     this._arb(0, 1, sp.susp.arbFront); this._arb(2, 3, sp.susp.arbRear);
     this.onGround = contacts > 0;
     this.airTime = this.onGround ? 0 : this.airTime + dt;
+    if (track && track.def && track.def.weeval && this.airTime > 0.1) this.angVel.addScaled(this.ax, ((input.throttle || 0) - (input.brake || 0)) * AIR_PITCH * dt);      // Weeval Keneval: W tips the nose down, S lifts it, while you are in the air
     if (this.boosting) this.F.addScaled(this.az, this.mass * sp.boost.accel * (contacts >= 2 ? 1 : sp.boost.airShare));
 
     // --- drivetrain

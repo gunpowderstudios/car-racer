@@ -137,7 +137,8 @@ export function normalizeBlocks(list) {
     const x0 = Number(b.x0), x1 = Number(b.x1), z0 = Number(b.z0), z1 = Number(b.z1);
     if (![x0, x1, z0, z1].every(Number.isFinite) || x1 <= x0 || z1 <= z0 || Math.abs(x0) > 1e4 || Math.abs(x1) > 1e4 || Math.abs(z0) > 1e4 || Math.abs(z1) > 1e4) continue;
     const o = { x0: Math.round(x0 * 100) / 100, x1: Math.round(x1 * 100) / 100, z0: Math.round(z0 * 100) / 100, z1: Math.round(z1 * 100) / 100 };
-    if (b.kind === 'wall') o.kind = 'wall';
+    if (b.kind === 'wall' || b.kind === 'bus') o.kind = b.kind;
+    if (Number.isFinite(Number(b.y)) && Number.isFinite(Number(b.h)) && b.y !== null && b.h !== null) { o.y = Math.round(Number(b.y) * 100) / 100; o.h = clamp(Number(b.h), 0.5, 60); }      // (a block that stands on its own level: Weeval Keneval's buses)
     out.push(o);
   }
   return out;
@@ -279,6 +280,7 @@ export function normalizeTrack(input) {
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
+  if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Keneval: the jump over the buses (see weeval.js)
   if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
@@ -357,7 +359,7 @@ export class Track {
     if (!this.rollers.length) this.rollers = null;
     if (!this.rocks.length) this.rocks = null;
     this._rq = Track.newQuery(); this._rollN = 0;
-    if (this.def.blocks && this.def.blocks.length) { const y = this.py[0]; this.blocks = this.def.blocks.map((b) => ({ ...b, y, h: 14 })); }
+    if (this.def.blocks && this.def.blocks.length) { const y = this.py[0]; this.blocks = this.def.blocks.map((b) => ({ ...b, y: b.y ?? y, h: b.h ?? 14 })); }
   }
 
   /** Another player's boulder has been set off (multiplayer): ours rolls too, if it is still waiting. */

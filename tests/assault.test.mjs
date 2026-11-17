@@ -400,7 +400,7 @@ test('driving blind into the hazards does real harm (they are not decoration)', 
 // ---------------------------------------------------------------------------------------------- wired into the game
 test('main.js runs the course: no rivals but real damage, lights, checkpoints, penalties, result card', () => {
   assert.match(main, /assault = def\.assault && !net \? new Assault\(track\) : null/);
-  assert.match(main, /const solo = !!assault/);
+  assert.match(main, /const solo = !!\(assault \|\| weeval\)/);
   assert.match(main, /derby\.enabled = !net && \(\(!testDrive && \(opts\.rivals > 0 \|\| demoDay\)\) \|\| solo\)/);
   assert.match(main, /const field = solo \? 0/);
   assert.match(main, /assault\.step\(DT, car, race\.unwrapped, derby\)/);
@@ -417,7 +417,7 @@ test('main.js runs the course: no rivals but real damage, lights, checkpoints, p
   assert.match(main, /e\.type === 'over' && assault\) \{\s*assault\.scrap\(\)/, 'out of spanners ends the run');
   assert.match(main, /const costs = !assault && /, 'a reset on the course costs time, not a spanner');
   assert.match(main, /k === 'apple' \? \[\['Choose'/, 'the course has no Edit button');
-  assert.match(main, /\(assault \? ' course' : ''\)/);
+  assert.match(main, /\(\(assault \|\| weeval\) \? ' course' : ''\)/);
   assert.match(readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'), /body\.course #lap-card/, 'no lap card on the course');
 });
 
