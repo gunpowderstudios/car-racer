@@ -2,6 +2,9 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.618 — Weeval Knievel: boxes and flames in the replay
+- The cardboard boxes and the flames now move in the replay. They are not recorded; they are played again from the car's recorded path (the same hits and tumble, the flames flaring while you are in the air), and rebuilt from the start if you rewind or skip about.
+
 ## v17.617 — Weeval Knievel: bigger boxes, higher start
 - Half as many cardboard boxes, each bigger.
 - The start of the long ramp is 80 m up on stage 1 (it was 60), still 5 m higher each stage.

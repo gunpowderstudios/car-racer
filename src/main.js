@@ -526,7 +526,7 @@ function weevalAttempt(how) {
   car.boostFuel = 1; race.reverseT = 0;
   derbyStart();
   derby.repairPlayer?.(); if (derby.player) derby._wheelsOn?.(derby.player); visual.restoreWheels?.(); visual.clearDents(); visual.setLook(1, 0); if (derby.player) hud.setDamage(derby.player.health);      // every try starts with a whole car: armour, wheels and all
-  weeval.reset(); stage.weevalView?.reset(); frozen = true;
+  weeval.reset(); stage.weevalView?.reset(); wr.t = null; frozen = true;
   const go = () => { if (weeval && weeval.state === 'ready') { frozen = false; weeval.go(); } };
   if (how === 'first') { hud.banner(`Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }
   else { hud.banner(how === 'retry' ? `Try again - ${weeval.tries} ${weeval.tries === 1 ? 'try' : 'tries'} left` : 'Back at the top', 1100); setTimeout(go, 900); }
@@ -561,6 +561,24 @@ function weevalEvents() {
     }
   }
   weeval.events.length = 0;
+}
+// The cardboard boxes in a replay: they are not recorded, so they are played again from the car's recorded path (the same hits, the same tumble), and rebuilt from the start whenever the film is rewound or jumped about.
+const wrq = new THREE.Quaternion(), wrAx = new THREE.Vector3(), wrAy = new THREE.Vector3(), wrAz = new THREE.Vector3();
+const wr = { t: null, prev: null, car: { pos: { x: 0, y: 0, z: 0 }, vel: new THREE.Vector3(), speed: 0, ax: wrAx, ay: wrAy, az: wrAz } };
+function weevalReplayBoxes(R) {
+  const v = stage.weevalView, p = R.player; if (!v || !p) return;
+  const L = weeval.L, step = (nt, dt) => {
+    const e = p.sample(nt).find((q) => q.isPlayer); if (!e) { wr.prev = null; return; }
+    const c = wr.car; wrq.set(e.qx, e.qy, e.qz, e.qw); wrAx.set(1, 0, 0).applyQuaternion(wrq); wrAy.set(0, 1, 0).applyQuaternion(wrq); wrAz.set(0, 0, 1).applyQuaternion(wrq);
+    if (wr.prev && dt > 0) c.vel.set((e.x - wr.prev.x) / dt, (e.y - wr.prev.y) / dt, (e.z - wr.prev.z) / dt); else c.vel.set(0, 0, 0);
+    c.pos.x = e.x; c.pos.y = e.y; c.pos.z = e.z; c.speed = c.vel.length(); wr.prev = { x: e.x, y: e.y, z: e.z };
+    const air = e.x > L.lipX && e.x < L.gapEnd + 8 && e.y > L.lipY - 6;
+    v.update(dt, { state: air ? 'air' : 'run' }, c);
+  };
+  const t = R.t;
+  if (wr.t == null || t < wr.t - 1e-3 || t - wr.t > 0.6) { v.reset(); wr.prev = null; wr.t = p.t0; }       // rewound or jumped: start the boxes over and play them up to now
+  let n = 0;
+  while (wr.t < t - 1e-4 && n++ < 6000) { const nt = Math.min(t, wr.t + 1 / 30); step(nt, nt - wr.t); wr.t = nt; }
 }
 function showWeevalCardNow() { if (weevalCard) showWeevalCard(weevalCard); }
 
@@ -1404,6 +1422,7 @@ function frame(now) {
       propsView.update(props);
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();
+      if (weeval) weevalReplayBoxes(replay().state);
       if (assault) { const at = replay().state.player?.hazardAt(replay().state.t); if (at != null) stage.updateAssault(Object.assign(Object.create(assault), { t: at })); }      // the hammers, spinners, rocks and presses move as they did in the run
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
       const dofCam = replay().state.camMode, dofOk = (tierName === 'high' || tierName === 'medium') && !device.touch && adapt.scale >= 0.8 && dofCam === 'TV';      // (only the trackside TV camera gets the blur; the chase, top and every other view stay sharp)
