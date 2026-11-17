@@ -524,6 +524,7 @@ function weevalAttempt(how) {
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1; race.reverseT = 0;
   derbyStart();
+  derby.repairPlayer?.(); if (derby.player) derby._wheelsOn?.(derby.player); visual.restoreWheels?.(); visual.clearDents(); visual.setLook(1, 0); if (derby.player) hud.setDamage(derby.player.health);      // every try starts with a whole car: armour, wheels and all
   weeval.reset(); frozen = true;
   const go = () => { if (weeval && weeval.state === 'ready') { frozen = false; weeval.go(); } };
   if (how === 'first') { hud.banner(`Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }

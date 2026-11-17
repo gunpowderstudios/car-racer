@@ -10,30 +10,33 @@ import { normalizeTrack, GROUND_Y } from './track.js';
 
 export const WEEVAL = {
   stages: 10, tries: 3,
+  showBuses: false,                  // the buses are off for now while the jump is tuned: the gap still grows as if they were there
+  gapStart: 70, gapStep: 30,         // the gap (m, lip to lip) on stage 1, and how much longer it gets each stage
+  zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
   width: 18,                         // the road is this wide
   bus: { w: 2.6, len: 11, h: 3.2 },  // a bus parked side-on across the pit: w along the run, len across the road
   top: 60, ramp: 400,                // the start platform's height and the length of the long descent
-  lipY: 12,                          // the takeoff road's height above the ground (so the buses go by well below the car)
-  lipKick: 20, lipRise: 2.2,         // the takeoff kicker: its angle (degrees) and height
-  landLen: 95, runOut: 70, drop: 8.5,   // the landing ramp's length and how far it falls, then the flat run-out to the barrier
+  lipY: 20,                          // the takeoff road's height above the ground (so the buses go by well below the car)
+  lipKick: 25, lipRise: 2.6,         // the takeoff kicker: its angle (degrees) and height
+  landLen: 170, runOut: 80, drop: 14,   // the landing ramp's length and how far it falls, then the flat run-out to the barrier
   rings: [2.4, 4.8, 7, 9],         // the painted bullseye's ring radii (m), centre outwards
   points: [1000, 600, 300, 150], ramp_pts: 50,    // what each ring is worth (and landing anywhere else on the ramp)
   flatBonus: 200, cleanBonus: 100,   // a level touchdown, and no damage at all
-  aim: [18.7, 19.9, 20.9, 22.8, 24.0, 24.8, 25.7, 27.3, 27.8, 28.7],      // the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
+  aim: [36.4, 43.7, 50.3, 53, 53.7, 56, 56, 56, 56, 56],      // (stages 1-3 measured, 4-5 rough, the rest are out of reach of the car at 70 m + 30 m a stage) the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
   flatDeg: 12,                       // "level" = the car within this many degrees of the ramp's slope
 };
 
-export const TAKEOFF_X = 440;        // where the gap is centred along the road (x)
+export const LIP_X = 420;            // where the takeoff lip is along the road (x): the gap starts here, whatever its length
 
 /** Everything's position for stage n (1-10): the gap, the buses, the landing zone, the barrier. */
 export function stageLayout(n) {
   const W = WEEVAL, stage = Math.max(1, Math.min(W.stages, Math.round(n) || 1));
-  const buses = stage + 2, gap = Math.round(buses * W.bus.w + 5);        // stage 1: three buses, a 13 m gap
-  const cx = TAKEOFF_X, lipX = cx - gap / 2, gapEnd = cx + gap / 2;
-  const zoneDist = 15 + (stage - 1) * 1.6;                              // the bullseye's centre, past the far lip
+  const buses = stage + 2, gap = W.gapStart + (stage - 1) * W.gapStep;          // stage 1: a 70 m gap, 30 m longer each stage
+  const lipX = LIP_X, cx = lipX + gap / 2, gapEnd = lipX + gap;
+  const zoneDist = W.zoneStart + (stage - 1) * W.zoneStep;                              // the bullseye's centre, past the far lip
   const zoneX = gapEnd + zoneDist;
   const busList = [], bx0 = cx - buses * W.bus.w / 2;
-  for (let i = 0; i < buses; i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i });
+  for (let i = 0; i < (W.showBuses ? buses : 0); i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i });
   const landEnd = gapEnd + W.landLen, endX = landEnd + W.runOut;
   return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, startX: -28, lipY: W.lipY, width: W.width };
 }
@@ -44,15 +47,15 @@ export function weevalDef(n) {
   const H = [];
   const P = (x, y, z, extra) => H.push({ x: Math.round(x), y: Math.round(y * 100) / 100, z: Math.round(z), ...(extra || {}) });
   P(X0, top, 0); P(0, top, 0);                                              // the start platform
-  P(190, top - (top - lipY) * 0.52, 0); P(TAKEOFF_X - 70, lipY + 0.6, 0);      // the long descent, easing out so the car arrives flat and fast
-  P(TAKEOFF_X, lipY, 0, { gap: L.gap, kick: W.lipKick, lip: W.lipRise });      // the jump
-  P(L.gapEnd + W.landLen, low, 0); P(L.endX, low, 0); P(XE, low, 0);                              // the landing ramp falls away, then the run-out
+  P(190, top - (top - lipY) * 0.52, 0); P(L.lipX - 70, lipY + 0.6, 0); P(L.lipX, lipY, 0);      // the long descent, easing out so the car arrives flat and fast
+  P(L.cx, lipY, 0, { gap: L.gap, kick: W.lipKick, lip: W.lipRise });      // the jump
+  P(L.gapEnd, lipY - 0.4, 0); P(L.gapEnd + W.landLen, low, 0); P(L.endX, low, 0); P(XE, low, 0);                              // the landing ramp falls away, then the run-out
   for (const a of [-45, 0, 45, 90]) P(XE + Math.cos(a * Math.PI / 180) * R, low, R + Math.sin(a * Math.PI / 180) * R);    // the hairpin round to the return road
   const back = [XE - 140, 330, 150, 20];
   back.forEach((x) => P(x, low + (top - low) * (XE - x) / (XE - X0), zr));
   for (const a of [135, 180, 225]) P(X0 + Math.cos(a * Math.PI / 180) * R, top, R + Math.sin(a * Math.PI / 180) * R);      // and the hairpin back to the top
   const blocks = L.busList.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, kind: 'bus', y: GROUND_Y, h: W.bus.h }));
-  blocks.push({ x0: L.endX - 4, x1: L.endX, z0: -W.width / 2 - 4, z1: W.width / 2 + 4, kind: 'wall', y: GROUND_Y, h: 7 });   // the barrier that ends the run-out
+  blocks.push({ x0: L.endX - 4, x1: L.endX, z0: -W.width / 2 - 4, z1: W.width / 2 + 4, kind: 'wall', y: GROUND_Y, h: low + 4 });   // the barrier that ends the run-out
   return normalizeTrack({ name: 'Weeval Keneval', width: W.width, walls: true, defaultLaps: 1, handles: H, weeval: { stage: L.stage }, blocks });
 }
 

@@ -57,10 +57,9 @@ export class WeevalView {
       if (f.y < 5) continue;
       if (Math.abs(f.x - this.L.cx) < this.L.gap / 2 + 14) continue;           // (none right at the jump: the abutments are there)
       t.query(f.x, f.y + 0.5, f.z, q, 1);
-      const top = f.y - 0.8, h = top - GROUND_Y;
+      const top = f.y - 1.5, h = top - GROUND_Y;
       if (h < 1) continue;
       this._box(this.mat.concrete, W * 0.34, h, 2.2, f.x, GROUND_Y + h / 2, f.z);
-      this._box(this.mat.concrete, W * 0.9, 1.1, 2.6, f.x, top - 0.55, f.z);       // the cross-beam under the road
     }
   }
 

@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.612 — Weeval Keneval: a longer jump
+- A much longer jump: the gap is 70 m on stage 1 and 30 m longer every stage, with the bullseye 30 m past the far lip. The takeoff is higher (20 m up) with a steeper 25 degree kicker, and the landing ramp is longer and gentler (170 m). The numbers are all in one place at the top of src/weeval.js (gapStart, gapStep, zoneStart, lipKick) to edit.
+- The car is fully repaired - armour, wheels and dents - at the start of every try and every stage.
+- The grey slabs across the middle of the long ramp (the tops of the support beams showing through the road) are gone.
+- The buses are switched off for now while the jump is tuned. 
+
 ## v17.611 — Weeval Keneval: jump the buses
 - New solo stunt on the home page, next to Demolition Day: Weeval Keneval. Race down a very high, dead-straight ramp, launch off the kicker, fly over a row of parked buses and land on the far ramp.
 - Ten stages. Stage 1 is three buses; every stage adds a bus, makes the gap longer and moves the target further out. You get three tries a stage; land without wrecking or flipping and you are through, however far from the middle.
