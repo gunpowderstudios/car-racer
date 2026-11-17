@@ -9,6 +9,7 @@ import { assetUrl } from './assetVersion.js';
 import { Track, GROUND_Y } from './track.js';
 import { WEEVAL, stageLayout } from './weeval.js';
 
+const BOXES = { S: 1.45, depth: 6, top: 4 };      // the cardboard stack: box size (m), rows deep, and how many high at the back (half as many boxes as before, each bigger)
 const BUS_COLOURS = [0xc0281f, 0xc0281f, 0xc0281f, 0xb5241b, 0xc0281f, 0xc0281f, 0xd0402a, 0xc0281f];      // London red, mostly
 
 function canvasTex(w, h, draw) {
@@ -155,13 +156,13 @@ export class WeevalView {
   /** The ground under the stack: the landing ramp slopes, so a box's floor is a plane along it. */
   _floor(x) { return Math.max(this.L.low, this.gy0 + this.gsl * (x - this.gx0)); }
   _boxHome(b, d, c, k) {
-    const S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S);
-    b.x = this.L.stackX + (d - 3.5) * S; b.z = (c - (cols - 1) / 2) * S; b.y = this._floor(b.x) + b.sz / 2 + k * S;
+    const { S, depth } = BOXES, cols = Math.floor((WEEVAL.width - 1) / S);
+    b.x = this.L.stackX + (d - (depth - 1) / 2) * S; b.z = (c - (cols - 1) / 2) * S; b.y = this._floor(b.x) + b.sz / 2 + k * S;
     b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
   }
   /** A big stack of cardboard boxes down the landing ramp, tallest at the back. Drive into it and they fly, tumble, knock each other about and crumple. */
   _boxes() {
-    const L = this.L, W = WEEVAL.width, S = 1.15, cols = Math.floor((W - 1) / S), depth = 8, top = 5, t = this.track;
+    const L = this.L, W = WEEVAL.width, { S, depth, top } = BOXES, cols = Math.floor((W - 1) / S), t = this.track;
     this.gx0 = L.stackX; this.gy0 = t.query(L.stackX, L.lipY, 0, undefined, 60).y; this.gsl = (t.query(L.stackX + 6, L.lipY, 0, undefined, 60).y - t.query(L.stackX - 6, L.lipY, 0, undefined, 60).y) / 12;
     this.boxes = [];
     for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) {
@@ -184,9 +185,9 @@ export class WeevalView {
   /** Put the stack back as it was (a new try). */
   reset() {
     if (!this.boxes) return;
-    const S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S), depth = 8;
+    const { S, depth, top } = BOXES, cols = Math.floor((WEEVAL.width - 1) / S);
     let n = 0;
-    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(5, d + 1); k++) this._boxHome(this.boxes[n++], d, c, k);
+    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) this._boxHome(this.boxes[n++], d, c, k);
     this._boxAll = true; this._syncBoxes();
   }
   _stepBoxes(dt, car) {

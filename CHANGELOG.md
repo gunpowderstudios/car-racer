@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.617 — Weeval Knievel: bigger boxes, higher start
+- Half as many cardboard boxes, each bigger.
+- The start of the long ramp is 80 m up on stage 1 (it was 60), still 5 m higher each stage.
+
+## v17.616 — Weeval Knievel: go again
+- The stage-clear card has a Go again button: have another jump at the same stage for a better score. It costs one of the stage's three tries (the button shows how many are left) and only appears while you have more than one. Only the better of the two jumps counts, and if the second goes wrong the first clear still stands.
+- The cardboard crunch sound plays at most every 140 ms, so a stack of hundreds of boxes is a crunch, not a roar.
+
 ## v17.615 — Weeval Knievel: boxes that fly
 - The cardboard boxes have proper physics now: the car throws what it touches up and out, boxes crash into each other and knock the rest over, the stack above a hit box comes down, and they crumple as they go.
 - The stack is half as far from the target as it was (it now stands on the landing ramp, not at the far end of the run-out).

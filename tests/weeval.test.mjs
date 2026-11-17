@@ -84,3 +84,17 @@ test('W and S tip the car in mid-air (Weeval Knievel only), and the code says so
   const noseDown = run('throttle'), noseUp = run('brake');
   assert.notEqual(noseDown.car.az.y.toFixed(2), noseUp.car.az.y.toFixed(2));
 });
+
+test('go again after a clear costs a try, keeps the better jump, and a failed go-again leaves the first clear standing', () => {
+  const run = newRun(); run.stage = 2;
+  const w = new Weeval(new Track(weevalDef(2)), run);
+  w.state = 'clear'; w.last = { points: 1000, stage: 2, done: false }; run.total = 1000; run.scores = [1000];
+  assert.ok(w.goAgain()); assert.equal(run.tries, WEEVAL.tries - 1);
+  w.state = 'landed'; w.land = { x: 0, z: 0, ring: 1, d: 3, points: 600, tilt: 0, flat: true }; w.sinceLand = 0;
+  w._judge({ ay: { y: 1 } }, null, false);                        // 600 + 200 + 100 = 900: worse than the first jump
+  assert.equal(run.total, 1000); assert.equal(w.state, 'clear');
+  w.state = 'clear'; assert.ok(w.goAgain());                      // second go-again, then it goes wrong
+  w.state = 'run'; w.wreck();
+  assert.equal(w.state, 'clear'); assert.equal(run.total, 1000); assert.equal(run.tries, WEEVAL.tries - 2);
+  assert.ok(!w.goAgain(), 'the last try cannot be spent on a go-again');
+});

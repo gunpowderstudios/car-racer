@@ -18,7 +18,7 @@ export const WEEVAL = {
   zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
   width: 18,                         // the road is this wide
   bus: { w: 2.6, len: 9, h: 4.7, flip: false }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
-  top: 60,                           // the start platform's height on stage 1
+  top: 80,                           // the start platform's height on stage 1
   lipY: 20,                          // the takeoff lip's height on stage 1
   lowY: 6,                           // the landing ramp's low end and the run-out: this height whatever the stage
   lipKick: 25, lipRise: 2.6,         // the takeoff kicker: its angle (degrees) and height
@@ -26,7 +26,7 @@ export const WEEVAL = {
   rings: [2.4, 4.8, 7, 9],         // the painted bullseye's ring radii (m), centre outwards
   points: [1000, 600, 300, 150], ramp_pts: 50,    // what each ring is worth (and landing anywhere else on the ramp)
   flatBonus: 200, cleanBonus: 100,   // a level touchdown, and no damage at all
-  aim: [36.5, 43.8, 50.3, 53, 57, 60, 62, 64, 66, 68],      // (stages 1-3 measured, 4-5 rough, 6 and up need more than the car's top speed without boost) the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
+  aim: [36.5, 42.8, 49.5, 53, 57, 60, 62, 64, 66, 68],      // (stages 1-3 measured, 4-5 rough, 6 and up need more than the car's top speed without boost) the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
   flatDeg: 12,                       // "level" = the car within this many degrees of the ramp's slope
 };
 
@@ -93,6 +93,10 @@ export class Weeval {
 
   _fail(why) {
     if (!this.active) return;
+    if (this.run.prev) {                                       // a go-again that went wrong: the clear you already had stands (the try is spent)
+      const p = this.run.prev; this.run.prev = null; this.state = 'clear'; this.last = p.last; if (p.last.done) this.run.over = true;
+      this.events.push({ type: 'clear', ...p.last, kept: true }); return;
+    }
     this.state = 'failed'; this.run.tries--;
     this.last = { fail: why, tries: this.run.tries };
     if (this.run.tries <= 0) { this.run.over = true; this.state = 'over'; }
@@ -148,15 +152,25 @@ export class Weeval {
     if (health && (health.wrecked || health.worst <= 0)) { this._fail('wrecked'); return; }
     const clean = !health || health.worst >= 0.9, flat = l.flat;
     const pts = l.points + (flat ? WEEVAL.flatBonus : 0) + (clean ? WEEVAL.cleanBonus : 0);
-    this.state = 'clear'; this.run.total += pts; this.run.scores.push(pts);
+    const prev = this.run.prev; this.run.prev = null;           // (after a go-again only the better of the two jumps counts)
+    const kept = prev ? Math.max(pts, prev.last.points) : pts;
+    this.state = 'clear'; this.run.total += prev ? kept - prev.last.points : pts;
+    if (prev) this.run.scores[this.run.scores.length - 1] = kept; else this.run.scores.push(pts);
     const done = this.run.stage >= WEEVAL.stages;
-    this.last = { points: pts, ring: l.ring, d: l.d, flat, clean, ringPoints: l.points, tilt: l.tilt, total: this.run.total, stage: this.run.stage, done, hitEnd };
+    this.last = { points: kept, attempt: pts, again: !!prev, ring: l.ring, d: l.d, flat, clean, ringPoints: l.points, tilt: l.tilt, total: this.run.total, stage: this.run.stage, done, hitEnd };
     this.events.push({ type: 'clear', ...this.last });
     if (done) this.run.over = true;
   }
 
   /** Carry on to the next stage (call after a 'clear'). Returns true if there is one. */
+  /** After a clear: have another go at the same stage for a better score. It costs one of the stage's tries; only the better jump counts, and failing leaves the first one standing. */
+  goAgain() {
+    if (this.state !== 'clear' || this.run.tries <= 1) return false;
+    this.run.tries--; this.run.prev = { last: this.last }; this.run.over = false; return true;
+  }
+
   advance() {
+    this.run.prev = null;
     if (this.run.over) return false;
     this.run.stage++; this.run.tries = WEEVAL.tries; return true;
   }

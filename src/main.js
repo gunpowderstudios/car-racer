@@ -515,6 +515,7 @@ function assaultEvents() {
 }
 
 // ------------------------------------------------------- Weeval Knievel (the bus jump, see weeval.js)
+let weevalBoxSnd = 0;                                     // (the cardboard crunch plays at most every 140 ms: hundreds of boxes would be a roar)
 let weevalCard = null;                                    // the last result card's contents (it comes back after a replay)
 const weevalStore = () => store.get('cr.weeval', {});
 /** A fresh attempt at this stage: the car back on the platform, repaired. `how`: 'first' (the lights), 'retry' (after a failed try) or 'reset' (put back before the jump, free). */
@@ -546,8 +547,8 @@ function weevalEvents() {
       store.set('cr.weeval', { best, stage });
       const lines = [e.ring >= 0 ? `${RING_WORDS[e.ring]} ${e.ringPoints} pts` : `On the ramp ${e.ringPoints} pts`, e.flat ? 'Level landing +' + WEEVAL.flatBonus : 'Bumpy landing - no bonus', e.clean ? 'No damage +' + WEEVAL.cleanBonus : 'Car damaged - no bonus', `Total ${e.total}` + (e.total >= best ? ' - best ever!' : ` - best ${best}`)];
       weevalCard = e.done
-        ? { title: 'Weeval Knievel complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
-        : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
+        ? { title: 'Weeval Knievel complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && weeval.state === 'clear' && mode === 'drive') showWeevalCardNow(); }, 1600);
     } else if (e.type === 'fail') {
       const why = { short: 'Too short - you landed in the buses!', wrecked: 'Wrecked!', flipped: 'You landed upside down!', reset: 'Reset' }[e.why] || 'Missed!';
@@ -1483,7 +1484,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
-  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); sound.clang?.(4, 0); } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);
