@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.610 — Deep Pan: dirt and an Overhead camera
+- The Deep Pan Pizza's sauce is a duller, browner red (it glared before) and the whole floor is dirty: soft mud blotches, tyre scuffs where the cars have been going round, a dustier edge towards the wall, and a fine grit
+- New Overhead camera in the open arenas (Deep Pan Pizza, Bed Pan): press C after the Helicopter view. It looks straight down on the arena with the same side always at the top of the screen, follows your car, and never looks out past the wall. A first version: tell me what to change (height, zoom, whether it should turn with the car)
+
 ## v17.609 — More sparks from a lost wheel
 - A car dragging a bare hub now throws sparks at walking pace too (they used to need about 9 mph, which a demolition derby car being shoved around rarely reaches), and a hub that is bouncing just off the road still sparks
 

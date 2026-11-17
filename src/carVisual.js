@@ -567,10 +567,12 @@ export class ChaseCamera {
     this.boosting = false; this.kick = 0;
     this.low = false;                            // set for tracks with roads stacked above each other (The Twister): the camera is kept out from behind the road above
     this.bonnet = null;                          // where the bonnet camera goes on this vehicle (CarVisual.bonnetCam); null = this vehicle has no bonnet camera
+    this.arena = null;                           // set (arenaInfo) in the open arenas: they get the Overhead camera too
+    this._ov = new THREE.Vector3(); this._ovReady = false;
     this.towLen = 0; this._tow = 0;              // metres of caravan behind the car: the camera drops back and up so it can see over it
     this._q = Track.newQuery(); this._f = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
-  cycle() { this.mode = (this.mode + 1) % 5; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter'][this.mode]; }
+  cycle() { this.mode = (this.mode + 1) % 5; this.ready = false; return ['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter', 'Overhead'][this.mode]; }
   snap() { this.ready = false; }
   impact(mag) { this.shake = Math.min(1, this.shake + mag * 0.05); }
 
@@ -580,7 +582,23 @@ export class ChaseCamera {
     const heading = Math.atan2(f.x, f.z);
     this.kick += ((this.boosting ? 1 : 0) - this.kick) * Math.min(1, (this.boosting ? 5 : 2.5) * dt);
     if (this.mode === 3 && !this.bonnet) { this.mode = 0; this.ready = false; }        // (a vehicle with no bonnet: back to the chase view)
+    if (this.mode === 5 && !this.arena) { this.mode = 0; this.ready = false; }                // (no arena here: back to the chase view)
+    if (this.mode !== 5 && this.cam.up.y !== 1) this.cam.up.set(0, 1, 0);
     const near = this.mode === 3 ? 0.12 : 0.3;
+    if (this.mode === 5) {                                                                       // Overhead: straight down, north (-z) at the top of the screen, following the car but never looking past the wall
+      const A = this.arena, R = Math.max(A.ax, A.az), H = 66 + Math.min(speed * 0.35, 14);
+      if (!this._ovReady || !this.ready) { this._ov.set(p.x, p.y, p.z); this._ovReady = true; this.ready = true; }
+      const lim = Math.max(0, R - 30), dx = p.x - A.cx, dz = p.z - A.cz, d = Math.hypot(dx, dz), s = d > lim ? lim / d : 1;
+      const k = 1 - Math.exp(-3.2 * dt);
+      this._ov.x += (A.cx + dx * s - this._ov.x) * k; this._ov.z += (A.cz + dz * s - this._ov.z) * k; this._ov.y += (p.y - this._ov.y) * k;
+      this.shake = Math.max(this.shake * Math.exp(-6 * dt), 0);
+      this.cam.up.set(0, 0, -1);
+      this.cam.position.set(this._ov.x, this._ov.y + H, this._ov.z);
+      this.cam.lookAt(this._ov.x, this._ov.y, this._ov.z);
+      this.cam.fov += (52 - this.cam.fov) * Math.min(1, 5 * dt);
+      this.cam.updateProjectionMatrix();
+      return;
+    }
     if (this.cam.near !== near) { this.cam.near = near; this.cam.updateProjectionMatrix(); }
     if (this.mode === 2) {
       const off = this._v.set(0, 0.5, 2.6).applyQuaternion(quat);

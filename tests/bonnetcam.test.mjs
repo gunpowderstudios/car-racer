@@ -39,9 +39,9 @@ test('the camera cycle skips the bonnet view for a vehicle without one', async (
 test('the C key cycles Chase, High, Bonnet, Helicopter: the Bumper view is skipped for now, and so is the bonnet on a vehicle without one', async () => {
   const { readFileSync } = await import('node:fs');
   const choice = readFileSync(new URL('../src/cameraChoice.js', import.meta.url), 'utf8'), view = readFileSync(new URL('../src/carVisual.js', import.meta.url), 'utf8');
-  assert.match(choice, /\['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter'\]/);
-  assert.match(choice, /m = \(m \+ 1\) % 5/);
-  assert.match(choice, /while \(m === 2 \|\| \(m === 3 && !this\.bonnet\)\)/, 'the Bumper view (mode 2) is stepped over');
+  assert.match(choice, /\['Chase', 'High', 'Bumper', 'Bonnet', 'Helicopter', 'Overhead'\]/);
+  assert.match(choice, /m = \(m \+ 1\) % 6/);
+  assert.match(choice, /while \(m === 2 \|\| \(m === 3 && !this\.bonnet\) \|\| \(m === 5 && !this\.arena\)\)/, 'the Bumper view (mode 2) is stepped over, and the Overhead view only exists in an arena');
   assert.match(view, /const heli = this\.mode === 4/);
   assert.match(view, /h = heli \? 28/, 'the helicopter is about 28 m up');
   assert.match(view, /HELI_ZOOM = 1\.09/, 'zoomed in about 9%');

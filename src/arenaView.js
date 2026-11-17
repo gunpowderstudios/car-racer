@@ -9,6 +9,37 @@ const N = 96;              // points round the outline
 const SEG = 128;           // points round the floor
 const APRON_W = 2.4;
 
+/** Dirt on the pizza floor: soft brown mottling, tyre scuffs in the sauce, a darker dusty rim, then grit. Drawn once, into the same picture. */
+function dirtyFloor(c, SIZE, k, R, playR, cx, cz, rnd, px) {
+  for (let i = 0; i < 420; i++) {                                                              // soft mud-coloured blotches, bigger and fainter than the toppings
+    const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * playR * 1.02, [X, Z] = px(cx + Math.cos(a) * rr, cz + Math.sin(a) * rr), r = (3 + rnd() * 11) * k;
+    const g = c.createRadialGradient(X, Z, 0, X, Z, r), dark = rnd() < 0.7;
+    g.addColorStop(0, dark ? `rgba(52,34,22,${0.1 + rnd() * 0.16})` : `rgba(150,112,76,${0.07 + rnd() * 0.1})`); g.addColorStop(1, 'rgba(52,34,22,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(X, Z, r, 0, Math.PI * 2); c.fill();
+  }
+  c.lineCap = 'round';
+  for (let i = 0; i < 46; i++) {                                                               // tyre scuffs: long curved dark smears where the cars have been going round
+    const a0 = rnd() * Math.PI * 2, span = 0.25 + rnd() * 0.9, rr = playR * (0.2 + rnd() * 0.72), w = (0.5 + rnd() * 0.7) * k;
+    c.strokeStyle = `rgba(30,20,14,${0.1 + rnd() * 0.16})`; c.lineWidth = w; c.beginPath();
+    for (let s = 0; s <= 14; s++) { const th = a0 + span * s / 14, q = rr + Math.sin(s * 0.9 + i) * 0.8, [X, Z] = px(cx + Math.cos(th) * q, cz + Math.sin(th) * q); s ? c.lineTo(X, Z) : c.moveTo(X, Z); }
+    c.stroke();
+  }
+  const [X0, Z0] = px(cx, cz), rim = c.createRadialGradient(X0, Z0, playR * 0.72 * k, X0, Z0, R * k);          // a dustier, darker edge towards the wall
+  rim.addColorStop(0, 'rgba(60,40,26,0)'); rim.addColorStop(1, 'rgba(60,40,26,0.34)');
+  c.fillStyle = rim; c.fillRect(0, 0, SIZE, SIZE);
+}
+
+/** A fine grit: every pixel nudged a little lighter or darker (and slightly warmer), so the flat paint reads as dirt up close. */
+function dust(c, SIZE) {
+  const img = c.getImageData(0, 0, SIZE, SIZE), d = img.data;
+  let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (r() - 0.5) * 18, w = (r() - 0.5) * 6;
+    d[i] = Math.max(0, Math.min(255, d[i] + n + w)); d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + n)); d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + n - w));
+  }
+  c.putImageData(img, 0, 0);
+}
+
 export function buildArena(track, aniso = 8) {
   const A = arenaInfo(track), g = new THREE.Group(), y0 = A.y;
   const cache = new Map();
@@ -44,10 +75,11 @@ export function buildArena(track, aniso = 8) {
   const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
   const c = cv.getContext('2d'), disc = (x, z, r, fill) => { c.fillStyle = fill; c.beginPath(); c.arc((x - cx + R) * k, (z - cz + R) * k, r * k, 0, Math.PI * 2); c.fill(); };
   // painted like the cartoon pizza: flat tan dough, wobbly-edged red sauce with a few red splashes on the crust, olives with a shine, cheese with shine marks and a pale patch
+  const SAUCE = '#6a2c27';                                                                      // (a duller, browner red than before: the old #7f2424 glared)
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const px = (x, z) => [(x - cx + R) * k, (z - cz + R) * k];
   c.fillStyle = '#d5b97f'; c.fillRect(0, 0, SIZE, SIZE);                                      // dough
-  c.fillStyle = '#7f2424'; c.beginPath();                                                      // sauce: the edge wanders in and out, never closer in than 0.8 of the way out (the lumps stay on it)
+  c.fillStyle = SAUCE; c.beginPath();                                                      // sauce: the edge wanders in and out, never closer in than 0.8 of the way out (the lumps stay on it)
   for (let i = 0; i <= 180; i++) {
     const th = i / 180 * Math.PI * 2, rr = playR * (0.87 + 0.03 * Math.sin(3 * th + 1) + 0.025 * Math.sin(5 * th + 2) + 0.015 * Math.sin(8 * th)), [X, Z] = px(cx + Math.cos(th) * rr, cz + Math.sin(th) * rr);
     i ? c.lineTo(X, Z) : c.moveTo(X, Z);
@@ -57,6 +89,7 @@ export function buildArena(track, aniso = 8) {
     const th = rnd() * Math.PI * 2, rr = playR * (0.9 + rnd() * 0.07), sz = (0.9 + rnd() * 1.8) * k, [X, Z] = px(cx + Math.cos(th) * rr, cz + Math.sin(th) * rr);
     c.beginPath(); c.ellipse(X, Z, sz * 1.3, sz, rnd() * Math.PI, 0, Math.PI * 2); c.fill();
   }
+  dirtyFloor(c, SIZE, k, R, playR, cx, cz, rnd, px);                                         // dirt: mottling, scuffs, grit
   for (const b of bumps) {
     const [X, Z] = px(b.x, b.z), r = b.r * k;
     const halo = c.createRadialGradient(X, Z, r * 0.8, X, Z, r * 1.35);                        // a soft shadow in the sauce round every olive and dip, so the ground looks like it rises and falls
@@ -77,6 +110,7 @@ export function buildArena(track, aniso = 8) {
       c.beginPath(); c.arc(X, Z, r * 0.82, -Math.PI * 0.42, -Math.PI * 0.1); c.stroke();
     }
   }
+  dust(c, SIZE);                                                                               // a last fine grit over everything, toppings too
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = aniso; tex.generateMipmaps = true;
   const RINGS = 56, pos = [0, y0, 0], uv = [0.5, 0.5], idx = [], tmp = { h: 0, gx: 0, gz: 0 };
   for (let ri = 1; ri <= RINGS; ri++) for (let j = 0; j < SEG; j++) {

@@ -384,7 +384,7 @@ function loadTrack(newDef) {
   demoDay = !!newDef?.demoDay;
   def = normalizeTrack(newDef);
   track = new Track(def); window.__raceLaps?.syncFor?.(def);
-  chase.low = !!def.lowCam;      // (see pickStartCamera)
+  chase.low = !!def.lowCam; chase.arena = def.mode === 'lastStanding' ? arenaInfo(track) : null;      // (see pickStartCamera)
   stage.setTrack(track);
   assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
   document.body.classList.toggle('course', !!assault);
@@ -1457,6 +1457,7 @@ function selfDestruct() {
 function togglePause() { if (mode === 'drive' && !net) setPaused(!paused); }
 function setMode(m) {
   setPaused(false);
+  if (m !== 'drive') camera.up.set(0, 1, 0);                                                  // (the Overhead camera turns the camera's up round)
   if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); sound.radioLoop(false); }
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + (assault ? ' course' : '') + (getaway ? ' getaway' : '');
@@ -1475,6 +1476,7 @@ function showMenu() {
 }
 // Every game starts on the normal Chase camera on a computer (C still cycles as usual); a touch screen (phone or tablet), the bus and the motorhome start on the High camera.
 function pickStartCamera() {
+  chase.arena = track.def.mode === 'lastStanding' ? arenaInfo(track) : null;               // the open arenas also have the Overhead camera
   chase.low = !!track.def.lowCam;                 // The Twister (roads stacked above each other): the normal cameras, kept out from behind the road above
   const phone = matchMedia('(pointer: coarse)').matches;
   const big = ['bus', 'motor-home'].includes(selectedVehicle().id);           // the bus and the motorhome are so big that they start on the High camera
