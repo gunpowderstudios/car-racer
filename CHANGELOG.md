@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.615 — Weeval Knievel: boxes that fly
+- The cardboard boxes have proper physics now: the car throws what it touches up and out, boxes crash into each other and knock the rest over, the stack above a hit box comes down, and they crumple as they go.
+- The stack is half as far from the target as it was (it now stands on the landing ramp, not at the far end of the run-out).
+- The bus platform is 40% taller, so the buses are well up in the jump's path. (Falling more than 6 m below the lip before the far side now counts as a miss.)
+
 ## v17.614 — Weeval Knievel: real buses in the way
 - The parked buses are now the Rootmaster double-decker from the main game (the plain boxes stay as a fallback if the model cannot load), nose to the left looking down the ramp.
 - They are raised so their roofs are level with the takeoff lip: they sit right in your flight path, so a low jump crashes into them (a try is lost if you drop into them).

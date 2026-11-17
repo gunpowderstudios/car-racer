@@ -12,6 +12,7 @@ export const WEEVAL = {
   stages: 10, tries: 3,
   showBuses: true,                   // the row of parked buses in the gap (one more each stage)
   runStep: 10, riseStep: 5,          // each stage the long ramp is this much longer and the whole thing this much higher
+  deckRaise: 1.4,                    // ... and then the whole platform is this much taller (so the buses are right in the way of the jump)
   deckBelow: 4,                      // the buses stand on a platform this far below the takeoff lip: their roofs are about level with it, so a low jump hits them
   gapStart: 70, gapStep: 30,         // the gap (m, lip to lip) on stage 1, and how much longer it gets each stage
   zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
@@ -36,13 +37,13 @@ export function stageLayout(n) {
   const W = WEEVAL, stage = Math.max(1, Math.min(W.stages, Math.round(n) || 1));
   const buses = stage + 2, gap = W.gapStart + (stage - 1) * W.gapStep;          // stage 1: a 70 m gap, 30 m longer each stage
   const k = stage - 1, lipX = LIP_X + k * W.runStep, lipY = W.lipY + k * W.riseStep, top = W.top + k * W.riseStep, landLen = W.landLen + k * W.landStep;
-  const cx = lipX + gap / 2, gapEnd = lipX + gap, deckTop = lipY - W.deckBelow;
+  const cx = lipX + gap / 2, gapEnd = lipX + gap, deckTop = (lipY - W.deckBelow) * W.deckRaise;
   const zoneDist = W.zoneStart + (stage - 1) * W.zoneStep;                              // the bullseye's centre, past the far lip
   const zoneX = gapEnd + zoneDist;
   const busList = [], bx0 = cx - buses * W.bus.w / 2;
   for (let i = 0; i < (W.showBuses ? buses : 0); i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i, y: deckTop });
-  const landEnd = gapEnd + landLen, endX = landEnd + W.runOut;
-  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
+  const landEnd = gapEnd + landLen, endX = landEnd + W.runOut, stackX = zoneX + (endX - 10.6 - zoneX) * 0.5;      // the cardboard stack: half way from where it was to the target
+  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, stackX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
 }
 
 /** The track definition for stage n. A straight run with a jump in it; the loop closes by a hairpin and a return road that nobody drives. */
@@ -122,7 +123,7 @@ export class Weeval {
       this.slow = car.speed < 3 ? this.slow + dt : 0;
       if (this.slow > 1.2 && x >= L.gapEnd - 2) { this.state = 'landed'; this._touch(car, health); return; }      // (down on the ramp but wheels-up: it counts as landed, and then as flipped)
       if (this.air > 14) { this._fail('short'); return; }
-      if (car.pos.y < L.deckTop + 3 && x > L.lipX + 2 && x < L.gapEnd + 1) this._fail('short');
+      if (car.pos.y < L.lipY - 6 && x > L.lipX + 2 && x < L.gapEnd + 1) this._fail('short');
       else if (car.pos.y < GROUND_Y - 5) this._fail('short');
       return;
     }

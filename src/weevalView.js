@@ -152,13 +152,21 @@ export class WeevalView {
     }
   }
 
-  /** A big stack of cardboard boxes at the end of the run-out, tallest at the back. Drive into it and they fly (and crumple). Simple physics: each box is a little rigid lump. */
+  /** The ground under the stack: the landing ramp slopes, so a box's floor is a plane along it. */
+  _floor(x) { return Math.max(this.L.low, this.gy0 + this.gsl * (x - this.gx0)); }
+  _boxHome(b, d, c, k) {
+    const S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S);
+    b.x = this.L.stackX + (d - 3.5) * S; b.z = (c - (cols - 1) / 2) * S; b.y = this._floor(b.x) + b.sz / 2 + k * S;
+    b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
+  }
+  /** A big stack of cardboard boxes down the landing ramp, tallest at the back. Drive into it and they fly, tumble, knock each other about and crumple. */
   _boxes() {
-    const L = this.L, W = WEEVAL.width, gy = this.track.query(L.endX - 12, L.lipY, 0, undefined, 40).y, S = 1.15, cols = Math.floor((W - 1) / S), depth = 8, top = 5;
-    this.gy = gy; this.boxes = [];
+    const L = this.L, W = WEEVAL.width, S = 1.15, cols = Math.floor((W - 1) / S), depth = 8, top = 5, t = this.track;
+    this.gx0 = L.stackX; this.gy0 = t.query(L.stackX, L.lipY, 0, undefined, 60).y; this.gsl = (t.query(L.stackX + 6, L.lipY, 0, undefined, 60).y - t.query(L.stackX - 6, L.lipY, 0, undefined, 60).y) / 12;
+    this.boxes = [];
     for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) {
-      const sz = S * (0.88 + ((d * 7 + c * 13 + k * 5) % 10) * 0.012);
-      this.boxes.push({ x: L.endX - 6 - (depth - d) * S, y: gy + sz / 2 + k * S, z: (c - (cols - 1) / 2) * S, sz, vx: 0, vy: 0, vz: 0, rx: 0, ry: ((d * 3 + c) % 7) * 0.02, rz: 0, wx: 0, wy: 0, wz: 0, awake: false, hit: false, crush: 1, col: d * cols + c, layer: k, hx: 0, hy: 0, hz: 0 });
+      const sz = S * (0.88 + ((d * 7 + c * 13 + k * 5) % 10) * 0.012), b = { sz, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, wx: 0, wy: 0, wz: 0, awake: false, hit: false, crush: 1, col: d * cols + c, layer: k };
+      this._boxHome(b, d, c, k); this.boxes.push(b);
     }
     const tex = canvasTex(128, 128, (g, w, h) => {
       g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 18, 2); }
@@ -176,39 +184,53 @@ export class WeevalView {
   /** Put the stack back as it was (a new try). */
   reset() {
     if (!this.boxes) return;
-    const L = this.L, S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S), depth = 8;
+    const S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S), depth = 8;
     let n = 0;
-    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(5, d + 1); k++) {
-      const b = this.boxes[n++]; b.x = L.endX - 6 - (depth - d) * S; b.y = this.gy + b.sz / 2 + k * S; b.z = (c - (cols - 1) / 2) * S;
-      b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
-    }
+    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(5, d + 1); k++) this._boxHome(this.boxes[n++], d, c, k);
     this._boxAll = true; this._syncBoxes();
   }
   _stepBoxes(dt, car) {
     let hits = 0, moved = false;
-    const gy = this.gy;
-    if (car && Math.abs(car.pos.x - this.L.endX) < 40) {
+    const B = this.boxes;
+    if (car && Math.abs(car.pos.x - this.L.stackX) < 40) {                        // the car ploughs in: whatever it touches is thrown up and out, hard
       const ax = car.ax, ay = car.ay, az = car.az;
-      for (const b of this.boxes) {
+      for (const b of B) {
         const dx = b.x - car.pos.x, dy = b.y - car.pos.y, dz = b.z - car.pos.z;
         if (dx * dx + dz * dz > 30) continue;
         const lx = dx * ax.x + dy * ax.y + dz * ax.z, ly = dx * ay.x + dy * ay.y + dz * ay.z, lz = dx * az.x + dy * az.y + dz * az.z, h = b.sz / 2;
         if (Math.abs(lx) < 0.95 + h && Math.abs(lz) < 2.3 + h && ly > -0.5 - h && ly < 0.9 + h) {
           if (!b.hit) { b.hit = true; hits++; }
-          const sp = Math.max(4, car.speed * 0.9), side = Math.sign(lx) || (Math.random() - 0.5);
-          b.vx = car.vel.x * 0.9 + ax.x * side * 2; b.vz = car.vel.z * 0.9 + ax.z * side * 2; b.vy = 2 + Math.random() * 3 + sp * 0.12;
-          b.wx = (Math.random() - 0.5) * 8; b.wz = (Math.random() - 0.5) * 8; b.wy = (Math.random() - 0.5) * 6; b.awake = true; b.crush = Math.max(0.45, b.crush * 0.8);
-          for (const o of this.boxes) if (!o.awake && o.col === b.col && o.layer > b.layer) o.awake = true;          // whatever was stacked on it comes down
+          const sp = Math.max(6, car.speed), side = Math.sign(lx) || (Math.random() - 0.5), r = Math.random();
+          b.vx = car.vel.x * (1.0 + r * 0.35) + ax.x * side * (2 + r * 4); b.vz = car.vel.z * (1.0 + r * 0.35) + ax.z * side * (2 + r * 4);
+          b.vy = 4 + r * 5 + sp * (0.22 + 0.2 * Math.random()) + Math.max(0, ly) * 3;
+          b.wx = (Math.random() - 0.5) * 16; b.wz = (Math.random() - 0.5) * 16; b.wy = (Math.random() - 0.5) * 10; b.awake = true; b.crush = Math.max(0.45, b.crush * 0.82);
+          for (const o of B) if (!o.awake && o.col === b.col && o.layer > b.layer) o.awake = true;          // whatever was stacked on it comes down
         }
       }
     }
-    for (const b of this.boxes) {
+    const awake = B.filter((b) => b.awake);
+    for (const b of awake) {                                                       // boxes bang into each other: a moving box shoves whatever it touches
+      for (const o of B) {
+        if (o === b) continue;
+        const dx = o.x - b.x, dy = o.y - b.y, dz = o.z - b.z, r = (b.sz + o.sz) * 0.5 * 0.92;
+        if (dx > r || dx < -r || dz > r || dz < -r || dy > r || dy < -r) continue;
+        const d2 = dx * dx + dy * dy + dz * dz; if (d2 >= r * r || d2 < 1e-6) continue;
+        const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, nz = dz / d, rv = (b.vx - o.vx) * nx + (b.vy - o.vy) * ny + (b.vz - o.vz) * nz;
+        if (rv <= 0 && o.awake) continue;
+        const j = Math.max(rv, 0.5) * 0.55;
+        b.vx -= nx * j; b.vy -= ny * j * 0.5; b.vz -= nz * j; o.vx += nx * j * 1.1; o.vy += Math.abs(ny * j) * 0.5 + 0.3; o.vz += nz * j * 1.1;
+        o.wx += (Math.random() - 0.5) * 6; o.wz += (Math.random() - 0.5) * 6; o.awake = true; o.crush = Math.max(0.6, o.crush * 0.93);
+        const push = (r - d) * 0.5; o.x += nx * push; o.y += ny * push * 0.3; o.z += nz * push; b.x -= nx * push; b.z -= nz * push;
+        if (!o.hit) { o.hit = true; hits += 0.25; }
+      }
+    }
+    for (const b of B) {
       if (!b.awake) continue;
       moved = true;
       b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
-      const floor = gy + b.sz * b.crush / 2;
-      if (b.y <= floor) { b.y = floor; if (b.vy < -1.2) b.vy = -b.vy * 0.25; else b.vy = 0; b.vx *= 0.9; b.vz *= 0.9; b.wx *= 0.7; b.wy *= 0.7; b.wz *= 0.7; b.rx *= 0.85; b.rz *= 0.85; }
-      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.15) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
+      const floor = this._floor(b.x) + b.sz * b.crush / 2;
+      if (b.y <= floor) { b.y = floor; if (b.vy < -1.5) b.vy = -b.vy * 0.3; else b.vy = 0; b.vx *= 0.88; b.vz *= 0.88; b.wx *= 0.7; b.wy *= 0.7; b.wz *= 0.7; b.rx *= 0.85; b.rz *= 0.85; }
+      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.2) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
     }
     if (moved || hits) this._syncBoxes();
     return hits;
