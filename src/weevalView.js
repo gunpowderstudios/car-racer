@@ -1,11 +1,11 @@
-// What Weeval Keneval looks like: the row of parked buses, the painted bullseye on the landing ramp, the barrier at the end of the run-out,
+// What Weeval Knievel looks like: the row of parked buses, the painted bullseye on the landing ramp, the barrier at the end of the run-out,
 // the concrete under the jump, pylons holding the long ramp up and the signs. The solid parts (buses, barrier) are the boxes weeval.js puts in the
 // track's `blocks`, so what you see is what you hit.
 import * as THREE from 'three';
 import { Track, GROUND_Y } from './track.js';
 import { WEEVAL, stageLayout } from './weeval.js';
 
-const BUS_COLOURS = [0xc0281f, 0xf2b400, 0xe8e6df, 0x2d6cdf, 0x2f9a56, 0xc0281f];
+const BUS_COLOURS = [0xc0281f, 0xc0281f, 0xc0281f, 0xb5241b, 0xc0281f, 0xc0281f, 0xd0402a, 0xc0281f];      // London red, mostly
 
 function canvasTex(w, h, draw) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
@@ -42,7 +42,8 @@ export class WeevalView {
     const m = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0.1, ...o });
     this.mat = { concrete: m(0x9b9a93, { roughness: 0.95 }), dark: m(0x1d1d24), glass: m(0x20303c, { roughness: 0.25, metalness: 0.4 }), tyre: m(0x151515, { roughness: 0.9 }),
       white: m(0xf0efe8), red: m(0xc0281f), yellow: m(0xffc21a), steel: m(0xc9ccd2, { metalness: 0.6, roughness: 0.4 }) };
-    this._pylons(); this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._signs();
+    this.t = 0; this.flare = 0;
+    this._pylons(); this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._boxes(); this._flames(); this._signs();
   }
 
   _box(mat, w, h, d, x, y, z, parent = this.group, cast = true) {
@@ -65,23 +66,34 @@ export class WeevalView {
 
   /** Blocks of concrete under both lips of the gap, so the road does not hang in the air. */
   _abutments() {
-    const L = this.L, W = WEEVAL.width, top = (x) => this.track.query(x, WEEVAL.lipY + 6, 0, undefined, 6).y - 0.7;
+    const L = this.L, W = WEEVAL.width, top = (x) => this.track.query(x, L.lipY + 6, 0, undefined, 6).y - 0.7;
     for (const [x0, x1] of [[L.lipX - 14, L.lipX - 0.4], [L.gapEnd + 0.4, L.gapEnd + 9]]) {
       const y = top((x0 + x1) / 2), h = Math.max(1, y - GROUND_Y);
       this._box(this.mat.concrete, x1 - x0, h, W, (x0 + x1) / 2, GROUND_Y + h / 2, 0);
     }
   }
 
+  /** The row of double-deckers on their platform, side-on to the ramp and all facing the same way (left, looking down the ramp). */
   _buses() {
-    const B = WEEVAL.bus, g = new THREE.Group(); this.group.add(g);
-    const bodyG = new THREE.BoxGeometry(B.w * 0.94, 2.35, B.len), winG = new THREE.BoxGeometry(B.w * 0.94 + 0.06, 0.8, B.len - 1.4), roofG = new THREE.BoxGeometry(B.w * 0.8, 0.14, B.len - 0.6);
-    const whG = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14); whG.rotateZ(Math.PI / 2);
-    for (const b of this.L.busList) {
-      const cx = (b.x0 + b.x1) / 2, mat = new THREE.MeshStandardMaterial({ color: BUS_COLOURS[b.i % BUS_COLOURS.length], roughness: 0.55, metalness: 0.15 });
-      const body = new THREE.Mesh(bodyG, mat); body.position.set(cx, GROUND_Y + 0.5 + 1.175, 0); body.castShadow = true; body.receiveShadow = true; body.frustumCulled = false; g.add(body);
-      const win = new THREE.Mesh(winG, this.mat.glass); win.position.set(cx, GROUND_Y + 2.2, 0); win.frustumCulled = false; g.add(win);
-      const roof = new THREE.Mesh(roofG, this.mat.white); roof.position.set(cx, GROUND_Y + 3.2, 0); roof.frustumCulled = false; g.add(roof);
-      for (const sx of [-1, 1]) for (const z of [-3.4, 3.4]) { const w = new THREE.Mesh(whG, this.mat.tyre); w.position.set(cx + sx * (B.w * 0.47), GROUND_Y + 0.5, z); w.frustumCulled = false; g.add(w); }
+    const B = WEEVAL.bus, L = this.L, g = new THREE.Group(); this.group.add(g);
+    if (!L.busList.length) return;
+    const first = L.busList[0], last = L.busList[L.busList.length - 1], deck = L.deckTop, mid = (first.x0 + last.x1) / 2, span = last.x1 - first.x0 + 2;
+    this._box(this.mat.concrete, span, deck - GROUND_Y, B.len + 3, mid, GROUND_Y + (deck - GROUND_Y) / 2, 0, g);                 // the platform: a solid block up from the ground
+    this._box(this.mat.white, span + 0.4, 0.3, B.len + 3.4, mid, deck + 0.15, 0, g);                                            // its edge
+    const w = B.w * 0.94, bodyG = new THREE.BoxGeometry(w, B.h - 0.5, B.len), glassLo = new THREE.BoxGeometry(w + 0.06, 0.85, B.len - 1.6), glassHi = new THREE.BoxGeometry(w + 0.06, 0.85, B.len - 1.6);
+    const roofG = new THREE.BoxGeometry(w * 0.86, 0.14, B.len - 0.5), whG = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14); whG.rotateZ(Math.PI / 2);
+    const frontG = new THREE.PlaneGeometry(w * 0.9, 0.9), lampG = new THREE.CircleGeometry(0.17, 10), grilleG = new THREE.PlaneGeometry(w * 0.5, 0.5);
+    for (const b of L.busList) {
+      const cx = (b.x0 + b.x1) / 2, mat = new THREE.MeshStandardMaterial({ color: BUS_COLOURS[b.i % BUS_COLOURS.length], roughness: 0.55, metalness: 0.15 }), y0 = deck + 0.5;
+      const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = geo.type === 'BoxGeometry'; o.frustumCulled = false; g.add(o); return o; };
+      add(bodyG, mat, cx, y0 + (B.h - 0.5) / 2, 0);
+      add(glassLo, this.mat.glass, cx, y0 + 1.3, 0); add(glassHi, this.mat.glass, cx, y0 + 3.0, 0);                          // a row of windows downstairs and another up
+      add(roofG, this.mat.white, cx, y0 + B.h - 0.5 + 0.07, 0);
+      for (const sx of [-1, 1]) for (const z of [-3.2, 3.2]) add(whG, this.mat.tyre, cx + sx * (w / 2 - 0.05), deck + 0.5, z);
+      const zf = -B.len / 2 - 0.02;                                                                                               // the nose faces -z: windscreens, grille and lamps
+      add(frontG, this.mat.glass, cx, y0 + 1.5, zf, Math.PI); add(frontG, this.mat.glass, cx, y0 + 3.1, zf, Math.PI);
+      add(grilleG, this.mat.dark, cx, y0 + 0.4, zf, Math.PI);
+      for (const sx of [-1, 1]) add(lampG, this.mat.yellow, cx + sx * w * 0.36, y0 + 0.4, zf - 0.01, Math.PI);
     }
   }
 
@@ -90,7 +102,7 @@ export class WeevalView {
     const L = this.L, R = WEEVAL.rings[WEEVAL.rings.length - 1], n = 24, pos = [], uv = [], idx = [], q = Track.newQuery();
     for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
       const x = L.zoneX + (i / n - 0.5) * R * 2, z = L.zoneZ + (j / n - 0.5) * R * 2;
-      this.track.query(x, WEEVAL.lipY + 4, z, q, 6);
+      this.track.query(x, L.lipY + 4, z, q, 6);
       pos.push(x, (q.idx >= 0 ? q.y : GROUND_Y) + 0.07, z); uv.push(i / n, 1 - j / n);
     }
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const a = j * (n + 1) + i, b = a + 1, c = a + n + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
@@ -100,9 +112,100 @@ export class WeevalView {
     mesh.frustumCulled = false; mesh.renderOrder = 3; this.group.add(mesh); this.bullseye = mesh;
   }
 
+  /** Jets of flame on poles down both sides of the gap: a flicker most of the time, a great roar of fire while you are in the air. */
+  _flames() {
+    const L = this.L, W = WEEVAL.width, n = Math.max(2, Math.round(L.gap / 18) + 1), poleG = new THREE.BoxGeometry(0.45, 1, 0.45), burnG = new THREE.CylinderGeometry(0.7, 0.55, 0.5, 12);
+    this.jets = [];
+    for (const side of [-1, 1]) for (let i = 0; i < n; i++) {
+      const x = L.lipX + L.gap * (i / (n - 1)), z = side * (W / 2 + 4), h = L.lipY - GROUND_Y;
+      const pole = new THREE.Mesh(poleG, this.mat.steel); pole.scale.y = h; pole.position.set(x, GROUND_Y + h / 2, z); pole.frustumCulled = false; this.group.add(pole);
+      const burner = new THREE.Mesh(burnG, this.mat.dark); burner.position.set(x, L.lipY + 0.25, z); burner.frustumCulled = false; this.group.add(burner);
+      const flame = new THREE.Group(); flame.position.set(x, L.lipY + 0.4, z);
+      const layers = [[1.0, 0xff4a0a, 0.85], [0.68, 0xff9d1a, 0.9], [0.38, 0xffe27a, 0.95]].map(([k, c, o]) => {
+        const m = new THREE.Mesh(new THREE.ConeGeometry(1.05 * k, 1, 12, 1, true), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+        m.position.y = 0.5; m.frustumCulled = false; flame.add(m); return m;
+      });
+      this.group.add(flame); this.jets.push({ layers, ph: i * 1.7 + side });
+    }
+  }
+
+  /** A big stack of cardboard boxes at the end of the run-out, tallest at the back. Drive into it and they fly (and crumple). Simple physics: each box is a little rigid lump. */
+  _boxes() {
+    const L = this.L, W = WEEVAL.width, gy = this.track.query(L.endX - 12, L.lipY, 0, undefined, 40).y, S = 1.15, cols = Math.floor((W - 1) / S), depth = 8, top = 5;
+    this.gy = gy; this.boxes = [];
+    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) {
+      const sz = S * (0.88 + ((d * 7 + c * 13 + k * 5) % 10) * 0.012);
+      this.boxes.push({ x: L.endX - 6 - (depth - d) * S, y: gy + sz / 2 + k * S, z: (c - (cols - 1) / 2) * S, sz, vx: 0, vy: 0, vz: 0, rx: 0, ry: ((d * 3 + c) % 7) * 0.02, rz: 0, wx: 0, wy: 0, wz: 0, awake: false, hit: false, crush: 1, col: d * cols + c, layer: k, hx: 0, hy: 0, hz: 0 });
+    }
+    const tex = canvasTex(128, 128, (g, w, h) => {
+      g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 18, 2); }
+      g.fillStyle = '#d9c28f'; g.fillRect(0, h / 2 - 7, w, 14); g.strokeStyle = '#7a5a30'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+    });
+    this.boxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), this.boxes.length);
+    this.boxMesh.frustumCulled = false; this.boxMesh.castShadow = true; this.boxMesh.receiveShadow = true; this.group.add(this.boxMesh);
+    this._boxDummy = new THREE.Object3D(); this._boxAll = true; this._syncBoxes();
+  }
+  _syncBoxes() {
+    const D = this._boxDummy;
+    this.boxes.forEach((b, i) => { if (!this._boxAll && !b.awake) return; D.position.set(b.x, b.y, b.z); D.rotation.set(b.rx, b.ry, b.rz); D.scale.set(b.sz, b.sz * b.crush, b.sz); D.updateMatrix(); this.boxMesh.setMatrixAt(i, D.matrix); });
+    this.boxMesh.instanceMatrix.needsUpdate = true; this._boxAll = false;
+  }
+  /** Put the stack back as it was (a new try). */
+  reset() {
+    if (!this.boxes) return;
+    const L = this.L, S = 1.15, cols = Math.floor((WEEVAL.width - 1) / S), depth = 8;
+    let n = 0;
+    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(5, d + 1); k++) {
+      const b = this.boxes[n++]; b.x = L.endX - 6 - (depth - d) * S; b.y = this.gy + b.sz / 2 + k * S; b.z = (c - (cols - 1) / 2) * S;
+      b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
+    }
+    this._boxAll = true; this._syncBoxes();
+  }
+  _stepBoxes(dt, car) {
+    let hits = 0, moved = false;
+    const gy = this.gy;
+    if (car && Math.abs(car.pos.x - this.L.endX) < 40) {
+      const ax = car.ax, ay = car.ay, az = car.az;
+      for (const b of this.boxes) {
+        const dx = b.x - car.pos.x, dy = b.y - car.pos.y, dz = b.z - car.pos.z;
+        if (dx * dx + dz * dz > 30) continue;
+        const lx = dx * ax.x + dy * ax.y + dz * ax.z, ly = dx * ay.x + dy * ay.y + dz * ay.z, lz = dx * az.x + dy * az.y + dz * az.z, h = b.sz / 2;
+        if (Math.abs(lx) < 0.95 + h && Math.abs(lz) < 2.3 + h && ly > -0.5 - h && ly < 0.9 + h) {
+          if (!b.hit) { b.hit = true; hits++; }
+          const sp = Math.max(4, car.speed * 0.9), side = Math.sign(lx) || (Math.random() - 0.5);
+          b.vx = car.vel.x * 0.9 + ax.x * side * 2; b.vz = car.vel.z * 0.9 + ax.z * side * 2; b.vy = 2 + Math.random() * 3 + sp * 0.12;
+          b.wx = (Math.random() - 0.5) * 8; b.wz = (Math.random() - 0.5) * 8; b.wy = (Math.random() - 0.5) * 6; b.awake = true; b.crush = Math.max(0.45, b.crush * 0.8);
+          for (const o of this.boxes) if (!o.awake && o.col === b.col && o.layer > b.layer) o.awake = true;          // whatever was stacked on it comes down
+        }
+      }
+    }
+    for (const b of this.boxes) {
+      if (!b.awake) continue;
+      moved = true;
+      b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
+      const floor = gy + b.sz * b.crush / 2;
+      if (b.y <= floor) { b.y = floor; if (b.vy < -1.2) b.vy = -b.vy * 0.25; else b.vy = 0; b.vx *= 0.9; b.vz *= 0.9; b.wx *= 0.7; b.wy *= 0.7; b.wz *= 0.7; b.rx *= 0.85; b.rz *= 0.85; }
+      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.15) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
+    }
+    if (moved || hits) this._syncBoxes();
+    return hits;
+  }
+
+  /** Per frame: the flames flare while you are airborne, and the boxes fly. Returns how many boxes the car newly hit (the game slows the car for each). */
+  update(dt, w, car) {
+    this.t += dt;
+    const on = w && (w.state === 'air' || (w.state === 'landed' && w.sinceLand < 1.5));
+    this.flare += ((on ? 1 : 0) - this.flare) * Math.min(1, dt * (on ? 8 : 1.4));
+    for (const j of this.jets || []) {
+      const h = 1.1 + 0.35 * Math.sin(this.t * 14 + j.ph) + this.flare * (8 + 2.5 * Math.sin(this.t * 19 + j.ph * 2));
+      j.layers.forEach((m, i) => { m.scale.y = Math.max(0.2, h * (1 - i * 0.18)); m.scale.x = m.scale.z = (1 + this.flare * 0.5) * (0.9 + 0.1 * Math.sin(this.t * 25 + i * 2 + j.ph)); m.position.y = m.scale.y / 2; });
+    }
+    return this.boxes ? this._stepBoxes(Math.min(dt, 0.05), car) : 0;
+  }
+
   /** The concrete barrier and tyre stacks at the end of the run-out. */
   _barrier() {
-    const L = this.L, W = WEEVAL.width, y = this.track.query(L.endX - 6, WEEVAL.lipY, 0, undefined, 12).y;
+    const L = this.L, W = WEEVAL.width, y = this.track.query(L.endX - 6, L.lipY, 0, undefined, 12).y;
     const stripe = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#ffc21a'; g.fillRect(0, 0, w, h); g.fillStyle = '#1b1b1b'; for (let i = -2; i < 10; i++) { g.beginPath(); g.moveTo(i * 40, h); g.lineTo(i * 40 + 20, h); g.lineTo(i * 40 + 20 + h, 0); g.lineTo(i * 40 + h, 0); g.fill(); } });
     this._box(this.mat.concrete, 4, 3.6, W + 8, L.endX - 2, y + 1.8, 0);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(W + 8, 1.4), new THREE.MeshStandardMaterial({ map: stripe, roughness: 0.7 })); face.rotation.y = -Math.PI / 2; face.position.set(L.endX - 4.05, y + 2.6, 0); face.frustumCulled = false; this.group.add(face);
@@ -117,7 +220,7 @@ export class WeevalView {
   }
   _signs() {
     const L = this.L, t = this.track, W = WEEVAL.width, yAt = (x) => t.query(x, 70, 0, undefined, 12).y;
-    this._sign('WEEVAL KENEVAL', 'THE GREAT BUS JUMP', 4, -W / 2 - 9, WEEVAL.top, 1);
+    this._sign('WEEVAL KNIEVEL', 'THE GREAT BUS JUMP', 4, -W / 2 - 9, L.top, 1);
     this._sign(`STAGE ${L.stage}`, `${L.buses} BUSES`, L.lipX - 40, W / 2 + 9, yAt(L.lipX - 40), 1);
     this._sign('LAND HERE', 'CLOSER TO THE MIDDLE = MORE POINTS', L.gapEnd + 4, -W / 2 - 9, yAt(L.gapEnd + 4), 1);
   }

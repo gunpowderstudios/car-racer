@@ -114,6 +114,8 @@ export class Stage {
   }
 
   /** Apple Crumple: put every hazard where its clock says it is (`a` is the Assault run). */
+  /** Weeval Knievel: the flames flare in the air and the cardboard boxes fly. Returns the number of boxes the car just hit. */
+  updateWeeval(dt, w, car) { return this.weevalView ? this.weevalView.update(dt, w, car) : 0; }
   updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
   /** The Getaway: bags, rings and the safehouse (`game` is the GetawayGame). */
   setGetawayRoute(pts) { if (this.getawayView) this.getawayView.setRoute(pts); }
@@ -314,7 +316,7 @@ export class Stage {
 
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
-    if (track.def.weeval) this.weevalView = new WeevalView(track, g);          // Weeval Keneval: the buses, the bullseye and the barrier
+    if (track.def.weeval) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;

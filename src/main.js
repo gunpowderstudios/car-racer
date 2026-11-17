@@ -379,7 +379,7 @@ for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-bo
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
-let weeval = null, weevalRun = null;      // Weeval Keneval: the bus jump (weeval.js) - null on every other track; weevalRun is the whole ten-stage run, which outlives each stage's track
+let weeval = null, weevalRun = null;      // Weeval Knievel: the bus jump (weeval.js) - null on every other track; weevalRun is the whole ten-stage run, which outlives each stage's track
 let assault = null;     // Apple Crumple: the solo obstacle course (assault.js) - null on every other track
 let testDrive = false, pendingTest = false;      // Test Drive from the editor: just your own car on the track, no rivals (any other way of loading a track clears it)
 function loadTrack(newDef) {
@@ -514,7 +514,7 @@ function assaultEvents() {
   assault.events.length = 0;
 }
 
-// ------------------------------------------------------- Weeval Keneval (the bus jump, see weeval.js)
+// ------------------------------------------------------- Weeval Knievel (the bus jump, see weeval.js)
 let weevalCard = null;                                    // the last result card's contents (it comes back after a replay)
 const weevalStore = () => store.get('cr.weeval', {});
 /** A fresh attempt at this stage: the car back on the platform, repaired. `how`: 'first' (the lights), 'retry' (after a failed try) or 'reset' (put back before the jump, free). */
@@ -525,7 +525,7 @@ function weevalAttempt(how) {
   car.boostFuel = 1; race.reverseT = 0;
   derbyStart();
   derby.repairPlayer?.(); if (derby.player) derby._wheelsOn?.(derby.player); visual.restoreWheels?.(); visual.clearDents(); visual.setLook(1, 0); if (derby.player) hud.setDamage(derby.player.health);      // every try starts with a whole car: armour, wheels and all
-  weeval.reset(); frozen = true;
+  weeval.reset(); stage.weevalView?.reset(); frozen = true;
   const go = () => { if (weeval && weeval.state === 'ready') { frozen = false; weeval.go(); } };
   if (how === 'first') { hud.banner(`Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }
   else { hud.banner(how === 'retry' ? `Try again - ${weeval.tries} ${weeval.tries === 1 ? 'try' : 'tries'} left` : 'Back at the top', 1100); setTimeout(go, 900); }
@@ -546,7 +546,7 @@ function weevalEvents() {
       store.set('cr.weeval', { best, stage });
       const lines = [e.ring >= 0 ? `${RING_WORDS[e.ring]} ${e.ringPoints} pts` : `On the ramp ${e.ringPoints} pts`, e.flat ? 'Level landing +' + WEEVAL.flatBonus : 'Bumpy landing - no bonus', e.clean ? 'No damage +' + WEEVAL.cleanBonus : 'Car damaged - no bonus', `Total ${e.total}` + (e.total >= best ? ' - best ever!' : ` - best ${best}`)];
       weevalCard = e.done
-        ? { title: 'Weeval Keneval complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        ? { title: 'Weeval Knievel complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
         : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && weeval.state === 'clear' && mode === 'drive') showWeevalCardNow(); }, 1600);
     } else if (e.type === 'fail') {
@@ -1483,7 +1483,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props);
-  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); sound.clang?.(4, 0); } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);
@@ -1884,7 +1884,7 @@ function bindMenu() {
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; startDriving(d); };
-  $('btn-weeval').onclick = () => { weevalRun = newRun(); startDriving(weevalDef(1)); };      // Weeval Keneval: the bus jump, from stage 1
+  $('btn-weeval').onclick = () => { weevalRun = newRun(); startDriving(weevalDef(1)); };      // Weeval Knievel: the bus jump, from stage 1
   $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!

@@ -1,4 +1,4 @@
-// Weeval Keneval: the layout grows each stage, the aim speeds really land the bullseye, a landing scores by ring and a miss costs a try.
+// Weeval Knievel: the layout grows each stage, the aim speeds really land the bullseye, a landing scores by ring and a miss costs a try.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -26,6 +26,8 @@ test('every stage adds a bus and a longer gap, and the bullseye moves out', () =
     const L = stageLayout(n);
     assert.equal(L.buses, n + 2);
     assert.equal(L.busList.length, WEEVAL.showBuses ? n + 2 : 0);
+    if (prev) { assert.equal(L.lipY - prev.lipY, WEEVAL.riseStep); assert.equal(L.lipX - prev.lipX, WEEVAL.runStep); }
+    if (L.busList.length) assert.ok(L.busList[0].x0 > L.lipX && L.busList[L.busList.length - 1].x1 < L.gapEnd, 'the buses fit in the gap');
     if (prev) { assert.ok(L.gap > prev.gap, 'gap grows'); assert.ok(L.zoneX > prev.zoneX, 'zone moves out'); }
     prev = L;
   }
@@ -39,6 +41,7 @@ test('the track builds for every stage: a gap, solid buses and a barrier', () =>
     assert.equal(t.def.weeval.stage, n);
     assert.equal(t.blocks.filter((b) => b.kind === 'bus').length, WEEVAL.showBuses ? n + 2 : 0);
     assert.ok(t.blocks.some((b) => b.kind === 'wall'));
+    if (WEEVAL.showBuses) for (const b of t.blocks.filter((k) => k.kind === 'bus')) assert.ok(b.y < t.def.handles[0].y, 'buses stand on a platform below the lip');
     assert.ok(t.gap.some((g) => g), 'there is a gap');
   }
 });
@@ -74,7 +77,7 @@ test('advancing resets the tries and moves to the next stage', () => {
   run.tries = 1; assert.ok(w.advance()); assert.equal(run.stage, 2); assert.equal(run.tries, WEEVAL.tries);
 });
 
-test('W and S tip the car in mid-air (Weeval Keneval only), and the code says so', () => {
+test('W and S tip the car in mid-air (Weeval Knievel only), and the code says so', () => {
   const src = readFileSync(new URL('../src/vehicle.js', import.meta.url), 'utf8');
   assert.match(src, /def\.weeval && this\.airTime > 0\.1/);
   const run = (key) => fly(5, WEEVAL.aim[4], newRun(), (car) => (!car.onGround && car.airTime > 0.1 ? { [key]: 1 } : {}));

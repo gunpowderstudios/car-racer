@@ -1,4 +1,4 @@
-// Weeval Keneval's on-screen bits: the stage and tries panel, the speed-to-aim read-out, the big touchdown pop-up and the result card.
+// Weeval Knievel's on-screen bits: the stage and tries panel, the speed-to-aim read-out, the big touchdown pop-up and the result card.
 // Plain DOM, built once inside #hud the first time it is needed (the same way assaultHud.js does it).
 import { WEEVAL } from './weeval.js';
 
@@ -18,6 +18,8 @@ function ensure() {
 #weeval-hud .wk-tries i.gone{background:#4b3d7a}
 #weeval-hud .wk-aim{background:#1b1230cc;border-radius:8px;padding:0 10px}
 #weeval-hud .wk-aim.good{color:#7dff8a}#weeval-hud .wk-aim.near{color:#ffd24a}
+#weeval-hud .wk-tip{margin:6px auto 0;max-width:min(92vw,520px);font-size:clamp(14px,2vw,20px);font-weight:800;letter-spacing:.04em;background:#1b1230cc;border:2px solid #4b3d7a;border-radius:8px;padding:3px 12px;color:#ffe9a8}
+#weeval-hud .wk-tip[hidden]{display:none}
 #weeval-pop{position:absolute;left:50%;top:26%;transform:translateX(-50%);z-index:31;text-align:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:900;font-size:clamp(30px,5.4vw,60px);color:#ffb31f;text-shadow:0 3px 0 #1b1230,0 0 18px #000;pointer-events:none;white-space:nowrap}
 #weeval-pop small{display:block;font-size:.5em;color:#fff}
 #weeval-pop[hidden]{display:none}
@@ -31,7 +33,7 @@ function ensure() {
 #weeval-card button.alt{background:#4b3d7a;color:#fff}`;
   document.head.appendChild(st);
   box = document.createElement('div'); box.id = 'weeval-hud'; box.hidden = true;
-  box.innerHTML = '<div class="wk-stage">--</div><div class="wk-row"><span class="wk-tries"></span><span class="wk-score"></span><span class="wk-aim"></span></div>';
+  box.innerHTML = '<div class="wk-stage">--</div><div class="wk-row"><span class="wk-tries"></span><span class="wk-score"></span><span class="wk-aim"></span></div><div class="wk-tip"></div>';
   hud.appendChild(box);
   const pop = document.createElement('div'); pop.id = 'weeval-pop'; pop.hidden = true; hud.appendChild(pop);
   card = document.createElement('div'); card.id = 'weeval-card'; card.hidden = true; hud.appendChild(card);
@@ -51,6 +53,8 @@ export function weevalHudUpdate(w, kmh, speed) {
   el.querySelector('.wk-tries').innerHTML = Array.from({ length: WEEVAL.tries }, (_, i) => `<i class="${i < w.run.tries ? '' : 'gone'}"></i>`).join('');
   el.querySelector('.wk-score').textContent = `${w.run.total} pts`;
   const aim = WEEVAL.aim[w.L.stage - 1], k = kmh ? 3.6 : 2.23694, unit = kmh ? 'km/h' : 'mph', a = el.querySelector('.wk-aim');
+  const tip = el.querySelector('.wk-tip'); tip.hidden = !(w.state === 'ready' || w.state === 'run' || w.state === 'air');
+  if (!tip.hidden && !tip.textContent) tip.textContent = 'TIP: in the air, W (or gas) tips the nose down and S (or brake) lifts it - land level for a bonus!';
   const show = w.state === 'ready' || w.state === 'run';
   a.hidden = !show;
   if (show) {

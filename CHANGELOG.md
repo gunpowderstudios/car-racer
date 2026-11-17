@@ -2,14 +2,23 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
-## v17.612 — Weeval Keneval: a longer jump
+## v17.613 — Weeval Knievel: the buses are back
+- A row of red double-decker buses sits in the gap, side-on to the ramp with their noses to the left, on a raised platform so you can see them from the run-up. One more bus each stage (3 on stage 1, 12 on stage 10).
+- Each stage the long ramp is 10 m longer and the whole thing (start, takeoff lip, kicker) is 5 m higher; the landing ramp stays put and gets 20 m longer, so the drop to it grows.
+- Landing short on the buses or the platform costs a try.
+- The home-page button now reads: You wait ages for a bus... then 10 turn up! The track is now called Weeval Knievel.
+- A tip on the first screen of each stage: in the air, W (or gas) tips the nose down and S (or brake) lifts it.
+- Poles of flame stand down both sides of the gap; they flicker as you go down the ramp and roar up while you are in the air.
+- A big stack of cardboard boxes at the end of the run-out, tallest at the back: drive into it and the boxes fly and crumple, slowing you a little for each one you hit. It is rebuilt on every try.
+
+## v17.612 — Weeval Knievel: a longer jump
 - A much longer jump: the gap is 70 m on stage 1 and 30 m longer every stage, with the bullseye 30 m past the far lip. The takeoff is higher (20 m up) with a steeper 25 degree kicker, and the landing ramp is longer and gentler (170 m). The numbers are all in one place at the top of src/weeval.js (gapStart, gapStep, zoneStart, lipKick) to edit.
 - The car is fully repaired - armour, wheels and dents - at the start of every try and every stage.
 - The grey slabs across the middle of the long ramp (the tops of the support beams showing through the road) are gone.
 - The buses are switched off for now while the jump is tuned. 
 
-## v17.611 — Weeval Keneval: jump the buses
-- New solo stunt on the home page, next to Demolition Day: Weeval Keneval. Race down a very high, dead-straight ramp, launch off the kicker, fly over a row of parked buses and land on the far ramp.
+## v17.611 — Weeval Knievel: jump the buses
+- New solo stunt on the home page, next to Demolition Day: Weeval Knievel. Race down a very high, dead-straight ramp, launch off the kicker, fly over a row of parked buses and land on the far ramp.
 - Ten stages. Stage 1 is three buses; every stage adds a bus, makes the gap longer and moves the target further out. You get three tries a stage; land without wrecking or flipping and you are through, however far from the middle.
 - A painted bullseye on the landing ramp scores by ring (1000 / 600 / 300 / 150, 50 for anywhere else on the ramp), plus 200 for a level touchdown and 100 for landing with no damage. Best score is saved.
 - The panel shows the speed to aim for on each stage (and your speed as you go: green when you are right on it), so you can lift or brake on the way down.

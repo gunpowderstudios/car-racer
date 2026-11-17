@@ -138,7 +138,7 @@ export function normalizeBlocks(list) {
     if (![x0, x1, z0, z1].every(Number.isFinite) || x1 <= x0 || z1 <= z0 || Math.abs(x0) > 1e4 || Math.abs(x1) > 1e4 || Math.abs(z0) > 1e4 || Math.abs(z1) > 1e4) continue;
     const o = { x0: Math.round(x0 * 100) / 100, x1: Math.round(x1 * 100) / 100, z0: Math.round(z0 * 100) / 100, z1: Math.round(z1 * 100) / 100 };
     if (b.kind === 'wall' || b.kind === 'bus') o.kind = b.kind;
-    if (Number.isFinite(Number(b.y)) && Number.isFinite(Number(b.h)) && b.y !== null && b.h !== null) { o.y = Math.round(Number(b.y) * 100) / 100; o.h = clamp(Number(b.h), 0.5, 60); }      // (a block that stands on its own level: Weeval Keneval's buses)
+    if (Number.isFinite(Number(b.y)) && Number.isFinite(Number(b.h)) && b.y !== null && b.h !== null) { o.y = Math.round(Number(b.y) * 100) / 100; o.h = clamp(Number(b.h), 0.5, 120); }      // (a block that stands on its own level: Weeval Knievel's buses)
     out.push(o);
   }
   return out;
@@ -280,7 +280,7 @@ export function normalizeTrack(input) {
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
-  if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Keneval: the jump over the buses (see weeval.js)
+  if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
   if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins

@@ -1,4 +1,4 @@
-// Weeval Keneval: a solo stunt. Race down a very high, dead-straight ramp, fly over a row of parked buses and land on the far ramp, as close to the
+// Weeval Knievel: a solo stunt. Race down a very high, dead-straight ramp, fly over a row of parked buses and land on the far ramp, as close to the
 // bullseye painted on it as you can. Ten stages: each adds a bus and a longer gap. Three tries a stage; land without wrecking and you are through.
 //
 // No three.js in here, so the rules and the layout run (and are tested) in Node. weevalView.js draws it; main.js turns the events into banners and sound.
@@ -10,53 +10,58 @@ import { normalizeTrack, GROUND_Y } from './track.js';
 
 export const WEEVAL = {
   stages: 10, tries: 3,
-  showBuses: false,                  // the buses are off for now while the jump is tuned: the gap still grows as if they were there
+  showBuses: true,                   // the row of parked buses in the gap (one more each stage)
+  runStep: 10, riseStep: 5,          // each stage the long ramp is this much longer and the whole thing this much higher
+  deckBelow: 8,                      // the buses stand on a platform this far below the takeoff lip, so you can see them from the ramp
   gapStart: 70, gapStep: 30,         // the gap (m, lip to lip) on stage 1, and how much longer it gets each stage
   zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
   width: 18,                         // the road is this wide
-  bus: { w: 2.6, len: 11, h: 3.2 },  // a bus parked side-on across the pit: w along the run, len across the road
-  top: 60, ramp: 400,                // the start platform's height and the length of the long descent
-  lipY: 20,                          // the takeoff road's height above the ground (so the buses go by well below the car)
+  bus: { w: 2.6, len: 10.5, h: 4.4 }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
+  top: 60,                           // the start platform's height on stage 1
+  lipY: 20,                          // the takeoff lip's height on stage 1
+  lowY: 6,                           // the landing ramp's low end and the run-out: this height whatever the stage
   lipKick: 25, lipRise: 2.6,         // the takeoff kicker: its angle (degrees) and height
-  landLen: 170, runOut: 80, drop: 14,   // the landing ramp's length and how far it falls, then the flat run-out to the barrier
+  landLen: 170, landStep: 20, runOut: 80,   // the landing ramp's length (it grows each stage) then the flat run-out to the barrier
   rings: [2.4, 4.8, 7, 9],         // the painted bullseye's ring radii (m), centre outwards
   points: [1000, 600, 300, 150], ramp_pts: 50,    // what each ring is worth (and landing anywhere else on the ramp)
   flatBonus: 200, cleanBonus: 100,   // a level touchdown, and no damage at all
-  aim: [36.4, 43.7, 50.3, 53, 53.7, 56, 56, 56, 56, 56],      // (stages 1-3 measured, 4-5 rough, the rest are out of reach of the car at 70 m + 30 m a stage) the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
+  aim: [36.5, 43.8, 50.3, 53, 57, 60, 62, 64, 66, 68],      // (stages 1-3 measured, 4-5 rough, 6 and up need more than the car's top speed without boost) the speed (m/s) that lands the middle of the bullseye at the end of the ramp, stage by stage (measured: see tests/weeval.test.mjs)
   flatDeg: 12,                       // "level" = the car within this many degrees of the ramp's slope
 };
 
-export const LIP_X = 420;            // where the takeoff lip is along the road (x): the gap starts here, whatever its length
+export const LIP_X = 420;            // where the takeoff lip is along the road (x) on stage 1: the gap starts here, whatever its length
 
 /** Everything's position for stage n (1-10): the gap, the buses, the landing zone, the barrier. */
 export function stageLayout(n) {
   const W = WEEVAL, stage = Math.max(1, Math.min(W.stages, Math.round(n) || 1));
   const buses = stage + 2, gap = W.gapStart + (stage - 1) * W.gapStep;          // stage 1: a 70 m gap, 30 m longer each stage
-  const lipX = LIP_X, cx = lipX + gap / 2, gapEnd = lipX + gap;
+  const k = stage - 1, lipX = LIP_X + k * W.runStep, lipY = W.lipY + k * W.riseStep, top = W.top + k * W.riseStep, landLen = W.landLen + k * W.landStep;
+  const cx = lipX + gap / 2, gapEnd = lipX + gap, deckTop = lipY - W.deckBelow;
   const zoneDist = W.zoneStart + (stage - 1) * W.zoneStep;                              // the bullseye's centre, past the far lip
   const zoneX = gapEnd + zoneDist;
   const busList = [], bx0 = cx - buses * W.bus.w / 2;
-  for (let i = 0; i < (W.showBuses ? buses : 0); i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i });
-  const landEnd = gapEnd + W.landLen, endX = landEnd + W.runOut;
-  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, startX: -28, lipY: W.lipY, width: W.width };
+  for (let i = 0; i < (W.showBuses ? buses : 0); i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i, y: deckTop });
+  const landEnd = gapEnd + landLen, endX = landEnd + W.runOut;
+  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
 }
 
 /** The track definition for stage n. A straight run with a jump in it; the loop closes by a hairpin and a return road that nobody drives. */
 export function weevalDef(n) {
-  const W = WEEVAL, L = stageLayout(n), { top, lipY } = W, R = 30, X0 = -40, XE = L.endX + 60, zr = R * 2, low = lipY - W.drop;
+  const W = WEEVAL, L = stageLayout(n), { top, lipY, low } = L, R = 30, X0 = -40, XE = L.endX + 60, zr = R * 2;
   const H = [];
   const P = (x, y, z, extra) => H.push({ x: Math.round(x), y: Math.round(y * 100) / 100, z: Math.round(z), ...(extra || {}) });
   P(X0, top, 0); P(0, top, 0);                                              // the start platform
-  P(190, top - (top - lipY) * 0.52, 0); P(L.lipX - 70, lipY + 0.6, 0); P(L.lipX, lipY, 0);      // the long descent, easing out so the car arrives flat and fast
+  P(Math.round(L.lipX * 0.45), top - (top - lipY) * 0.52, 0); P(L.lipX - 70, lipY + 0.6, 0); P(L.lipX, lipY, 0);      // the long descent, easing out so the car arrives flat and fast
   P(L.cx, lipY, 0, { gap: L.gap, kick: W.lipKick, lip: W.lipRise });      // the jump
-  P(L.gapEnd, lipY - 0.4, 0); P(L.gapEnd + W.landLen, low, 0); P(L.endX, low, 0); P(XE, low, 0);                              // the landing ramp falls away, then the run-out
+  P(L.gapEnd, lipY - 0.4, 0); P(L.gapEnd + L.landLen, low, 0); P(L.endX, low, 0); P(XE, low, 0);                              // the landing ramp falls away, then the run-out
   for (const a of [-45, 0, 45, 90]) P(XE + Math.cos(a * Math.PI / 180) * R, low, R + Math.sin(a * Math.PI / 180) * R);    // the hairpin round to the return road
   const back = [XE - 140, 330, 150, 20];
   back.forEach((x) => P(x, low + (top - low) * (XE - x) / (XE - X0), zr));
   for (const a of [135, 180, 225]) P(X0 + Math.cos(a * Math.PI / 180) * R, top, R + Math.sin(a * Math.PI / 180) * R);      // and the hairpin back to the top
-  const blocks = L.busList.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, kind: 'bus', y: GROUND_Y, h: W.bus.h }));
+  const blocks = L.busList.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, kind: 'bus', y: L.deckTop, h: W.bus.h }));
+  if (L.busList.length) blocks.push({ x0: L.busList[0].x0 - 1, x1: L.busList[L.busList.length - 1].x1 + 1, z0: -W.bus.len / 2 - 1.5, z1: W.bus.len / 2 + 1.5, kind: 'wall', y: GROUND_Y, h: L.deckTop - GROUND_Y });   // the platform they stand on
   blocks.push({ x0: L.endX - 4, x1: L.endX, z0: -W.width / 2 - 4, z1: W.width / 2 + 4, kind: 'wall', y: GROUND_Y, h: low + 4 });   // the barrier that ends the run-out
-  return normalizeTrack({ name: 'Weeval Keneval', width: W.width, walls: true, defaultLaps: 1, handles: H, weeval: { stage: L.stage }, blocks });
+  return normalizeTrack({ name: 'Weeval Knievel', width: W.width, walls: true, defaultLaps: 1, handles: H, weeval: { stage: L.stage }, blocks });
 }
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -117,8 +122,8 @@ export class Weeval {
       this.slow = car.speed < 3 ? this.slow + dt : 0;
       if (this.slow > 1.2 && x >= L.gapEnd - 2) { this.state = 'landed'; this._touch(car, health); return; }      // (down on the ramp but wheels-up: it counts as landed, and then as flipped)
       if (this.air > 14) { this._fail('short'); return; }
-      if (car.pos.y < GROUND_Y + 5.5 && x < L.gapEnd + 1) this._fail('short');
-      else if (car.pos.y < L.lipY - 14 - WEEVAL.drop) this._fail('short');
+      if (car.pos.y < L.deckTop + 5 && x < L.gapEnd + 1) this._fail('short');
+      else if (car.pos.y < GROUND_Y - 5) this._fail('short');
       return;
     }
     // landed: wait for the car to settle, then judge it
