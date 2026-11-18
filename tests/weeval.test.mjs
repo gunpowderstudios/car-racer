@@ -98,3 +98,15 @@ test('go again after a clear costs a try, keeps the better jump, and a failed go
   assert.equal(w.state, 'clear'); assert.equal(run.total, 1000); assert.equal(run.tries, WEEVAL.tries - 2);
   assert.ok(!w.goAgain(), 'the last try cannot be spent on a go-again');
 });
+
+test('skull barrels fill the run-out, move 10 m nearer each stage, and an explosion ends the whole run', () => {
+  for (let n = 1; n <= WEEVAL.stages; n++) {
+    const L = stageLayout(n), d = weevalDef(n), lethal = d.props.filter((p) => p.type === 'barrel' && p.lethal);
+    assert.ok(lethal.length >= 16 && lethal.length === d.props.length, 'only lethal barrels, a full row');
+    assert.ok(lethal.every((p) => p.x >= L.boomX && p.x <= L.boomX + 1.3 && p.x > L.landEnd + 10 && p.x < L.endX - 4), 'on the flat run-out, before the wall');
+    assert.equal(L.endX - L.boomX, Math.min(7 + 10 * (n - 1), WEEVAL.runOut - 20), 'ten metres nearer every stage until it reaches its limit');
+  }
+  const t = new Track(weevalDef(3)), w = new Weeval(t, newRun()); w.go(); w.explode();
+  assert.equal(w.state, 'over'); assert.equal(w.run.over, true);
+  assert.equal(w.events.at(-1).why, 'exploded'); assert.equal(w.events.at(-1).over, true);
+});

@@ -551,11 +551,11 @@ function weevalEvents() {
         : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && weeval.state === 'clear' && mode === 'drive') showWeevalCardNow(); }, 1600);
     } else if (e.type === 'fail') {
-      const why = { short: 'Too short - you landed in the buses!', wrecked: 'Wrecked!', flipped: 'You landed upside down!', reset: 'Reset' }[e.why] || 'Missed!';
+      const why = { short: 'Too short - you landed in the buses!', exploded: 'BOOM! You hit the explosives!', wrecked: 'Wrecked!', flipped: 'You landed upside down!', reset: 'Reset' }[e.why] || 'Missed!';
       const total = weeval.run.total, best = Math.max(weevalStore().best || 0, total);
       if (e.over) store.set('cr.weeval', { best, stage: Math.max(weevalStore().stage || 0, e.stage) });
       weevalCard = e.over
-        ? { title: 'Run over!', big: `${total}`, lines: [why, `Out of tries on stage ${e.stage}`, total >= best && total > 0 ? 'New best score!' : `Best ${best}`], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        ? { title: 'Run over!', big: `${total}`, lines: [why, e.why === 'exploded' ? `Game over on stage ${e.stage}` : `Out of tries on stage ${e.stage}`, total >= best && total > 0 ? 'New best score!' : `Best ${best}`], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
         : { title: why, lines: [`Stage ${e.stage}: ${e.tries} ${e.tries === 1 ? 'try' : 'tries'} left`], buttons: [{ label: 'Try again (Enter)', run: () => weevalAttempt('retry') }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && (weeval.state === 'failed' || weeval.state === 'over') && mode === 'drive') showWeevalCardNow(); }, e.why === 'short' || e.why === 'wrecked' ? 1500 : 1000);
     }
@@ -722,6 +722,7 @@ function propEvents() {
       if (e.y - e.gy < 1.5) scorch.add(e.x, e.gy, e.z, e.nx, e.ny, e.nz, 2.6);     // not for one that went off in mid-air
       sound.explode(e.dist); replayRec.event(simTime, { type: 'prop', kind: 'blast', x: e.x, y: e.y, z: e.z });
       chase.impact(Math.max(0, 1 - e.dist / e.radius) * 24);
+      if (e.lethal && weeval && e.dist < DAMAGE.lethal.radius) weeval.explode();         // Weeval Knievel: a skull barrel ends the whole run
       if (derby.damageEnabled) derby.blast(e.x, e.y, e.z, e.lethal ? DAMAGE.lethal : DAMAGE.barrel);
       if (net) mpBarrelBlast(e);
     } else if (e.type === 'clang') { sound.clang(e.speed, e.dist); replayRec.event(simTime, { type: 'prop', kind: 'clang', x: e.x, y: e.y, z: e.z, speed: e.speed }); }

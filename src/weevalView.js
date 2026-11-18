@@ -249,14 +249,12 @@ export class WeevalView {
     return this.boxes ? this._stepBoxes(Math.min(dt, 0.05), car) : 0;
   }
 
-  /** The concrete barrier and tyre stacks at the end of the run-out. */
+  /** The concrete barrier at the end of the run-out (the skull barrels in front of it are real props, see weeval.js). */
   _barrier() {
     const L = this.L, W = WEEVAL.width, y = this.track.query(L.endX - 6, L.lipY, 0, undefined, 12).y;
     const stripe = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#ffc21a'; g.fillRect(0, 0, w, h); g.fillStyle = '#1b1b1b'; for (let i = -2; i < 10; i++) { g.beginPath(); g.moveTo(i * 40, h); g.lineTo(i * 40 + 20, h); g.lineTo(i * 40 + 20 + h, 0); g.lineTo(i * 40 + h, 0); g.fill(); } });
     this._box(this.mat.concrete, 4, 3.6, W + 8, L.endX - 2, y + 1.8, 0);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(W + 8, 1.4), new THREE.MeshStandardMaterial({ map: stripe, roughness: 0.7 })); face.rotation.y = -Math.PI / 2; face.position.set(L.endX - 4.05, y + 2.6, 0); face.frustumCulled = false; this.group.add(face);
-    const tyreG = new THREE.CylinderGeometry(0.55, 0.55, 0.42, 12);
-    for (const z of [-W / 2 + 1.5, -W / 4, 0, W / 4, W / 2 - 1.5]) for (let k = 0; k < 3; k++) { const tyre = new THREE.Mesh(tyreG, this.mat.tyre); tyre.position.set(L.endX - 5.4, y + 0.25 + k * 0.45, z); tyre.frustumCulled = false; this.group.add(tyre); }
   }
 
   _sign(text, sub, x, z, y, face = 1) {
@@ -264,8 +262,24 @@ export class WeevalView {
     s.position.set(x, y + 4.0, z); s.rotation.y = face > 0 ? -Math.PI / 2 : Math.PI / 2; s.frustumCulled = false; this.group.add(s);
     for (const dz of [-2.6, 2.6]) this._box(this.mat.steel, 0.2, 4.4, 0.2, x - 0.1 * face, y + 2.2, z + dz);
   }
+  /** The big sign on a gantry above the skull barrels: WARNING, HIGH EXPLOSIVES!, framed with yellow and black chevrons. */
+  _warning() {
+    const L = this.L, W = WEEVAL.width, y = this.track.query(L.boomX, L.lipY, 0, undefined, 12).y, bw = W + 4, bh = 5, cy = y + 9;
+    const tex = canvasTex(1024, 288, (g, w, h) => {
+      g.fillStyle = '#16161a'; g.fillRect(0, 0, w, h);
+      const band = 44; g.fillStyle = '#ffc21a';
+      for (const y0 of [0, h - band]) for (let x = -band; x < w + band; x += band * 1.5) { g.beginPath(); g.moveTo(x, y0 + band); g.lineTo(x + band * 0.75, y0); g.lineTo(x + band * 1.5, y0 + band); g.lineTo(x + band * 1.05, y0 + band); g.lineTo(x + band * 0.75, y0 + band * 0.4); g.lineTo(x + band * 0.45, y0 + band); g.closePath(); g.fill(); }
+      for (const side of [0, 1]) for (let k = 0; k < 2; k++) { const cx = side ? w - 44 - k * 34 : 44 + k * 34, dir = side ? -1 : 1; g.beginPath(); g.moveTo(cx - 14 * dir, band + 14); g.lineTo(cx + 14 * dir, h / 2); g.lineTo(cx - 14 * dir, h - band - 14); g.lineWidth = 12; g.strokeStyle = '#ffc21a'; g.stroke(); }
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffc21a'; g.font = '900 84px Impact, "Arial Narrow", sans-serif'; g.fillText('WARNING', w / 2, 100);
+      g.fillStyle = '#fff'; g.font = '900 96px Impact, "Arial Narrow", sans-serif'; g.fillText('HIGH EXPLOSIVES!', w / 2, 190);
+    });
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+    s.position.set(L.boomX - 0.6, cy, 0); s.rotation.y = -Math.PI / 2; s.frustumCulled = false; this.group.add(s);
+    for (const z of [-bw / 2 + 0.4, bw / 2 - 0.4]) this._box(this.mat.steel, 0.4, cy - y + bh / 2, 0.4, L.boomX - 0.6, y + (cy - y + bh / 2) / 2, z);
+  }
   _signs() {
     const L = this.L, t = this.track, W = WEEVAL.width, yAt = (x) => t.query(x, 70, 0, undefined, 12).y;
+    this._warning();
     this._sign('WEEVAL KNIEVEL', 'THE GREAT BUS JUMP', 4, -W / 2 - 9, L.top, 1);
     this._sign(`STAGE ${L.stage}`, `${L.buses} BUSES`, L.lipX - 40, W / 2 + 9, yAt(L.lipX - 40), 1);
     this._sign('LAND HERE', 'CLOSER TO THE MIDDLE = MORE POINTS', L.gapEnd + 4, -W / 2 - 9, yAt(L.gapEnd + 4), 1);

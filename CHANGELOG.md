@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.621 — Weeval Knievel: explosive barrels
+
+- The black barrels at the end of the jump are now the exploding skull barrels from Apple Crumple: a staggered row right across the run-out. Hit one and you blow up and the whole run is over.
+- They move 10 m nearer the jump each stage (stopping short of the landing ramp), under a big WARNING - HIGH EXPLOSIVES! sign framed with yellow chevrons.
+
 ## v17.620 — Weeval Knievel button
 
 - On phones the Weeval Knievel button now sits under Demolition Day instead of above the title. It is white, with a Stars and Stripes design at its right-hand end.
