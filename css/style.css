@@ -187,6 +187,7 @@ body:not(.mode-menu) #menu { display: none; }
   #btn-play-now { order: 2; }
   #btn-story { order: 2; }
   #btn-demo { order: 2; }
+  #btn-weeval { order: 2; }
   #btn-multiplayer-top { order: 2; }
   #btn-new-top { order: 2; }
   #btn-install { order: 2; }
@@ -1075,3 +1076,12 @@ body.rp-clean #home-btn:hover { opacity: .9; }
   color: rgba(246,217,176,.6); text-shadow: 0 1px 3px rgba(0,0,0,.6);
 }
 body:not(.mode-menu) #version-tag { display: none; }
+
+/* Weeval Knievel: a white button with the Stars and Stripes down its right-hand end (a blue field of stars over red and white stripes) */
+#btn-weeval { position: relative; isolation: isolate; }
+#menu #btn-weeval { background: #fff; color: #1b2a5c; text-shadow: none; box-shadow: none; }
+#menu #btn-weeval:hover, #menu #btn-weeval:focus-visible, #menu #btn-weeval:active { background: #fff; }
+#btn-weeval::before, #btn-weeval::after { content: ""; position: absolute; z-index: -1; right: 0; pointer-events: none; }
+#btn-weeval::before { top: 0; bottom: 0; width: 17%; background: repeating-linear-gradient(to bottom, #c8102e 0 7.6923%, #fff 0 15.3846%);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%); mask-image: linear-gradient(to right, transparent, #000 12%); }
+#btn-weeval::after { top: 0; height: 53.85%; width: 7.8%; right: 9.2%; background: radial-gradient(circle, #fff 0 1.2px, transparent 1.7px) 0 0 / 8px 7px, #1b3a8c; }

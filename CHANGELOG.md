@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.620 — Weeval Knievel button
+
+- On phones the Weeval Knievel button now sits under Demolition Day instead of above the title. It is white, with a Stars and Stripes design at its right-hand end.
+
 ## v17.619 — Cancelled game no longer leaves the car stuck
 
 - Fixed: cancelling a game part way and starting a new one could leave the car unable to move. Damage from the cancelled game (a lost wheel, a stalled engine, locked boost and handbrake) was carried into the next game; every new game now starts with a whole car.
