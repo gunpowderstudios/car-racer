@@ -110,3 +110,13 @@ test('skull barrels fill the run-out, move 10 m nearer each stage, and an explos
   assert.equal(w.state, 'over'); assert.equal(w.run.over, true);
   assert.equal(w.events.at(-1).why, 'exploded'); assert.equal(w.events.at(-1).over, true);
 });
+
+test('landing upside down still clears the stage (no level bonus)', () => {
+  const t = new Track(weevalDef(2)), w = new Weeval(t, newRun()), L = w.L;
+  const car = { pos: { x: L.zoneX, y: L.low + 1, z: 0 }, speed: 0, ay: { x: 0, y: -1, z: 0 }, ax: { x: 1, y: 0, z: 0 }, az: { x: 0, y: 0, z: 1 }, onGround: true };
+  w.go(); w.state = 'landed'; w.land = { x: L.zoneX, z: 0, ring: 0, d: 0, points: 1000, tilt: 180, speed: 0, air: 2, flat: false };
+  for (let i = 0; i < 120; i++) w.step(1 / 60, car, null);
+  assert.equal(w.state, 'clear'); assert.equal(w.run.tries, WEEVAL.tries); assert.equal(w.last.flat, false);
+  assert.equal(w.last.points, 1000 + WEEVAL.cleanBonus);
+  assert.equal(w.advance(), true);
+});

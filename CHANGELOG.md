@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.622 — Weeval Knievel: upside-down landings count, 5 stages, fewer boxes
+
+- Weeval Knievel is five stages for now (more to come).
+- About half as many cardboard boxes again, each bigger.
+- The home-page subtitle is now just: You wait ages for a bus...
+- Landing upside down no longer fails the stage: land anywhere on the ramp and you go through. You just miss the level-landing bonus (and the target still pays the most).
+
 ## v17.621 — Weeval Knievel: explosive barrels
 
 - The black barrels at the end of the jump are now the exploding skull barrels from Apple Crumple: a staggered row right across the run-out. Hit one and you blow up and the whole run is over.

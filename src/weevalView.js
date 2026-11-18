@@ -9,7 +9,7 @@ import { assetUrl } from './assetVersion.js';
 import { Track, GROUND_Y } from './track.js';
 import { WEEVAL, stageLayout } from './weeval.js';
 
-const BOXES = { S: 1.45, depth: 6, top: 4 };      // the cardboard stack: box size (m), rows deep, and how many high at the back (half as many boxes as before, each bigger)
+const BOXES = { S: 1.8, depth: 5, top: 3 };      // the cardboard stack: box size (m), rows deep, and how many high at the back (about half as many boxes again, each bigger)
 const BUS_COLOURS = [0xc0281f, 0xc0281f, 0xc0281f, 0xb5241b, 0xc0281f, 0xc0281f, 0xd0402a, 0xc0281f];      // London red, mostly
 
 function canvasTex(w, h, draw) {

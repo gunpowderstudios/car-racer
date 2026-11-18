@@ -1,5 +1,5 @@
 // Weeval Knievel: a solo stunt. Race down a very high, dead-straight ramp, fly over a row of parked buses and land on the far ramp, as close to the
-// bullseye painted on it as you can. Ten stages: each adds a bus and a longer gap. Three tries a stage; land without wrecking and you are through.
+// bullseye painted on it as you can. Five stages for now: each adds a bus and a longer gap. Three tries a stage; land without wrecking and you are through.
 //
 // No three.js in here, so the rules and the layout run (and are tested) in Node. weevalView.js draws it; main.js turns the events into banners and sound.
 //   stageLayout(n)  where everything is for stage n (the road runs along +x, so a position is just an x and a z)
@@ -9,7 +9,7 @@
 import { normalizeTrack, GROUND_Y } from './track.js';
 
 export const WEEVAL = {
-  stages: 10, tries: 3,
+  stages: 5, tries: 3,                 // (five for now, more to come)
   showBuses: true,                   // the row of parked buses in the gap (one more each stage)
   runStep: 10, riseStep: 5,          // each stage the long ramp is this much longer and the whole thing this much higher
   deckRaise: 1.4,                    // ... and then the whole platform is this much taller (so the buses are right in the way of the jump)
@@ -154,7 +154,7 @@ export class Weeval {
   _judge(car, health, hitEnd) {
     if (this.state !== 'landed') return;
     const l = this.land;
-    if (car.ay.y < 0.3) { this._fail('flipped'); return; }
+    // (landing upside down is fine: you are through as long as you land, you just miss the level-landing bonus)
     if (health && (health.wrecked || health.worst <= 0)) { this._fail('wrecked'); return; }
     const clean = !health || health.worst >= 0.9, flat = l.flat;
     const pts = l.points + (flat ? WEEVAL.flatBonus : 0) + (clean ? WEEVAL.cleanBonus : 0);
