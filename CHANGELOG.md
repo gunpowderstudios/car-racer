@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.619 — Cancelled game no longer leaves the car stuck
+
+- Fixed: cancelling a game part way and starting a new one could leave the car unable to move. Damage from the cancelled game (a lost wheel, a stalled engine, locked boost and handbrake) was carried into the next game; every new game now starts with a whole car.
+
 ## v17.618 — Weeval Knievel: boxes and flames in the replay
 - The cardboard boxes and the flames now move in the replay. They are not recorded; they are played again from the car's recorded path (the same hits and tumble, the flames flaring while you are in the air), and rebuilt from the start if you rewind or skip about.
 

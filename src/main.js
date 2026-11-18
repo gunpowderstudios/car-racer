@@ -1009,6 +1009,7 @@ function derbyStart() {
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
+  { const h = car.hurt; if (h) h.front = h.back = h.left = h.right = h.roof = 0; for (const w of car.wheels) w.lost = false; car.engineOff = false; car.crank = 0; visual.restoreWheels?.(); }      // a game cancelled half way must not leave its damage (lost wheels, a stalled engine) on the car for the next one
   replayRec.reset(); replayRec.off = !!net;                                              // a new race: a new replay (and none at all in multiplayer)
   visual.setLook(1, 0); visual.clearDents();
   hud.derbyMode(derby.damageEnabled);
