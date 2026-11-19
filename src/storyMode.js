@@ -149,6 +149,20 @@ function show(kind, place, rows, cutAfter) {
   panel.hidden = false; primary.focus();
 }
 
+/** Your car blew up: a wreck is out of the race (and, in the championship, out of the season). */
+state.wrecked = function wrecked() {
+  if (!state.active) return;
+  clearTimeout(resultTimer); ensureUi(); if (!panel) return;
+  const i = state.stage, card = panel.querySelector('.sp-card'), btns = card.querySelector('.sp-btns');
+  panel.classList.add('out'); btns.innerHTML = ''; card.querySelector('table')?.remove();
+  card.querySelector('h2').textContent = 'You\'re out!'; card.querySelector('.sp-line').textContent = 'Your car blew up - a wrecked car is out of the race.';
+  card.querySelector('.sp-next').textContent = state.single ? `Have another go at ${state.name}?` : `You reached stage ${i + 1} of ${stages().length}.`;
+  if (!state.single) store.set({ ...store.get(), champ: null });
+  const b1 = document.createElement('button'); b1.className = 'btn btn-play'; b1.textContent = 'Start again'; b1.onclick = () => startStory(0); btns.appendChild(b1);
+  const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Menu'; b2.onclick = () => { endStory(); window.__app.showMenu(); }; btns.appendChild(b2);
+  window.__app.freeze(true); panel.hidden = false; b1.focus();
+};
+
 /** Score the race that just finished, cut the standings, and show the results. */
 function finishStage(detail) {
   const i = state.stage, rv = rivalsAlive();

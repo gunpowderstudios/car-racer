@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.625 — Blow up and you're out
+
+- Race Day: if your car explodes you are now out of the race (the stage card says "You're out!"; in the championship that ends your season) instead of respawning. Harder, and easy to change back (one line in main.js: the `repairsMax` rule).
+- Quick Race already worked this way; its game-over card now says "You're out of the race!".
+- Apple Crumple, The Getaway, Weeval Knievel and multiplayer keep their own wreck rules.
+
 ## v17.624 — Swedish Meatballs
 
 - The Volvo estate is now called Swedish Meatballs (it was Swedish Massage).

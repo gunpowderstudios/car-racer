@@ -1006,7 +1006,7 @@ function derbyStart() {
   derby.damageEnabled = derby.enabled;
   derby.getawaySetup = gw ? getawaySetup() : null;
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
-  derby.repairsMax = derby.enabled && !arena && !window.__story?.active ? 0 : Infinity;      // no spanners (lives) in any racing game: the first wreck ends your round
+  derby.repairsMax = derby.enabled && !arena ? 0 : Infinity;      // no spanners (lives) in any racing game, Race Day included: the first wreck puts you out of the race
   if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();
@@ -1070,6 +1070,8 @@ function derbyEvents() {
     } else if (e.type === 'respawn') {
       respawn('wreck'); visual.clearDents(); replayRec.event(simTime, { type: 'clear', id: 'p' }); visual.setLook(1, 0); hud.setDamage(derby.player.health);
       hud.banner(Number.isFinite(derby.repairsMax) ? `Repaired! ${derby.repairs} repair${derby.repairs === 1 ? '' : 's'} left` : 'Respawned - back in the race!', 1600);
+    } else if (e.type === 'over' && window.__story?.active) {
+      hud.banner("Wrecked - you're out of the race!", 1700); setTimeout(() => window.__story?.wrecked?.(), 1800);      // Race Day: the stage card says you're out
     } else if (e.type === 'over' && weeval) {
       weeval.wreck();                                              // (no spanners: the first wreck ends the try; the result card comes from weevalEvents)
     } else if (e.type === 'over' && assault) {
@@ -1078,12 +1080,12 @@ function derbyEvents() {
       const key = bestKey(track), all = derbyBest(), prev = all[key] || 0, isBest = e.score > prev;
       if (isBest) { all[key] = e.score; store.set('cr.derby', all); }
       overInfo = e.scrap
-        ? { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: 'No repairs left - the car is scrap', title: 'Unrepairable!' }
+        ? { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: derby.demolition ? 'No repairs left - the car is scrap' : 'Your car blew up', title: derby.demolition ? 'Unrepairable!' : "You're out of the race!" }
         : e.won
         ? { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: 'Every rival wrecked', title: 'Last one standing!' }
         : { score: e.score, takedowns: e.takedowns, best: Math.max(prev, e.score), isBest, zone: `${ZONE_LABEL[e.zone]} destroyed` };
       overAt = performance.now() + 1800;
-      hud.banner(e.scrap ? 'No repairs left!' : e.won ? 'Last one standing!' : 'Wrecked', 1700);
+      hud.banner(e.scrap ? (derby.demolition ? 'No repairs left!' : "You're out of the race!") : e.won ? 'Last one standing!' : 'Wrecked', 1700);
     }
   }
   derby.events.length = 0;
