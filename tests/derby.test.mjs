@@ -800,7 +800,8 @@ test('Demolition Day: a home button starts the Bed Pan with 8 rivals, each a dif
   assert.match(html, /<button id="btn-demo"[^>]*>Demolition Day <small>Crash, bang, wallop what a picture!<\/small>/);
   assert.ok(html.indexOf('id="btn-story"') < html.indexOf('id="btn-demo"') && html.indexOf('id="btn-demo"') < html.indexOf('id="btn-multiplayer-top"'), 'below Race Day');
   assert.match(css, /#menu #btn-demo \{ background: #9f5212/);
-  assert.match(main, /\$\('btn-demo'\)\.onclick = \(\) => \{ const d = makeTemplate\('oval'\); d\.demoDay = true; startDriving\(d\)/);
+  assert.match(main, /const demoDef = \(\) => \{ const d = makeTemplate\('oval'\); d\.demoDay = true; return d; \}/);
+  assert.match(main, /\$\('btn-demo'\)\.onclick = \(\) => homePick\('btn-demo', 'Demolition Day', demoDef, startDriving\)/);
   assert.match(main, /demoDay \? 8 : opts\.rivals \* 2/);
   assert.match(main, /derby\.enabled = !net && \(\(!testDrive && \(opts\.rivals > 0 \|\| demoDay\)\) \|\| solo\)/);
 });

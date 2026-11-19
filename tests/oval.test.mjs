@@ -349,10 +349,10 @@ test('Cuddly Panda is a listed vehicle with its own profile, model and menu pict
   assert.ok(pa && pa.mass > 700 && pa.mass < 1000 && pa.wheelbase < 2.6);
 });
 
-test('Swedish Massage (the Volvo estate) is a listed vehicle with its own profile, model and menu picture', async () => {
+test('Swedish Meatballs (the Volvo estate) is a listed vehicle with its own profile, model and menu picture', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/vehicleChoice.js', import.meta.url), 'utf8');
-  assert.match(src, /id: 'volvo',\s*name: 'Swedish Massage',\s*description: 'Handy for shifting junk up hills!'/);
+  assert.match(src, /id: 'volvo',\s*name: 'Swedish Meatballs',\s*description: 'Handy for shifting junk up hills!'/);
   assert.ok(existsSync(new URL('../cars/volvo-SHRINK.glb', import.meta.url)));
   assert.ok(existsSync(new URL('../cars/thumbs/volvo.webp', import.meta.url)));
   const { vehiclePhysicsProfile } = await import('../src/vehiclePhysicsProfiles.js');
@@ -449,10 +449,10 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
   assert.match(cv, /trimWheel\(m\.geometry, ax\)/, 'applied to every wheel as it is re-pivoted');
 });
 
-test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
+test('home page: Play Now is Quick Race, and Multiplayer sits beside it too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>Quick random race<\/small>/);
+  assert.match(html, /id="btn-play-now"[^>]*>Quick Race <small>A random track, straight in<\/small>/);
   assert.match(html, /Race Day <small>Jump in and put your foot down!<\/small>/);
   assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
   assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);
@@ -601,10 +601,10 @@ test('wheels: bits of body cut out with a wheel are trimmed off it', async () =>
   assert.match(cv, /trimWheel\(m\.geometry, ax\)/, 'applied to every wheel as it is re-pivoted');
 });
 
-test('home page: Play Now is Buckle up!, and Multiplayer sits beside it too', async () => {
+test('home page: Play Now is Quick Race, and Multiplayer sits beside it too', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="btn-play-now"[^>]*>Buckle up! <small>Quick random race<\/small>/);
+  assert.match(html, /id="btn-play-now"[^>]*>Quick Race <small>A random track, straight in<\/small>/);
   assert.match(html, /Race Day <small>Jump in and put your foot down!<\/small>/);
   assert.match(html, /Multiplayer <small>Destroy your friends online<\/small>/);
   assert.match(html, /id="btn-new-top"[^>]*>Design-a-track! <small>Test it and send it to a friend!<\/small>/);

@@ -2,6 +2,18 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.624 — Swedish Meatballs
+
+- The Volvo estate is now called Swedish Meatballs (it was Swedish Massage).
+
+## v17.623 — A new home screen: vehicle first, then the game
+
+- The home screen now runs top to bottom: the title, your vehicle (swipe along the row), the big game buttons, then every track.
+- Pick Quick Race, Demolition Day or Weeval Knievel and that game's track comes up and orbits behind the rotating vehicle, with a PLAY button under the vehicle (a bar along the bottom on a phone). Press Quick Race again for another random track. Race Day, Multiplayer and Design-a-track! open as before.
+- The options are behind a white cog, top right (the same cog as in the races). The version number moved to the top left.
+- Buckle up! is now called Quick Race.
+- The old home screen is still there: add ?classic to the web address.
+
 ## v17.622 — Weeval Knievel: upside-down landings count, 5 stages, fewer boxes
 
 - Weeval Knievel is five stages for now (more to come).

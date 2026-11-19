@@ -1085,3 +1085,54 @@ body:not(.mode-menu) #version-tag { display: none; }
 #btn-weeval::before { top: 0; bottom: 0; width: 17%; background: repeating-linear-gradient(to bottom, #c8102e 0 7.6923%, #fff 0 15.3846%);
   -webkit-mask-image: linear-gradient(to right, transparent, #000 12%); mask-image: linear-gradient(to right, transparent, #000 12%); }
 #btn-weeval::after { top: 0; height: 53.85%; width: 7.8%; right: 9.2%; background: radial-gradient(circle, #fff 0 1.2px, transparent 1.7px) 0 0 / 8px 7px, #1b3a8c; }
+
+/* ------------------------------------------------------------------ the new home screen (body.home2; add ?classic to the address for the old one)
+   Title, then your vehicle, then the big game buttons, then every track. Pick a game and its track comes up behind the rotating vehicle with PLAY under it.
+   The options live behind the white cog, top right; the version number is top left. */
+.home-label, #home-cog, #home-play { display: none; }
+body.home2 #home-cog { display: block; position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 27; width: 44px; height: 44px; padding: 8px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.6); background: rgba(42,29,74,.82); color: #fff; cursor: pointer; pointer-events: auto; transition: transform .2s, border-color .15s, color .15s; }
+body.home2 #home-cog svg { display: block; width: 100%; height: 100%; }
+body.home2 #home-cog:hover, body.home2 #home-cog[aria-expanded="true"] { transform: rotate(45deg); border-color: var(--amber); color: var(--amber); }
+body.home2 #version-tag { right: auto; left: max(14px, env(safe-area-inset-left)); }
+body.home2 #menu .menu-inner { display: flex; flex-direction: column; padding-top: max(36px, clamp(20px, 5vh, 56px)); }
+body.home2 #menu .menu-inner > h1 { order: 1; font-size: clamp(48px, 6.4vw, 84px); margin-bottom: 10px; }
+body.home2 #menu-vehicle-choice { order: 2; margin: 0 0 4px; }
+body.home2 #home-game-label { display: block; order: 3; margin: 10px 0 0; font-family: var(--cond); font-weight: 600; font-size: 18px; color: var(--peach); }
+body.home2 :is(#btn-play-now, #btn-story, #btn-demo, #btn-weeval, #btn-multiplayer-top, #btn-new-top, #btn-install) { order: 4; }
+body.home2 #track-list { order: 6; margin-top: 14px; }
+body.home2 #menu .menu-track-actions { order: 7; }
+body.home2 #menu .lede { order: 8; margin-top: 18px; }
+body.home2 #menu .menu-multiplayer-actions { order: 9; }
+body.home2 #menu .fine { order: 10; }
+/* the vehicle gallery is one row you swipe along, so the big buttons stay on screen */
+body.home2 .vgallery { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+body.home2 .vgallery .vcard { flex: 0 0 86px; scroll-snap-align: start; min-height: 0; padding: 3px 3px 4px; font-size: 13px; }
+body.home2 #menu .btn-sel { outline: 3px solid #fff; outline-offset: 2px; filter: brightness(1.12); position: relative; }
+body.home2 #menu .btn-sel::after { content: "\25B6"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+/* the options: a panel under the cog */
+body.home2 #menu details.options { display: none; position: fixed; top: 64px; right: max(14px, env(safe-area-inset-right)); z-index: 27; width: min(430px, calc(100vw - 28px)); max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px);
+  overflow-y: auto; margin: 0; padding: 12px 16px 16px; background: rgba(27,18,51,.97); border: 2px solid rgba(246,217,176,.35); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.6); pointer-events: auto; }
+body.home2.options-open #menu details.options { display: block; }
+body.home2 #menu details.options > summary { display: none; }
+body.home2 #menu details.options::before { content: "Options"; display: block; margin-bottom: 8px; font-family: var(--display); font-weight: 900; font-size: 28px; color: var(--amber); }
+/* PLAY, under the vehicle */
+body.home2 #home-play { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 14px; }
+body.home2 #home-play[hidden] { display: none; }
+body.home2 #home-play-what { font-family: var(--cond); font-weight: 700; font-size: clamp(16px, 1.5vw, 22px); letter-spacing: .04em; color: var(--peach); }
+body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; margin: 0; padding: 8px 44px; font-size: 44px; }
+@media (max-width: 980px) {
+  body.home2 #home-cog { width: 38px; height: 38px; padding: 6px; top: max(8px, env(safe-area-inset-top)); }
+  body.home2 #menu-vehicle-preview { order: 2; margin: 0 0 6px; }
+  body.home2 #menu-vehicle-preview .menu-vehicle-stage { aspect-ratio: 2.2 / 1; }
+  body.home2 #menu-vehicle-choice { order: 3; }
+  body.home2 #home-game-label { order: 4; }
+  body.home2 :is(#btn-play-now, #btn-story, #btn-demo, #btn-weeval, #btn-multiplayer-top, #btn-new-top, #btn-install) { order: 5; }
+  body.home2 #track-list { order: 7; }
+  body.home2 #menu .menu-track-actions { order: 8; }
+  body.home2 #menu .lede { order: 9; }
+  body.home2 #home-play { position: fixed; left: 0; right: 0; bottom: 0; z-index: 28; margin: 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); flex-direction: row; justify-content: space-between; gap: 12px;
+    background: rgba(27,18,51,.97); border-top: 3px solid var(--amber); text-align: left; }
+  body.home2 #menu #home-play-go { min-width: 0; padding: 6px 30px; font-size: 30px; flex: none; }
+  body.home2 #menu .menu-inner { padding-bottom: 96px; }
+}

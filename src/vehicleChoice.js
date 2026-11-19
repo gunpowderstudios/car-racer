@@ -59,7 +59,7 @@ export const VEHICLES = [
   },
   {
     id: 'volvo',
-    name: 'Swedish Massage',
+    name: 'Swedish Meatballs',
     description: 'Handy for shifting junk up hills!',
     url: 'cars/volvo-SHRINK.glb',
     fit: 'auto',
@@ -359,7 +359,7 @@ function addCaravanCard(gallery) {
     card.classList.toggle('on', on);
     card.setAttribute('aria-checked', String(on));
     card.setAttribute('aria-disabled', String(!towable));
-    card.title = blocked ? `${CARAVAN_INFO.name} - ${CARAVAN_DESKTOP_ONLY}` : towable ? `${CARAVAN_INFO.name} - ${CARAVAN_INFO.blurb}` : `${CARAVAN_INFO.name} - pick the 70s Saloon, Swedish Massage, WASAABI or German Beema to tow it`;
+    card.title = blocked ? `${CARAVAN_INFO.name} - ${CARAVAN_DESKTOP_ONLY}` : towable ? `${CARAVAN_INFO.name} - ${CARAVAN_INFO.blurb}` : `${CARAVAN_INFO.name} - pick the 70s Saloon, Swedish Meatballs, WASAABI or German Beema to tow it`;
   };
   card.addEventListener('click', () => {
     const cb = checkbox();

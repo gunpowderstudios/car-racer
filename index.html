@@ -373,9 +373,13 @@ html.invite-loading #invite-loading {
 
 <!-- ============================ MENU ============================ -->
 <section id="menu">
+  <button id="home-cog" type="button" aria-label="Options" aria-expanded="false" title="Options">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="3.38 3.38"/><circle cx="12" cy="12" r="5.4" fill="none" stroke="currentColor" stroke-width="3.4"/></svg>
+  </button>
   <div class="menu-inner">
     <h1><span>Bangers</span> <span>and Smash!</span></h1>
-    <button id="btn-play-now" class="btn btn-play">Buckle up! <small>Quick random race</small></button>
+    <p id="home-game-label" class="home-label">Now pick a game</p>
+    <button id="btn-play-now" class="btn btn-play">Quick Race <small>A random track, straight in</small></button>
     <button id="btn-story" class="btn btn-story">Race Day <small>Jump in and put your foot down!</small></button>
     <button id="btn-demo" class="btn btn-story">Demolition Day <small>Crash, bang, wallop what a picture!</small></button>
     <button id="btn-weeval" class="btn btn-story">Weeval Knievel <small>You wait ages for a bus...</small></button>
@@ -435,6 +439,10 @@ html.invite-loading #invite-loading {
       </div>
       <h2 id="menu-vehicle-name">Vehicle</h2>
       <p id="menu-vehicle-blurb"></p>
+      <div id="home-play" hidden>
+        <div id="home-play-what"></div>
+        <button id="home-play-go" class="btn btn-play" type="button">PLAY</button>
+      </div>
     </aside>
 
     <aside id="menu-track-preview" class="menu-vehicle-preview menu-track-preview" aria-live="polite" hidden>

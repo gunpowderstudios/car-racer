@@ -987,6 +987,7 @@ function getawayFrame() {
 }
 
 // ------------------------------------------------------- destruction derby
+const home2 = !/[?&]classic\b/.test(location.search);       // the new home screen (the old one is still at ?classic)
 let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is a Jamboree on a computer; a phone or tablet keeps it plain, so it does not load a dozen models before anyone has pressed start
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
@@ -1491,7 +1492,7 @@ function frame(now) {
     drawPos.copy(curPos); drawQ.copy(curQ);
     if (mode === 'menu') {
       orbit += dt * 0.07;
-      const f = track.frameAt(0), R = 46;
+      const f = weeval ? { x: weeval.L.lipX + weeval.L.gap / 2, y: weeval.L.lipY, z: 0 } : track.frameAt(0), R = weeval ? 110 : 46;      // (the bus jump is watched from the middle of the gap)
       camera.position.set(f.x + Math.cos(orbit) * R, f.y + 16 + Math.sin(orbit * 0.7) * 3, f.z + Math.sin(orbit) * R);
       camera.lookAt(f.x, f.y + 1.2, f.z); camera.fov = 52; camera.updateProjectionMatrix();
       chase.snap();
@@ -1543,7 +1544,7 @@ function setMode(m) {
   if (m !== 'drive') camera.up.set(0, 1, 0);                                                  // (the Overhead camera turns the camera's up round)
   if (m !== 'drive') { setSoundPop(false); sound.sirenLoop(null); sound.radioLoop(false); }
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
-  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + ((assault || weeval) ? ' course' : '') + (getaway ? ' getaway' : '');
+  mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + ((assault || weeval) ? ' course' : '') + (getaway ? ' getaway' : '') + (home2 ? ' home2' : '');
   $('hud').hidden = m !== 'drive';
   if (m === 'drive' && assault && !assault.active && assaultCard) showAssaultCard();
   if (m === 'drive' && weeval && weevalCard && (weeval.state === 'clear' || weeval.state === 'failed' || weeval.state === 'over')) showWeevalCardNow();       // back from the replay: the card is still there
@@ -1763,6 +1764,16 @@ function toast(msg) {
 // ---------------------------------------------------------------------- menu
 /** Choose a track from the list: its 3D view comes up on the right (where the vehicle was) and Go! starts it. */
 let trackPreview = null, chosenDef = null;
+// ---- the new home screen: pick a game, its track comes up behind the vehicle, PLAY starts it (see body.home2 in style.css)
+let homeSel = null;
+function homeUnpick() { homeSel = null; $('home-play').hidden = true; document.querySelectorAll('#menu .btn-sel').forEach((b) => b.classList.remove('btn-sel')); }
+function homePick(btnId, title, make, go) {
+  const d = make(); homeSel = { d, go };
+  menuBackdrop = true; try { loadTrack(d); } catch { homeSel = null; } finally { menuBackdrop = false; }
+  document.querySelectorAll('#menu .btn-sel').forEach((b) => b.classList.remove('btn-sel')); $(btnId).classList.add('btn-sel');
+  $('home-play-what').textContent = d.name === title ? title : `${title}: ${d.name}`; $('home-play').hidden = !homeSel;
+  hideTrackPreview();
+}
 function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; trackPreview?.stop(); }
 function chooseTrack(d, blurb) {
   chosenDef = d; { const k = [...TEMPLATE_KEYS, 'apple'].find((x) => x !== 'random' && makeTemplate(x).name === d.name); if (k) setHash(slugOf(k)); else if (d.name === 'Got the hump' || /hump/i.test(d.name)) setHash('got-the-hump'); } window.__raceLaps?.syncFor?.(d);
@@ -1789,7 +1800,7 @@ function openFromHash() {
 addEventListener('hashchange', openFromHash);
 const menuGroupOpen = {};
 function renderMenu() {
-  hideTrackPreview();
+  hideTrackPreview(); homeUnpick();
   const box = $('track-list'); box.innerHTML = '';
   let ul = box;
   const row = (name, meta, cls, buttons) => {
@@ -1905,9 +1916,24 @@ function bindMenu() {
     sw.appendChild(b);
   });
   $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
-  $('btn-play-now').onclick = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; startDriving(d); };
-  $('btn-weeval').onclick = () => { weevalRun = newRun(); startDriving(weevalDef(1)); };      // Weeval Knievel: the bus jump, from stage 1
-  $('btn-demo').onclick = () => { const d = makeTemplate('oval'); d.demoDay = true; startDriving(d); };      // Demolition Day: always Deep Pan Pizza, Last One Standing
+  const quickDef = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; return d; };
+  const weevalGo = (d) => { weevalRun = newRun(); startDriving(d); };                      // Weeval Knievel: the bus jump, from stage 1
+  const demoDef = () => { const d = makeTemplate('oval'); d.demoDay = true; return d; };   // Demolition Day: always Deep Pan Pizza, Last One Standing
+  if (home2) {                                                                              // the new home screen: a big button picks the game and shows its track behind the vehicle; PLAY starts it
+    $('btn-play-now').onclick = () => homePick('btn-play-now', 'Quick Race', quickDef, startDriving);
+    $('btn-weeval').onclick = () => homePick('btn-weeval', 'Weeval Knievel', () => weevalDef(1), weevalGo);
+    $('btn-demo').onclick = () => homePick('btn-demo', 'Demolition Day', demoDef, startDriving);
+    $('home-play-go').onclick = () => { if (homeSel) { const { d, go } = homeSel; go(d); } };
+    const cog = $('home-cog'), openOpts = (on) => { document.body.classList.toggle('options-open', on); cog.setAttribute('aria-expanded', String(on)); if (on) document.querySelector('#menu details.options').open = true; };
+    cog.onclick = () => openOpts(!document.body.classList.contains('options-open'));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('options-open')) { openOpts(false); e.stopPropagation(); } }, true);
+    document.addEventListener('pointerdown', (e) => { if (document.body.classList.contains('options-open') && !e.target.closest('#home-cog, #menu details.options')) openOpts(false); });
+    setTimeout(() => { const g = document.querySelector('#menu-vehicle-choice .vgallery'), c = g?.querySelector('.vcard[aria-checked="true"]'); if (g && c) g.scrollLeft = Math.max(0, c.offsetLeft - 40); }, 800);      // (the chosen vehicle is in view)
+  } else {
+    $('btn-play-now').onclick = () => startDriving(quickDef());
+    $('btn-weeval').onclick = () => weevalGo(weevalDef(1));
+    $('btn-demo').onclick = () => startDriving(demoDef());
+  }
   $('btn-new-top').onclick = () => $('btn-new').click();                          // the same Design-a-track! button, up with the others
   $('btn-multiplayer-top').onclick = () => $('btn-multiplayer').click();         // the same Multiplayer button, up beside Buckle up!
   $('import-file').onchange = async (e) => {
