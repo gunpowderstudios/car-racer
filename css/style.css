@@ -418,7 +418,8 @@ body:not(.mode-drive) .mp-label { display: none; }
 #editor select { background: var(--paper-deep); }
 #editor button:hover:not(:disabled) { background: rgba(234,246,255,.14); }
 #editor button:disabled { opacity: .35; cursor: default; }
-#editor #ed-tool-barrel[aria-pressed="true"] { background: var(--amber); color: #2a1a00; }
+#editor #ed-tool-barrel[aria-pressed="true"], #editor #ed-tool-skull[aria-pressed="true"] { background: var(--amber); color: #2a1a00; }
+.ed-sizebtns button { border: 1px solid rgba(234,246,255,.4); margin: 2px 4px 2px 0; }
 #ed-props-clear { border: 1px solid rgba(234,246,255,.4); margin: 4px 0 8px; }
 #editor button.primary { background: var(--amber); color: #2a1a00; }
 #editor button.primary:hover { background: #ffc44d !important; }

@@ -16,6 +16,8 @@ export function clearAhead(L, x, z, dx, dz, max, m = 1.4) {
   return max;
 }
 
+const HOT_RANGE = 110;      // metres: a police car this close to a robber who has the cash drops everything and rams him
+
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
   /** `slot` numbers the police cars (0, 1, 2...) so they do different jobs: 0 tails the robber, 1 cuts him off at the junction ahead, 2 watches the safehouse, and so on round again. */
@@ -59,8 +61,9 @@ export class GetawayDriver {
     }
     // police: with the alarm on, each car has its own job (see `slot`); otherwise wait near the banks where a bag is out
     if (foe && g.robberBag) {
-      const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz), lead = d < 45 ? clamp(d / Math.max(car.speed + 6, 14), 0, 1.5) : 0;
+      const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz), lead = d < 70 ? clamp(d / Math.max(car.speed + 6, 14), 0, 1.5) : 0;
       const tail = { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' }, job = this.slot % 6;
+      if (this.role === 'police' && g.alarm && d < HOT_RANGE) return tail;      // he has the cash and is close: every car drops its job and goes straight for him
       const sp = Math.hypot(foe.vel.x, foe.vel.z), hx = sp > 3 ? foe.vel.x / sp : foe.az.x, hz = sp > 3 ? foe.vel.z / sp : foe.az.z;
       // the net: junctions ahead of him on the way he is heading, nearest first; cars 1, 4 and 5 take the 1st, 2nd and 3rd so they spread across different streets
       const ahead = [];
@@ -122,11 +125,12 @@ export class GetawayDriver {
     this.backing = false;
     // The police pick up speed as the robber gets bags home (a little each), ease off after a strike, and in a chase match whatever he is doing (the cars are all equally fast now)
     const sk = clamp(this.skill + 0.06 * (g.robbed || 0) - 0.03 * (g.strikes || 0), 0.3, 1.15), cruise = this.role === 'police' ? 22 + sk * 8 : this.cruise;
-    const keepUp = (this.role === 'police' && foe && g.alarm) ? Math.min(50, Math.max(foe.speed, 0) * (0.9 + 0.2 * sk) + 3) : 0;
-    let vT = G.kind === 'idle' ? 0 : Math.max(cruise * (this.role === 'police' ? (g.alarm ? 1.12 : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), G.kind === 'robber' || G.kind === 'intercept' ? keepUp : 0), ax = G.x, az = G.z, chase = false;
+    const hot = this.role === 'police' && !!foe && g.alarm && !!g.robberBag && Math.hypot(foe.pos.x - px, foe.pos.z - pz) < HOT_RANGE;      // the robber is carrying the cash: ram him, as hard and as fast as possible
+    const keepUp = (this.role === 'police' && foe && g.alarm) ? (hot ? Math.min(60, Math.max(foe.speed, 0) * 1.2 + 10) : Math.min(50, Math.max(foe.speed, 0) * (0.9 + 0.2 * sk) + 3)) : 0;
+    let vT = G.kind === 'idle' ? 0 : Math.max(cruise * (this.role === 'police' ? (g.alarm ? (hot ? 1.4 : 1.12) : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), G.kind === 'robber' || G.kind === 'intercept' ? keepUp : 0), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
     const same = sA && sB && (sA.kind === 'node' || sB.kind === 'node' || (sA.kind === sB.kind && (sA.kind === 'h' ? sA.j === sB.j : sA.i === sB.i)));
-    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < 40 && clearAhead(L, px, pz, (G.x - px) / (dist || 1), (G.z - pz) / (dist || 1), dist, 2.2) >= dist - 2) { chase = true; vT = Math.max(cruise * 1.25, keepUp * 1.08); }            // the last stretch of a chase: straight at him
+    if (G.kind === 'robber' && same && sA.kind !== 'node' && sB.kind !== 'node' && dist < (hot ? 80 : 40) && clearAhead(L, px, pz, (G.x - px) / (dist || 1), (G.z - pz) / (dist || 1), dist, 2.2) >= dist - 2) { chase = true; vT = hot ? Math.max(cruise * 1.4, keepUp * 1.2) : Math.max(cruise * 1.25, keepUp * 1.08); }            // the last stretch of a chase: straight at him
     else if (G.kind !== 'idle') {
       // follow the streets: aim a little way ahead along the route, in the left-hand lane, and slow for the corners
       const pts = G.path || (G.kind === 'safehouse' && g.safehouse.gx !== undefined ? safehouseRoute(L, g.safehouse, px, pz, fx, fz, car.speed) : route(L, px, pz, fx, fz, G.x, G.z, car.speed)), P = [{ x: px, z: pz }];
@@ -221,7 +225,8 @@ export class GetawayDriver {
     }
     this.dbg = { vT, blocked, ang, dist, kind: G.kind };
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
-    const ram = this.role === 'police' && chase && sk > 0.5 && dist > 6 && dist < 40 && Math.abs(ang) < 0.12 && v > 10 && car.boostFuel > 0.3;      // the last stretch of a chase: nitro, so the hit lands above ramming speed
+    const ram = hot ? chase && dist > 4 && dist < 90 && Math.abs(ang) < 0.3 && v > 8 && car.boostFuel > 0.12
+      : this.role === 'police' && chase && sk > 0.5 && dist > 6 && dist < 40 && Math.abs(ang) < 0.12 && v > 10 && car.boostFuel > 0.3;      // the last stretch of a chase: nitro, so the hit lands above ramming speed
     inp.boost = ram || this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
     return inp;
   }

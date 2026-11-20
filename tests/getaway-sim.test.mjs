@@ -159,3 +159,10 @@ test('the bank sign hangs out in front of the cornice, not behind it like a bar'
   const { readFileSync } = await import('node:fs');
   assert.match(readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), /sign\.position\.set\(b\.cx, y0 \+ 6\.6, b\.cz \+ b\.hz \+ 0\.8\)/);
 });
+
+test('when the robber has the cash and a police car is close, every police car drops its job and goes straight for him', () => {
+  const L = townLayout(), game = new GetawayGame(L), rob = L.nodes[Math.floor(L.nodes.length / 2)];
+  const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true; game.safehouse = { x: L.policeStart.x, z: L.policeStart.z };
+  const foe = { pos: { x: rob.x - 60, z: rob.z }, vel: { x: 20, z: 0 }, speed: 20 }, cop = { pos: { x: rob.x - 10, z: rob.z + 20 }, vel: { x: 0, z: 0 }, speed: 0, fwdSpeed: 0, az: { x: 1, z: 0 } };
+  for (let slot = 0; slot < 8; slot++) assert.equal(new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind, 'robber', `slot ${slot} goes for him`);
+});

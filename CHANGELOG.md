@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.628 — Aggressive police, and track size in the editor
+
+- The Getaway: when you are the robber and have the cash, any police car within about 110 m now drops its job (roadblock, junction net, safehouse watch) and goes straight for you: faster, boosting early, and ramming as hard and as often as it can.
+- Track editor: Shorter and Longer buttons (10% each) resize the whole track, with its props, about its middle. The length shows under them.
+
 ## v17.627 — Track editor: skull barrels
 
 - New Skull barrels tool in the track editor (button, or K): drop the black skull barrels that explode the moment anything touches them. They show on the map with a yellow skull, are counted in the props list, and survive Save, Export and Share link.

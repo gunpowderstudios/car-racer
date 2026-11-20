@@ -623,6 +623,15 @@ export class Editor {
       this.snapshot(); const t = k === 'random' ? makeRandomTrack() : makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
       this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     };
+    const resize = (f) => {                                           // the whole track (road, jumps, props) bigger or smaller, about its middle; heights, banking and widths stay as they are
+      const hs = this.def.handles; if (!hs.length || !this.track) return;
+      const len = this.track.length * f; if (len < 250) { this.cb.toast('That is as short as a track can go.'); return; } if (len > 12000) { this.cb.toast('That is as long as a track can go.'); return; }
+      this.snapshot();
+      const cx = hs.reduce((a, h) => a + h.x, 0) / hs.length, cz = hs.reduce((a, h) => a + h.z, 0) / hs.length, sc = (o) => { o.x = Math.round((cx + (o.x - cx) * f) * 100) / 100; o.z = Math.round((cz + (o.z - cz) * f) * 100) / 100; };
+      hs.forEach(sc); (this.def.props || []).forEach(sc);
+      this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged(); this.cb.toast(`Track is now ${(this.track.length / 1000).toFixed(2)} km.`);
+    };
+    $('ed-shorter').onclick = () => resize(0.9); $('ed-longer').onclick = () => resize(1.1);
     $('ed-clear').onclick = () => {                                   // start from scratch: a plain loop, no props, no jumps (Undo gets the old track back)
       if (!confirm('Clear this track and start from scratch?\n\nEverything on it will go (Undo brings it back).')) return;
       this.snapshot();
