@@ -40,6 +40,8 @@ class In {
 }
 // (a skull barrel is packed as its kind plus the number of kinds, so links made before skull barrels still unpack)
 const PROP_KINDS = ['barrel', 'chicken'];      // (the chicken slot stays so links made before the chickens went still unpack; normalizeProps then drops them)
+// (a fire pit is code 4, past barrel 0, chicken 1 and their skull versions 2, 3)
+const FIRE_CODE = 4;
 const Q = { xz: 10, y: 20, bank: 4, w: 2, lip: 10, kick: 2 };
 
 function encodeTrack(d) {
@@ -62,7 +64,7 @@ function encodeTrack(d) {
   }
   const props = d.props || [];
   o.u(props.length); px = 0; pz = 0;
-  for (const p of props) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(PROP_KINDS.indexOf(p.type) + (p.lethal ? PROP_KINDS.length : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); px = x; pz = z; }
+  for (const p of props) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(p.type === 'fire' ? FIRE_CODE : PROP_KINDS.indexOf(p.type) + (p.lethal ? PROP_KINDS.length : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); px = x; pz = z; }
   const bumps = d.bumps || [];
   o.u(bumps.length); px = 0; pz = 0;
   for (const b of bumps) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 10); o.u(b.h < 0 ? 10000 + Math.round(-b.h * 100) : Math.round(b.h * 100)); px = x; pz = z; }      // (a dip is its depth plus 10000: older links never go that high)
@@ -97,7 +99,7 @@ function decodeTrack(bytes) {
     def.handles.push(h);
   }
   def.props = []; px = 0; pz = 0;
-  for (let i = 0, c = r.count(1000); i < c; i++) { const ku = r.u(), k = PROP_KINDS[ku % PROP_KINDS.length]; px += r.z(); pz += r.z(); def.props.push({ type: k, ...(ku >= PROP_KINDS.length ? { lethal: true } : {}), x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }); }
+  for (let i = 0, c = r.count(1000); i < c; i++) { const ku = r.u(), k = ku === FIRE_CODE ? 'fire' : PROP_KINDS[ku % PROP_KINDS.length]; px += r.z(); pz += r.z(); def.props.push({ type: k, ...(ku >= PROP_KINDS.length && ku !== FIRE_CODE ? { lethal: true } : {}), x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }); }
   const bumps = []; px = 0; pz = 0;
   for (let i = 0, c = r.count(100); i < c; i++) { px += r.z(); pz += r.z(); const rr = r.u() / 10, hv = r.u(); bumps.push({ x: px / Q.xz, z: pz / Q.xz, r: rr, h: hv >= 10000 ? -(hv - 10000) / 100 : hv / 100 }); }
   if (bumps.length) def.bumps = bumps;

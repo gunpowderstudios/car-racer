@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.629 — Track editor: fire pits
+
+- New Fire pits tool in the track editor (button, or L): drop the flame pits from Apple Crumple on any track. Every few seconds one flares, then roars into a column of fire that throws a car into the air (and wrecks it where damage is on). They show on the map with a flame, are counted in the props list, and survive Save, Export and Share link.
+
 ## v17.628 — Aggressive police, and track size in the editor
 
 - The Getaway: when you are the robber and have the cash, any police car within about 110 m now drops its job (roadblock, junction net, safehouse watch) and goes straight for you: faster, boosting early, and ramming as hard and as often as it can.

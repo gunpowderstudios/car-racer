@@ -59,7 +59,7 @@ export function takeoffRamp(h) {
 /** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
-export const PROP_TYPES = ['barrel'];      // (an old saved track or link that still has chickens in it just loses them)
+export const PROP_TYPES = ['barrel', 'fire'];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 400;
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */

@@ -313,10 +313,18 @@ export class Editor {
     }
   }
 
+  _placing() { return this.tool === 'barrel' || this.tool === 'skull' || this.tool === 'fire'; }
+
   _drawProps(g) {
     const S = this.view.scale, R = Math.max(4.5, BARREL.radius * S * 1.7);
     const icon = (x, y, on, ghost, type, skull) => {
       g.globalAlpha = ghost ? 0.5 : 1;
+      if (type === 'fire') {
+        g.beginPath(); g.arc(x, y, R * 1.15, 0, 7); g.fillStyle = '#2a1410'; g.fill(); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : '#ff6a10'; g.stroke();
+        g.beginPath(); g.moveTo(x, y - R * 0.95); g.bezierCurveTo(x + R * 0.9, y - R * 0.2, x + R * 0.7, y + R * 0.7, x, y + R * 0.75); g.bezierCurveTo(x - R * 0.7, y + R * 0.7, x - R * 0.9, y - R * 0.1, x, y - R * 0.95); g.fillStyle = '#ff8a1a'; g.fill();
+        g.beginPath(); g.ellipse(x, y + R * 0.3, R * 0.28, R * 0.38, 0, 0, 7); g.fillStyle = '#ffe27a'; g.fill();
+        g.globalAlpha = 1; return;
+      }
       g.beginPath(); g.arc(x, y, R, 0, 7); g.fillStyle = skull ? '#1b1b1f' : '#ff9d3a'; g.fill();
       g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : skull ? '#ffc21a' : INK; g.stroke();
       if (skull) { g.fillStyle = '#ffc21a'; g.font = `700 ${Math.round(R * 1.5)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('\u2620', x, y + 1); g.textAlign = 'start'; g.textBaseline = 'alphabetic'; }
@@ -324,10 +332,10 @@ export class Editor {
       g.globalAlpha = 1;
     };
     this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type, !!p.lethal); });
-    if ((this.tool === 'barrel' || this.tool === 'skull') && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, 'barrel', this.tool === 'skull');
+    if ((this._placing()) && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, this.tool === 'fire' ? 'fire' : 'barrel', this.tool === 'skull');
     if (this.selProp >= 0 && this.def.props[this.selProp]) {
       const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z);
-      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
+      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.type === 'fire' ? 'Fire pit' : p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
     }
   }
 
@@ -382,7 +390,8 @@ export class Editor {
   updateProps() {
     const n = this.def.props.length;
     const nb = this.def.props.filter((p) => p.type === 'barrel' && !p.lethal).length, ns = this.def.props.filter((p) => p.type === 'barrel' && p.lethal).length;
-    const parts = [];
+    const nf = this.def.props.filter((p) => p.type === 'fire').length, parts = [];
+    if (nf) parts.push(`${nf} fire pit${nf === 1 ? '' : 's'}`);
     if (nb) parts.push(`${nb} barrel${nb === 1 ? '' : 's'}`);
     if (ns) parts.push(`${ns} skull barrel${ns === 1 ? '' : 's'}`);
     $('ed-props-count').textContent = parts.length ? `${parts.join(' and ')} on the track.` : 'No props yet.';
@@ -468,7 +477,7 @@ export class Editor {
   }
   _setTool(t) {
     this.tool = t; this._ghost = null;
-    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull'));
+    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire'));
     if (this.c) this.c.style.cursor = t === 'barrel' || t === 'skull' ? 'copy' : 'crosshair';
   }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
@@ -524,7 +533,7 @@ export class Editor {
       const [sx, sy] = pos(e), d = this.drag;
       if (!d) {
         const k = this._hit(sx, sy), pk = k < 0 ? this._hitProp(sx, sy) : -1;
-        const placing = this.tool === 'barrel' || this.tool === 'skull';
+        const placing = this._placing();
         if (placing) this._ghost = pk < 0 && k < 0 ? [sx, sy] : null;
         if (k !== this.hover || pk !== this.hoverProp || placing) {
           this.hover = k; this.hoverProp = pk;
@@ -548,9 +557,9 @@ export class Editor {
       }
     });
     const end = () => {
-      const d = this.drag; this.drag = null; c.style.cursor = this.tool === 'barrel' || this.tool === 'skull' ? 'copy' : 'crosshair';
+      const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair';
       if (d?.type === 'pan' && !d.moved) {
-        if ((this.tool === 'barrel' || this.tool === 'skull') && d.button === 0) this.addProp('barrel', d.sx, d.sy, this.tool === 'skull');
+        if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : 'barrel', d.sx, d.sy, this.tool === 'skull');
         else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
       }
       if (d?.type === 'handle' && d.moved) this.rebuild(true);
@@ -605,6 +614,7 @@ export class Editor {
     // toolbar
     $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-tool-fire').onclick = () => { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); };
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
     $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All props removed.'); };
@@ -683,6 +693,7 @@ export class Editor {
       if (typing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'l' || e.key === 'L') { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); }
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }
       else if (e.key === 'b' || e.key === 'B') { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); }
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }

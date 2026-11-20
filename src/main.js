@@ -32,6 +32,8 @@ import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { Weeval, WEEVAL, weevalDef, newRun } from './weeval.js';
 import { weevalHudShow, weevalHudUpdate, weevalPop, showWeevalCard, hideWeevalCard } from './weevalHud.js';
 import { PropsView } from './propsView.js';
+import { FirePits } from './firePits.js';
+import { FirePitView } from './firePitsView.js';
 import { Input, PAD_ACTIONS, describeBinding } from './input.js';
 import { Sound, musicGain } from './audio.js';
 import { reshowPodium } from './podium.js';
@@ -181,6 +183,7 @@ const rivalPaint = () => RIVAL_LOOKS[(Math.random() * RIVAL_LOOKS.length) | 0].t
 const scorch = new Scorch(stage.scene);
 const props = new Props();
 const propsView = new PropsView(stage.scene);
+const firePits = new FirePits(), firePitView = new FirePitView(stage.scene);
 const hud = new Hud(); hud.setUnits(opts.kmh);
 const sound = new Sound();
 let lounge = null, loungeWait = false;                  // the menu music (see loungeOn below): a plain audio element, because a browser will not start the game's own sound system before a click
@@ -396,6 +399,7 @@ function loadTrack(newDef) {
   hud.buildMap(track);
   skid.clear(); particles.clear(); debris.clear(); scorch.clear();
   props.load(track, def.props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 3 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 1.5 : 1, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza' ? 0.75 : 1); propsView.build(props, def.mode === 'lastStanding' && def.name === 'Deep Pan Pizza');      // (the pizza's drums are green, like peppers)
+  firePits.load(track); firePitView.load(firePits);
   race.best = store.get('cr.best', {})[bestKey(track)] ?? null;
   race.laps = 0; race.lapStart = null; race.lastTime = null;
   placeCar(track.startS(12), 0, 0);
@@ -452,7 +456,7 @@ function restartRace() {
   if (getaway) { getawayRound(getaway.role); return; }
   if (weeval) { weevalNew(); return; }
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
-  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset(); firePits.reset();
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
@@ -465,7 +469,7 @@ function restartRace() {
 /** Three red lights and Go! with the car held still; the clock starts when you cross the line. */
 function assaultCountdown() {
   assaultCard = null; assault.reset(); assaultHudShow(true); hideResult(); skid.clear();
-  props.reset(); derby.repairPlayer?.();
+  props.reset(); firePits.reset(); derby.repairPlayer?.();
   frozen = true; hud.banner('Apple Crumple - beat the clock!', 1800);
   startRaceLights(() => { frozen = false; }, (f, d, g) => sound.beep(f, d, g));
 }
@@ -521,7 +525,7 @@ const weevalStore = () => store.get('cr.weeval', {});
 /** A fresh attempt at this stage: the car back on the platform, repaired. `how`: 'first' (the lights), 'retry' (after a failed try) or 'reset' (put back before the jump, free). */
 function weevalAttempt(how) {
   hideWeevalCard(); weevalCard = null; setPaused(false); cancelRaceLights();
-  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset(); firePits.reset();
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1; race.reverseT = 0;
   derbyStart();
@@ -611,7 +615,7 @@ function sim(seconds, inp) {
     car.step(DT, typeof inp === 'function' ? inp(i * DT) : full, track);
     if (car.tow && !derby.enabled) { car.refreshFrame(); collideVanCar(car.tow, car, towHit); }   // (with rivals, derby.step does this)
     if (derby.enabled) derby.step(DT, props.barrels);
-    props.step(DT, derby.enabled ? derby.cars : car); simTime += DT / GAME_SPEED; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
+    props.step(DT, derby.enabled ? derby.cars : car); firePits.step(DT, car, derby); simTime += DT / GAME_SPEED; car.events.length = 0; props.events.length = 0; derby.events.length = 0;
     if (i % 2 === 0) updateRace(2 * DT);
   }
   syncPose(); prevPos.copy(curPos); prevQ.copy(curQ); chase.snap(); acc = 0;
@@ -694,9 +698,10 @@ function stepPhysics(dt) {
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (getaway) { if (getaway.online) gwOnlineStep(); else getawayStep(); }
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
-    props.step(DT, derby.enabled ? derby.cars : car);
+    props.step(DT, derby.enabled ? derby.cars : car); firePits.step(DT, car, derby);
     syncPose(); acc -= DT; n++; simTime += DT / GAME_SPEED;
     if (props.events.length) { propEvents(); }
+    if (firePits.events.length) { for (const e of firePits.events) if (e.type === 'sfx') sound.cue(e.name, 1, e.dist); firePits.events.length = 0; }
     if (derby.events.length) { derbyEvents(); }
     if (car.events.length) {
       for (const e of car.events) {
@@ -1424,7 +1429,7 @@ function frame(now) {
     const drawReplayFrame = (dtStep) => {
       const f = replay().frame(dtStep);
       if (replay().state.skip && replay().state.realtime) return;          // a film with sound is made at real speed: a screen frame that is not a film frame is not drawn at all, which leaves the page free to keep the sound unbroken
-      propsView.update(props);
+      propsView.update(props); firePitView.update(firePits);
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();
       if (weeval) weevalReplayBoxes(replay().state);
@@ -1507,7 +1512,7 @@ function frame(now) {
   if (car.tow) { car.tow.track = track; caravanView.update(mode === 'drive' ? acc / DT : 1); }
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
-  propsView.update(props);
+  propsView.update(props); firePitView.update(firePits);
   stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
