@@ -315,18 +315,19 @@ export class Editor {
 
   _drawProps(g) {
     const S = this.view.scale, R = Math.max(4.5, BARREL.radius * S * 1.7);
-    const icon = (x, y, on, ghost, type) => {
+    const icon = (x, y, on, ghost, type, skull) => {
       g.globalAlpha = ghost ? 0.5 : 1;
-      g.beginPath(); g.arc(x, y, R, 0, 7); g.fillStyle = '#ff9d3a'; g.fill();
-      g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke();
-      g.beginPath(); g.arc(x, y, R * 0.45, 0, 7); g.fillStyle = '#7a2e0c'; g.fill();
+      g.beginPath(); g.arc(x, y, R, 0, 7); g.fillStyle = skull ? '#1b1b1f' : '#ff9d3a'; g.fill();
+      g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : skull ? '#ffc21a' : INK; g.stroke();
+      if (skull) { g.fillStyle = '#ffc21a'; g.font = `700 ${Math.round(R * 1.5)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('\u2620', x, y + 1); g.textAlign = 'start'; g.textBaseline = 'alphabetic'; }
+      else { g.beginPath(); g.arc(x, y, R * 0.45, 0, 7); g.fillStyle = '#7a2e0c'; g.fill(); }
       g.globalAlpha = 1;
     };
-    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type); });
-    if (this.tool === 'barrel' && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, this.tool);
+    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type, !!p.lethal); });
+    if ((this.tool === 'barrel' || this.tool === 'skull') && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, 'barrel', this.tool === 'skull');
     if (this.selProp >= 0 && this.def.props[this.selProp]) {
       const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z);
-      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText('Barrel', x + R + 6, y + 4);
+      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
     }
   }
 
@@ -380,9 +381,10 @@ export class Editor {
   }
   updateProps() {
     const n = this.def.props.length;
-    const nb = this.def.props.filter((p) => p.type === 'barrel').length;
+    const nb = this.def.props.filter((p) => p.type === 'barrel' && !p.lethal).length, ns = this.def.props.filter((p) => p.type === 'barrel' && p.lethal).length;
     const parts = [];
     if (nb) parts.push(`${nb} barrel${nb === 1 ? '' : 's'}`);
+    if (ns) parts.push(`${ns} skull barrel${ns === 1 ? '' : 's'}`);
     $('ed-props-count').textContent = parts.length ? `${parts.join(' and ')} on the track.` : 'No props yet.';
     $('ed-props-clear').disabled = !n;
   }
@@ -466,17 +468,17 @@ export class Editor {
   }
   _setTool(t) {
     this.tool = t; this._ghost = null;
-    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel'));
-    if (this.c) this.c.style.cursor = t === 'barrel' ? 'copy' : 'crosshair';
+    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull'));
+    if (this.c) this.c.style.cursor = t === 'barrel' || t === 'skull' ? 'copy' : 'crosshair';
   }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
-  addProp(type, sx, sy) {
+  addProp(type, sx, sy, lethal = false) {
     if (!this.track) return;
     const [wx, wz] = this.toWorld(sx, sy);
     if (this.def.props.length >= 400) { this.cb.toast('That is enough props (400).'); return; }
     const p = placeProp(this.track, wx, wz);
     this.snapshot();
-    this.def.props.push({ type, x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
+    this.def.props.push({ type, ...(lethal ? { lethal: true } : {}), x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
     this.selProp = this.def.props.length - 1; this.sel = -1; this.updateInspector(); this.propsChanged();
   }
   removeProp() {
@@ -522,7 +524,7 @@ export class Editor {
       const [sx, sy] = pos(e), d = this.drag;
       if (!d) {
         const k = this._hit(sx, sy), pk = k < 0 ? this._hitProp(sx, sy) : -1;
-        const placing = this.tool === 'barrel';
+        const placing = this.tool === 'barrel' || this.tool === 'skull';
         if (placing) this._ghost = pk < 0 && k < 0 ? [sx, sy] : null;
         if (k !== this.hover || pk !== this.hoverProp || placing) {
           this.hover = k; this.hoverProp = pk;
@@ -546,9 +548,9 @@ export class Editor {
       }
     });
     const end = () => {
-      const d = this.drag; this.drag = null; c.style.cursor = this.tool === 'barrel' ? 'copy' : 'crosshair';
+      const d = this.drag; this.drag = null; c.style.cursor = this.tool === 'barrel' || this.tool === 'skull' ? 'copy' : 'crosshair';
       if (d?.type === 'pan' && !d.moved) {
-        if (this.tool === 'barrel' && d.button === 0) this.addProp(this.tool, d.sx, d.sy);
+        if ((this.tool === 'barrel' || this.tool === 'skull') && d.button === 0) this.addProp('barrel', d.sx, d.sy, this.tool === 'skull');
         else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
       }
       if (d?.type === 'handle' && d.moved) this.rebuild(true);
@@ -603,6 +605,7 @@ export class Editor {
     // toolbar
     $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
     $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All props removed.'); };
     $('ed-bank').onclick = () => {
@@ -671,6 +674,7 @@ export class Editor {
       if (typing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }
       else if (e.key === 'b' || e.key === 'B') { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); }
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
       else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }

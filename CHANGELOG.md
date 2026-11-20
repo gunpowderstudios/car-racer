@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.627 — Track editor: skull barrels
+
+- New Skull barrels tool in the track editor (button, or K): drop the black skull barrels that explode the moment anything touches them. They show on the map with a yellow skull, are counted in the props list, and survive Save, Export and Share link.
+
 ## v17.626 — Track editor: Clear
 
 - New Clear button in the track editor: it asks first, then starts you again from a plain loop with no props or jumps. Undo brings the old track back.

@@ -37,3 +37,10 @@ test('a link that is not a track is turned away', async () => {
   const tiny = await packTrack({ name: 'Two points', handles: [{ x: 0, z: 0 }, { x: 10, z: 0 }] });
   assert.equal(await unpackTrack(tiny), null);                                   // fewer than three points is not a circuit
 });
+
+test('skull barrels keep their skull when a track goes through a share link', async () => {
+  const d = normalizeTrack(makeTemplate('speedway'));
+  d.props = [{ type: 'barrel', x: 10, z: 5, y: 0.6 }, { type: 'barrel', lethal: true, x: 20, z: 5, y: 0.6 }];
+  const back = await unpackTrack(await packTrack(d));
+  assert.equal(back.props.length, 2); assert.ok(!back.props[0].lethal); assert.equal(back.props[1].lethal, true);
+});
