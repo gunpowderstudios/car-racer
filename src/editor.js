@@ -620,6 +620,13 @@ export class Editor {
       this.snapshot(); const t = k === 'random' ? makeRandomTrack() : makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
       this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     };
+    $('ed-clear').onclick = () => {                                   // start from scratch: a plain loop, no props, no jumps (Undo gets the old track back)
+      if (!confirm('Clear this track and start from scratch?\n\nEverything on it will go (Undo brings it back).')) return;
+      this.snapshot();
+      const handles = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return { x: Math.round(Math.cos(a) * 150), y: 0.65, z: Math.round(Math.sin(a) * 90), w: 0, bank: 0, gap: 0 }; });
+      this.def = normalizeTrack({ name: 'New track', width: 22, walls: true, defaultLaps: 3, handles, props: [] }); this.sel = -1; this.selProp = -1; this._setTool('road');
+      $('ed-name').value = this.def.name; this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged(); this.cb.toast('Cleared - drag the points to shape your track.');
+    };
     $('ed-fit').onclick = () => { this.fit(); this.draw(); };
     $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };
     $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };

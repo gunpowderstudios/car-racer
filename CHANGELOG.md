@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.626 — Track editor: Clear
+
+- New Clear button in the track editor: it asks first, then starts you again from a plain loop with no props or jumps. Undo brings the old track back.
+
 ## v17.625 — Blow up and you're out
 
 - Race Day: if your car explodes you are now out of the race (the stage card says "You're out!"; in the championship that ends your season) instead of respawning. Harder, and easy to change back (one line in main.js: the `repairsMax` rule).
