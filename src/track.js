@@ -28,6 +28,9 @@ export const EMBANKMENT = 0.8;             // verge falls away this many metres 
 const CELL = 8;
 const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its ends
 const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
+const CROSS_MAX_DY = 2.0;      // roads crossing within this height of each other, with no gap, are a crossroad (more than this and it is a ramp-and-bridge problem to fix)
+const CROSS_MIN_SIN = 0.3;     // ...and they must cross at more than about 17 degrees, or the "junction" would be a long shared strip
+const CROSS_LIFT = 0.05;       // the second road sits this much higher through a junction, so the two surfaces do not z-fight
 const QUERY_MARGIN = 4.5;
 const BERM_MARGIN = 14;             // a dirt-banked stage's embankments reach this far past the road edge
 const TAKEOFF_LEN = 12, TAKEOFF_RISE = 0.5;   // ramp up to a gap (the default, flat-lipped ramp)
@@ -401,6 +404,49 @@ export class Track {
     }
   }
 
+  /**
+   * Crossroads: two flat stretches of road that cross at (nearly) the same height with no gap or bridge. The pair is levelled
+   * to one height through the junction (road B a hair higher so the two surfaces never flicker), the barriers are opened across
+   * it (`junc`), and `crossroads` remembers where, so lap progress can stay on the road a car is really driving (progressNear).
+   */
+  _crossroads() {
+    const n = this.n, { px, py, pz, gap, hw, bank, s } = this, L = this.length, ds = this.ds;
+    this.junc = new Uint8Array(n); this.crossroads = [];
+    if (this.def.mode === 'lastStanding' || this.def.getaway || n < 60) return;
+    const found = findCrossings(this);
+    for (const c of found) {
+      if (c.dy >= CROSS_MAX_DY || c.sin < CROSS_MIN_SIN) continue;                  // a real bridge stays a bridge; a shallow scrape stays a problem the editor reports
+      const ia = Math.round(c.sA / ds) % n, ib = Math.round(c.sB / ds) % n;
+      if (gap[ia] || gap[ib] || Math.abs(bank[ia]) > 0.06 || Math.abs(bank[ib]) > 0.06) continue;
+      const La = hw[ib] / c.sin + 2.5, Lb = hw[ia] / c.sin + 2.5, blend = 10;      // half the opening along each road, and how far the levelling fades out
+      const y = (py[ia] + py[ib]) / 2, dA = y - py[ia], dB = y - py[ib] + CROSS_LIFT;
+      const lev = (i0, Lh, d, mark) => {
+        const reach = Math.ceil((Lh + blend) / ds);
+        for (let k = -reach; k <= reach; k++) {
+          const i = ((i0 + k) % n + n) % n, a = Math.abs(k) * ds;
+          if (gap[i]) continue;
+          py[i] += d * (a <= Lh ? 1 : 1 - smoothstep((a - Lh) / blend));
+          if (mark && a <= Lh) this.junc[i] = 1;
+        }
+      };
+      lev(ia, La, dA, true); lev(ib, Lb, dB, true);
+      this.crossroads.push({ x: c.x, z: c.z, y, sA: s[ia], sB: s[ib], r: Math.max(La, Lb) + 6, sin: c.sin });
+    }
+  }
+
+  /** Like progressAt, but where roads cross it stays on the stretch near `hint` (the car's last progress) instead of jumping to the other road. */
+  progressNear(x, y, z, hint) {
+    const cr = this.crossroads;
+    if (!cr || !cr.length || hint == null) return this.progressAt(x, y, z);
+    let near = false;
+    for (const c of cr) if (Math.abs(x - c.x) < c.r + 8 && Math.abs(z - c.z) < c.r + 8) { near = true; break; }
+    if (!near) return this.progressAt(x, y, z);
+    this._hint = hint;
+    const q = this.query(x, y, z, this._pq || (this._pq = Track.newQuery()), 1.5);
+    this._hint = null;
+    return q.idx >= 0 ? q.s : this.progressAt(x, y, z);
+  }
+
   _build() {
     const def = this.def;
     const { pts, handleDense } = densePolyline(def);
@@ -466,6 +512,8 @@ export class Track {
         else if (d > 0 && d < half + LANDING_LEN) py[i] -= LANDING_DROP * smoothstep((half + LANDING_LEN - d) / LANDING_LEN);
       }
     });
+
+    this._crossroads();
 
     // frames: tangent T, horizontal left L, banked surface normal N and banked left Lb
     const tx = (this.tx = new Float64Array(n)), ty = (this.ty = new Float64Array(n)), tz = (this.tz = new Float64Array(n));
@@ -535,12 +583,13 @@ export class Track {
     out.idx = -1; out.dist = Infinity; out.d = 0; out.hw = 0; out.edgeY = 0;
     const list = this.cells.get(this._key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (!list) return out;
-    const n = this.n, { px, pz, gap } = this;
+    const n = this.n, { px, pz, gap } = this, hint = this._hint ?? null;
     if (candI.length < list.length) { candI = new Int32Array(list.length * 2); candY = new Float64Array(list.length * 2); candD = new Float64Array(list.length * 2); }
     let m = 0, topY = -Infinity;
     for (let a = 0; a < list.length; a++) {
       const i = list[a], j = i + 1 === n ? 0 : i + 1;
       if (gap[i] || gap[j]) continue;
+      if (hint !== null) { let dh = Math.abs(this.s[i] - hint); if (dh > this.length / 2) dh = this.length - dh; if (dh > 30) continue; }       // (progressNear: only the stretch of road the car was just on)
       const ax = px[i], az = pz[i], dx = px[j] - ax, dz = pz[j] - az;
       const len2 = dx * dx + dz * dz || 1e-9;
       const tRaw = ((x - ax) * dx + (z - az) * dz) / len2;
@@ -664,7 +713,7 @@ export class Track {
 
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */
   wallPenetration(q, y) {
-    if (q.idx < 0 || this.wallOff[q.idx] || !(this.def.walls || this.inTank(q.idx))) return 0;
+    if (q.idx < 0 || this.wallOff[q.idx] || this.junc[q.idx] || !(this.def.walls || this.inTank(q.idx))) return 0;
     const ad = Math.abs(q.d), face = q.hw + WALL_GAP;
     if (ad <= face || ad > face + 2.4) return 0;
     if (y > q.edgeY + (this.def.walls ? WALL_HEIGHT : TANK_H)) return 0;
@@ -715,23 +764,12 @@ export function analyzeTrack(track) {
     const k = Math.abs(track.curv[i]);
     if (k > 1e-4 && 1 / k < track.hw[i] + 1.5) tight.push(i);
   }
-  const crossings = [];
-  const step = 3, m = Math.floor(track.n / step);
-  const X = [], Z = [], Y = [];
-  for (let a = 0; a < m; a++) { X.push(track.px[a * step]); Z.push(track.pz[a * step]); Y.push(track.py[a * step]); }
-  for (let a = 0; a < m; a++) {
-    const a2 = (a + 1) % m;
-    for (let b = a + 6; b < m; b++) {
-      const b2 = (b + 1) % m;
-      if (a === 0 && b >= m - 6) continue;
-      const hit = segIntersect(X[a], Z[a], X[a2], Z[a2], X[b], Z[b], X[b2], Z[b2]);
-      if (!hit) continue;
-      if (Math.abs(lerp(Y[a], Y[a2], hit.t) - lerp(Y[b], Y[b2], hit.u)) < 4.5) {
-        crossings.push({ x: hit.x, z: hit.z });
-      }
-    }
+  const crossings = [], crossroads = (track.crossroads || []).map((c) => ({ x: c.x, z: c.z }));
+  for (const c of findCrossings(track)) {
+    if (crossroads.some((r) => Math.hypot(r.x - c.x, r.z - c.z) < 8)) continue;       // a crossroad is not a problem
+    crossings.push({ x: c.x, z: c.z });
   }
-  return { tight, crossings };
+  return { tight, crossings, crossroads };
 }
 
 function segIntersect(x1, z1, x2, z2, x3, z3, x4, z4) {
@@ -741,6 +779,28 @@ function segIntersect(x1, z1, x2, z2, x3, z3, x4, z4) {
   const u = ((x3 - x1) * (z2 - z1) - (z3 - z1) * (x2 - x1)) / d;
   if (t < 0 || t > 1 || u < 0 || u > 1) return null;
   return { t, u, x: x1 + t * (x2 - x1), z: z1 + t * (z2 - z1) };
+}
+
+/** Every place the road crosses itself at nearly the same height: where (x, z), the arc length along each road (sA < sB), how different the heights are, and sin(angle between the roads). */
+export function findCrossings(track) {
+  const out = [], step = 3, m = Math.floor(track.n / step), { px, pz, py, s } = track;
+  const X = [], Z = [], Y = [];
+  for (let a = 0; a < m; a++) { X.push(px[a * step]); Z.push(pz[a * step]); Y.push(py[a * step]); }
+  for (let a = 0; a < m; a++) {
+    const a2 = (a + 1) % m;
+    for (let b = a + 6; b < m; b++) {
+      const b2 = (b + 1) % m;
+      if (a === 0 && b >= m - 6) continue;
+      const hit = segIntersect(X[a], Z[a], X[a2], Z[a2], X[b], Z[b], X[b2], Z[b2]);
+      if (!hit) continue;
+      const dy = Math.abs(lerp(Y[a], Y[a2], hit.t) - lerp(Y[b], Y[b2], hit.u));
+      if (dy >= 4.5) continue;
+      const ax = X[a2] - X[a], az = Z[a2] - Z[a], bx = X[b2] - X[b], bz = Z[b2] - Z[b];
+      const sin = Math.abs(ax * bz - az * bx) / ((Math.hypot(ax, az) * Math.hypot(bx, bz)) || 1e-9);
+      out.push({ x: hit.x, z: hit.z, sA: s[a * step] + hit.t * step * track.ds, sB: s[b * step] + hit.u * step * track.ds, dy, sin });
+    }
+  }
+  return out;
 }
 
 /** Bank angles (deg) that lean each handle into its corner. Positive lifts the left edge. */

@@ -57,13 +57,15 @@ test('legacy editor data is migrated', () => {
   assert.deepEqual(def.props, []);
 });
 
-test('analysis flags self-crossings at the same height but not bridges', () => {
+test('analysis treats a flat self-crossing as a crossroad, and a bridge as neither', () => {
   const eight = (h) => {
     const out = [];
     for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; out.push({ x: 200 * Math.sin(t), y: 0.65 + h * Math.pow(0.5 + 0.5 * Math.cos(t), 2), z: 130 * Math.sin(2 * t) }); }
     return out;
   };
-  assert.ok(analyzeTrack(new Track({ width: 20, handles: eight(0) })).crossings.length >= 1);
+  const flat = analyzeTrack(new Track({ width: 20, handles: eight(0) }));
+  assert.equal(flat.crossings.length, 0);
+  assert.ok(flat.crossroads.length >= 1);
   assert.equal(analyzeTrack(new Track({ width: 20, handles: eight(9) })).crossings.length, 0);
 });
 

@@ -275,6 +275,13 @@ export class Editor {
       const [x, y] = this.toScreen(c.x, c.z); g.beginPath(); g.moveTo(x - 9, y - 9); g.lineTo(x + 9, y + 9); g.moveTo(x + 9, y - 9); g.lineTo(x - 9, y + 9); g.stroke();
     }
 
+    // crossroads: a flat crossing is a junction (barriers open, no problem), drawn as a pale square with a plus
+    for (const c of this.analysis.crossroads || []) {
+      const [x, y] = this.toScreen(c.x, c.z), r = Math.max(7, 10 * Math.min(1.6, this.view.scale / 2));
+      g.save(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.rect(x - r, y - r, r * 2, r * 2); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(x - r * 0.55, y); g.lineTo(x + r * 0.55, y); g.moveTo(x, y - r * 0.55); g.lineTo(x, y + r * 0.55); g.stroke(); g.restore();
+    }
+
     // props
     this._drawProps(g);
 
@@ -460,7 +467,8 @@ export class Editor {
     const a = this.analysis, add = (txt, ok) => { const d = document.createElement('div'); d.textContent = txt; if (ok) d.className = 'ok'; el.appendChild(d); };
     if (this.def.mode === 'lastStanding') { add('Open arena: the floor is everything inside the outline, and the wall stands at its edge. Drag the points to reshape it.', true); return; }
     if (a.tight.length) add(`Corner too tight for a ${this.def.width} m road (red circles). Move points apart or narrow the road.`);
-    if (a.crossings.length) add(`The road crosses itself at the same height (red crosses). Raise one point by 5 m or more to make a bridge.`);
+    if (a.crossings.length) add(`The road crosses itself at the same height (red crosses), but too differently or too slantwise to be a crossroad. Make the two roads meet at the same height, cross more squarely, or raise one point by 5 m or more to make a bridge.`);
+    if (a.crossroads?.length && !a.crossings.length) add(`${a.crossroads.length} crossroad${a.crossroads.length === 1 ? '' : 's'} (white squares): the barriers are open and the roads are levelled where they cross. Raise one road by 5 m or more to make a bridge instead.`, true);
     if (!a.tight.length && !a.crossings.length && this.track) add(`No problems found. ${(this.track.length / 1000).toFixed(2)} km lap.`, true);
   }
 

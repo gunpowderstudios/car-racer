@@ -627,7 +627,7 @@ function syncPose() {
 
 // ---------------------------------------------------------------- lap logic
 function updateRace(dt) {
-  const L = track.length, s = track.progressAt(car.pos.x, car.pos.y, car.pos.z);
+  const L = track.length, s = track.progressNear(car.pos.x, car.pos.y, car.pos.z, race.lastS);
   const lapped = !derby.lastStanding && track.def.mode !== 'lastStanding';      // an arena has no laps and no wrong way (in multiplayer too, where the derby itself is switched off)
   if (lapped && race.lastS != null) {
     let d = s - race.lastS; if (d < -L / 2) d += L; if (d > L / 2) d -= L;

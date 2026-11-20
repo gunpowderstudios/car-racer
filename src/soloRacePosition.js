@@ -106,7 +106,7 @@ function getSoloField(game) {
     // but it carries the same raceSlot as the original car it replaced.
     if (startingRivalCount && (slot < 1 || slot > startingRivalCount)) continue;
     const c = fighter.car;
-    const s = track.progressAt(c.pos.x, c.pos.y, c.pos.z);
+    const s = track.progressNear(c.pos.x, c.pos.y, c.pos.z, rivalProgress.get(slot)?.s);       // (stays on its own road through a crossroad)
     if (Number.isFinite(s)) { const u = continuousRivalProgress(fighter, s, player, length); rivals.push(u); slots.push({ slot, p: u }); }
   }
   return { player, rivals, slots, total: startingRivalCount + 1, count: startingRivalCount };

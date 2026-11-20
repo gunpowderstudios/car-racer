@@ -93,7 +93,7 @@ export class Driver {
 
     // ---------------------------------------------------------------- where am I
     this.sT -= dt;
-    if (this.sT <= 0) { this.s = track.progressAt(car.pos.x, car.pos.y, car.pos.z); this.sT = 0.06; }
+    if (this.sT <= 0) { this.s = track.progressNear(car.pos.x, car.pos.y, car.pos.z, this.s); this.sT = 0.06; }
     const s = this.s;
 
     // ---------------------------------------------------------------- mood

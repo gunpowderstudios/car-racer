@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.630 — Crossroads
+
+- A road that crosses itself at the same height is now a crossroad instead of a problem. Through the junction the two roads are levelled to one height, the barriers are opened across it, and the track editor marks it with a white square (no more red crosses). Raise one road by 5 m or more and it is a bridge, as before; crossings that are too uneven or too shallow are still reported.
+- Lap progress, the AI cars and the race positions now stay on the road they are really driving through a crossroad, so cutting across a junction cannot skip part of the lap.
+
 ## v17.629 — Track editor: fire pits
 
 - New Fire pits tool in the track editor (button, or L): drop the flame pits from Apple Crumple on any track. Every few seconds one flares, then roars into a column of fire that throws a car into the air (and wrecks it where damage is on). They show on the map with a flame, are counted in the props list, and survive Save, Export and Share link.
