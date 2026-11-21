@@ -135,7 +135,7 @@ export class Editor {
    * marker is clicked, with the current answer ticked. A crossing that is already a gap stays as it is; joining roads at different
    * heights warns first, then raises the lower road up to the higher one.
    */
-  _junctionAsk(forced = null) {
+  _junctionAsk(forced = null, preset = null) {
     if (!this.visible || !this.track || this.def.mode === 'lastStanding') return;
     if (this._askBox && !forced) return;
     let c = forced, auto = false;
@@ -183,6 +183,8 @@ export class Editor {
       keepCrossroad(this.def, c); done();
     };
     box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (!i.checked) { i.checked = true; return; } if (i.dataset.a === here) return; if (i.dataset.a === 'gap') toGap(); else toCross(); }; });
+    if (preset === 'gap' && here !== 'gap') { toGap(); return; }
+    if (preset === 'crossroad' && here !== 'cross') { if (shallow) this.cb.toast('Those roads cross at too shallow an angle to join.'); else { toCross(); return; } }
     box.querySelector('.x').onclick = () => {
       if (auto && c.kind === 'crossroad') return commit(false);           // closing the question on a new flat crossing makes it a crossroad
       if (auto) (this._dismissed ||= new Set()).add(Math.round(c.x / 10) + ',' + Math.round(c.z / 10));
@@ -585,7 +587,11 @@ export class Editor {
     $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); this._vehPanel();
     const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
-    this._obstMenu(false);
+    this._obstMenu(false); this._worksMenu(false);
+    $('ed-tool-crossroad').setAttribute('aria-pressed', String(t === 'crossroad')); $('ed-tool-gap').setAttribute('aria-pressed', String(t === 'gap'));
+    const wn = { crossroad: 'Crossroad', gap: 'Gap' };
+    $('ed-works').setAttribute('aria-pressed', String(!!wn[t])); $('ed-works').innerHTML = (wn[t] || 'Roadworks') + ' &#9662;';
+    if (wn[t]) this.cb.toast(`${wn[t]}: click a place where the road crosses itself.`);
     if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
   /** The Vehicle options (which car, parked or driving, which way it faces): shown while placing cars or with a car selected. Changing them changes the selected car, or what the next one placed will be. */
@@ -611,7 +617,8 @@ export class Editor {
   }
 
   /** Open or close the Obstacles dropdown. */
-  _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
+  _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; if (open) this._worksMenu(false); m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
+  _worksMenu(open) { const m = $('ed-works-menu'); if (!m) return; m.hidden = !open; $('ed-works').setAttribute('aria-expanded', String(open)); }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
   addProp(type, sx, sy, lethal = false) {
     if (!this.track) return;
@@ -662,8 +669,10 @@ export class Editor {
     c.addEventListener('pointerdown', (e) => {
       const [sx, sy] = pos(e); c.setPointerCapture(e.pointerId);
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
-      const xc = k < 0 && pk < 0 && e.button === 0 && !this._placing() ? this._crossAt(sx, sy) : null;
-      if (xc) { this.drag = null; this._junctionAsk(xc); return; }
+      const works = this.tool === 'crossroad' || this.tool === 'gap';
+      const xc = (works || (k < 0 && pk < 0)) && e.button === 0 && !this._placing() ? this._crossAt(sx, sy, works ? 26 : 15) : null;   // with the Roadworks tool a crossing wins over a point sitting on it
+      if (xc) { this.drag = null; this._junctionAsk(xc, works ? this.tool : null); return; }
+      if (works && e.button === 0 && k < 0 && pk < 0) this.cb.toast('No crossing there: click where the road crosses itself.');
       if (k >= 0) { this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
       else if (pk >= 0) { this.selProp = pk; this.sel = -1; this.drag = { type: 'prop', k: pk, moved: false }; this.updateInspector(); this.draw(); }
       else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false, button: e.button };
@@ -753,8 +762,11 @@ export class Editor {
     // toolbar
     $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-works').onclick = (e) => { e.stopPropagation(); this._worksMenu($('ed-works-menu').hidden); };
+    $('ed-tool-crossroad').onclick = () => { this._setTool(this.tool === 'crossroad' ? 'road' : 'crossroad'); this.draw(); };
+    $('ed-tool-gap').onclick = () => { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); };
     $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
-    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) this._obstMenu(false); });
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) { this._obstMenu(false); this._worksMenu(false); } });
     $('ed-tool-vehicle').onclick = () => { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); };
     $('ed-veh-car').onchange = (e) => this._vehEdit((o) => { if (e.target.value) o.car = e.target.value; else delete o.car; });
     $('ed-veh-mode').onchange = (e) => this._vehEdit((o) => { o.mode = e.target.value; });
@@ -840,6 +852,8 @@ export class Editor {
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
       else if (e.key === 'v' || e.key === 'V') { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); }
+      else if (e.key === 'x' || e.key === 'X') { this._setTool(this.tool === 'crossroad' ? 'road' : 'crossroad'); this.draw(); }
+      else if (e.key === 'g' || e.key === 'G') { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); }
       else if (e.key === 'l' || e.key === 'L') { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); }
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }
       else if (e.key === 'b' || e.key === 'B') { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); }

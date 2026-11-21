@@ -562,6 +562,13 @@ html.invite-loading #invite-loading {
       <button id="ed-rev" title="Drive the other way round">Reverse</button>
     </div>
     <div class="ed-group ed-menu">
+      <button id="ed-works" title="Roadworks: make a place where the road crosses itself into a crossroad or a gap" aria-haspopup="true" aria-expanded="false" aria-pressed="false">Roadworks &#9662;</button>
+      <div id="ed-works-menu" class="ed-dropdown" role="menu" hidden>
+        <button id="ed-tool-crossroad" role="menuitem" title="Crossroad: click a crossing on the map to join the two roads (X)" aria-pressed="false">Crossroad <kbd>X</kbd></button>
+        <button id="ed-tool-gap" role="menuitem" title="Gap: click a crossing on the map to put one road at least 5 m over the other (G)" aria-pressed="false">Gap <kbd>G</kbd></button>
+      </div>
+    </div>
+    <div class="ed-group ed-menu">
       <button id="ed-obst" title="Obstacles to drop on the track: click one, then click the map" aria-haspopup="true" aria-expanded="false" aria-pressed="false">Obstacles &#9662;</button>
       <div id="ed-obst-menu" class="ed-dropdown" role="menu" hidden>
         <button id="ed-tool-barrel" role="menuitem" title="Drop explosive barrels: click the map to place one (B)" aria-pressed="false">Barrels <kbd>B</kbd></button>

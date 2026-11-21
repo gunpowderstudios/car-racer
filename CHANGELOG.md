@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.635 — Editor: Roadworks dropdown
+
+- New Roadworks menu in the top bar with Crossroad (X) and Gap (G). Pick one, then click a place where the road crosses itself and it is made that way straight away; the tool stays on so you can click several. Esc puts it away.
+- A crossroad asked for on roads that are at different heights still shows the flatten warning first.
+- Clicking a crossing with the tool picked works even when a road point sits right on it.
+
 ## v17.634 — Crossroads look like the road
 
 - The crossroad surface now uses the same tarmac texture and colour as the rest of the track instead of a flat patch.
