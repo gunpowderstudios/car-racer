@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.643 — No banking at crossroads
+
+- Roads lean (auto-bank or hand-set banking) no longer get in the way of a crossroad: through the junction, and for the same stretch either side, the road lies completely flat on the ground, then eases back into its banking. A banked crossing used to be refused as a crossroad.
+
 ## v17.642 — Crossroads are always flat
 
 - The road through a crossroad is now set completely level (before, a hill kept its slope through the junction, so one road could rise like a wall across the other). The flat stretch reaches out past the corner drums on both roads and eases back into the hill over about 14 m.

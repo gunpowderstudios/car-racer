@@ -419,7 +419,7 @@ export class Track {
     for (const c of found) {
       if (c.dy >= CROSS_MAX_DY || c.sin < CROSS_MIN_SIN) continue;                  // a real bridge stays a bridge; a shallow scrape stays a problem the editor reports
       const ia = Math.round(c.sA / ds) % n, ib = Math.round(c.sB / ds) % n;
-      if (gap[ia] || gap[ib] || Math.abs(bank[ia]) > 0.06 || Math.abs(bank[ib]) > 0.06) continue;
+      if (gap[ia] || gap[ib]) continue;                                            // (banking near a crossroad is no obstacle: it is levelled out below)
       const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
       const [tax, taz] = tg(ia), [tbx, tbz] = tg(ib);
       const cosA = Math.abs(tax * tbx + taz * tbz), blend = 14;
@@ -433,6 +433,7 @@ export class Track {
           if (gap[i]) continue;
           const w = a <= Lh ? 1 : 1 - smoothstep((a - Lh) / blend);
           py[i] = orig[k + reach] + (yT - orig[k + reach]) * w;
+          bank[i] *= 1 - w;                                                         // and no lean either: the road lies flat on the ground through the junction
         }
       };
       lev(ia, La, yA); lev(ib, Lb, yB);

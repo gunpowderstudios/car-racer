@@ -125,3 +125,11 @@ test('a crossroad is flattened, even on a hill: both roads are level through the
     assert.ok(Math.max(...ys) - Math.min(...ys) < 0.02, 'flat ' + (Math.max(...ys) - Math.min(...ys)));
   }
 });
+
+test('a banked road is levelled flat through a crossroad (auto-bank never tilts the junction)', () => {
+  const def = eight(); def.handles.forEach((h, i) => { h.bank = i % 2 ? 14 : -14; });
+  const t = new Track(def);
+  assert.ok(t.crossroads.length >= 1, 'still a crossroad');
+  const c = t.crossroads[0];
+  for (const i0 of [c.ia, c.ib]) for (let k = -8; k <= 8; k++) assert.ok(Math.abs(t.bank[((i0 + k) % t.n + t.n) % t.n]) < 0.01, 'bank ' + t.bank[i0]);
+});
