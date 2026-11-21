@@ -556,16 +556,16 @@ html.invite-loading #invite-loading {
       <button id="ed-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
     </div>
     <div class="ed-group">
-      <button id="ed-add" title="Insert a point after the selected one (A)">Add point</button>
+      <button id="ed-pen" title="Draw the track shape with curves: click to place points, drag to bend, click the first point to close it (P)" aria-pressed="false">Draw</button>
+      <button id="ed-add" title="Add a point: click this, then click on the track where it should go (A)" aria-pressed="false">Add point</button>
       <button id="ed-del" title="Delete the selected point (Delete)">Delete</button>
       <button id="ed-bank" title="Lean every corner automatically">Auto-bank</button>
       <button id="ed-rev" title="Drive the other way round">Reverse</button>
     </div>
     <div class="ed-group ed-menu">
-      <button id="ed-works" title="Roadworks: make a place where the road crosses itself into a crossroad or a gap" aria-haspopup="true" aria-expanded="false" aria-pressed="false">Roadworks &#9662;</button>
+      <button id="ed-works" title="Roadworks: gaps in the road. Crossroads happen by themselves where the road crosses itself" aria-haspopup="true" aria-expanded="false" aria-pressed="false">Roadworks &#9662;</button>
       <div id="ed-works-menu" class="ed-dropdown" role="menu" hidden>
-        <button id="ed-tool-crossroad" role="menuitem" title="Crossroad: click a crossing on the map to join the two roads (X)" aria-pressed="false">Crossroad <kbd>X</kbd></button>
-        <button id="ed-tool-gap" role="menuitem" title="Gap: click a crossing on the map to put one road at least 5 m over the other (G)" aria-pressed="false">Gap <kbd>G</kbd></button>
+        <button id="ed-tool-gap" role="menuitem" title="Gap: click a crossing to put one road 5 m over the other, or click the road to add a 30 m jump gap (G)" aria-pressed="false">Gap <kbd>G</kbd></button>
       </div>
     </div>
     <div class="ed-group ed-menu">

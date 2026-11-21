@@ -1160,3 +1160,6 @@ body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; 
 #editor .ed-junction .row { display: flex; gap: 8px; }
 #editor .ed-junction .row button { flex: 1; padding: 8px 10px; border: 1px solid rgba(234,246,255,.5); background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 #editor .ed-junction .row .go { background: #ffc933; color: #2a1a00; border-color: #ffc933; }
+
+/* a cleared track: nothing to show in the 3D view or height strip until the shape is drawn */
+#editor.blank #ed-3d, #editor.blank #ed-profile-wrap, #editor.blank #ed-issues, #editor.blank #ed-length { visibility: hidden; }

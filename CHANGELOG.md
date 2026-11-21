@@ -2,6 +2,18 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.637 — Editor: Draw tool, blank Clear, Add point, corner drums
+
+- New Draw button (P): click to place points, drag from a point to bend the curve either side of it (like a pen tool), then click the first point (or press Enter) to close the circuit. Backspace, Undo and Redo step through the points while you draw; Esc starts over.
+- Clear now gives a blank page and starts the Draw tool, instead of a ready-made oval. Save, Share, Export and Test Drive wait until a track is drawn. Undo brings the old track back.
+- Add point is now a tool (A): click it, then click on the track where the new point should go.
+- Crossroads: a yellow drum sits where the walls meet at each corner, joining them neatly. They are only for looks and do not explode.
+
+## v17.636 — Roadworks is just Gap
+
+- The Roadworks menu now holds Gap only (key G). Crossroads need no tool: they happen by themselves wherever the road crosses itself.
+- Click the plain road with Gap picked to drop a 30 m jump gap there (change it in the point settings). Click a crossing to make it a 5 m gap.
+
 ## v17.635 — Editor: Roadworks dropdown
 
 - New Roadworks menu in the top bar with Crossroad (X) and Gap (G). Pick one, then click a place where the road crosses itself and it is made that way straight away; the tool stays on so you can click several. Esc puts it away.

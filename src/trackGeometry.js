@@ -308,6 +308,18 @@ export function buildTrackGeometry(track) {
         };
         for (const sa of [1, -1]) for (const sb of [1, -1]) {
           const a = sa * wA, b = sb * wB, px = c.x + (a * lBz - lAz * b) / dt, pz = c.z + (lAx * b - lBx * a) / dt;     // the corner of the two wall lines
+          {                                                                       // a yellow drum on the corner joins the two walls neatly (it is only for looks: it does not explode)
+            const cy0 = Math.min(track.py[c.ia], c.y) - 0.1, top = Math.max(track.py[c.ia], c.y) + H + 0.25, R = 0.62, N = 10, YEL = [1, 0.8, 0.08], BAND = [0.15, 0.13, 0.1];
+            for (let k = 0; k < N; k++) {
+              const a0 = (k / N) * Math.PI * 2, a1 = ((k + 1) / N) * Math.PI * 2, am = (a0 + a1) / 2;
+              const p0 = [px + Math.cos(a0) * R, 0, pz + Math.sin(a0) * R], p1 = [px + Math.cos(a1) * R, 0, pz + Math.sin(a1) * R], nrm = [Math.cos(am), 0, Math.sin(am)];
+              const at = (q, y) => [q[0], y, q[2]], mid = (top + cy0) / 2, bh = 0.09;
+              quad(signs, at(p0, cy0), at(p1, cy0), at(p1, mid - bh), at(p0, mid - bh), nrm, YEL);
+              quad(signs, at(p0, mid - bh), at(p1, mid - bh), at(p1, mid + bh), at(p0, mid + bh), nrm, BAND);
+              quad(signs, at(p0, mid + bh), at(p1, mid + bh), at(p1, top), at(p0, top), nrm, YEL);
+              tri(signs, [px, top, pz], at(p1, top), at(p0, top), UP, [0.9, 0.7, 0.05]);
+            }
+          }
           for (const [i0, tx, tz, sg, lx, lz, hwR, col] of [[c.ia, c.tax, c.taz, sa, lAx, lAz, c.hwA, C_WALL_B], [c.ib, c.tbx, c.tbz, sb, lBx, lBz, c.hwB, C_WALL_A]]) {
             const dir = ((px - c.x) * tx + (pz - c.z) * tz) >= 0 ? 1 : -1, bit = sg > 0 ? 1 : 2;
             let i = i0, guard = 0; while ((track.junc[i] & bit) && guard++ < 400) i = (i + dir + n) % n;            // walk out along that road to where its wall starts again

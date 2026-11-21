@@ -22,7 +22,7 @@ export class Editor {
     this.pc = $('ed-profile'); this.pg = this.pc.getContext('2d');
     this.def = null; this.track = null; this.analysis = { tight: [], crossings: [] };
     this.sel = -1; this.hover = -1;
-    this.tool = 'road'; this.selProp = -1; this.hoverProp = -1; this._ghost = null;   // tool: 'road' edits points, 'barrel' drops barrels
+    this.tool = 'road'; this.selProp = -1; this.hoverProp = -1; this._ghost = null; this.blank = false; this.pen = []; this.penRedo = []; this._penDrag = null; this._penMouse = null;   // tool: 'road' edits points, 'barrel' drops barrels
     this.view = { x: 0, z: 0, scale: 0.5 };
     this.undoStack = []; this.redoStack = [];
     this.drag = null; this.visible = false; this._raf = 0; this._analyzeT = 0;
@@ -38,7 +38,8 @@ export class Editor {
   open(def, keepUndo = false) {
     this.def = normalizeTrack(def);
     if (!keepUndo) { this.undoStack = []; this.redoStack = []; }
-    this.sel = -1; this.selProp = -1; this._setTool('road');
+    this.blank = !!def.blank; this.pen = []; this.penRedo = [];
+    this.sel = -1; this.selProp = -1; this._setTool(this.blank ? 'pen' : 'road');
     this.visible = true;
     $('ed-name').value = this.def.name;
     this._resize(); this._resizeProfile();
@@ -96,7 +97,9 @@ export class Editor {
     this.redoStack.length = 0; this._buttons();
   }
   _restore(str) {
-    this.def = normalizeTrack(JSON.parse(str));
+    const raw = JSON.parse(str);
+    this.def = normalizeTrack(raw); this.blank = !!raw.blank; if (this.blank) this.def.blank = true;
+    this.pen = []; this.penRedo = []; if (this.blank && this.tool !== 'pen') this._setTool('pen'); else if (!this.blank && this.tool === 'pen') this._setTool('road');
     if (this.sel >= this.def.handles.length) this.sel = -1;
     this.selProp = -1;
     $('ed-name').value = this.def.name;
@@ -104,7 +107,7 @@ export class Editor {
   }
   undo() { if (!this.undoStack.length) return; this.redoStack.push(JSON.stringify(this.def)); this._restore(this.undoStack.pop()); this._buttons(); }
   redo() { if (!this.redoStack.length) return; this.undoStack.push(JSON.stringify(this.def)); this._restore(this.redoStack.pop()); this._buttons(); }
-  _buttons() { $('ed-undo').disabled = !this.undoStack.length; $('ed-redo').disabled = !this.redoStack.length; $('ed-del').disabled = this.selProp >= 0 ? false : (this.sel < 0 || this.def.handles.length <= 4); }
+  _buttons() { const pn = this.tool === 'pen'; $('ed-undo').disabled = !this.undoStack.length && !(pn && this.pen.length); $('ed-redo').disabled = !this.redoStack.length && !(pn && this.penRedo.length); $('ed-del').disabled = this.selProp >= 0 ? false : (this.sel < 0 || this.def.handles.length <= 4); }
 
   rebuild(analyseNow = false) {
     try { this.track = new Track(this.def); } catch (e) { return; }
@@ -184,7 +187,6 @@ export class Editor {
     };
     box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (!i.checked) { i.checked = true; return; } if (i.dataset.a === here) return; if (i.dataset.a === 'gap') toGap(); else toCross(); }; });
     if (preset === 'gap' && here !== 'gap') { toGap(); return; }
-    if (preset === 'crossroad' && here !== 'cross') { if (shallow) this.cb.toast('Those roads cross at too shallow an angle to join.'); else { toCross(); return; } }
     box.querySelector('.x').onclick = () => {
       if (auto && c.kind === 'crossroad') return commit(false);           // closing the question on a new flat crossing makes it a crossroad
       if (auto) (this._dismissed ||= new Set()).add(Math.round(c.x / 10) + ',' + Math.round(c.z / 10));
@@ -248,10 +250,12 @@ export class Editor {
   // ------------------------------------------------------------- drawing
   draw() {
     if (!this.visible || !this.track || !this.w) return;
+    $('editor').classList.toggle('blank', !!this.blank);
     const g = this.g, t = this.track, S = this.view.scale;
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     g.fillStyle = PAPER; g.fillRect(0, 0, this.w, this.h);
     this._grid(g);
+    if (this.blank || this.tool === 'pen') { if (this.tool === 'pen') this._drawPen(g); if (this.blank) return; }
 
     // road surface
     const step = Math.max(1, Math.round(3 / (S * t.ds)));
@@ -588,12 +592,87 @@ export class Editor {
     const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
     this._obstMenu(false); this._worksMenu(false);
-    $('ed-tool-crossroad').setAttribute('aria-pressed', String(t === 'crossroad')); $('ed-tool-gap').setAttribute('aria-pressed', String(t === 'gap'));
-    const wn = { crossroad: 'Crossroad', gap: 'Gap' };
+    $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go.');
+    $('ed-pen').setAttribute('aria-pressed', String(t === 'pen')); if (t !== 'pen') { this.pen = []; this.penRedo = []; this._penDrag = null; }
+    $('ed-tool-gap').setAttribute('aria-pressed', String(t === 'gap'));
+    const wn = { gap: 'Gap' };
     $('ed-works').setAttribute('aria-pressed', String(!!wn[t])); $('ed-works').innerHTML = (wn[t] || 'Roadworks') + ' &#9662;';
-    if (wn[t]) this.cb.toast(`${wn[t]}: click a place where the road crosses itself.`);
+    if (t === 'gap') this.cb.toast('Gap: click the road for a 30 m jump gap, or a crossing for a 5 m gap.');
     if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
+
+  // ------------------------------------------------------------- the Draw (Bézier pen) tool
+  _needTrack() { if (!this.blank) return false; this.cb.toast('Draw your track first: click to place points, then click the first point to close it.'); return true; }
+  /** Click puts a point down; dragging from it pulls out the curve handles (both sides, like a pen tool). Clicking the first point closes the circuit. */
+  _penDown(sx, sy) {
+    const [wx, wz] = this.toWorld(sx, sy), a0 = this.pen[0];
+    if (a0 && this.pen.length >= 3) { const [x, y] = this.toScreen(a0.x, a0.z); if ((x - sx) ** 2 + (y - sy) ** 2 < 14 * 14) { this._penFinish(); return; } }
+    const a = { x: wx, z: wz, dx: 0, dz: 0 }; this.pen.push(a); this.penRedo = []; this._penDrag = a; this.draw();
+  }
+  _penMove(sx, sy) {
+    this._penMouse = [sx, sy];
+    const a = this._penDrag;
+    if (a) { const [wx, wz] = this.toWorld(sx, sy); a.dx = wx - a.x; a.dz = wz - a.z; }
+    this.draw();
+  }
+  _penUp() { this._penDrag = null; this.draw(); }
+  penUndo() { if (!this.pen.length) return false; this.penRedo.push(this.pen.pop()); this._buttons(); this.draw(); return true; }
+  penRedoStep() { if (!this.penRedo.length) return false; this.pen.push(this.penRedo.pop()); this._buttons(); this.draw(); return true; }
+  /** The curve through the placed points as small steps (closed when `closed`), each step { x, z, t } with the segment and fraction it came from. */
+  _penCurve(closed) {
+    const A = this.pen, n = A.length, segs = closed ? n : n - 1, out = [];
+    for (let i = 0; i < segs; i++) {
+      const a = A[i], b = A[(i + 1) % n], P = [[a.x, a.z], [a.x + a.dx, a.z + a.dz], [b.x - b.dx, b.z - b.dz], [b.x, b.z]];
+      for (let k = 0; k < 24; k++) {
+        const u = k / 24, v = 1 - u, w = [v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u];
+        out.push([P[0][0] * w[0] + P[1][0] * w[1] + P[2][0] * w[2] + P[3][0] * w[3], P[0][1] * w[0] + P[1][1] * w[1] + P[2][1] * w[2] + P[3][1] * w[3]]);
+      }
+    }
+    if (!closed && n) out.push([A[n - 1].x, A[n - 1].z]);
+    return out;
+  }
+  _penFinish() {
+    if (this.pen.length < 3) { this.cb.toast('Place at least 3 points first.'); return; }
+    if (!this.blank && !confirm('Replace this track with the new shape?\n\nThe old track and its obstacles will go (Undo brings them back).')) return;
+    const poly = this._penCurve(true); let len = 0;
+    for (let i = 0; i < poly.length; i++) { const q = poly[(i + 1) % poly.length]; len += Math.hypot(q[0] - poly[i][0], q[1] - poly[i][1]); }
+    const spacing = Math.max(28, len / 110), pts = []; let acc = spacing;                    // a point about every 28 m, never more than ~110 in all
+    for (let i = 0; i < poly.length; i++) {
+      const q = poly[(i + 1) % poly.length]; acc += Math.hypot(q[0] - poly[i][0], q[1] - poly[i][1]);
+      if (acc >= spacing || i === 0) { pts.push(poly[i]); acc = i === 0 ? 0 : acc - spacing; }
+    }
+    if (pts.length > 4 && Math.hypot(pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1]) < spacing * 0.5) pts.pop();
+    if (pts.length < 4) { this.cb.toast('That shape is too small: make it bigger.'); return; }
+    if (!this.blank) this.snapshot();
+    const handles = pts.map(([x, z]) => ({ x: Math.round(x * 10) / 10, y: 0.65, z: Math.round(z * 10) / 10, w: 0, bank: 0, gap: 0 }));
+    const keep = { name: this.def.name, width: this.def.width, walls: this.def.walls, defaultLaps: this.def.defaultLaps };
+    this.def = normalizeTrack({ ...keep, handles, props: [] }); this.blank = false; this.pen = []; this.penRedo = [];
+    this.sel = -1; this.selProp = -1; this._setTool('road');
+    this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged();
+    this.cb.toast(`Track drawn: ${(this.track.length / 1000).toFixed(2)} km. Drag the points to fine tune it.`);
+  }
+  _drawPen(g) {
+    const A = this.pen; g.save();
+    if (!A.length) { g.fillStyle = 'rgba(234,246,255,.7)'; g.font = '16px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Click to place the first point of your track', this.w / 2, this.h / 2); g.restore(); return; }
+    const S = (p) => this.toScreen(p[0], p[1]);
+    const pv = this._penMouse && !this._penDrag ? this._penMouse : null;
+    const poly = this._penCurve(false);
+    g.strokeStyle = '#8fe0ff'; g.lineWidth = Math.max(3, this.def.width * this.view.scale); g.globalAlpha = 0.28; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); poly.forEach((p, i) => { const [x, y] = S(p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.globalAlpha = 1;
+    g.lineWidth = 2; g.stroke();
+    if (pv && !this._penDrag) { const l = A[A.length - 1], [lx, ly] = this.toScreen(l.x + l.dx, l.z + l.dz), [lx0, ly0] = this.toScreen(l.x, l.z); g.setLineDash([5, 5]); g.beginPath(); g.moveTo(lx0, ly0); g.lineTo(pv[0], pv[1]); g.stroke(); g.setLineDash([]); }
+    A.forEach((a, i) => {
+      const [x, y] = this.toScreen(a.x, a.z);
+      if (a.dx || a.dz) {
+        g.strokeStyle = '#ffd24a'; g.fillStyle = '#ffd24a'; g.lineWidth = 1.5;
+        for (const sgn of [1, -1]) { const [hx, hy] = this.toScreen(a.x + sgn * a.dx, a.z + sgn * a.dz); g.beginPath(); g.moveTo(x, y); g.lineTo(hx, hy); g.stroke(); g.beginPath(); g.arc(hx, hy, 3.5, 0, 7); g.fill(); }
+      }
+      g.fillStyle = i === 0 ? '#ffd24a' : '#fff'; g.strokeStyle = '#12305f'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, i === 0 ? 8 : 6, 0, 7); g.fill(); g.stroke();
+    });
+    if (A.length >= 3) { g.fillStyle = 'rgba(234,246,255,.8)'; g.font = '13px system-ui, sans-serif'; const [x, y] = this.toScreen(A[0].x, A[0].z); g.textAlign = 'left'; g.fillText('click to close', x + 12, y - 10); }
+    g.restore();
+  }
+
   /** The Vehicle options (which car, parked or driving, which way it faces): shown while placing cars or with a car selected. Changing them changes the selected car, or what the next one placed will be. */
   _vehPanel() {
     const box = $('ed-veh'); if (!box) return;
@@ -668,17 +747,28 @@ export class Editor {
     const c = this.c, pos = (e) => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     c.addEventListener('pointerdown', (e) => {
       const [sx, sy] = pos(e); c.setPointerCapture(e.pointerId);
+      if (this.tool === 'pen' && e.button === 0) { this._penDown(sx, sy); return; }
+      if (this.tool === 'addpoint' && e.button === 0) {
+        const i = this._nearestSample(sx, sy, 30);
+        if (i >= 0) { this.drag = null; this.insertAt(i); this.updateInspector(); } else this.cb.toast('Click on the track to add a point there.');
+        return;
+      }
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
-      const works = this.tool === 'crossroad' || this.tool === 'gap';
+      const works = this.tool === 'gap';
       const xc = (works || (k < 0 && pk < 0)) && e.button === 0 && !this._placing() ? this._crossAt(sx, sy, works ? 26 : 15) : null;   // with the Roadworks tool a crossing wins over a point sitting on it
-      if (xc) { this.drag = null; this._junctionAsk(xc, works ? this.tool : null); return; }
-      if (works && e.button === 0 && k < 0 && pk < 0) this.cb.toast('No crossing there: click where the road crosses itself.');
+      if (xc) { this.drag = null; this._junctionAsk(xc, works ? 'gap' : null); return; }
+      if (works && e.button === 0 && k < 0 && pk < 0) {                       // on the plain road: drop a jump gap here
+        const i = this._nearestSample(sx, sy);
+        if (i >= 0) { this.drag = null; this.insertAt(i); const h = this.def.handles[this.sel]; h.gap = 30; h.lip = 0.5; h.kick = 0; this.rebuild(true); this.updateInspector(); this.draw(); this.cb.toast('Jump gap added: 30 m. Change it in the point settings.'); return; }
+        this.cb.toast('Click on the road to add a gap.'); return;
+      }
       if (k >= 0) { this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
       else if (pk >= 0) { this.selProp = pk; this.sel = -1; this.drag = { type: 'prop', k: pk, moved: false }; this.updateInspector(); this.draw(); }
       else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false, button: e.button };
     });
     c.addEventListener('pointermove', (e) => {
       const [sx, sy] = pos(e), d = this.drag;
+      if (this.tool === 'pen' && !d) { this._penMove(sx, sy); return; }
       if (!d) {
         const k = this._hit(sx, sy), pk = k < 0 ? this._hitProp(sx, sy) : -1;
         const placing = this._placing();
@@ -705,6 +795,7 @@ export class Editor {
       }
     });
     const end = () => {
+      if (this.tool === 'pen' && !this.drag) { this._penUp(); return; }
       const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair'; setTimeout(() => this._junctionAsk(), 220);
       if (d?.type === 'pan' && !d.moved) {
         if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : 'barrel', d.sx, d.sy, this.tool === 'skull');
@@ -760,10 +851,10 @@ export class Editor {
     pc.addEventListener('pointerleave', () => { this._ptip = ''; this.drawProfile(); });
 
     // toolbar
-    $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
-    $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-undo').onclick = () => { if (this.tool === 'pen' && this.penUndo()) return; this.undo(); }; $('ed-redo').onclick = () => { if (this.tool === 'pen' && this.penRedoStep()) return; this.redo(); };
+    $('ed-add').onclick = () => { this._setTool(this.tool === 'addpoint' ? 'road' : 'addpoint'); this.draw(); }; $('ed-del').onclick = () => this.removeSelected();
+    $('ed-pen').onclick = () => { this._setTool(this.tool === 'pen' ? (this.blank ? 'pen' : 'road') : 'pen'); this.draw(); };
     $('ed-works').onclick = (e) => { e.stopPropagation(); this._worksMenu($('ed-works-menu').hidden); };
-    $('ed-tool-crossroad').onclick = () => { this._setTool(this.tool === 'crossroad' ? 'road' : 'crossroad'); this.draw(); };
     $('ed-tool-gap').onclick = () => { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); };
     $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
     document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) { this._obstMenu(false); this._worksMenu(false); } });
@@ -800,23 +891,25 @@ export class Editor {
       this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged(); this.cb.toast(`Track is now ${(this.track.length / 1000).toFixed(2)} km.`);
     };
     $('ed-shorter').onclick = () => resize(0.9); $('ed-longer').onclick = () => resize(1.1);
-    $('ed-clear').onclick = () => {                                   // start from scratch: a plain loop, no props, no jumps (Undo gets the old track back)
+    $('ed-clear').onclick = () => {                                   // start from scratch: an empty page and the Draw tool (Undo gets the old track back)
       if (!confirm('Clear this track and start from scratch?\n\nEverything on it will go (Undo brings it back).')) return;
       this.snapshot();
-      const handles = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return { x: Math.round(Math.cos(a) * 150), y: 0.65, z: Math.round(Math.sin(a) * 90), w: 0, bank: 0, gap: 0 }; });
-      this.def = normalizeTrack({ name: 'New track', width: 22, walls: true, defaultLaps: 3, handles, props: [] }); this.sel = -1; this.selProp = -1; this._setTool('road');
-      $('ed-name').value = this.def.name; this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged(); this.cb.toast('Cleared - drag the points to shape your track.');
+      const handles = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return { x: Math.round(Math.cos(a) * 150), y: 0.65, z: Math.round(Math.sin(a) * 90), w: 0, bank: 0, gap: 0 }; });   // (hidden placeholder: the editor needs a track to stand on until one is drawn)
+      this.def = normalizeTrack({ name: 'New track', width: 22, walls: true, defaultLaps: 3, handles, props: [] }); this.def.blank = true; this.blank = true;
+      this.sel = -1; this.selProp = -1; this.pen = []; this.penRedo = []; this._setTool('pen');
+      $('ed-name').value = this.def.name; this.rebuild(true); this.view.x = 0; this.view.z = 0; this.view.scale = 0.5; this.updateUI(); this.propsChanged(); this.cb.toast('Blank page: click to place points, drag to bend the curve, click the first point to close the circuit.');
     };
     $('ed-fit').onclick = () => { this.fit(); this.draw(); };
     $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };
     $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };
-    $('ed-save').onclick = () => { this.cb.onSave(this.def); };
-    $('ed-share').onclick = () => this.cb.onShare?.(this.def);
+    $('ed-save').onclick = () => { if (this._needTrack()) return; this.cb.onSave(this.def); };
+    $('ed-share').onclick = () => { if (this._needTrack()) return; this.cb.onShare?.(this.def); };
     $('ed-export').onclick = () => {
+      if (this._needTrack()) return;
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([this.json], { type: 'application/json' }));
       a.download = (this.def.name || 'track').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     };
-    $('ed-drive').onclick = () => this.cb.onDrive(this.def);
+    $('ed-drive').onclick = () => { if (this._needTrack()) return; this.cb.onDrive(this.def); };
     $('ed-close').onclick = () => this.cb.onClose(this.def);
 
     // inspector + global fields (one undo step per drag gesture)
@@ -846,13 +939,15 @@ export class Editor {
     addEventListener('keydown', (e) => {
       if (!this.visible) return;
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) && document.activeElement.type !== 'range' && document.activeElement.type !== 'checkbox';
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); this.redo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (this.tool === 'pen' && !e.shiftKey && this.penUndo()) return; if (this.tool === 'pen' && e.shiftKey && this.penRedoStep()) return; e.shiftKey ? this.redo() : this.undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); if (this.tool === 'pen' && this.penRedoStep()) return; this.redo(); return; }
       if (typing) return;
+      if (this.tool === 'pen' && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); this.penUndo(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
-      else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'a') { this._setTool(this.tool === 'addpoint' ? 'road' : 'addpoint'); this.draw(); }
       else if (e.key === 'v' || e.key === 'V') { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); }
-      else if (e.key === 'x' || e.key === 'X') { this._setTool(this.tool === 'crossroad' ? 'road' : 'crossroad'); this.draw(); }
+      else if (e.key === 'p' || e.key === 'P') { this._setTool(this.tool === 'pen' && !this.blank ? 'road' : 'pen'); this.draw(); }
+      else if (e.key === 'Enter' && this.tool === 'pen') this._penFinish();
       else if (e.key === 'g' || e.key === 'G') { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); }
       else if (e.key === 'l' || e.key === 'L') { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); }
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }
@@ -860,7 +955,7 @@ export class Editor {
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
       else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }
       else if (e.key === '0') { this.preview?.resetView(); this.draw(); }
-      else if (e.key === 'Escape') { if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; } this.updateInspector(); this.draw(); }
+      else if (e.key === 'Escape') { if (this.tool === 'pen' && (this.pen.length || this.blank)) { this.pen = []; this.penRedo = []; this.draw(); return; } if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; } this.updateInspector(); this.draw(); }
       else if (e.key === '[' || e.key === ']') { const n = this.def.handles.length; this.sel = (((this.sel < 0 ? 0 : this.sel) + (e.key === ']' ? 1 : -1)) + n) % n; this.updateInspector(); this.draw(); }
     });
   }
