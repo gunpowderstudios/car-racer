@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.633 — Editor: change a crossing at any time
+
+- Click a crossing's marker (white square for a crossroad, amber arch for a gap, red cross for one that is not joined yet) and the "Crossroad or Gap?" box opens again with the current answer ticked; tick the other one to change it.
+- Roads at different heights: ticking Crossroad warns "These roads are 3.0 m apart" and, on Flatten the road, raises the lower road up to the higher one (the highest point that already exists, so nothing is dug into the ground) and joins them. Uneven crossings now ask by themselves too.
+- A crossing that is already a gap (one road 5 m or more over the other, as in older tracks) is left exactly as it is when you pick Gap, and now shows an arch marker so you can change it.
+
 ## v17.632 — Editor: placeable vehicles
 
 - New Vehicles tool in the editor's Obstacles menu (key V): click the map to put a car on the track. Choose which vehicle it is (or the same as yours), whether it is Parked (handbrake on, stays where you put it) or Driving (races round the track like a rival), and which way it faces (a new car lines up with the road). They are saved with the track and in share links.

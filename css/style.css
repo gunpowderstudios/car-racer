@@ -1156,3 +1156,7 @@ body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; 
 #editor .ed-junction u { text-decoration: none; font-weight: 700; color: #ffc933; margin-right: 4px; }
 #editor .ed-junction small { opacity: .65; }
 #editor .ed-junction .x { position: absolute; top: 2px; right: 6px; border: 0; background: none; color: #fff; font-size: 20px; padding: 2px 6px; cursor: pointer; }
+#editor .ed-junction small.warn { color: #ffb4a0; opacity: 1; }
+#editor .ed-junction .row { display: flex; gap: 8px; }
+#editor .ed-junction .row button { flex: 1; padding: 8px 10px; border: 1px solid rgba(234,246,255,.5); background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+#editor .ed-junction .row .go { background: #ffc933; color: #2a1a00; border-color: #ffc933; }

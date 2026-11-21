@@ -1,6 +1,6 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
-import { pendingJunctions, keepCrossroad, makeGap, GAP_HEIGHT } from './junctions.js';
+import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, GAP_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
 import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
@@ -116,25 +116,78 @@ export class Editor {
     $('ed-length').textContent = `Length ${km.toFixed(2)} km, ${this.def.handles.length} points`;
     this._buttons();
   }
-  /** A flat crossing nobody has answered yet: ask whether it is a crossroad or a gap (one road lifted 5 m over the other). One question at a time. */
-  _junctionAsk() {
-    if (!this.visible || !this.track || this._askBox || this.def.mode === 'lastStanding') return;
-    const c = pendingJunctions(this.track, this.def)[0]; if (!c) return;
+  /** Every place the road crosses itself, as the editor knows it: a crossroad, a gap (one road well over the other), or a problem (too uneven or too shallow to join yet). */
+  _crossings() {
+    const a = this.analysis || {}, out = [];
+    for (const c of this.track?.crossroads || []) out.push({ ...c, kind: 'crossroad', dy: 0 });
+    for (const c of a.crossings || []) out.push({ ...c, kind: 'problem' });
+    for (const c of a.bridges || []) out.push({ ...c, kind: 'bridge' });
+    return out;
+  }
+  _crossAt(sx, sy, r = 15) {
+    let best = null, bd = r * r;
+    for (const c of this._crossings()) { const [x, y] = this.toScreen(c.x, c.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = c; } }
+    return best;
+  }
+
+  /**
+   * The "crossroad or gap?" question. It comes up by itself for a new flat crossing (and for an uneven one) and whenever a crossing's
+   * marker is clicked, with the current answer ticked. A crossing that is already a gap stays as it is; joining roads at different
+   * heights warns first, then raises the lower road up to the higher one.
+   */
+  _junctionAsk(forced = null) {
+    if (!this.visible || !this.track || this.def.mode === 'lastStanding') return;
+    if (this._askBox && !forced) return;
+    let c = forced, auto = false;
+    if (!c) {
+      const pend = pendingJunctions(this.track, this.def)[0];
+      if (pend) { c = { ...pend, kind: 'crossroad', dy: 0 }; auto = true; }
+      else { c = this._crossings().find((q) => q.kind === 'problem' && !(this._dismissed ||= new Set()).has(Math.round(q.x / 10) + ',' + Math.round(q.z / 10))); if (c) auto = true; }
+    }
+    if (!c) return;
+    this._askBox?.remove(); this._askBox = null;
     const host = this.c.parentElement, box = this._askBox = document.createElement('div');
+    const shallow = c.sin < CROSS_MIN_SIN, here = c.kind === 'crossroad' ? 'cross' : c.kind === 'bridge' ? 'gap' : '';
+    const note = c.kind === 'problem' ? `<small class="warn">The two roads are ${c.dy.toFixed(1)} m apart.${shallow ? ' They also cross at too shallow an angle to join.' : ''}</small>` : c.kind === 'bridge' ? `<small>This is already a gap: one road is ${c.dy.toFixed(1)} m over the other.</small>` : '';
     box.className = 'ed-junction'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Two roads cross here');
-    box.innerHTML = '<b>The road crosses itself here</b><label><input type="checkbox" data-a="cross"> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"> <span><u>Gap</u> lift one road 5 m over the other</span></label><small>Tick one. Closing this makes it a crossroad.</small><button type="button" class="x" aria-label="Close">&times;</button>';
+    box.innerHTML = `<b>The road crosses itself here</b>${note}<label><input type="checkbox" data-a="cross"${here === 'cross' ? ' checked' : ''}${shallow ? ' disabled' : ''}> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"${here === 'gap' ? ' checked' : ''}> <span><u>Gap</u> one road over the other (at least 5 m)</span></label><small>${auto ? 'Tick one. Closing this makes a flat crossing a crossroad.' : 'Tick the other one to change it.'}</small><button type="button" class="x" aria-label="Close">&times;</button>`;
     const [sx, sy] = this.toScreen(c.x, c.z), hw = host.clientWidth, hh = host.clientHeight;
-    box.style.left = Math.max(8, Math.min(hw - 300, sx + 22)) + 'px'; box.style.top = Math.max(8, Math.min(hh - 150, sy - 40)) + 'px';
+    box.style.left = Math.max(8, Math.min(hw - 300, sx + 22)) + 'px'; box.style.top = Math.max(8, Math.min(hh - 190, sy - 40)) + 'px';
     host.appendChild(box);
-    const finish = (how) => {
-      if (!this._askBox) return; this._askBox.remove(); this._askBox = null;
-      this.snapshot();
-      if (how === 'gap') { const m = makeGap(this.def, c); this.cb.toast(m ? `Gap made: one road lifted ${m.toFixed(1)} m so cars can pass under.` : 'Could not lift that road.'); }
-      else { keepCrossroad(this.def, c); this.cb.toast('Crossroad made. Drive straight over it, and give way.'); }
-      this.rebuild(true); this.updateInspector(); this.draw(); setTimeout(() => this._junctionAsk(), 60);
+    const done = () => { if (this._askBox) { this._askBox.remove(); this._askBox = null; } this.rebuild(true); this.updateInspector(); this.draw(); setTimeout(() => this._junctionAsk(), 60); };
+    const toGap = () => {
+      const was = this._askBox; this._askBox = null; was?.remove(); this.snapshot();
+      const m = c.kind === 'bridge' ? 0 : makeGap(this.def, c);
+      forgetCrossroad(this.def, c);
+      this.cb.toast(c.kind === 'bridge' ? `Already a gap (${c.dy.toFixed(1)} m): left as it is.` : m ? `Gap made: one road lifted ${m.toFixed(1)} m so cars can pass under.` : 'Already a gap: left as it is.');
+      done();
     };
-    box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (i.checked) finish(i.dataset.a); }; });
-    box.querySelector('.x').onclick = () => finish('cross');
+    const toCross = () => {
+      if (c.kind === 'crossroad') { this.cb.toast('Already a crossroad.'); return done(); }
+      if (c.dy >= 0.4) return warn();
+      commit(false);
+    };
+    const warn = () => {                                                  // the roads are at different heights: say so, then flatten on a yes
+      box.innerHTML = `<b>These roads are ${c.dy.toFixed(1)} m apart</b><span>To join them as a crossroad, the lower road will be raised to meet the higher one.</span><div class="row"><button type="button" class="go">Flatten the road</button><button type="button" class="no">Cancel</button></div>`;
+      box.querySelector('.go').onclick = () => commit(true);
+      box.querySelector('.no').onclick = () => { if (auto) (this._dismissed ||= new Set()).add(Math.round(c.x / 10) + ',' + Math.round(c.z / 10)); this._askBox.remove(); this._askBox = null; this.draw(); };
+    };
+    const commit = (flatten) => {
+      const was = this._askBox; this._askBox = null; was?.remove(); this.snapshot();
+      if (flatten) {
+        const r = flattenCrossing(this.def, c);
+        const joined = r >= 0 && new Track(this.def).crossroads.some((q) => Math.hypot(q.x - c.x, q.z - c.z) < 15);
+        if (!joined) { this.cb.toast('Could not join those roads: try making them cross more squarely.'); return done(); }
+        this.cb.toast(`Crossroad made: the lower road was raised ${r.toFixed(1)} m to meet the higher one.`);
+      } else this.cb.toast('Crossroad made. Drive straight over it, and give way.');
+      keepCrossroad(this.def, c); done();
+    };
+    box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (!i.checked) { i.checked = true; return; } if (i.dataset.a === here) return; if (i.dataset.a === 'gap') toGap(); else toCross(); }; });
+    box.querySelector('.x').onclick = () => {
+      if (auto && c.kind === 'crossroad') return commit(false);           // closing the question on a new flat crossing makes it a crossroad
+      if (auto) (this._dismissed ||= new Set()).add(Math.round(c.x / 10) + ',' + Math.round(c.z / 10));
+      this._askBox.remove(); this._askBox = null; this.draw();
+    };
     this.draw();
   }
   changed() { this.rebuild(); this.updateInspector(); this.draw(); }
@@ -306,6 +359,13 @@ export class Editor {
       const [x, y] = this.toScreen(c.x, c.z), r = Math.max(7, 10 * Math.min(1.6, this.view.scale / 2));
       g.save(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.rect(x - r, y - r, r * 2, r * 2); g.fill(); g.stroke();
       g.beginPath(); g.moveTo(x - r * 0.55, y); g.lineTo(x + r * 0.55, y); g.moveTo(x, y - r * 0.55); g.lineTo(x, y + r * 0.55); g.stroke(); g.restore();
+    }
+
+    // gaps (one road clearly over the other): a small arch, so the crossing can be clicked and changed
+    for (const c of this.analysis.bridges || []) {
+      const [x, y] = this.toScreen(c.x, c.z);
+      g.save(); g.lineWidth = 2; g.strokeStyle = '#ffc933'; g.fillStyle = 'rgba(255,201,51,0.16)'; g.beginPath(); g.arc(x, y, 10, 0, 7); g.fill(); g.stroke();
+      g.beginPath(); g.arc(x, y + 4, 6, Math.PI, 0); g.moveTo(x - 6, y + 4); g.lineTo(x - 6, y + 7); g.moveTo(x + 6, y + 4); g.lineTo(x + 6, y + 7); g.stroke(); g.restore();
     }
 
     // props
@@ -602,6 +662,8 @@ export class Editor {
     c.addEventListener('pointerdown', (e) => {
       const [sx, sy] = pos(e); c.setPointerCapture(e.pointerId);
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
+      const xc = k < 0 && pk < 0 && e.button === 0 && !this._placing() ? this._crossAt(sx, sy) : null;
+      if (xc) { this.drag = null; this._junctionAsk(xc); return; }
       if (k >= 0) { this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
       else if (pk >= 0) { this.selProp = pk; this.sel = -1; this.drag = { type: 'prop', k: pk, moved: false }; this.updateInspector(); this.draw(); }
       else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false, button: e.button };

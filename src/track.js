@@ -793,6 +793,7 @@ export function analyzeTrack(track) {
   const bridges = [];
   for (const c of findCrossings(track, 400)) {
     if (crossroads.some((r) => Math.hypot(r.x - c.x, r.z - c.z) < 8)) continue;       // a crossroad is not a problem
+    if (crossings.some((q) => Math.hypot(q.x - c.x, q.z - c.z) < 8) || bridges.some((q) => Math.hypot(q.x - c.x, q.z - c.z) < 8)) continue;       // (a crossing right on a sample joint is found twice)
     (c.dy < 4.5 ? crossings : bridges).push(c);                                        // too uneven or too shallow to join: a problem; a clear gap (4.5 m or more): a bridge
   }
   return { tight, crossings, crossroads, bridges };
