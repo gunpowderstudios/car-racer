@@ -49,14 +49,14 @@ export function forgetCrossroad(def, c) { def.junctions = (def.junctions || []).
  * "Gap": lift the higher road (its nearest handles) until it clears the other by GAP_HEIGHT. A crossing that is already a gap that high or
  * higher is left exactly as it is. Returns the number of metres lifted (0 = nothing to do).
  */
-export function makeGap(def, c) {
+export function makeGap(def, c, height = GAP_HEIGHT) {
   const t0 = new Track(def), rs = roadsAt(t0, c.x, c.z);
-  if (rs.length >= 2 && rs[rs.length - 1].y - rs[0].y >= GAP_HEIGHT) return 0;
+  if (rs.length >= 2 && rs[rs.length - 1].y - rs[0].y >= height) return 0;
   const upper = rs.length >= 2 ? rs[rs.length - 1].s : c.sB, set = handlesNear(def, t0, upper);
   let lifted = 0;
   for (let it = 0; it < 24; it++) {
     const hs = roadHeightsAt(new Track(def), c.x, c.z);
-    if (hs.length >= 2 && hs[hs.length - 1] - hs[0] >= GAP_HEIGHT) return lifted;
+    if (hs.length >= 2 && hs[hs.length - 1] - hs[0] >= height) return lifted;
     for (const k of set) def.handles[k].y = (def.handles[k].y ?? 0) + 0.8;
     lifted += 0.8;
   }
@@ -80,4 +80,15 @@ export function flattenCrossing(def, c) {
     raised += step;
   }
   return raised;
+}
+
+export const TUNNEL_HEIGHT = 6.6;          // a tunnel needs more room under the road above it than a plain gap does
+
+/** The built structure at this crossing: 'flyover', 'tunnel' or '' (a plain gap). */
+export function structureAt(def, c) { return ((def.structures || []).find((k) => Math.hypot(k.x - c.x, k.z - c.z) < KNOWN_R) || {}).type || ''; }
+/** Set (or with '' clear) the structure at this crossing. A tunnel lifts the upper road a bit higher so there is room under the roof. */
+export function setStructure(def, c, type) {
+  def.structures = (def.structures || []).filter((k) => Math.hypot(k.x - c.x, k.z - c.z) >= KNOWN_R);
+  if (type === 'flyover' || type === 'tunnel') def.structures.push({ x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10, type });
+  if (def.structures.length > 40) def.structures.shift();
 }

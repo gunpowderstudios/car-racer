@@ -80,6 +80,9 @@ function encodeTrack(d) {
   const rollers = d.rollers || [];
   o.u(rollers.length); px = 0; pz = 0;
   for (const b of rollers) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.r * 20); o.u((Math.atan2(b.dz, b.dx) + Math.PI) * 100); px = x; pz = z; }
+  const st = d.structures || [];
+  o.u(st.length); px = 0; pz = 0;
+  for (const b of st) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.type === 'tunnel' ? 1 : 0); px = x; pz = z; }
   return Uint8Array.from(o.b);
 }
 
@@ -117,6 +120,11 @@ function decodeTrack(bytes) {
     const rl = []; px = 0; pz = 0;
     for (let i = 0, c = r.count(30); i < c; i++) { px += r.z(); pz += r.z(); const rr = r.u() / 20, a = r.u() / 100 - Math.PI; rl.push({ x: px / Q.xz, z: pz / Q.xz, r: rr, dx: Math.cos(a), dz: Math.sin(a) }); }
     if (rl.length) def.rollers = rl;
+  }
+  if (r.i < r.a.length) {                                                       // flyovers and tunnels (links made before them end here)
+    const st = []; px = 0; pz = 0;
+    for (let i = 0, c = r.count(40); i < c; i++) { px += r.z(); pz += r.z(); st.push({ x: px / Q.xz, z: pz / Q.xz, type: r.u() ? 'tunnel' : 'flyover' }); }
+    if (st.length) def.structures = st;
   }
   return def;
 }

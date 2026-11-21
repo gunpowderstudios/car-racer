@@ -1,6 +1,6 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
-import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, GAP_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
+import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, structureAt, setStructure, GAP_HEIGHT, TUNNEL_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
 import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
 import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
@@ -125,7 +125,7 @@ export class Editor {
     const a = this.analysis || {}, out = [];
     for (const c of this.track?.crossroads || []) out.push({ ...c, kind: 'crossroad', dy: 0 });
     for (const c of a.crossings || []) out.push({ ...c, kind: 'problem' });
-    for (const c of a.bridges || []) out.push({ ...c, kind: 'bridge' });
+    for (const c of a.bridges || []) out.push({ ...c, kind: 'bridge', struct: structureAt(this.def, c) });
     return out;
   }
   _crossAt(sx, sy, r = 15) {
@@ -151,19 +151,20 @@ export class Editor {
     if (!c) return;
     this._askBox?.remove(); this._askBox = null;
     const host = this.c.parentElement, box = this._askBox = document.createElement('div');
-    const shallow = c.sin < CROSS_MIN_SIN, here = c.kind === 'crossroad' ? 'cross' : c.kind === 'bridge' ? 'gap' : '';
-    const note = c.kind === 'problem' ? `<small class="warn">The two roads are ${c.dy.toFixed(1)} m apart.${shallow ? ' They also cross at too shallow an angle to join.' : ''}</small>` : c.kind === 'bridge' ? `<small>This is already a gap: one road is ${c.dy.toFixed(1)} m over the other.</small>` : '';
+    const shallow = c.sin < CROSS_MIN_SIN, here = c.kind === 'crossroad' ? 'cross' : c.kind === 'bridge' ? (c.struct === 'flyover' ? 'fly' : c.struct === 'tunnel' ? 'tunnel' : 'gap') : '';
+    const note = c.kind === 'problem' ? `<small class="warn">The two roads are ${c.dy.toFixed(1)} m apart.${shallow ? ' They also cross at too shallow an angle to join.' : ''}</small>` : c.kind === 'bridge' ? `<small>This is already a ${c.struct || 'gap'}: one road is ${c.dy.toFixed(1)} m over the other.</small>` : '';
     box.className = 'ed-junction'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Two roads cross here');
-    box.innerHTML = `<b>The road crosses itself here</b>${note}<label><input type="checkbox" data-a="cross"${here === 'cross' ? ' checked' : ''}${shallow ? ' disabled' : ''}> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"${here === 'gap' ? ' checked' : ''}> <span><u>Gap</u> one road over the other (at least 5 m)</span></label><small>${auto ? 'Tick one. Closing this makes a flat crossing a crossroad.' : 'Tick the other one to change it.'}</small><button type="button" class="x" aria-label="Close">&times;</button>`;
+    box.innerHTML = `<b>The road crosses itself here</b>${note}<label><input type="checkbox" data-a="cross"${here === 'cross' ? ' checked' : ''}${shallow ? ' disabled' : ''}> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"${here === 'gap' ? ' checked' : ''}> <span><u>Gap</u> one road over the other (at least 5 m)</span></label><label><input type="checkbox" data-a="fly"${here === 'fly' ? ' checked' : ''}> <span><u>Flyover</u> a gap with a bridge deck on pillars</span></label><label><input type="checkbox" data-a="tunnel"${here === 'tunnel' ? ' checked' : ''}> <span><u>Tunnel</u> the lower road runs under a roof</span></label><small>${auto ? 'Tick one. Closing this makes a flat crossing a crossroad.' : 'Tick the other one to change it.'}</small><button type="button" class="x" aria-label="Close">&times;</button>`;
     const [sx, sy] = this.toScreen(c.x, c.z), hw = host.clientWidth, hh = host.clientHeight;
     box.style.left = Math.max(8, Math.min(hw - 300, sx + 22)) + 'px'; box.style.top = Math.max(8, Math.min(hh - 190, sy - 40)) + 'px';
     host.appendChild(box);
     const done = () => { if (this._askBox) { this._askBox.remove(); this._askBox = null; } this.rebuild(true); this.updateInspector(); this.draw(); setTimeout(() => this._junctionAsk(), 60); };
-    const toGap = () => {
+    const toGap = (type = '') => {
       const was = this._askBox; this._askBox = null; was?.remove(); this.snapshot();
-      const m = c.kind === 'bridge' ? 0 : makeGap(this.def, c);
-      forgetCrossroad(this.def, c);
-      this.cb.toast(c.kind === 'bridge' ? `Already a gap (${c.dy.toFixed(1)} m): left as it is.` : m ? `Gap made: one road lifted ${m.toFixed(1)} m so cars can pass under.` : 'Already a gap: left as it is.');
+      const m = makeGap(this.def, c, type === 'tunnel' ? TUNNEL_HEIGHT : GAP_HEIGHT);
+      forgetCrossroad(this.def, c); setStructure(this.def, c, type);
+      const nm = type || 'gap';
+      this.cb.toast(m ? `${nm[0].toUpperCase() + nm.slice(1)} made: one road lifted ${m.toFixed(1)} m so cars can pass under.` : `Now a ${nm}.`);
       done();
     };
     const toCross = () => {
@@ -184,10 +185,10 @@ export class Editor {
         if (!joined) { this.cb.toast('Could not join those roads: try making them cross more squarely.'); return done(); }
         this.cb.toast(`Crossroad made: the lower road was raised ${r.toFixed(1)} m to meet the higher one.`);
       } else this.cb.toast('Crossroad made. Drive straight over it, and give way.');
-      keepCrossroad(this.def, c); done();
+      setStructure(this.def, c, ''); keepCrossroad(this.def, c); done();
     };
-    box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (!i.checked) { i.checked = true; return; } if (i.dataset.a === here) return; if (i.dataset.a === 'gap') toGap(); else toCross(); }; });
-    if (preset === 'gap' && here !== 'gap') { toGap(); return; }
+    box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (!i.checked) { i.checked = true; return; } if (i.dataset.a === here) return; const a = i.dataset.a; if (a === 'cross') toCross(); else toGap(a === 'fly' ? 'flyover' : a === 'tunnel' ? 'tunnel' : ''); }; });
+    if (preset && preset !== (here === 'fly' ? 'flyover' : here === 'tunnel' ? 'tunnel' : here === 'gap' ? 'gap' : '')) { toGap(preset === 'gap' ? '' : preset); return; }
     box.querySelector('.x').onclick = () => {
       if (auto && c.kind === 'crossroad') return commit(false);           // closing the question on a new flat crossing makes it a crossroad
       if (auto) (this._dismissed ||= new Set()).add(Math.round(c.x / 10) + ',' + Math.round(c.z / 10));
@@ -370,7 +371,8 @@ export class Editor {
     // gaps (one road clearly over the other): two little ramps facing each other with the jump between them
     for (const c of this.analysis.bridges || []) {
       const [x, y] = this.toScreen(c.x, c.z), r = Math.max(15, 16 * Math.min(1.4, this.view.scale / 2));
-      this._gapIcon(g, x, y, r);
+      const st = structureAt(this.def, c);
+      if (st === 'flyover') this._flyoverIcon(g, x, y, r); else if (st === 'tunnel') this._tunnelIcon(g, x, y, r); else this._gapIcon(g, x, y, r);
     }
 
     // props
@@ -594,6 +596,25 @@ export class Editor {
     g.beginPath(); g.moveTo(-r * 0.85, 0); g.lineTo(r * 0.85, 0); g.moveTo(0, -r * 0.85); g.lineTo(0, r * 0.85); g.stroke(); g.restore();
     g.restore();
   }
+  /** The flyover map icon: a bridge deck on two pillars with a little road passing underneath. */
+  _flyoverIcon(g, x, y, r) {
+    const w = r * 1.2, base = y + r * 0.6, deck = y - r * 0.15;
+    g.save(); g.lineJoin = 'round'; g.lineWidth = 1.6; g.strokeStyle = '#0b1f3f';
+    g.fillStyle = '#7d93b3'; for (const sx of [-0.62, 0.62]) { g.beginPath(); g.rect(x + sx * w - r * 0.14, deck, r * 0.28, base - deck); g.fill(); g.stroke(); }
+    g.fillStyle = '#eef3fa'; g.beginPath(); g.rect(x - w, deck - r * 0.3, w * 2, r * 0.3); g.fill(); g.stroke();
+    g.strokeStyle = '#d68a00'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x - w * 0.9, deck - r * 0.15); g.lineTo(x + w * 0.9, deck - r * 0.15); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = '#0b1f3f'; g.beginPath(); g.moveTo(x - w * 1.1, base); g.lineTo(x + w * 1.1, base); g.stroke();
+    g.restore();
+  }
+  /** The tunnel map icon: a rounded portal in a block of rock, dark inside, with the road above. */
+  _tunnelIcon(g, x, y, r) {
+    const w = r * 1.05, base = y + r * 0.6, top = y - r * 0.55;
+    g.save(); g.lineJoin = 'round'; g.lineWidth = 1.6; g.strokeStyle = '#0b1f3f'; g.fillStyle = '#9aa8bb';
+    g.beginPath(); g.rect(x - w, top, w * 2, base - top); g.fill(); g.stroke();
+    g.fillStyle = '#1a2330'; g.beginPath(); g.moveTo(x - w * 0.5, base); g.lineTo(x - w * 0.5, y - r * 0.05); g.arc(x, y - r * 0.05, w * 0.5, Math.PI, 0); g.lineTo(x + w * 0.5, base); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = '#d68a00'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x - w * 0.9, top + r * 0.12); g.lineTo(x + w * 0.9, top + r * 0.12); g.stroke(); g.setLineDash([]);
+    g.restore();
+  }
   /** The gap map icon: two ramps facing each other across a gap, with the jump drawn as a dotted arc. */
   _gapIcon(g, x, y, r) {
     const w = r * 1.15, h = r * 0.7, gap = r * 0.3, base = y + r * 0.45;
@@ -647,10 +668,11 @@ export class Editor {
     this._obstMenu(false); this._worksMenu(false);
     $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go. Esc stops adding.');
     $('ed-pen').setAttribute('aria-pressed', String(t === 'pen')); if (t !== 'pen') { this.pen = []; this.penRedo = []; this._penDrag = null; }
-    $('ed-tool-gap').setAttribute('aria-pressed', String(t === 'gap'));
-    const wn = { gap: 'Gap' };
+    for (const [id, nm] of [['ed-tool-gap', 'gap'], ['ed-tool-fly', 'flyover'], ['ed-tool-tunnel', 'tunnel']]) $(id).setAttribute('aria-pressed', String(t === nm));
+    const wn = { gap: 'Gap', flyover: 'Flyover', tunnel: 'Tunnel' };
     $('ed-works').setAttribute('aria-pressed', String(!!wn[t])); $('ed-works').innerHTML = (wn[t] || 'Roadworks') + ' &#9662;';
     if (t === 'gap') this.cb.toast('Gap: click the road for a 30 m jump gap, or a crossing for a 5 m gap. Esc stops.');
+    if (t === 'flyover' || t === 'tunnel') this.cb.toast(`${wn[t]}: click a place where the road crosses itself. Esc stops.`);
     if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
 
@@ -826,9 +848,10 @@ export class Editor {
       const bez = e.button === 0 && !this._placing() ? this._hitBez(sx, sy) : null;
       if (bez) { this.sel = bez.k; this.drag = { type: 'bez', side: bez.side, k: bez.k, moved: false }; this.updateInspector(); return; }
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
-      const works = this.tool === 'gap';
+      const works = this.tool === 'gap' || this.tool === 'flyover' || this.tool === 'tunnel';
       const xc = (works || (k < 0 && pk < 0)) && e.button === 0 && !this._placing() ? this._crossAt(sx, sy, works ? 26 : 15) : null;   // with the Roadworks tool a crossing wins over a point sitting on it
-      if (xc) { this.drag = null; this._junctionAsk(xc, works ? 'gap' : null); return; }
+      if (xc) { this.drag = null; this._junctionAsk(xc, works ? this.tool : null); return; }
+      if (works && this.tool !== 'gap' && e.button === 0 && k < 0 && pk < 0) { this.cb.toast('Click a place where the road crosses itself.'); return; }
       if (works && e.button === 0 && k < 0 && pk < 0) {                       // on the plain road: drop a jump gap here
         const i = this._nearestSample(sx, sy);
         if (i >= 0) { this.drag = null; this.insertAt(i); const h = this.def.handles[this.sel]; h.gap = 30; h.lip = 0.5; h.kick = 0; this.rebuild(true); this.updateInspector(); this.draw(); this.cb.toast('Jump gap added: 30 m. Change it in the point settings.'); return; }
@@ -938,6 +961,8 @@ export class Editor {
     $('ed-pen').onclick = () => { this._setTool(this.tool === 'pen' ? (this.blank ? 'pen' : 'road') : 'pen'); this.draw(); };
     $('ed-works').onclick = (e) => { e.stopPropagation(); this._worksMenu($('ed-works-menu').hidden); };
     $('ed-tool-gap').onclick = () => { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); };
+    $('ed-tool-fly').onclick = () => { this._setTool(this.tool === 'flyover' ? 'road' : 'flyover'); this.draw(); };
+    $('ed-tool-tunnel').onclick = () => { this._setTool(this.tool === 'tunnel' ? 'road' : 'tunnel'); this.draw(); };
     $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
     document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) { this._obstMenu(false); this._worksMenu(false); } });
     $('ed-tool-vehicle').onclick = () => { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); };
@@ -1031,6 +1056,8 @@ export class Editor {
       else if (e.key === 'v' || e.key === 'V') { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); }
       else if (e.key === 'p' || e.key === 'P') { this._setTool(this.tool === 'pen' && !this.blank ? 'road' : 'pen'); this.draw(); }
       else if (e.key === 'Enter' && this.tool === 'pen') this._penFinish();
+      else if (e.key === 'o' || e.key === 'O') { this._setTool(this.tool === 'flyover' ? 'road' : 'flyover'); this.draw(); }
+      else if (e.key === 'u' || e.key === 'U') { this._setTool(this.tool === 'tunnel' ? 'road' : 'tunnel'); this.draw(); }
       else if (e.key === 'g' || e.key === 'G') { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); }
       else if (e.key === 'l' || e.key === 'L') { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); }
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }

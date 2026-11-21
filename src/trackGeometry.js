@@ -240,6 +240,7 @@ export function buildTrackGeometry(track) {
   const pillars = [], lamps = [];
   for (let i = 0; i < n; i += 24) {
     if (track.gap[i] || track.py[i] < 3.2) continue;
+    if ((track.structures || []).some((st) => Math.hypot(track.px[i] - st.x, track.pz[i] - st.z) < 24)) continue;       // (a flyover or tunnel has its own supports)
     let clear = true;
     const q = Track.newQuery();
     track.query(track.px[i], track.py[i] - 1.5, track.pz[i], q, 0.5);
@@ -348,6 +349,62 @@ export function buildTrackGeometry(track) {
           if (sgn > 0) { tri(signs, o0, o1, o2, face, RED); tri(signs, i0p, i1p, i2p, face, PALE); }
           else { tri(signs, off(o0, 0.0), off(o2, 0.0), off(o1, 0.0), [-face[0], 0, -face[2]], RED); }
         }
+      }
+    }
+  }
+
+  // flyovers and tunnels (a bridge crossing the editor marked): concrete girder and pillars under the upper road, or a roofed tunnel round the lower one
+  for (const st of track.structures || []) {
+    const CONC = [0.66, 0.64, 0.6], CONC_D = [0.5, 0.49, 0.46], DARK = [0.22, 0.21, 0.2], sn = Math.max(st.sin, 0.3);
+    const pt = (i, off, y) => { const k = ((i % n) + n) % n; return [track.px[k] + track.lx[k] * off, y, track.pz[k] + track.lz[k] * off]; };
+    const qn = (a, b, c, d, nn, col) => {                                      // a quad whose winding faces the way its normal points (the lighting flips on a face the wrong way round)
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      const dot = (uy * vz - uz * vy) * nn[0] + (uz * vx - ux * vz) * nn[1] + (ux * vy - uy * vx) * nn[2];
+      if (dot >= 0) quad(signs, a, b, c, d, nn, col); else quad(signs, d, c, b, a, nn, col);
+    };
+    if (st.type === 'flyover') {
+      const K = Math.ceil(((st.low.hw + WALL_GAP + WALL_T + 3.2) / sn + 1.5) / track.ds), u = st.up.i, GW = Math.max(2, st.up.hw * 0.55);
+      for (let k = -K; k < K; k++) {                                            // a girder under the deck, the length of the flyover
+        const i = u + k, j = i + 1, yi = track.py[((i % n) + n) % n] - SLAB, yj = track.py[((j % n) + n) % n] - SLAB, g = 0.85;
+        const li = pt(i, GW, yi), lj = pt(j, GW, yj), ri = pt(i, -GW, yi), rj = pt(j, -GW, yj);
+        const down = (p) => [p[0], p[1] - g, p[2]];
+        const nl = [track.lx[((i % n) + n) % n], 0, track.lz[((i % n) + n) % n]];
+        qn(li, lj, down(lj), down(li), nl, CONC); qn(ri, rj, down(rj), down(ri), [-nl[0], 0, -nl[2]], CONC);
+        qn(down(li), down(lj), down(rj), down(ri), [0, -1, 0], CONC_D);
+      }
+      for (const d of track.drums) {                                            // the pillars (solid: see Track.drumHit)
+        if (!d.pillar || d.st !== st) continue;
+        const N = 12, y0 = d.y, y1 = d.top + 0.05;
+        for (let k = 0; k < N; k++) {
+          const a0 = (k / N) * Math.PI * 2, a1 = ((k + 1) / N) * Math.PI * 2, am = (a0 + a1) / 2;
+          const p0 = [d.x + Math.cos(a0) * d.r, 0, d.z + Math.sin(a0) * d.r], p1 = [d.x + Math.cos(a1) * d.r, 0, d.z + Math.sin(a1) * d.r];
+          quad(signs, [p0[0], y0, p0[2]], [p1[0], y0, p1[2]], [p1[0], y1, p1[2]], [p0[0], y1, p0[2]], [Math.cos(am), 0, Math.sin(am)], CONC);
+        }
+        const fo = d.r + 0.25;                                                  // a flared cap where it meets the girder
+        for (let k = 0; k < 4; k++) { const a0 = (k / 4) * Math.PI * 2 + Math.PI / 4, a1 = a0 + Math.PI / 2, am = a0 + Math.PI / 4; quad(signs, [d.x + Math.cos(a0) * fo, y1 - 0.45, d.z + Math.sin(a0) * fo], [d.x + Math.cos(a1) * fo, y1 - 0.45, d.z + Math.sin(a1) * fo], [d.x + Math.cos(a1) * fo, y1, d.z + Math.sin(a1) * fo], [d.x + Math.cos(a0) * fo, y1, d.z + Math.sin(a0) * fo], [Math.cos(am), 0, Math.sin(am)], CONC_D); }
+      }
+    } else {
+      const l = st.low, u = st.up, K = Math.ceil(((u.hw + WALL_GAP + WALL_T + 2.2) / sn) / track.ds);
+      const Wi = l.hw + WALL_GAP + WALL_T + 0.15, Wt = Wi + 1.5;
+      let roofTop = Infinity;
+      const KU = Math.ceil(((Wt + 1) / sn) / track.ds);
+      for (let k = -KU; k <= KU; k++) roofTop = Math.min(roofTop, track.py[(((u.i + k) % n) + n) % n] - SLAB - 0.15);
+      const roofBot = roofTop - 0.5;
+      for (let k = -K; k < K; k++) {
+        const i = l.i + k, j = i + 1, fi = track.py[((i % n) + n) % n], fj = track.py[((j % n) + n) % n], bi = fi - 0.8, bj = fj - 0.8;
+        const nl = [track.lx[((i % n) + n) % n], 0, track.lz[((i % n) + n) % n]];
+        qn(pt(i, -Wt, roofBot), pt(j, -Wt, roofBot), pt(j, Wt, roofBot), pt(i, Wt, roofBot), [0, -1, 0], CONC_D);                    // under the roof
+        qn(pt(i, -Wi, roofBot), pt(j, -Wi, roofBot), pt(j, -Wi, fj), pt(i, -Wi, fi), nl, DARK);                                       // inside, right
+        qn(pt(i, Wi, roofBot), pt(j, Wi, roofBot), pt(j, Wi, fj), pt(i, Wi, fi), [-nl[0], 0, -nl[2]], DARK);                          // inside, left
+        qn(pt(i, Wt, roofTop), pt(j, Wt, roofTop), pt(j, Wt, bj), pt(i, Wt, bi), nl, CONC);                                           // outside, left
+        qn(pt(i, -Wt, roofTop), pt(j, -Wt, roofTop), pt(j, -Wt, bj), pt(i, -Wt, bi), [-nl[0], 0, -nl[2]], CONC);                      // outside, right
+        qn(pt(i, -Wt, roofTop), pt(j, -Wt, roofTop), pt(j, Wt, roofTop), pt(i, Wt, roofTop), [0, 1, 0], CONC_D);                      // the top (under the upper road)
+      }
+      for (const [i, sgn] of [[l.i - K, -1], [l.i + K, 1]]) {                      // the two portals: a pier each side and a lintel over the opening
+        const k = ((i % n) + n) % n, f = track.py[k], b = f - 0.8, tn = [sgn * track.tx[k] / (Math.hypot(track.tx[k], track.tz[k]) || 1), 0, sgn * track.tz[k] / (Math.hypot(track.tx[k], track.tz[k]) || 1)];
+        qn(pt(i, Wi, b), pt(i, Wt, b), pt(i, Wt, roofTop), pt(i, Wi, roofTop), tn, CONC);
+        qn(pt(i, -Wt, b), pt(i, -Wi, b), pt(i, -Wi, roofTop), pt(i, -Wt, roofTop), tn, CONC);
+        qn(pt(i, -Wi, roofBot), pt(i, Wi, roofBot), pt(i, Wi, roofTop), pt(i, -Wi, roofTop), tn, CONC);
       }
     }
   }

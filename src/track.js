@@ -273,6 +273,7 @@ export function normalizeTrack(input) {
     walls: src.walls !== false,
     handles,
     props: normalizeProps(src.props),
+    structures: (Array.isArray(src.structures) ? src.structures : []).filter((j) => j && Number.isFinite(j.x) && Number.isFinite(j.z) && (j.type === 'flyover' || j.type === 'tunnel')).slice(0, 40).map((j) => ({ x: j.x, z: j.z, type: j.type })),
     junctions: (Array.isArray(src.junctions) ? src.junctions : []).filter((j) => j && Number.isFinite(j.x) && Number.isFinite(j.z)).slice(0, 40).map((j) => ({ x: j.x, z: j.z })),
   };
   if (src.assault) { const as = normalizeAssault(src.assault); if (as) out.assault = as; }       // Apple Crumple: a solo timed obstacle course
@@ -363,7 +364,7 @@ export class Track {
     this.puddles = this.def.puddles || null;
     this.blocks = null;                                                       // (set below, once the floor height is known)
     if (this.def.handles.length < 4) throw new Error('A track needs at least 4 handles');
-    this._build();
+    this._build(); this._structures();
     // boulders: remember how high the ground is under each (the car's collision needs it)
     this.rocks = (this.def.rocks || []).map((b) => ({ ...b, y: this.query(b.x, 40, b.z, undefined, 2).y }));
     // boulders that roll across the road: they sit by the roadside (as rocks) until a car comes near
@@ -469,6 +470,34 @@ export class Track {
    * other road's wall-to-wall band. The two walls then end exactly where they meet, so the corners of the junction are joined.
    * `junc[i]` bit 1 = left wall open, bit 2 = right wall open.
    */
+  /**
+   * Flyovers and tunnels: a crossing the editor marked (def.structures) that really is a bridge (one road well over the other).
+   * Each gets { type, x, z, sin, low, up } with each road's { i (sample), hw, y, tx, tz }; the flyover's four pillars are solid like the drums.
+   */
+  _structures() {
+    this.structures = [];
+    const S = this.def.structures || [];
+    if (!S.length || this.def.mode === 'lastStanding' || this.n < 60) return;
+    const n = this.n, { px, py, pz, hw, s } = this, ds = this.ds, found = findCrossings(this, 99);
+    const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
+    for (const st of S) {
+      let best = null, bd = 14;
+      for (const c of found) { const d = Math.hypot(c.x - st.x, c.z - st.z); if (d < bd && c.dy >= 3.5 && c.sin >= 0.25) { bd = d; best = c; } }
+      if (!best) continue;
+      const ia = Math.round(best.sA / ds) % n, ib = Math.round(best.sB / ds) % n;
+      const A = { i: ia, hw: hw[ia], y: py[ia], t: tg(ia) }, B = { i: ib, hw: hw[ib], y: py[ib], t: tg(ib) };
+      const [low, up] = A.y <= B.y ? [A, B] : [B, A];
+      this.structures.push({ type: st.type, x: best.x, z: best.z, sin: best.sin, low, up });
+      if (st.type === 'flyover') {
+        const lAx = low.t[1], lAz = -low.t[0], lBx = up.t[1], lBz = -up.t[0], dt = lAx * lBz - lAz * lBx;       // (low's left normal, up's left normal)
+        const wLow = low.hw + WALL_GAP + WALL_T + 1.4, wUp = up.hw + 1.0;
+        for (const sa of [1, -1]) for (const sb of [1, -1]) {
+          const a = sa * wLow, b = sb * wUp;
+          this.drums.push({ x: best.x + (a * lBz - lAz * b) / dt, y: low.y - 0.6, z: best.z + (lAx * b - lBx * a) / dt, r: 0.95, top: up.y - 0.9, pillar: true, st: this.structures[this.structures.length - 1] });
+        }
+      }
+    }
+  }
   /** The yellow drums at the corners of each crossroad, where the walls would have met: solid like a wall, but they never move. { x, y, z, r } */
   _drums() {
     this.drums = [];
@@ -488,7 +517,7 @@ export class Track {
     const D = this.drums; if (!D || !D.length) return null;
     for (let k = 0; k < D.length; k++) {
       const d = D[k], dx = x - d.x, dz = z - d.z, r2 = dx * dx + dz * dz;
-      if (r2 >= d.r * d.r || y > d.y + WALL_HEIGHT + 0.25 || y < d.y - 1) continue;
+      if (r2 >= d.r * d.r || y > (d.top ?? d.y + WALL_HEIGHT + 0.25) || y < d.y - 1) continue;
       const r = Math.sqrt(r2) || 1e-3, o = this._drumOut || (this._drumOut = { pen: 0, nx: 0, nz: 0 });
       o.pen = d.r - r; o.nx = dx / r; o.nz = dz / r; if (r2 < 1e-6) { o.nx = 1; o.nz = 0; }
       return o;

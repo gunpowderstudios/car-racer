@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.649 — Flyovers and tunnels
+
+- Roadworks now has Flyover (O) and Tunnel (U) alongside Gap. Click a crossing, or tick them in the crossing pop-up (Crossroad / Gap / Flyover / Tunnel, one per crossing).
+- A flyover is a bridge with solid concrete pillars you can crash into. A tunnel lifts the upper road to 6.6 m with a concrete roof for the lower road to drive through. Both have their own map icons and are saved in share links.
+
 ## v17.648 — New crossroad and gap map icons
 
 - Crossroads on the editor map are now a little 3D junction (a thick plus of road with dashed middle lines). Gaps are two little ramps facing each other with the jump drawn between them. Both are bigger and easier to click.
