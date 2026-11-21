@@ -26,7 +26,7 @@ test('The Oval track is a preloaded track, now called Deep Pan Pizza', () => {
   assert.ok(TEMPLATE_KEYS.includes('oval') && !TEMPLATE_KEYS.includes('kidney'));
   assert.equal(makeTemplate('oval').name, 'Deep Pan Pizza');
   assert.equal(TEMPLATE_INFO.oval, 'A cheesy pizza-shaped pile up of olives and exploding peppers!');
-  assert.equal(TEMPLATE_KEYS.length, 10, 'nine tracks and the random one');
+  assert.equal(TEMPLATE_KEYS.length, 11, 'ten tracks and the random one');
 });
 
 test('it is marked as a last-one-standing arena, and other tracks are not', () => {

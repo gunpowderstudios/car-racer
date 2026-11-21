@@ -1,6 +1,6 @@
 // Cache-busting version for replaceable game assets such as GLB car models.
 // Keep this in step with src/version.js. Tests enforce that the two versions match.
-export const ASSET_VERSION = '17.649';
+export const ASSET_VERSION = '17.650';
 
 export function assetUrl(url) {
   const s = String(url || '');

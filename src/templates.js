@@ -403,6 +403,20 @@ const RAW = {
     handles: barrelRunHandles(),
     autoBank: false, barrelRun: true,
   },
+  soundwave: {
+    name: 'Sound Waves', width: 22, defaultLaps: 3,
+    handles: [
+      { x: 162.53, y: 0.65, z: 1.1, bank: 12 },
+      { x: 115.54, y: 0.65, z: 61.04, bank: 12 },
+      { x: -2.71, y: 0.65, z: -49.12, bank: -12 },
+      { x: -106, y: 0.65, z: 60, bank: 12 },
+      { x: -162, y: 0.65, z: 2, bank: 12 },
+      { x: -95.05, y: 0.65, z: -49.12, bank: 12 },
+      { x: -2.71, y: 0.65, z: 62.65, bank: -12 },
+      { x: 112.31, y: 0.65, z: -49.12, bank: 12 },
+    ],
+    autoBank: false,        // (the banks are the ones drawn in the editor: +12 / -12 flipping at each crossing)
+  },
   overpass: {
     name: 'Croydon Overpass', width: 22,
     handles: figureEight(),
@@ -558,6 +572,7 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
+  soundwave: "Pump up da' volume! A hi-fidelity criss-cross of a track that goes up to 11: two crossroads and banking that flips at every crossing.",
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
   thin: 'A thin road high in the sky: no walls, banks, jumps and barrels, then a huge dip down into the water and back up',

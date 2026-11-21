@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.650 — Sound Waves
+
+- New track in **Driving Tests (beta)**: **Sound Waves** - "Pump up da' volume in this hi-fidelity criss-cross of a track that goes up to 11!" About 1 km, two open crossroads, 22 m wide with walls, banked left and right.
+
 ## v17.649 — Flyovers and tunnels
 
 - Roadworks now has Flyover (O) and Tunnel (U) alongside Gap. Click a crossing, or tick them in the crossing pop-up (Crossroad / Gap / Flyover / Tunnel, one per crossing).
