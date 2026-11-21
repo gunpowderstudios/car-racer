@@ -361,18 +361,16 @@ export class Editor {
       const [x, y] = this.toScreen(c.x, c.z); g.beginPath(); g.moveTo(x - 9, y - 9); g.lineTo(x + 9, y + 9); g.moveTo(x + 9, y - 9); g.lineTo(x - 9, y + 9); g.stroke();
     }
 
-    // crossroads: a flat crossing is a junction (barriers open, no problem), drawn as a pale square with a plus
+    // crossroads: a little 3D junction (a thick grey plus of road with a white dashed middle), so the crossing can be clicked and changed
     for (const c of this.analysis.crossroads || []) {
-      const [x, y] = this.toScreen(c.x, c.z), r = Math.max(7, 10 * Math.min(1.6, this.view.scale / 2));
-      g.save(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.rect(x - r, y - r, r * 2, r * 2); g.fill(); g.stroke();
-      g.beginPath(); g.moveTo(x - r * 0.55, y); g.lineTo(x + r * 0.55, y); g.moveTo(x, y - r * 0.55); g.lineTo(x, y + r * 0.55); g.stroke(); g.restore();
+      const [x, y] = this.toScreen(c.x, c.z), r = Math.max(15, 16 * Math.min(1.4, this.view.scale / 2));
+      this._junctionIcon(g, x, y, r);
     }
 
-    // gaps (one road clearly over the other): a small arch, so the crossing can be clicked and changed
+    // gaps (one road clearly over the other): two little ramps facing each other with the jump between them
     for (const c of this.analysis.bridges || []) {
-      const [x, y] = this.toScreen(c.x, c.z);
-      g.save(); g.lineWidth = 2; g.strokeStyle = '#ffc933'; g.fillStyle = 'rgba(255,201,51,0.16)'; g.beginPath(); g.arc(x, y, 10, 0, 7); g.fill(); g.stroke();
-      g.beginPath(); g.arc(x, y + 4, 6, Math.PI, 0); g.moveTo(x - 6, y + 4); g.lineTo(x - 6, y + 7); g.moveTo(x + 6, y + 4); g.lineTo(x + 6, y + 7); g.stroke(); g.restore();
+      const [x, y] = this.toScreen(c.x, c.z), r = Math.max(15, 16 * Math.min(1.4, this.view.scale / 2));
+      this._gapIcon(g, x, y, r);
     }
 
     // props
@@ -390,14 +388,8 @@ export class Editor {
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     });
 
-    // curve handles of the selected point: drag the round ends to bend the road in and out of it (double-click an end to put it back to automatic)
-    if (this.sel >= 0 && this.def.handles[this.sel] && !this.blank) {
-      const k = this.sel, h = this.def.handles[k], [vx, vz] = curveHandle(this.def.handles, k), [x, y] = this.toScreen(h.x, h.z), [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
-      g.save(); g.strokeStyle = '#1b7fd1'; g.fillStyle = '#fff'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(ix, iy); g.lineTo(x, y); g.lineTo(ox, oy); g.stroke();
-      for (const [ex, ey, sq] of [[ox, oy, true], [ix, iy, false]]) { g.beginPath(); g.arc(ex, ey, 6, 0, 7); g.fill(); g.stroke(); if (sq) { g.beginPath(); g.arc(ex, ey, 2.2, 0, 7); g.fillStyle = '#1b7fd1'; g.fill(); g.fillStyle = '#fff'; } }
-      g.restore();
-    }
+    // curve handles: on the selected point, and on every point next to a too-sharp spot (a red circle) so you know where to bend the road
+    if (!this.blank) for (const k of this._bezPoints()) this._drawBez(g, k, k !== this.sel);
 
     // scale bar
     const bar = [10, 20, 50, 100, 200, 500].find((m) => m * S > 70) || 500;
@@ -591,14 +583,56 @@ export class Editor {
     this.def.handles.forEach((h, k) => { const [x, y] = this.toScreen(h.x, h.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
     return best;
   }
-  /** Which curve-handle end of the selected point is under (sx, sy): 'out', 'in' or ''. */
+  /** The crossroad map icon: a short slab of road in the shape of a plus, drawn at an angle so it has a top and a thickness. */
+  _junctionIcon(g, x, y, r) {
+    const plus = (k) => { const a = r, b = r * 0.36; g.beginPath(); g.moveTo(-b, -a); g.lineTo(b, -a); g.lineTo(b, -b); g.lineTo(a, -b); g.lineTo(a, b); g.lineTo(b, b); g.lineTo(b, a); g.lineTo(-b, a); g.lineTo(-b, b); g.lineTo(-a, b); g.lineTo(-a, -b); g.lineTo(-b, -b); g.closePath(); };
+    g.save(); g.lineJoin = 'round'; g.lineWidth = 1.5; g.strokeStyle = '#0b1f3f';
+    for (const [dy, fill] of [[r * 0.34, '#5d7596'], [r * 0.17, '#7d93b3'], [0, '#eef3fa']]) {
+      g.save(); g.translate(x, y + dy); g.scale(1, 0.62); g.rotate(Math.PI / 4); plus(); g.fillStyle = fill; g.fill(); if (!dy) g.stroke(); g.restore();
+    }
+    g.save(); g.translate(x, y); g.scale(1, 0.62); g.rotate(Math.PI / 4); g.strokeStyle = '#d68a00'; g.lineWidth = 1.6; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(-r * 0.85, 0); g.lineTo(r * 0.85, 0); g.moveTo(0, -r * 0.85); g.lineTo(0, r * 0.85); g.stroke(); g.restore();
+    g.restore();
+  }
+  /** The gap map icon: two ramps facing each other across a gap, with the jump drawn as a dotted arc. */
+  _gapIcon(g, x, y, r) {
+    const w = r * 1.15, h = r * 0.7, gap = r * 0.3, base = y + r * 0.45;
+    g.save(); g.lineJoin = 'round'; g.lineWidth = 1.6; g.strokeStyle = '#10151c'; g.fillStyle = '#ffc933';
+    g.beginPath(); g.moveTo(x - gap - w, base); g.lineTo(x - gap, base); g.lineTo(x - gap, base - h); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x + gap + w, base); g.lineTo(x + gap, base); g.lineTo(x + gap, base - h); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x - gap - w * 1.15, base); g.lineTo(x + gap + w * 1.15, base); g.lineWidth = 1.2; g.stroke();
+    g.setLineDash([2, 3]); g.lineWidth = 1.5; g.strokeStyle = '#10151c'; g.beginPath(); g.moveTo(x - gap, base - h); g.quadraticCurveTo(x, base - h - r * 0.8, x + gap, base - h); g.stroke();
+    g.restore();
+  }
+  /** The points whose curve handles show: the selected one, plus the nearest point to each too-sharp spot (sharp ones first have a red tint). */
+  _bezPoints() {
+    const out = new Set(), t = this.track; if (!t || t.def.mode === 'lastStanding') return [];
+    if (this.sel >= 0 && this.def.handles[this.sel]) out.add(this.sel);
+    for (const i of this.analysis?.tight || []) {
+      const sd = t.s[i]; let best = -1, bd = 1e9;
+      t.handleS.forEach((hs, k) => { let d = Math.abs(hs - sd); d = Math.min(d, t.length - d); if (d < bd) { bd = d; best = k; } });
+      if (best >= 0 && bd < 60) out.add(best);
+    }
+    return [...out];
+  }
+  _drawBez(g, k, sharp) {
+    const h = this.def.handles[k]; if (!h) return;
+    const [vx, vz] = curveHandle(this.def.handles, k), [x, y] = this.toScreen(h.x, h.z), [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
+    g.save(); g.strokeStyle = sharp ? '#e0452f' : '#1b7fd1'; g.fillStyle = '#fff'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(ix, iy); g.lineTo(x, y); g.lineTo(ox, oy); g.stroke();
+    for (const [ex, ey, lead] of [[ox, oy, true], [ix, iy, false]]) { g.beginPath(); g.arc(ex, ey, 6, 0, 7); g.fill(); g.stroke(); if (lead) { g.beginPath(); g.arc(ex, ey, 2.2, 0, 7); g.fillStyle = sharp ? '#e0452f' : '#1b7fd1'; g.fill(); g.fillStyle = '#fff'; } }
+    g.restore();
+  }
+  /** Which curve-handle end is under (sx, sy): { k, side } for a handle end of a shown point, or null. */
   _hitBez(sx, sy) {
-    if (this.sel < 0 || !this.def.handles[this.sel] || this.blank) return '';
-    const h = this.def.handles[this.sel], [vx, vz] = curveHandle(this.def.handles, this.sel);
-    const [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
-    if ((ox - sx) ** 2 + (oy - sy) ** 2 < 100) return 'out';
-    if ((ix - sx) ** 2 + (iy - sy) ** 2 < 100) return 'in';
-    return '';
+    if (this.blank) return null;
+    for (const k of this._bezPoints()) {
+      const h = this.def.handles[k], [vx, vz] = curveHandle(this.def.handles, k);
+      const [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
+      if ((ox - sx) ** 2 + (oy - sy) ** 2 < 100) return { k, side: 'out' };
+      if ((ix - sx) ** 2 + (iy - sy) ** 2 < 100) return { k, side: 'in' };
+    }
+    return null;
   }
   _hitProp(sx, sy, r = 12) {
     let best = -1, bd = r * r;
@@ -789,8 +823,8 @@ export class Editor {
         if (i >= 0) { this.drag = null; this.insertAt(i); this.updateInspector(); } else this.cb.toast('Click on the track to add a point there.');
         return;
       }
-      const bez = e.button === 0 && !this._placing() ? this._hitBez(sx, sy) : '';
-      if (bez) { this.drag = { type: 'bez', side: bez, k: this.sel, moved: false }; return; }
+      const bez = e.button === 0 && !this._placing() ? this._hitBez(sx, sy) : null;
+      if (bez) { this.sel = bez.k; this.drag = { type: 'bez', side: bez.side, k: bez.k, moved: false }; this.updateInspector(); return; }
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
       const works = this.tool === 'gap';
       const xc = (works || (k < 0 && pk < 0)) && e.button === 0 && !this._placing() ? this._crossAt(sx, sy, works ? 26 : 15) : null;   // with the Roadworks tool a crossing wins over a point sitting on it
@@ -853,7 +887,7 @@ export class Editor {
     c.addEventListener('dblclick', (e) => {
       if (this.tool !== 'road') return;
       const [sx0, sy0] = pos(e), hb = this._hitBez(sx0, sy0);
-      if (hb) { const h = this.def.handles[this.sel]; if (h.hx !== undefined) { this.snapshot(); delete h.hx; delete h.hz; this.rebuild(true); this.draw(); this.cb.toast('Curve handle back to automatic.'); } return; }
+      if (hb) { const h = this.def.handles[hb.k]; if (h.hx !== undefined) { this.snapshot(); delete h.hx; delete h.hz; this.rebuild(true); this.draw(); this.cb.toast('Curve handle back to automatic.'); } return; }
       const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
       const i = this._nearestSample(sx, sy); if (i >= 0) this.insertAt(i);
     });

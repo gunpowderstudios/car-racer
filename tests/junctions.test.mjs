@@ -52,3 +52,23 @@ test('a crossing that is already a gap is left exactly as it is, and shows up as
   assert.equal(makeGap(def, c), 0);
   assert.deepEqual(def.handles.map((h) => h.y), ys);
 });
+
+test('one track can have a gap at one crossing and a crossroad at another', () => {
+  const H = [], N = 36;
+  for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2; H.push({ x: 160 * Math.sin(2 * a + 0.4), z: 100 * Math.sin(3 * a), y: 0.65 }); }
+  const def = normalizeTrack({ name: 'two', width: 14, walls: true, handles: H });
+  const p = pendingJunctions(new Track(def), def);
+  assert.ok(p.length >= 2, 'crossings found: ' + p.length);
+  const far = p.filter((c) => Math.abs(c.x + 79) < 3);                               // two crossings well apart from each other (and from the knot in the middle)
+  assert.equal(far.length, 2);
+  const [first, second] = far;
+  assert.ok(Math.hypot(first.x - second.x, first.z - second.z) > 100);
+  makeGap(def, first); keepCrossroad(def, second);
+  const t = new Track(def);
+  assert.ok(t.crossroads.some((c) => Math.hypot(c.x - second.x, c.z - second.z) < 4), 'a crossroad at the second crossing');
+  assert.ok(!t.crossroads.some((c) => Math.hypot(c.x - first.x, c.z - first.z) < 8), 'none at the gap');
+  const hs = roadHeightsAt(t, first.x, first.z);
+  assert.ok(hs[hs.length - 1] - hs[0] >= GAP_HEIGHT - 0.01, 'a gap at the first');
+  const h2 = roadHeightsAt(t, second.x, second.z);
+  assert.ok(Math.abs(h2[h2.length - 1] - h2[0]) < 0.2, 'level at the crossroad');
+});

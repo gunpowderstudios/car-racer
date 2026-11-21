@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.648 — New crossroad and gap map icons
+
+- Crossroads on the editor map are now a little 3D junction (a thick plus of road with dashed middle lines). Gaps are two little ramps facing each other with the jump drawn between them. Both are bigger and easier to click.
+- A track can mix gaps and crossroads: each crossing is answered on its own (a new test covers a gap at one crossing and a crossroad at another).
+
 ## v17.647 — Curve handles on points
 
 - Click a point and two curve handles pop up on it (the line with round ends, a dot marking the leading one). Drag an end to bend the road in and out of that point: the other end mirrors it, and its length sets how wide the curve swings. Double-click an end to put it back to automatic. Handles are saved with the track, in share links and when you reverse it.
