@@ -162,7 +162,7 @@ export function buildTrackGeometry(track) {
       const nn = walls ? [0, 1, 0] : [track.lx[i] * sg * EMBANKMENT * 0.5, 1, track.lz[i] * sg * EMBANKMENT * 0.5];
       const c = blockCol(i, C_KERB_A, C_KERB_B);
       return [{ p: p0, n: nn, c }, { p: p1, n: nn, c }];
-    }, 2, sv);
+    }, 2, sv, (i) => track.junc[i] & (sg > 0 ? 1 : 2));                 // (no kerb across a crossroad: it is open, like a real junction)
     strip(bank, (i) => {
       const k0 = Math.max(KERB_W, apron);                   // with walls the bank starts behind them
       const e = out(i, sg, k0);
@@ -173,7 +173,7 @@ export function buildTrackGeometry(track) {
       const shade = 0.85 + 0.15 * Math.sin(i * 0.37);
       const c = [C_GRASS[0] * shade, C_GRASS[1] * shade, C_GRASS[2] * shade];
       return [{ p: e, n: nn, c }, { p: [q[0], 0, q[2]], n: nn, c }];
-    }, 2, sv, (i) => noBank[sg][i]);
+    }, 2, sv, (i) => noBank[sg][i] || (track.junc[i] & (sg > 0 ? 1 : 2)));
   }
 
   // ---- walls (barrier blocks, red and white)
@@ -256,6 +256,7 @@ export function buildTrackGeometry(track) {
     const sg = k % 2 ? 1 : -1;
     const o = out(i, sg, WALL_GAP + WALL_T + 0.9);
     if (o[1] > track.py[i] + 3 || o[1] < 0.05) { /* fine either way */ }
+    if ((track.crossroads || []).some((c) => Math.hypot(o[0] - c.x, o[2] - c.z) < Math.max(c.hwA, c.hwB) / c.sin + 4)) continue;      // (no lamp posts in the middle of a crossroad)
     lamps.push({ x: o[0], y: Math.max(o[1], 0), z: o[2], dx: -track.lx[i] * sg, dz: -track.lz[i] * sg });
   }
 
@@ -292,42 +293,18 @@ export function buildTrackGeometry(track) {
         junction.idx.push(v0, v1, v2, v0, v2, v3);
       }
 
-      // the barriers: each road's wall ends where it meets the other road's wall; a block from the end of each to the exact corner closes the gap, with a square corner
-      {
-        const lAx = c.taz, lAz = -c.tax, lBx = c.tbz, lBz = -c.tbx, dt = lAx * lBz - lAz * lBx;
-        const wA = c.hwA + WALL_GAP + WALL_T / 2, wB = c.hwB + WALL_GAP + WALL_T / 2, H = WALL_HEIGHT;
-        const block = (p0, p1, y0, y1, col) => {                                  // a wall block from p0 to p1 (x, z), WALL_T thick, from y0 up to y1
-          const dx = p1[0] - p0[0], dz = p1[1] - p0[1], len = Math.hypot(dx, dz); if (len < 0.05) return;
-          const ux = dx / len, uz = dz / len, hx = -uz * WALL_T / 2, hz = ux * WALL_T / 2;
-          const bl = [p0[0] - hx, y0, p0[1] - hz], br = [p0[0] + hx, y0, p0[1] + hz], fr = [p1[0] + hx, y0, p1[1] + hz], fl = [p1[0] - hx, y0, p1[1] - hz];
-          const up = (q) => [q[0], y1, q[2]];
-          quad(wall, up(bl), up(br), up(fr), up(fl), UP, col);
-          quad(wall, bl, fl, up(fl), up(bl), [-hx / (WALL_T / 2), 0, -hz / (WALL_T / 2)], col);
-          quad(wall, br, fr, up(fr), up(br), [hx / (WALL_T / 2), 0, hz / (WALL_T / 2)], col);
-          quad(wall, fl, fr, up(fr), up(fl), [ux, 0, uz], col);
-        };
-        for (const sa of [1, -1]) for (const sb of [1, -1]) {
-          const a = sa * wA, b = sb * wB, px = c.x + (a * lBz - lAz * b) / dt, pz = c.z + (lAx * b - lBx * a) / dt;     // the corner of the two wall lines
-          {                                                                       // a yellow drum on the corner joins the two walls neatly (it is only for looks: it does not explode)
-            const cy0 = Math.min(track.py[c.ia], c.y) - 0.1, top = Math.max(track.py[c.ia], c.y) + H + 0.25, R = 0.62, N = 10, YEL = [1, 0.8, 0.08], BAND = [0.15, 0.13, 0.1];
-            for (let k = 0; k < N; k++) {
-              const a0 = (k / N) * Math.PI * 2, a1 = ((k + 1) / N) * Math.PI * 2, am = (a0 + a1) / 2;
-              const p0 = [px + Math.cos(a0) * R, 0, pz + Math.sin(a0) * R], p1 = [px + Math.cos(a1) * R, 0, pz + Math.sin(a1) * R], nrm = [Math.cos(am), 0, Math.sin(am)];
-              const at = (q, y) => [q[0], y, q[2]], mid = (top + cy0) / 2, bh = 0.09;
-              quad(signs, at(p0, cy0), at(p1, cy0), at(p1, mid - bh), at(p0, mid - bh), nrm, YEL);
-              quad(signs, at(p0, mid - bh), at(p1, mid - bh), at(p1, mid + bh), at(p0, mid + bh), nrm, BAND);
-              quad(signs, at(p0, mid + bh), at(p1, mid + bh), at(p1, top), at(p0, top), nrm, YEL);
-              tri(signs, [px, top, pz], at(p1, top), at(p0, top), UP, [0.9, 0.7, 0.05]);
-            }
-          }
-          for (const [i0, tx, tz, sg, lx, lz, hwR, col] of [[c.ia, c.tax, c.taz, sa, lAx, lAz, c.hwA, C_WALL_B], [c.ib, c.tbx, c.tbz, sb, lBx, lBz, c.hwB, C_WALL_A]]) {
-            const dir = ((px - c.x) * tx + (pz - c.z) * tz) >= 0 ? 1 : -1, bit = sg > 0 ? 1 : 2;
-            let i = i0, guard = 0; while ((track.junc[i] & bit) && guard++ < 400) i = (i + dir + n) % n;            // walk out along that road to where its wall starts again
-            if (guard >= 400) continue;
-            const wi = track.hw[i] + WALL_GAP + WALL_T / 2, ex = track.px[i] + track.lx[i] * sg * wi, ez = track.pz[i] + track.lz[i] * sg * wi;
-            const ux = px - ex, uz = pz - ez, ul = Math.hypot(ux, uz) || 1, y0 = Math.min(track.py[i], c.y) - 0.1, y1 = Math.max(track.py[i], c.y) + H;
-            block([ex - (ux / ul) * 0.3, ez - (uz / ul) * 0.3], [px + (ux / ul) * WALL_T / 2, pz + (uz / ul) * WALL_T / 2], y0, y1, col);
-          }
+      // the corner drums (they are solid, see Track.drumHit)
+      for (const d of track.drums || []) {
+        if (d.c !== c) continue;
+        const px = d.x, pz = d.z, cy0 = c.y - 0.1, top = c.y + WALL_HEIGHT + 0.25, R = d.r, N = 10, YEL = [1, 0.8, 0.08], BAND = [0.15, 0.13, 0.1];
+        for (let k = 0; k < N; k++) {
+          const a0 = (k / N) * Math.PI * 2, a1 = ((k + 1) / N) * Math.PI * 2, am = (a0 + a1) / 2;
+          const p0 = [px + Math.cos(a0) * R, 0, pz + Math.sin(a0) * R], p1 = [px + Math.cos(a1) * R, 0, pz + Math.sin(a1) * R], nrm = [Math.cos(am), 0, Math.sin(am)];
+          const at = (q, y) => [q[0], y, q[2]], mid = (top + cy0) / 2, bh = 0.09;
+          quad(signs, at(p0, cy0), at(p1, cy0), at(p1, mid - bh), at(p0, mid - bh), nrm, YEL);
+          quad(signs, at(p0, mid - bh), at(p1, mid - bh), at(p1, mid + bh), at(p0, mid + bh), nrm, BAND);
+          quad(signs, at(p0, mid + bh), at(p1, mid + bh), at(p1, top), at(p0, top), nrm, YEL);
+          tri(signs, [px, top, pz], at(p1, top), at(p0, top), UP, [0.9, 0.7, 0.05]);
         }
       }
       // approaches: [road, direction of travel (+1 = the way the road runs), tangent, left normal, half width, how far the other road reaches]

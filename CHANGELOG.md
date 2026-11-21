@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.639 — Open crossroads, solid corner drums, Draw keeps your points, camera under bridges
+
+- Crossroads are now plain and open like a real junction: no walls or kerbs across them, just tarmac with the give-way dashes.
+- The yellow drums stay at the four corners of each crossroad and are now as solid as a wall: you can crash into them, and they never move or explode. The dark patch on the junction surface was a shadow clash with the roads underneath, so the surface no longer takes shadows.
+- No lamp posts in the middle of a crossroad.
+- The Draw tool now gives you exactly the points you placed (4 or more) instead of adding dozens along the curve. The preview shows the track's own curve through them, and dragging while you place a point moves it.
+- The chase camera no longer dips down and pops up as you drive under a bridge: a road overhead is passed through.
+
 ## v17.637 — Editor: Draw tool, blank Clear, Add point, corner drums
 
 - New Draw button (P): click to place points, drag from a point to bend the curve either side of it (like a pen tool), then click the first point (or press Enter) to close the circuit. Backspace, Undo and Redo step through the points while you draw; Esc starts over.

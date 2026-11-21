@@ -1,7 +1,7 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, GAP_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
-import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
+import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
 import { clamp, lerp } from './math.js';
@@ -606,70 +606,61 @@ export class Editor {
   /** Click puts a point down; dragging from it pulls out the curve handles (both sides, like a pen tool). Clicking the first point closes the circuit. */
   _penDown(sx, sy) {
     const [wx, wz] = this.toWorld(sx, sy), a0 = this.pen[0];
-    if (a0 && this.pen.length >= 3) { const [x, y] = this.toScreen(a0.x, a0.z); if ((x - sx) ** 2 + (y - sy) ** 2 < 14 * 14) { this._penFinish(); return; } }
+    if (a0 && this.pen.length >= 4) { const [x, y] = this.toScreen(a0.x, a0.z); if ((x - sx) ** 2 + (y - sy) ** 2 < 14 * 14) { this._penFinish(); return; } }
     const a = { x: wx, z: wz, dx: 0, dz: 0 }; this.pen.push(a); this.penRedo = []; this._penDrag = a; this.draw();
   }
   _penMove(sx, sy) {
     this._penMouse = [sx, sy];
     const a = this._penDrag;
-    if (a) { const [wx, wz] = this.toWorld(sx, sy); a.dx = wx - a.x; a.dz = wz - a.z; }
+    if (a) { const [wx, wz] = this.toWorld(sx, sy); a.x = wx; a.z = wz; }
     this.draw();
   }
   _penUp() { this._penDrag = null; this.draw(); }
   penUndo() { if (!this.pen.length) return false; this.penRedo.push(this.pen.pop()); this._buttons(); this.draw(); return true; }
   penRedoStep() { if (!this.penRedo.length) return false; this.pen.push(this.penRedo.pop()); this._buttons(); this.draw(); return true; }
-  /** The curve through the placed points as small steps (closed when `closed`), each step { x, z, t } with the segment and fraction it came from. */
+  /** The track's own curve through the placed points (what you will get), as [x, z] steps; a straight line until there are 4 points. */
   _penCurve(closed) {
-    const A = this.pen, n = A.length, segs = closed ? n : n - 1, out = [];
-    for (let i = 0; i < segs; i++) {
-      const a = A[i], b = A[(i + 1) % n], P = [[a.x, a.z], [a.x + a.dx, a.z + a.dz], [b.x - b.dx, b.z - b.dz], [b.x, b.z]];
-      for (let k = 0; k < 24; k++) {
-        const u = k / 24, v = 1 - u, w = [v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u];
-        out.push([P[0][0] * w[0] + P[1][0] * w[1] + P[2][0] * w[2] + P[3][0] * w[3], P[0][1] * w[0] + P[1][1] * w[1] + P[2][1] * w[2] + P[3][1] * w[3]]);
+    const A = this.pen;
+    if (A.length < 4) { const o = A.map((a) => [a.x, a.z]); if (closed && o.length) o.push(o[0]); return o; }
+    const key = A.map((a) => a.x.toFixed(1) + ',' + a.z.toFixed(1)).join(';') + (closed ? 'c' : 'o');
+    if (this._penKey !== key) {                                                // (the track's own spline, worked out cheaply here so dragging stays smooth)
+      this._penKey = key;
+      const n = A.length, P = A.map((a) => [a.x, 0, a.z]), out = [], tmp = [0, 0, 0], segs = closed ? n : n - 1;
+      for (let i = 0; i < segs; i++) {
+        const g = (k) => closed ? P[(k + n) % n] : P[Math.max(0, Math.min(n - 1, k))];
+        for (let k = 0; k < 14; k++) { crCentripetal(g(i - 1), g(i), g(i + 1), g(i + 2), k / 14, tmp); out.push([tmp[0], tmp[2]]); }
       }
+      out.push(closed ? out[0] : [A[n - 1].x, A[n - 1].z]);
+      this._penPts = out;
     }
-    if (!closed && n) out.push([A[n - 1].x, A[n - 1].z]);
-    return out;
+    return this._penPts;
   }
   _penFinish() {
-    if (this.pen.length < 3) { this.cb.toast('Place at least 3 points first.'); return; }
+    if (this.pen.length < 4) { this.cb.toast('Place at least 4 points first.'); return; }
     if (!this.blank && !confirm('Replace this track with the new shape?\n\nThe old track and its obstacles will go (Undo brings them back).')) return;
-    const poly = this._penCurve(true); let len = 0;
-    for (let i = 0; i < poly.length; i++) { const q = poly[(i + 1) % poly.length]; len += Math.hypot(q[0] - poly[i][0], q[1] - poly[i][1]); }
-    const spacing = Math.max(28, len / 110), pts = []; let acc = spacing;                    // a point about every 28 m, never more than ~110 in all
-    for (let i = 0; i < poly.length; i++) {
-      const q = poly[(i + 1) % poly.length]; acc += Math.hypot(q[0] - poly[i][0], q[1] - poly[i][1]);
-      if (acc >= spacing || i === 0) { pts.push(poly[i]); acc = i === 0 ? 0 : acc - spacing; }
-    }
-    if (pts.length > 4 && Math.hypot(pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1]) < spacing * 0.5) pts.pop();
-    if (pts.length < 4) { this.cb.toast('That shape is too small: make it bigger.'); return; }
     if (!this.blank) this.snapshot();
-    const handles = pts.map(([x, z]) => ({ x: Math.round(x * 10) / 10, y: 0.65, z: Math.round(z * 10) / 10, w: 0, bank: 0, gap: 0 }));
+    const handles = this.pen.map((a) => ({ x: Math.round(a.x * 10) / 10, y: 0.65, z: Math.round(a.z * 10) / 10, w: 0, bank: 0, gap: 0 }));      // exactly the points you placed
     const keep = { name: this.def.name, width: this.def.width, walls: this.def.walls, defaultLaps: this.def.defaultLaps };
     this.def = normalizeTrack({ ...keep, handles, props: [] }); this.blank = false; this.pen = []; this.penRedo = [];
     this.sel = -1; this.selProp = -1; this._setTool('road');
     this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged();
-    this.cb.toast(`Track drawn: ${(this.track.length / 1000).toFixed(2)} km. Drag the points to fine tune it.`);
+    this.cb.toast(`Track drawn with your ${handles.length} points: ${(this.track.length / 1000).toFixed(2)} km. Drag the points to fine tune it.`);
   }
   _drawPen(g) {
     const A = this.pen; g.save();
     if (!A.length) { g.fillStyle = 'rgba(234,246,255,.7)'; g.font = '16px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Click to place the first point of your track', this.w / 2, this.h / 2); g.restore(); return; }
     const S = (p) => this.toScreen(p[0], p[1]);
     const pv = this._penMouse && !this._penDrag ? this._penMouse : null;
-    const poly = this._penCurve(false);
+    const poly = this._penCurve(A.length >= 4);
     g.strokeStyle = '#8fe0ff'; g.lineWidth = Math.max(3, this.def.width * this.view.scale); g.globalAlpha = 0.28; g.lineJoin = 'round'; g.lineCap = 'round';
     g.beginPath(); poly.forEach((p, i) => { const [x, y] = S(p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.globalAlpha = 1;
     g.lineWidth = 2; g.stroke();
-    if (pv && !this._penDrag) { const l = A[A.length - 1], [lx, ly] = this.toScreen(l.x + l.dx, l.z + l.dz), [lx0, ly0] = this.toScreen(l.x, l.z); g.setLineDash([5, 5]); g.beginPath(); g.moveTo(lx0, ly0); g.lineTo(pv[0], pv[1]); g.stroke(); g.setLineDash([]); }
+    if (pv && !this._penDrag) { const l = A[A.length - 1], [lx0, ly0] = this.toScreen(l.x, l.z); g.setLineDash([5, 5]); g.beginPath(); g.moveTo(lx0, ly0); g.lineTo(pv[0], pv[1]); g.stroke(); g.setLineDash([]); }
     A.forEach((a, i) => {
       const [x, y] = this.toScreen(a.x, a.z);
-      if (a.dx || a.dz) {
-        g.strokeStyle = '#ffd24a'; g.fillStyle = '#ffd24a'; g.lineWidth = 1.5;
-        for (const sgn of [1, -1]) { const [hx, hy] = this.toScreen(a.x + sgn * a.dx, a.z + sgn * a.dz); g.beginPath(); g.moveTo(x, y); g.lineTo(hx, hy); g.stroke(); g.beginPath(); g.arc(hx, hy, 3.5, 0, 7); g.fill(); }
-      }
       g.fillStyle = i === 0 ? '#ffd24a' : '#fff'; g.strokeStyle = '#12305f'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, i === 0 ? 8 : 6, 0, 7); g.fill(); g.stroke();
     });
-    if (A.length >= 3) { g.fillStyle = 'rgba(234,246,255,.8)'; g.font = '13px system-ui, sans-serif'; const [x, y] = this.toScreen(A[0].x, A[0].z); g.textAlign = 'left'; g.fillText('click to close', x + 12, y - 10); }
+    if (A.length >= 4) { g.fillStyle = 'rgba(234,246,255,.8)'; g.font = '13px system-ui, sans-serif'; const [x, y] = this.toScreen(A[0].x, A[0].z); g.textAlign = 'left'; g.fillText('click to close', x + 12, y - 10); }
     g.restore();
   }
 
@@ -897,7 +888,7 @@ export class Editor {
       const handles = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return { x: Math.round(Math.cos(a) * 150), y: 0.65, z: Math.round(Math.sin(a) * 90), w: 0, bank: 0, gap: 0 }; });   // (hidden placeholder: the editor needs a track to stand on until one is drawn)
       this.def = normalizeTrack({ name: 'New track', width: 22, walls: true, defaultLaps: 3, handles, props: [] }); this.def.blank = true; this.blank = true;
       this.sel = -1; this.selProp = -1; this.pen = []; this.penRedo = []; this._setTool('pen');
-      $('ed-name').value = this.def.name; this.rebuild(true); this.view.x = 0; this.view.z = 0; this.view.scale = 0.5; this.updateUI(); this.propsChanged(); this.cb.toast('Blank page: click to place points, drag to bend the curve, click the first point to close the circuit.');
+      $('ed-name').value = this.def.name; this.rebuild(true); this.view.x = 0; this.view.z = 0; this.view.scale = 0.5; this.updateUI(); this.propsChanged(); this.cb.toast('Blank page: click to place points (4 or more), then click the first point to close the circuit.');
     };
     $('ed-fit').onclick = () => { this.fit(); this.draw(); };
     $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };

@@ -78,3 +78,12 @@ test('a crossroad gets an asphalt patch, give-way lines and four give-way signs,
   const open = [0, 0]; for (let i = 0; i < t.n; i++) { if (t.junc[i] & 1) open[0]++; if (t.junc[i] & 2) open[1]++; }
   assert.ok(open[0] > 0 && open[1] > 0 && open[0] + open[1] < t.n / 3, 'openings ' + open);
 });
+
+test('crossroad corner drums are solid: a point inside one is pushed out, and far away is not', () => {
+  const t = new Track(eight());
+  assert.equal(t.drums.length, 4 * t.crossroads.length);
+  const d = t.drums[0];
+  const hit = t.drumHit(d.x + 0.1, d.y + 0.5, d.z);
+  assert.ok(hit && hit.pen > 0.4 && hit.nx > 0.9, JSON.stringify(hit));
+  assert.equal(t.drumHit(d.x + 3, d.y + 0.5, d.z), null);
+});

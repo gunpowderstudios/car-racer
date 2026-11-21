@@ -641,7 +641,7 @@ export class ChaseCamera {
     }
     this.pos.set(p.x - sx * dist * reach, p.y + 1.4 + (this.y + h - p.y - 1.4) * reach, p.z - cz * dist * reach);
     const q = stacked ? track.query(this.pos.x, p.y + 1.6, this.pos.z, this._q, 1.1) : track.query(this.pos.x, this.pos.y + 3, this.pos.z, this._q, 3);      // (on stacked roads only look for the road the car is on, not the one above)
-    if (q.idx >= 0 || q.y === 0) this.pos.y = Math.max(this.pos.y, q.y + 0.9);
+    if ((q.idx >= 0 && q.y < p.y + 1.5) || q.y === 0) this.pos.y = Math.max(this.pos.y, q.y + 0.9);      // (only a road at the car's own level or below holds the camera up: a bridge overhead is passed through, so the camera no longer dips down and pops up as the car goes under)
     this.shake = Math.max(this.shake * Math.exp(-6 * dt), this.kick * 0.12);
     const sh = this.shake * 0.35;
     this.cam.position.set(this.pos.x + (Math.random() - 0.5) * sh, this.pos.y + (Math.random() - 0.5) * sh, this.pos.z + (Math.random() - 0.5) * sh);

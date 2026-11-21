@@ -296,7 +296,7 @@ export function normalizeTrack(input) {
 
 // ------------------------------------------------------------------- spline
 
-function crCentripetal(p0, p1, p2, p3, t, out) {
+export function crCentripetal(p0, p1, p2, p3, t, out) {
   const d = (a, b) => Math.max(Math.pow(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), 0.5), 1e-3);
   const t0 = 0, t1 = d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3);
   const T1 = t1, T2 = t2;
@@ -442,6 +442,32 @@ export class Track {
    * other road's wall-to-wall band. The two walls then end exactly where they meet, so the corners of the junction are joined.
    * `junc[i]` bit 1 = left wall open, bit 2 = right wall open.
    */
+  /** The yellow drums at the corners of each crossroad, where the walls would have met: solid like a wall, but they never move. { x, y, z, r } */
+  _drums() {
+    this.drums = [];
+    if (!this.def.walls) return;
+    for (const c of this.crossroads || []) {
+      const lAx = c.taz, lAz = -c.tax, lBx = c.tbz, lBz = -c.tbx, dt = lAx * lBz - lAz * lBx;
+      if (Math.abs(dt) < 0.05) continue;
+      const wA = c.hwA + WALL_GAP + WALL_T / 2, wB = c.hwB + WALL_GAP + WALL_T / 2;
+      for (const sa of [1, -1]) for (const sb of [1, -1]) {
+        const a = sa * wA, b = sb * wB;
+        this.drums.push({ x: c.x + (a * lBz - lAz * b) / dt, y: c.y, z: c.z + (lAx * b - lBx * a) / dt, r: 0.62, c });
+      }
+    }
+  }
+  /** Is the point (x, y, z) inside a corner drum? Gives { pen, nx, nz } (how far in, and the way out) or null. */
+  drumHit(x, y, z) {
+    const D = this.drums; if (!D || !D.length) return null;
+    for (let k = 0; k < D.length; k++) {
+      const d = D[k], dx = x - d.x, dz = z - d.z, r2 = dx * dx + dz * dz;
+      if (r2 >= d.r * d.r || y > d.y + WALL_HEIGHT + 0.25 || y < d.y - 1) continue;
+      const r = Math.sqrt(r2) || 1e-3, o = this._drumOut || (this._drumOut = { pen: 0, nx: 0, nz: 0 });
+      o.pen = d.r - r; o.nx = dx / r; o.nz = dz / r; if (r2 < 1e-6) { o.nx = 1; o.nz = 0; }
+      return o;
+    }
+    return null;
+  }
   _junctionWalls() {
     const n = this.n, { px, pz, lx, lz, hw } = this;
     for (const c of this.crossroads) {
@@ -567,7 +593,7 @@ export class Track {
       curv[i] = wrapPi(yaw[q] - yaw[p]) / (4 * ds);        // + = turning left
     }
 
-    this._junctionWalls();
+    this._junctionWalls(); this._drums();
     this._buildGrid();
   }
 

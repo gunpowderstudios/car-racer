@@ -707,11 +707,13 @@ export class Vehicle {
       for (let i = 0; i < hull.length; i++) {
         const p = this.toWorld(hull[i], this.hullWorld[i]);
         const q = track.query(p.x, p.y, p.z, this.q, 0.8);
-        const pen = track.wallPenetration(q, p.y);
-        if (pen <= 0) continue;
+        let pen = track.wallPenetration(q, p.y), n;
+        if (pen > 0) { const sg = q.d < 0 ? -1 : 1; n = tmpE.set(-q.lx * sg, 0, -q.lz * sg); }          // horizontal, towards the road
+        else {                                                  // a yellow corner drum at a crossroad: as solid as the wall, and it stays put
+          const dm = track.drumHit(p.x, p.y, p.z); if (!dm) continue;
+          pen = dm.pen; n = tmpE.set(dm.nx, 0, dm.nz);
+        }
         touched = true;
-        const sg = q.d < 0 ? -1 : 1;
-        const n = tmpE.set(-q.lx * sg, 0, -q.lz * sg);          // horizontal, towards the road
         const r = tmpC.copy(p).sub(this.pos);
         const v = this._velAt(r, tmpD);
         const vn = v.dot(n);
