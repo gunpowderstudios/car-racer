@@ -233,6 +233,10 @@ const HUES = 7;
 /** Where the tow ball is on a rival (the standard car body). */
 const RIVAL_HITCH = { x: 0, y: -0.02, z: -2.55 };
 
+/** A parked car: nobody at the wheel, the handbrake on. */
+class ParkedDriver { drive() { return PARKED; } }
+const PARKED = Object.freeze({ ...IDLE, handbrake: true });
+
 export class Derby {
   constructor() {
     this.enabled = false; this.damageEnabled = true;
@@ -257,8 +261,8 @@ export class Derby {
     this.cars = [];                       // every car that should take part in physics, player first
   }
 
-  get rivals() { return this.fighters.filter((f) => !f.isPlayer && !f.gone); }
-  get alive() { let n = 0; for (const f of this.fighters) if (!f.isPlayer && !f.gone && !f.wrecked) n++; return n; }
+  get rivals() { return this.fighters.filter((f) => !f.isPlayer && !f.gone && !f.placed); }       // (cars the track maker placed are not rivals: no grid slot, never replaced, not in the standings)
+  get alive() { let n = 0; for (const f of this.fighters) if (!f.isPlayer && !f.gone && !f.wrecked && !f.placed) n++; return n; }
 
   /** Begin a fresh game on `track` with the player's car and `count` rivals. */
   start(track, playerCar, count = DERBY.rivals, seed = 7, mode = 'race') {
@@ -355,6 +359,32 @@ export class Derby {
     placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
     car.opts.assist = 0.7;
     return this.add(car, driver, k + 1, kind);
+  }
+
+  /**
+   * Cars the track maker put on the track in the editor (props of type 'vehicle'). A static one is parked, handbrake on, facing the way it was
+   * placed; a driving one races round the track like a rival (but is not one: no grid slot, no standing, no replacement). `kindFor(id)` is the
+   * game's lookup for a named vehicle ({ id, spec, damageMul, hitch }), or null for "the same as yours".
+   */
+  addPlaced(list, kindFor = null) {
+    const T = this.track; if (!T || !this.player) return 0;
+    let n = 0;
+    for (const p of list) {
+      if (p.type !== 'vehicle' || n >= 24) continue;
+      const kind = (p.car && kindFor && kindFor(p.car)) || null;
+      const car = new Vehicle(kind?.spec), g = T.groundAt(p.x, p.z, (p.y || 0) + 1, undefined, true), gy = g && g.idx >= 0 ? g.y : (p.y || 0);
+      let driver;
+      if (p.mode === 'driving') {
+        const s = T.progressAt(p.x, gy, p.z), fr = T.frameAt(s), off = (p.x - fr.x) * fr.lx + (p.z - fr.z) * fr.lz;
+        driver = new Driver(this.rng); placeOnRoad(car, T, s, Math.max(-fr.hw + 2, Math.min(fr.hw - 2, off)), driver.cruise * 0.85);
+      } else {
+        driver = new ParkedDriver();
+        car.reset(new V3(p.x, gy + car.restHeight + 0.08, p.z), new V3(Math.sin(p.yaw || 0), 0, Math.cos(p.yaw || 0)), new V3(0, 1, 0), 0);
+      }
+      car.opts.assist = 0.7;
+      const f = this.add(car, driver, null, kind); f.placed = true; f.parked = p.mode !== 'driving'; n++;
+    }
+    return n;
   }
 
   /** Switch the derby off (plain racing). */
@@ -784,7 +814,8 @@ export class Derby {
     const c = f.car, rnd = this.rng;
     f.wrecked = true; f.wreckT = 0;
     c.refreshFrame();
-    if (!f.isPlayer && !this.getaway) {
+    if (f.placed) f.scrap = true;                                      // a placed car that is wrecked stays where it fell, as a burnt-out hulk
+    else if (!f.isPlayer && !this.getaway) {
       const wreckS = this.track.progressAt(c.pos.x, c.pos.y, c.pos.z);
       const key = f.raceSlot ?? 'id' + f.id, n = (this._wrecks.get(key) || 0) + 1;
       this._wrecks.set(key, n);

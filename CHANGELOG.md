@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.632 — Editor: placeable vehicles
+
+- New Vehicles tool in the editor's Obstacles menu (key V): click the map to put a car on the track. Choose which vehicle it is (or the same as yours), whether it is Parked (handbrake on, stays where you put it) or Driving (races round the track like a rival), and which way it faces (a new car lines up with the road). They are saved with the track and in share links.
+- In the game placed cars are real cars: you can smash them, they take damage and burn out where they fall. They are not rivals (no grid place, not in the standings, never replaced). A track with placed cars turns damage on even in Test Drive, like Apple Crumple.
+
 ## v17.631 — Editor: crossroad or gap, Obstacles menu, back to editor
 
 - When two parts of the road cross in the track editor, a small box asks "Crossroad or Gap?". Tick Gap and one road is lifted 5 m over the other (a bridge you can drive under); tick Crossroad (or close the box) to join them. The answer is remembered in the track.

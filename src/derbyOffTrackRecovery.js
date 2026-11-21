@@ -245,6 +245,7 @@ function stepRivalResets(derby, dt) {
 // Replace only the rival lost-car decision; everything else in Derby._watch remains core behaviour.
 Derby.prototype._watch = function cleanedOffTrackWatch(f, dt) {
   if (f._offTrackReset) return;
+  if (f.parked) return;                                   // a car parked by the track maker stays exactly where it was put, on the road or not
 
   const c = f.car;
   this.track.query(c.pos.x, c.pos.y + 0.5, c.pos.z, this._q, 1.2);
@@ -276,7 +277,7 @@ if (aliveDesc?.get && !Derby.prototype.__offTrackAlivePatched) {
     get() {
       let n = 0;
       for (const f of this.fighters) {
-        if (f.isPlayer || f.gone) continue;
+        if (f.isPlayer || f.gone || f.placed) continue;
         if (!f.wrecked || f._offTrackReset) n++;
       }
       return n;

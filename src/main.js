@@ -998,7 +998,9 @@ function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  const solo = !!(assault || weeval);                       // Apple Crumple: no rivals, but the car takes real damage and is wrecked and respawned like any race
+  const placedCars = (def && def.props || []).filter((p) => p.type === 'vehicle');           // cars the track maker put on the track in the editor
+  const placedSolo = placedCars.length > 0 && !getaway && !(track && track.def && track.def.mode === 'lastStanding') && (testDrive || !(opts.rivals > 0 || demoDay));      // (a Test Drive with placed cars: no rivals, but the cars are real and take real damage, like Apple Crumple)
+  const solo = !!(assault || weeval) || placedSolo;
   const gw = !!getaway && !getaway.online;      // The Getaway: exactly one computer car, the other side, and nobody is hurt (online there are no computer cars: the other side is a person)
   derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); if (gw) derby.enabled = !net; derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
@@ -1013,6 +1015,7 @@ function derbyStart() {
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
   derby.repairsMax = derby.enabled && !arena ? 0 : Infinity;      // no spanners (lives) in any racing game, Race Day included: the first wreck puts you out of the race
   if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
+  if (derby.enabled && !gw && !arena && placedCars.length) derby.addPlaced(placedCars, (id) => { const v = vehicleById(id); return v && v.id === id ? { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null } : null; });
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
@@ -1742,7 +1745,7 @@ function openEditor(d, keepUndo) {
 }
 
 const editor = window.__editor = new Editor({
-  toast,
+  toast, vehicles: () => VEHICLES.map((v) => ({ id: v.id, name: v.name })),
   preview: new EditorPreview($('ed-3d-canvas')),
   onDrive: (d) => {
     editor.close(); store.set('cr.draft', d);

@@ -12,8 +12,9 @@ const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#e
 const DEG = 180 / Math.PI;
 
 export class Editor {
-  constructor({ onDrive, onClose, onSave, onShare, toast, preview }) {
-    this.cb = { onDrive, onClose, onSave, onShare, toast };
+  constructor({ onDrive, onClose, onSave, onShare, toast, preview, vehicles }) {
+    this.cb = { onDrive, onClose, onSave, onShare, toast, vehicles };
+    this.vehOpts = { car: '', mode: 'static' };
     this.preview = preview || null;               // optional 3D view (EditorPreview)
     if (this.preview) this.preview.onScale = (ex) => { $('ed-3d-ex').textContent = ex > 1 ? `heights \u00d7${ex}` : ''; };
     try { this.show3d = localStorage.getItem('cr.ed3d') !== '0'; } catch { this.show3d = true; }
@@ -345,12 +346,22 @@ export class Editor {
     }
   }
 
-  _placing() { return this.tool === 'barrel' || this.tool === 'skull' || this.tool === 'fire'; }
+  _placing() { return this.tool === 'barrel' || this.tool === 'skull' || this.tool === 'fire' || this.tool === 'vehicle'; }
 
   _drawProps(g) {
     const S = this.view.scale, R = Math.max(4.5, BARREL.radius * S * 1.7);
-    const icon = (x, y, on, ghost, type, skull) => {
+    const icon = (x, y, on, ghost, type, skull, vp) => {
       g.globalAlpha = ghost ? 0.5 : 1;
+      if (type === 'vehicle') {                                   // a car seen from above, nose pointing the way it faces; green and arrowed if it drives, blue-grey and parked if not
+        const yaw = vp?.yaw || 0, [ex, ey] = this.toScreen(vp ? vp.x + Math.sin(yaw) : 0, vp ? vp.z + Math.cos(yaw) : 0), [cx, cy] = vp ? this.toScreen(vp.x, vp.z) : [x, y];
+        const ang = vp ? Math.atan2(ey - cy, ex - cx) : -Math.PI / 2, len = Math.max(13, 4.4 * S), wid = Math.max(7, 1.9 * S), driving = (vp ? vp.mode : this.vehOpts.mode) === 'driving';
+        g.save(); g.translate(x, y); g.rotate(ang);
+        g.beginPath(); g.roundRect(-len / 2, -wid / 2, len, wid, Math.min(4, wid / 3)); g.fillStyle = driving ? '#2f9d5b' : '#6f86a6'; g.fill(); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke();
+        g.fillStyle = 'rgba(10,20,40,.75)'; g.fillRect(len * 0.08, -wid * 0.36, len * 0.2, wid * 0.72);           // windscreen, toward the nose
+        g.fillStyle = '#fff'; g.beginPath(); g.moveTo(len * 0.5 + 1, 0); g.lineTo(len * 0.5 - wid * 0.35, -wid * 0.28); g.lineTo(len * 0.5 - wid * 0.35, wid * 0.28); g.closePath(); g.fill();
+        if (!driving) { g.fillStyle = '#fff'; g.font = `700 ${Math.round(wid * 0.8)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.rotate(-ang); g.fillText('P', 0, 1); }
+        g.restore(); g.globalAlpha = 1; return;
+      }
       if (type === 'fire') {
         g.beginPath(); g.arc(x, y, R * 1.15, 0, 7); g.fillStyle = '#2a1410'; g.fill(); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : '#ff6a10'; g.stroke();
         g.beginPath(); g.moveTo(x, y - R * 0.95); g.bezierCurveTo(x + R * 0.9, y - R * 0.2, x + R * 0.7, y + R * 0.7, x, y + R * 0.75); g.bezierCurveTo(x - R * 0.7, y + R * 0.7, x - R * 0.9, y - R * 0.1, x, y - R * 0.95); g.fillStyle = '#ff8a1a'; g.fill();
@@ -363,11 +374,11 @@ export class Editor {
       else { g.beginPath(); g.arc(x, y, R * 0.45, 0, 7); g.fillStyle = '#7a2e0c'; g.fill(); }
       g.globalAlpha = 1;
     };
-    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type, !!p.lethal); });
-    if ((this._placing()) && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, this.tool === 'fire' ? 'fire' : 'barrel', this.tool === 'skull');
+    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type, !!p.lethal, p); });
+    if ((this._placing()) && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : 'barrel', this.tool === 'skull');
     if (this.selProp >= 0 && this.def.props[this.selProp]) {
       const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z);
-      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.type === 'fire' ? 'Fire pit' : p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
+      g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.type === 'vehicle' ? (p.mode === 'driving' ? 'Driving car' : 'Parked car') : p.type === 'fire' ? 'Fire pit' : p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
     }
   }
 
@@ -422,7 +433,8 @@ export class Editor {
   updateProps() {
     const n = this.def.props.length;
     const nb = this.def.props.filter((p) => p.type === 'barrel' && !p.lethal).length, ns = this.def.props.filter((p) => p.type === 'barrel' && p.lethal).length;
-    const nf = this.def.props.filter((p) => p.type === 'fire').length, parts = [];
+    const nf = this.def.props.filter((p) => p.type === 'fire').length, nv = this.def.props.filter((p) => p.type === 'vehicle').length, parts = [];
+    if (nv) parts.push(`${nv} car${nv === 1 ? '' : 's'}`);
     if (nf) parts.push(`${nf} fire pit${nf === 1 ? '' : 's'}`);
     if (nb) parts.push(`${nb} barrel${nb === 1 ? '' : 's'}`);
     if (ns) parts.push(`${ns} skull barrel${ns === 1 ? '' : 's'}`);
@@ -430,7 +442,7 @@ export class Editor {
     $('ed-props-clear').disabled = !n;
   }
   updateInspector() {
-    this.updateProps();
+    this.updateProps(); this._vehPanel();
     const h = this.def.handles[this.sel];
     $('ed-none').hidden = !!h; $('ed-inspector').hidden = !h;
     this._buttons();
@@ -510,12 +522,34 @@ export class Editor {
   }
   _setTool(t) {
     this.tool = t; this._ghost = null;
-    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire'));
-    const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits' };
+    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); this._vehPanel();
+    const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
     this._obstMenu(false);
     if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
+  /** The Vehicle options (which car, parked or driving, which way it faces): shown while placing cars or with a car selected. Changing them changes the selected car, or what the next one placed will be. */
+  _vehPanel() {
+    const box = $('ed-veh'); if (!box) return;
+    const sel = this.def && this.def.props[this.selProp], isVeh = sel && sel.type === 'vehicle';
+    box.hidden = !(this.tool === 'vehicle' || isVeh);
+    if (box.hidden) return;
+    const carSel = $('ed-veh-car');
+    if (!carSel.options.length) {
+      carSel.innerHTML = '<option value="">Same as your car</option>' + (this.cb.vehicles?.() || []).map((v) => `<option value="${v.id}">${v.name}</option>`).join('');
+    }
+    const cur = isVeh ? sel : this.vehOpts;
+    carSel.value = cur.car || ''; $('ed-veh-mode').value = cur.mode === 'driving' ? 'driving' : 'static';
+    $('ed-veh-yaw').disabled = !isVeh; $('ed-veh-yaw').value = isVeh ? Math.round((sel.yaw || 0) * 180 / Math.PI) : 0;
+    $('ed-veh-yaw-o').textContent = isVeh ? `${Math.round((sel.yaw || 0) * 180 / Math.PI)}\u00b0` : 'place one first';
+  }
+  _vehEdit(apply) {
+    const sel = this.def.props[this.selProp];
+    if (sel && sel.type === 'vehicle') { this.snapshot(); apply(sel); apply(this.vehOpts); this.propsChanged(); }
+    else { apply(this.vehOpts); this.draw(); }
+    this._vehPanel();
+  }
+
   /** Open or close the Obstacles dropdown. */
   _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
@@ -525,7 +559,12 @@ export class Editor {
     if (this.def.props.length >= 400) { this.cb.toast('That is enough props (400).'); return; }
     const p = placeProp(this.track, wx, wz);
     this.snapshot();
-    this.def.props.push({ type, ...(lethal ? { lethal: true } : {}), x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
+    let extra = {};
+    if (type === 'vehicle') {                                                  // facing along the road if it is on one; the person turns it with the Facing slider
+      let yaw = 0; try { const s = this.track.progressAt(p.x, p.y, p.z), f = this.track.frameAt(s); yaw = Math.atan2(f.fx, f.fz); } catch { /* off the road */ }
+      extra = { mode: this.vehOpts.mode, yaw: Math.round(yaw * 100) / 100, ...(this.vehOpts.car ? { car: this.vehOpts.car } : {}) };
+    }
+    this.def.props.push({ type, ...extra, ...(lethal ? { lethal: true } : {}), x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
     this.selProp = this.def.props.length - 1; this.sel = -1; this.updateInspector(); this.propsChanged();
   }
   removeProp() {
@@ -597,7 +636,7 @@ export class Editor {
     const end = () => {
       const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair'; setTimeout(() => this._junctionAsk(), 220);
       if (d?.type === 'pan' && !d.moved) {
-        if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : 'barrel', d.sx, d.sy, this.tool === 'skull');
+        if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : 'barrel', d.sx, d.sy, this.tool === 'skull');
         else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
       }
       if (d?.type === 'handle' && d.moved) this.rebuild(true);
@@ -654,6 +693,11 @@ export class Editor {
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
     $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
     document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) this._obstMenu(false); });
+    $('ed-tool-vehicle').onclick = () => { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); };
+    $('ed-veh-car').onchange = (e) => this._vehEdit((o) => { if (e.target.value) o.car = e.target.value; else delete o.car; });
+    $('ed-veh-mode').onchange = (e) => this._vehEdit((o) => { o.mode = e.target.value; });
+    $('ed-veh-yaw').oninput = (e) => { const sel = this.def.props[this.selProp]; if (!sel || sel.type !== 'vehicle') return; if (!this._vehYawSnap) { this.snapshot(); this._vehYawSnap = true; } sel.yaw = Math.round(e.target.value * Math.PI / 180 * 100) / 100; $('ed-veh-yaw-o').textContent = `${e.target.value}\u00b0`; this.draw(); };
+    $('ed-veh-yaw').onchange = () => { this._vehYawSnap = false; this.propsChanged(); };
     $('ed-tool-fire').onclick = () => { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); };
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
@@ -733,6 +777,7 @@ export class Editor {
       if (typing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') this.addPoint();
+      else if (e.key === 'v' || e.key === 'V') { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); }
       else if (e.key === 'l' || e.key === 'L') { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); }
       else if (e.key === 'k' || e.key === 'K') { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); }
       else if (e.key === 'b' || e.key === 'B') { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); }

@@ -28,8 +28,8 @@ export const EMBANKMENT = 0.8;             // verge falls away this many metres 
 const CELL = 8;
 const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its ends
 const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
-const CROSS_MAX_DY = 2.0;      // roads crossing within this height of each other, with no gap, are a crossroad (more than this and it is a ramp-and-bridge problem to fix)
-const CROSS_MIN_SIN = 0.3;     // ...and they must cross at more than about 17 degrees, or the "junction" would be a long shared strip
+export const CROSS_MAX_DY = 2.0;      // roads crossing within this height of each other, with no gap, are a crossroad (more than this and it is a ramp-and-bridge problem to fix)
+export const CROSS_MIN_SIN = 0.3;     // ...and they must cross at more than about 17 degrees, or the "junction" would be a long shared strip
 const CROSS_LIFT = 0.05;       // the second road sits this much higher through a junction, so the two surfaces do not z-fight
 const QUERY_MARGIN = 4.5;
 const BERM_MARGIN = 14;             // a dirt-banked stage's embankments reach this far past the road edge
@@ -62,7 +62,7 @@ export function takeoffRamp(h) {
 /** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
-export const PROP_TYPES = ['barrel', 'fire'];      // (an old saved track or link that still has chickens in it just loses them)
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle'];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 400;
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
@@ -93,6 +93,7 @@ export function normalizeProps(list) {
     const x = Number(p.x), z = Number(p.z);
     if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
+    if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);
   }
@@ -789,11 +790,12 @@ export function analyzeTrack(track) {
     if (k > 1e-4 && 1 / k < track.hw[i] + 1.5) tight.push(i);
   }
   const crossings = [], crossroads = (track.crossroads || []).map((c) => ({ x: c.x, z: c.z }));
-  for (const c of findCrossings(track)) {
+  const bridges = [];
+  for (const c of findCrossings(track, 400)) {
     if (crossroads.some((r) => Math.hypot(r.x - c.x, r.z - c.z) < 8)) continue;       // a crossroad is not a problem
-    crossings.push({ x: c.x, z: c.z });
+    (c.dy < 4.5 ? crossings : bridges).push(c);                                        // too uneven or too shallow to join: a problem; a clear gap (4.5 m or more): a bridge
   }
-  return { tight, crossings, crossroads };
+  return { tight, crossings, crossroads, bridges };
 }
 
 function segIntersect(x1, z1, x2, z2, x3, z3, x4, z4) {
@@ -806,7 +808,7 @@ function segIntersect(x1, z1, x2, z2, x3, z3, x4, z4) {
 }
 
 /** Every place the road crosses itself at nearly the same height: where (x, z), the arc length along each road (sA < sB), how different the heights are, and sin(angle between the roads). */
-export function findCrossings(track) {
+export function findCrossings(track, maxDy = 4.5) {
   const out = [], step = 3, m = Math.floor(track.n / step), { px, pz, py, s } = track;
   const X = [], Z = [], Y = [];
   for (let a = 0; a < m; a++) { X.push(px[a * step]); Z.push(pz[a * step]); Y.push(py[a * step]); }
@@ -818,7 +820,7 @@ export function findCrossings(track) {
       const hit = segIntersect(X[a], Z[a], X[a2], Z[a2], X[b], Z[b], X[b2], Z[b2]);
       if (!hit) continue;
       const dy = Math.abs(lerp(Y[a], Y[a2], hit.t) - lerp(Y[b], Y[b2], hit.u));
-      if (dy >= 4.5) continue;
+      if (dy >= maxDy) continue;
       const ax = X[a2] - X[a], az = Z[a2] - Z[a], bx = X[b2] - X[b], bz = Z[b2] - Z[b];
       const sin = Math.abs(ax * bz - az * bx) / ((Math.hypot(ax, az) * Math.hypot(bx, bz)) || 1e-9);
       out.push({ x: hit.x, z: hit.z, sA: s[a * step] + hit.t * step * track.ds, sB: s[b * step] + hit.u * step * track.ds, dy, sin });
