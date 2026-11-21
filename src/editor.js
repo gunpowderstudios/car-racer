@@ -592,12 +592,12 @@ export class Editor {
     const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
     this._obstMenu(false); this._worksMenu(false);
-    $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go.');
+    $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go. Esc stops adding.');
     $('ed-pen').setAttribute('aria-pressed', String(t === 'pen')); if (t !== 'pen') { this.pen = []; this.penRedo = []; this._penDrag = null; }
     $('ed-tool-gap').setAttribute('aria-pressed', String(t === 'gap'));
     const wn = { gap: 'Gap' };
     $('ed-works').setAttribute('aria-pressed', String(!!wn[t])); $('ed-works').innerHTML = (wn[t] || 'Roadworks') + ' &#9662;';
-    if (t === 'gap') this.cb.toast('Gap: click the road for a 30 m jump gap, or a crossing for a 5 m gap.');
+    if (t === 'gap') this.cb.toast('Gap: click the road for a 30 m jump gap, or a crossing for a 5 m gap. Esc stops.');
     if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
 

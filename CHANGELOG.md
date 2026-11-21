@@ -2,6 +2,19 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.642 — Crossroads are always flat
+
+- The road through a crossroad is now set completely level (before, a hill kept its slope through the junction, so one road could rise like a wall across the other). The flat stretch reaches out past the corner drums on both roads and eases back into the hill over about 14 m.
+
+## v17.641 — Give-way lines drum to drum
+
+- The white dashed give-way line at each crossroad now runs from the yellow drum on one side to the yellow drum on the other, across the whole approach.
+- Add point and Gap now say "Esc stops" when picked. (Esc, or clicking the button again, puts the tool away.)
+
+## v17.640 — Crossroad surface is normal road
+
+- Fixed the black patch on crossroads. The junction surface was built facing down on some crossings, so it was lit from underneath and came out black. It now always faces up and shows the same tarmac as the rest of the road.
+
 ## v17.639 — Open crossroads, solid corner drums, Draw keeps your points, camera under bridges
 
 - Crossroads are now plain and open like a real junction: no walls or kerbs across them, just tarmac with the give-way dashes.

@@ -87,3 +87,41 @@ test('crossroad corner drums are solid: a point inside one is pushed out, and fa
   assert.ok(hit && hit.pen > 0.4 && hit.nx > 0.9, JSON.stringify(hit));
   assert.equal(t.drumHit(d.x + 3, d.y + 0.5, d.z), null);
 });
+
+test('the crossroad surface faces up in every cell (a face wound the wrong way is lit from below and goes black)', async () => {
+  const { buildTrackGeometry } = await import('../src/trackGeometry.js').catch(() => ({}));
+  if (!buildTrackGeometry) return;
+  for (const flip of [false, true]) {
+    const def = eight(); if (flip) def.handles.reverse();
+    const g = buildTrackGeometry(new Track(def)).junction;
+    assert.ok(g.index.length > 0);
+    for (let k = 0; k < g.index.length; k += 3) {
+      const [a, b, c] = [g.index[k], g.index[k + 1], g.index[k + 2]].map((i) => [g.position[i * 3], g.position[i * 3 + 1], g.position[i * 3 + 2]]);
+      const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+      assert.ok(ny > 0, 'a cell faces down');
+    }
+  }
+});
+
+test('the give-way dashes run drum to drum across each approach', async () => {
+  const { buildTrackGeometry } = await import('../src/trackGeometry.js');
+  const t = new Track(eight()), g = buildTrackGeometry(t).marks;
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (let i = 0; i < g.position.length; i += 3) { minX = Math.min(minX, g.position[i]); maxX = Math.max(maxX, g.position[i]); minZ = Math.min(minZ, g.position[i + 2]); maxZ = Math.max(maxZ, g.position[i + 2]); }
+  const dx = t.drums.map((d) => d.x), dz = t.drums.map((d) => d.z);
+  assert.ok(g.index.length > 0);
+  assert.ok(minX >= Math.min(...dx) - 1.5 && maxX <= Math.max(...dx) + 1.5 && minZ >= Math.min(...dz) - 1.5 && maxZ <= Math.max(...dz) + 1.5, 'dashes stay between the drums');
+});
+
+test('a crossroad is flattened, even on a hill: both roads are level through the junction', () => {
+  const H = [], N = 12, A = 120, B = 60;
+  for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2, x = A * Math.sin(a); H.push({ x, z: B * Math.sin(2 * a), y: 0.65 + Math.max(0, 1 - Math.abs(x) / 40) * 0 + Math.abs(Math.sin(a)) * 0 }); }
+  const def = { name: 'hill', width: 16, walls: true, handles: H.map((h, i) => ({ ...h, y: 0.65 + (i % 2 ? 0.9 : 0) })) };
+  const t = new Track(def);
+  assert.ok(t.crossroads.length >= 1);
+  const c = t.crossroads[0];
+  for (const i0 of [c.ia, c.ib]) {
+    const ys = []; for (let k = -6; k <= 6; k++) ys.push(t.py[((i0 + k) % t.n + t.n) % t.n]);
+    assert.ok(Math.max(...ys) - Math.min(...ys) < 0.02, 'flat ' + (Math.max(...ys) - Math.min(...ys)));
+  }
+});

@@ -290,7 +290,8 @@ export function buildTrackGeometry(track) {
         const a = pts[i * (G + 1) + j], b = pts[i * (G + 1) + j + 1], d = pts[(i + 1) * (G + 1) + j], e = pts[(i + 1) * (G + 1) + j + 1];
         const k = Math.min(1, Math.hypot(e[0] - a[0], e[2] - a[2]) / vgrid) || 0.1, W = [1, 1, 1];     // (the road's own texture: its plain asphalt strip, with no painted lines)
         const v0 = junction.vert(a[0], a[1], a[2], 0, 1, 0, W, 0.1, 0), v1 = junction.vert(b[0], b[1], b[2], 0, 1, 0, W, 0.26, 0), v2 = junction.vert(e[0], e[1], e[2], 0, 1, 0, W, 0.26, k), v3 = junction.vert(d[0], d[1], d[2], 0, 1, 0, W, 0.1, k);
-        junction.idx.push(v0, v1, v2, v0, v2, v3);
+        const up = (b[2] - a[2]) * (e[0] - a[0]) - (b[0] - a[0]) * (e[2] - a[2]) > 0;                      // wind every cell so it faces up whichever way the two roads run (a face the wrong way round is lit from below: black)
+        if (up) junction.idx.push(v0, v1, v2, v0, v2, v3); else junction.idx.push(v0, v2, v1, v0, v3, v2);
       }
 
       // the corner drums (they are solid, see Track.drumHit)
@@ -314,12 +315,20 @@ export function buildTrackGeometry(track) {
         const fx = t[0] * dir, fz = t[1] * dir, lx = -fz, lz = fx;                // the way the car is heading, and its left (the sign goes on the left kerb)
         const bx = c.x - fx * reach, bz = c.z - fz * reach, by = surf(bx, bz, c.y + 0.3) + 0.05;
         const lineY = (x, z) => surf(x, z, by) + 0.045;
-        // dashed give-way line across the road: dashes 0.9 m wide and 0.45 m long, with gaps
-        const DASH = 0.9, nDash = Math.max(3, Math.floor((hw * 1.9) / (DASH * 1.6)));
+        // dashed give-way line: from the yellow drum on one side to the yellow drum on the other (the two corners on this approach), dashes 0.9 m wide and 0.45 m long, with gaps
+        const behind = (track.drums || []).filter((d) => d.c === c && (d.x - c.x) * fx + (d.z - c.z) * fz < 0);
+        let ax, az, ex, ez;                                                       // the line's two ends
+        if (behind.length === 2) {
+          const [d0, d1] = behind, gx = d1.x - d0.x, gz = d1.z - d0.z, gl = Math.hypot(gx, gz) || 1, inset = d0.r + 0.2;
+          ax = d0.x + (gx / gl) * inset; az = d0.z + (gz / gl) * inset; ex = d1.x - (gx / gl) * inset; ez = d1.z - (gz / gl) * inset;
+        } else { ax = bx - lx * hw * 0.93; az = bz - lz * hw * 0.93; ex = bx + lx * hw * 0.93; ez = bz + lz * hw * 0.93; }
+        const sx0 = ex - ax, sz0 = ez - az, segL = Math.hypot(sx0, sz0) || 1, ux = sx0 / segL, uz = sz0 / segL, vx = -uz, vz = ux;      // along the line, and across it
+        const vf = vx * fx + vz * fz < 0 ? -1 : 1;                                // (across-line direction pointing the way the car travels)
+        const DASH = 0.9, nDash = Math.max(3, Math.floor(segL / (DASH * 1.6)));
         for (let k = 0; k < nDash; k++) {
-          const o = -hw * 0.93 + (k + 0.5) * ((hw * 1.86) / nDash), w2 = (hw * 1.86) / nDash * 0.3;
-          const cx = bx + lx * o, cz = bz + lz * o;
-          const p = (du, dv) => { const x = cx + lx * du + fx * dv, z = cz + lz * du + fz * dv; return [x, lineY(x, z), z]; };
+          const o = (k + 0.5) * (segL / nDash), w2 = (segL / nDash) * 0.3;
+          const cx = ax + ux * o, cz = az + uz * o;
+          const p = (du, dv) => { const x = cx + ux * du + vx * vf * dv, z = cz + uz * du + vz * vf * dv; return [x, lineY(x, z), z]; };
           quad(marks, p(-w2, -0.22), p(w2, -0.22), p(w2, 0.22), p(-w2, 0.22), UP, WHITE);
         }
         // give-way sign: a pole on the left kerb, outside the wall, with the red-and-white downward triangle facing the oncoming car

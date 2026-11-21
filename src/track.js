@@ -420,19 +420,22 @@ export class Track {
       if (c.dy >= CROSS_MAX_DY || c.sin < CROSS_MIN_SIN) continue;                  // a real bridge stays a bridge; a shallow scrape stays a problem the editor reports
       const ia = Math.round(c.sA / ds) % n, ib = Math.round(c.sB / ds) % n;
       if (gap[ia] || gap[ib] || Math.abs(bank[ia]) > 0.06 || Math.abs(bank[ib]) > 0.06) continue;
-      const La = hw[ib] / c.sin + 2.5, Lb = hw[ia] / c.sin + 2.5, blend = 10;      // half the opening along each road, and how far the levelling fades out
-      const y = (py[ia] + py[ib]) / 2, dA = y - py[ia], dB = y - py[ib] + CROSS_LIFT;
-      const lev = (i0, Lh, d) => {
-        const reach = Math.ceil((Lh + blend) / ds);
+      const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
+      const [tax, taz] = tg(ia), [tbx, tbz] = tg(ib);
+      const cosA = Math.abs(tax * tbx + taz * tbz), blend = 14;
+      const La = (hw[ib] + 0.9 + (hw[ia] + 0.9) * cosA) / c.sin + 2.5, Lb = (hw[ia] + 0.9 + (hw[ib] + 0.9) * cosA) / c.sin + 2.5;      // half the flat stretch along each road: out past the corners of the junction
+      const y = (py[ia] + py[ib]) / 2, yA = y, yB = y + CROSS_LIFT;
+      const lev = (i0, Lh, yT) => {                                                 // always flatten: the whole stretch is set to the junction's height (not just shifted, which would keep a hill's slope), then fades back to the road
+        const reach = Math.ceil((Lh + blend) / ds), orig = [];
+        for (let k = -reach; k <= reach; k++) orig.push(py[((i0 + k) % n + n) % n]);
         for (let k = -reach; k <= reach; k++) {
           const i = ((i0 + k) % n + n) % n, a = Math.abs(k) * ds;
           if (gap[i]) continue;
-          py[i] += d * (a <= Lh ? 1 : 1 - smoothstep((a - Lh) / blend));
+          const w = a <= Lh ? 1 : 1 - smoothstep((a - Lh) / blend);
+          py[i] = orig[k + reach] + (yT - orig[k + reach]) * w;
         }
       };
-      lev(ia, La, dA); lev(ib, Lb, dB);
-      const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
-      const [tax, taz] = tg(ia), [tbx, tbz] = tg(ib);
+      lev(ia, La, yA); lev(ib, Lb, yB);
       this.crossroads.push({ x: c.x, z: c.z, y, sA: s[ia], sB: s[ib], r: Math.max(La, Lb) + 6, sin: c.sin, tax, taz, tbx, tbz, hwA: hw[ia], hwB: hw[ib], ia, ib });
     }
   }
