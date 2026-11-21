@@ -2,6 +2,7 @@
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, GAP_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
 import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
+import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
 import { clamp, lerp } from './math.js';
@@ -858,6 +859,11 @@ export class Editor {
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
     $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All props removed.'); };
+    $('ed-smooth').onclick = () => {
+      if (!this.track || this._needTrack()) return; this.snapshot();
+      const r = smoothHandles(this.def.handles); this.def.handles = r.handles; this.sel = -1;
+      this.rebuild(true); this.updateUI(); this.draw(); this.cb.toast(r.merged ? `Smoothed, and ${r.merged} crowded point${r.merged > 1 ? 's' : ''} merged.` : 'Track smoothed. Press again for more.');
+    };
     $('ed-bank').onclick = () => {
       if (!this.track) return; this.snapshot();
       const banks = suggestBanks(this.track, 12); this.def.handles.forEach((h, i) => { h.bank = banks[i]; });

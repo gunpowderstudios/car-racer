@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.645 — Auto-smooth, gentler crossroad approaches
+
+- New Auto-smooth button (top bar, next to Auto-bank): evens out jagged corners, bumps and lean in one go without shrinking the circuit. Points with a jump gap stay put, and points crowded within 7 m of a neighbour are merged. Press again for more; Undo brings it back.
+- The flat, straight stretch at a crossroad now eases back into the road over 40 m instead of 14 m, so the lead-up is much smoother.
+
 ## v17.644 — Neat crossroads: straight approaches
 
 - Both roads now run dead straight through a crossroad, for the whole junction and 8 m past it, and ease back into their bend over about 14 m. Crossings come out as a neat cross even when the points were placed on a curve. The 2D editor map shows the straightened road.

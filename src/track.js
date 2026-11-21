@@ -30,6 +30,7 @@ const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its end
 const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
 export const CROSS_MAX_DY = 2.0;      // roads crossing within this height of each other, with no gap, are a crossroad (more than this and it is a ramp-and-bridge problem to fix)
 export const CROSS_MIN_SIN = 0.3;     // ...and they must cross at more than about 17 degrees, or the "junction" would be a long shared strip
+const CROSS_BLEND = 40;       // metres over which the flat, straight junction eases back into the road's own height and bend (long and gentle)
 const STRAIGHT_EXTRA = 8;     // metres of dead-straight road past the flat stretch on each side of a crossroad
 const CROSS_LIFT = 0.05;       // the second road sits this much higher through a junction, so the two surfaces do not z-fight
 const QUERY_MARGIN = 4.5;
@@ -423,7 +424,7 @@ export class Track {
       if (gap[ia] || gap[ib]) continue;                                            // (banking near a crossroad is no obstacle: it is levelled out below)
       const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
       const [tax, taz] = tg(ia), [tbx, tbz] = tg(ib);
-      const cosA = Math.abs(tax * tbx + taz * tbz), blend = 14;
+      const cosA = Math.abs(tax * tbx + taz * tbz), blend = CROSS_BLEND;
       const La = (hw[ib] + 0.9 + (hw[ia] + 0.9) * cosA) / c.sin + 2.5, Lb = (hw[ia] + 0.9 + (hw[ib] + 0.9) * cosA) / c.sin + 2.5;      // half the flat stretch along each road: out past the corners of the junction
       const y = (py[ia] + py[ib]) / 2, yA = y, yB = y + CROSS_LIFT;
       const lev = (i0, Lh, yT) => {                                                 // always flatten: the whole stretch is set to the junction's height (not just shifted, which would keep a hill's slope), then fades back to the road
