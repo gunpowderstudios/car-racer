@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.646 — Auto-smooth has a live slider
+
+- Auto-smooth now opens a small box with a Smoothness slider from 0% (as you drew it) to 100% (very smooth). The track on the map and in the 3D view changes as you drag. Apply keeps it (one Undo step); Cancel puts the track back exactly as it was.
+
 ## v17.645 — Auto-smooth, gentler crossroad approaches
 
 - New Auto-smooth button (top bar, next to Auto-bank): evens out jagged corners, bumps and lean in one go without shrinking the circuit. Points with a jump gap stay put, and points crowded within 7 m of a neighbour are merged. Press again for more; Undo brings it back.

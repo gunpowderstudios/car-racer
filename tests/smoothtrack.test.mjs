@@ -20,3 +20,10 @@ test('auto-smooth leaves a jump-gap point exactly where it is and merges crowded
   assert.equal(r.merged, 1);
   const g = r.handles.find((h) => h.gap); assert.equal(g.x, Math.round(H[3].x * 10) / 10);
 });
+
+test('the smoothness amount is live: 0 changes nothing and more amount gives a smoother track', () => {
+  const H = jaggy();
+  assert.deepEqual(smoothHandles(H, 0).handles, H);
+  const a = turn(smoothHandles(H, 0.2).handles), b = turn(smoothHandles(H, 0.6).handles), c = turn(smoothHandles(H, 1).handles);
+  assert.ok(a > b && a > c && c < b * 1.1, `${a} ${b} ${c}`);
+});

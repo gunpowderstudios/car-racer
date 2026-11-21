@@ -48,7 +48,7 @@ export class Editor {
     this._show3d(this.show3d); this.preview?.fit();
     this._memMsg = ''; this._guard(true);
   }
-  close() { this._askBox?.remove(); this._askBox = null; this._autosave(); this.visible = false; this.preview?.stop(); this._guard(false); }
+  close() { if (this._smoothBox) this._smoothClose(true); this._askBox?.remove(); this._askBox = null; this._autosave(); this.visible = false; this.preview?.stop(); this._guard(false); }
 
   // ------------------------------------------------------ crash protection: a memory gauge, and a copy of the work kept every few seconds
   /** Starts or stops the watchers while the editor is open. The copy (cr.autosave) is kept when you leave and is only cleared by a Save, so a reload never loses the work. */
@@ -603,6 +603,32 @@ export class Editor {
   }
 
   // ------------------------------------------------------------- the Draw (Bézier pen) tool
+  /** The Auto-smooth box: a live slider from "as drawn" to "very smooth". Apply keeps it (one Undo step); Cancel puts the track back. */
+  _smoothOpen() {
+    if (!this.track || this._needTrack()) return;
+    if (this._smoothBox) { this._smoothClose(true); return; }
+    this._askBox?.remove(); this._askBox = null;
+    this.snapshot(); const base = this.def.handles.map((h) => ({ ...h }));
+    const box = this._smoothBox = document.createElement('div');
+    box.className = 'ed-junction ed-smoothbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Auto-smooth');
+    box.innerHTML = '<b>Auto-smooth</b><label for="ed-smooth-r"><span>Smoothness <output id="ed-smooth-o">40%</output></span></label><input id="ed-smooth-r" type="range" min="0" max="100" step="1" value="40"><small>Left: as you drew it. Right: very smooth. Points with a jump gap stay put.</small><div class="row"><button type="button" class="go">Apply</button><button type="button" class="no">Cancel</button></div>';
+    this.c.parentElement.appendChild(box); box.style.left = '14px'; box.style.top = '14px';
+    this._smoothBase = base;
+    const r = box.querySelector('input'), o = box.querySelector('output');
+    const run = () => {
+      const res = smoothHandles(base, r.value / 100); this.def.handles = res.handles; this.sel = -1;
+      o.textContent = r.value + '%' + (res.merged ? `, ${res.merged} merged` : ''); this.rebuild(); this.updateUI(); this.draw();
+    };
+    r.oninput = run; run();
+    box.querySelector('.go').onclick = () => this._smoothClose(true);
+    box.querySelector('.no').onclick = () => this._smoothClose(false);
+  }
+  _smoothClose(keep) {
+    const box = this._smoothBox; if (!box) return; this._smoothBox = null; box.remove();
+    if (!keep) { this.def.handles = this._smoothBase; this.undoStack.pop(); this._buttons(); }
+    this.rebuild(true); this.updateUI(); this.draw();
+    if (keep) this.cb.toast('Track smoothed. Undo puts it back.');
+  }
   _needTrack() { if (!this.blank) return false; this.cb.toast('Draw your track first: click to place points, then click the first point to close it.'); return true; }
   /** Click puts a point down; dragging from it pulls out the curve handles (both sides, like a pen tool). Clicking the first point closes the circuit. */
   _penDown(sx, sy) {
@@ -859,11 +885,7 @@ export class Editor {
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
     $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All props removed.'); };
-    $('ed-smooth').onclick = () => {
-      if (!this.track || this._needTrack()) return; this.snapshot();
-      const r = smoothHandles(this.def.handles); this.def.handles = r.handles; this.sel = -1;
-      this.rebuild(true); this.updateUI(); this.draw(); this.cb.toast(r.merged ? `Smoothed, and ${r.merged} crowded point${r.merged > 1 ? 's' : ''} merged.` : 'Track smoothed. Press again for more.');
-    };
+    $('ed-smooth').onclick = () => this._smoothOpen();
     $('ed-bank').onclick = () => {
       if (!this.track) return; this.snapshot();
       const banks = suggestBanks(this.track, 12); this.def.handles.forEach((h, i) => { h.bank = banks[i]; });

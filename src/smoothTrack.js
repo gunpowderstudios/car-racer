@@ -1,10 +1,13 @@
 // Auto-smooth: evens out a track's points so the curve is less jagged. Taubin smoothing (a pull towards the neighbours, then a small push
 // back out) so the circuit does not shrink; the height and lean of each point are eased the same way. Points that carry a jump gap stay
 // exactly where they are (and so do their heights), and points crowded in under MIN_GAP of a neighbour are merged.
-const LAMBDA = 0.45, MU = -0.47, PASSES = 3, MIN_GAP = 7;
+const LAMBDA = 0.45, MU = -0.47, MAX_PASSES = 8;
 
-export function smoothHandles(handles) {
+/** `amount` 0..1: 0 leaves the track as it is, 1 is very smooth. */
+export function smoothHandles(handles, amount = 0.4) {
   let H = handles.map((h) => ({ ...h }));
+  if (!(amount > 0)) return { handles: H, merged: 0 };
+  const MIN_GAP = 3 + amount * 8;
   const n0 = H.length;
   // merge crowded points (never a gap point, never below 4 points)
   for (let i = 0; i < H.length && H.length > 4;) {
@@ -16,19 +19,20 @@ export function smoothHandles(handles) {
     } else i++;
   }
   const merged = n0 - H.length, n = H.length;
-  const step = (k) => {
+  const step = (k, f = 1) => {
     const out = H.map((h) => ({ ...h }));
     for (let i = 0; i < n; i++) {
       const h = H[i], p = H[(i + n - 1) % n], q = H[(i + 1) % n];
       if (h.gap) continue;
-      out[i].x = h.x + k * ((p.x + q.x) / 2 - h.x);
-      out[i].z = h.z + k * ((p.z + q.z) / 2 - h.z);
-      if (!p.gap && !q.gap) out[i].y = Math.max(0, h.y + k * 0.7 * ((p.y + q.y) / 2 - h.y));
-      out[i].bank = (h.bank || 0) + k * ((p.bank || 0) / 2 + (q.bank || 0) / 2 - (h.bank || 0));
+      out[i].x = h.x + f * k * ((p.x + q.x) / 2 - h.x);
+      out[i].z = h.z + f * k * ((p.z + q.z) / 2 - h.z);
+      if (!p.gap && !q.gap) out[i].y = Math.max(0, h.y + f * k * 0.7 * ((p.y + q.y) / 2 - h.y));
+      out[i].bank = (h.bank || 0) + f * k * ((p.bank || 0) / 2 + (q.bank || 0) / 2 - (h.bank || 0));
     }
     H = out;
   };
-  for (let r = 0; r < PASSES; r++) { step(LAMBDA); step(MU); }
+  const total = amount * MAX_PASSES;
+  for (let r = 0; r < Math.ceil(total); r++) { const f = Math.min(1, total - r); step(LAMBDA, f); step(MU, f); }
   H.forEach((h) => { h.x = Math.round(h.x * 10) / 10; h.z = Math.round(h.z * 10) / 10; h.y = Math.round(h.y * 20) / 20; h.bank = Math.round((h.bank || 0) * 2) / 2; });
   return { handles: H, merged };
 }
