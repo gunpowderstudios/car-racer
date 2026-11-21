@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.647 — Curve handles on points
+
+- Click a point and two curve handles pop up on it (the line with round ends, a dot marking the leading one). Drag an end to bend the road in and out of that point: the other end mirrors it, and its length sets how wide the curve swings. Double-click an end to put it back to automatic. Handles are saved with the track, in share links and when you reverse it.
+- A track you draw with the Draw tool is eased a little when you close it, so no kinks are left in the shape. It still has exactly the points you placed.
+
 ## v17.646 — Auto-smooth has a live slider
 
 - Auto-smooth now opens a small box with a Smoothness slider from 0% (as you drew it) to 100% (very smooth). The track on the map and in the 3D view changes as you drag. Apply keeps it (one Undo step); Cancel puts the track back exactly as it was.

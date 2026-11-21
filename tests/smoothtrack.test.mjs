@@ -27,3 +27,9 @@ test('the smoothness amount is live: 0 changes nothing and more amount gives a s
   const a = turn(smoothHandles(H, 0.2).handles), b = turn(smoothHandles(H, 0.6).handles), c = turn(smoothHandles(H, 1).handles);
   assert.ok(a > b && a > c && c < b * 1.1, `${a} ${b} ${c}`);
 });
+
+test('smoothing without merging keeps every point (used when a track is drawn)', () => {
+  const H = jaggy(); H.splice(9, 0, { ...H[9], x: H[9].x + 2, z: H[9].z + 1 });
+  assert.equal(smoothHandles(H, 0.3, { merge: false }).handles.length, H.length);
+  assert.ok(smoothHandles(H, 0.3).handles.length < H.length);
+});

@@ -263,6 +263,7 @@ export function normalizeTrack(input) {
     lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
     open: h.open ? true : undefined,                    // no barriers on the stretch from here to the next point (a spiral ramp)
     kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
+    ...(Number.isFinite(+h.hx) && Number.isFinite(+h.hz) && h.hx !== null && h.hz !== null && (+h.hx || +h.hz) ? { hx: clamp(+h.hx, -200, 200), hz: clamp(+h.hz, -200, 200) } : {}),   // curve handle: where the road leaves this point (metres from it); the mirror image is where it arrives
   }));
   const out = {
     version: TRACK_VERSION,
@@ -314,6 +315,13 @@ export function crCentripetal(p0, p1, p2, p3, t, out) {
   return out;
 }
 
+/** The curve handle at point i as [x, z] metres from the point (the way the road leaves it): the one you set, or the natural one the spline would use. */
+export function curveHandle(H, i) {
+  const h = H[i]; if (h.hx !== undefined) return [h.hx, h.hz];
+  const n = H.length, p = H[(i - 1 + n) % n], q = H[(i + 1) % n];
+  return [(q.x - p.x) / 6, (q.z - p.z) / 6];
+}
+
 /** Dense polyline through the handles (closed). Returns points + cumulative length per handle. */
 function densePolyline(def) {
   const H = def.handles, n = H.length;
@@ -327,10 +335,12 @@ function densePolyline(def) {
     const steps = clamp(Math.ceil(chord / 0.6), 12, 260);
     const h1 = H[i], h2 = H[(i + 1) % n];
     const w1 = h1.w || def.width, w2 = h2.w || def.width;
+    const custom = h1.hx !== undefined || h2.hx !== undefined, o1 = custom ? curveHandle(H, i) : null, o2 = custom ? curveHandle(H, (i + 1) % n) : null;
     handleDense.push(pts.length);
     for (let s = 0; s < steps; s++) {
       const t = s / steps;
       crCentripetal(p0, p1, p2, p3, t, tmp);
+      if (custom) { const v = 1 - t; tmp[0] = v * v * v * p1[0] + 3 * v * v * t * (p1[0] + o1[0]) + 3 * v * t * t * (p2[0] - o2[0]) + t * t * t * p2[0]; tmp[2] = v * v * v * p1[2] + 3 * v * v * t * (p1[2] + o1[1]) + 3 * v * t * t * (p2[2] - o2[1]) + t * t * t * p2[2]; }   // (a curve handle on either end: a cubic Bezier in the plan view)
       const u = smoothstep(t);
       pts.push({ x: tmp[0], y: Math.max(0, tmp[1]), z: tmp[2], w: lerp(w1, w2, u), bank: lerp(h1.bank, h2.bank, u) });
     }

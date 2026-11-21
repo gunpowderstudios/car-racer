@@ -51,7 +51,7 @@ function encodeTrack(d) {
   o.u(d.handles.length);
   let px = 0, pz = 0;
   for (const h of d.handles) {
-    const m = (h.w ? 1 : 0) | (h.bank ? 2 : 0) | (h.gap ? 4 : 0) | (h.gap && h.lip !== 0.5 ? 8 : 0) | (h.gap && h.kick ? 16 : 0) | (h.open ? 32 : 0) | (Math.abs(h.y - 0.65) > 0.02 ? 64 : 0);
+    const m = (h.w ? 1 : 0) | (h.bank ? 2 : 0) | (h.gap ? 4 : 0) | (h.gap && h.lip !== 0.5 ? 8 : 0) | (h.gap && h.kick ? 16 : 0) | (h.open ? 32 : 0) | (Math.abs(h.y - 0.65) > 0.02 ? 64 : 0) | (h.hx !== undefined ? 128 : 0);
     o.u(m);
     const x = Math.round(h.x * Q.xz), z = Math.round(h.z * Q.xz);
     o.z(x - px); o.z(z - pz); px = x; pz = z;
@@ -61,6 +61,7 @@ function encodeTrack(d) {
     if (m & 4) o.u(h.gap);
     if (m & 8) o.u(h.lip * Q.lip);
     if (m & 16) o.u(h.kick * Q.kick);
+    if (m & 128) { o.z(Math.round(h.hx * Q.xz)); o.z(Math.round(h.hz * Q.xz)); }
   }
   const props = d.props || [];
   o.u(props.length); px = 0; pz = 0;
@@ -96,6 +97,7 @@ function decodeTrack(bytes) {
     if (m & 8) h.lip = r.u() / Q.lip;
     if (m & 16) h.kick = r.u() / Q.kick;
     if (m & 32) h.open = true;
+    if (m & 128) { h.hx = r.z() / Q.xz; h.hz = r.z() / Q.xz; }
     def.handles.push(h);
   }
   def.props = []; px = 0; pz = 0;

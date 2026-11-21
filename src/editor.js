@@ -1,7 +1,7 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, GAP_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
-import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
+import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
 import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
@@ -390,6 +390,15 @@ export class Editor {
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     });
 
+    // curve handles of the selected point: drag the round ends to bend the road in and out of it (double-click an end to put it back to automatic)
+    if (this.sel >= 0 && this.def.handles[this.sel] && !this.blank) {
+      const k = this.sel, h = this.def.handles[k], [vx, vz] = curveHandle(this.def.handles, k), [x, y] = this.toScreen(h.x, h.z), [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
+      g.save(); g.strokeStyle = '#1b7fd1'; g.fillStyle = '#fff'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(ix, iy); g.lineTo(x, y); g.lineTo(ox, oy); g.stroke();
+      for (const [ex, ey, sq] of [[ox, oy, true], [ix, iy, false]]) { g.beginPath(); g.arc(ex, ey, 6, 0, 7); g.fill(); g.stroke(); if (sq) { g.beginPath(); g.arc(ex, ey, 2.2, 0, 7); g.fillStyle = '#1b7fd1'; g.fill(); g.fillStyle = '#fff'; } }
+      g.restore();
+    }
+
     // scale bar
     const bar = [10, 20, 50, 100, 200, 500].find((m) => m * S > 70) || 500;
     g.strokeStyle = INK; g.fillStyle = INK; g.lineWidth = 2; g.font = '600 13px "Barlow Condensed", sans-serif';
@@ -582,6 +591,15 @@ export class Editor {
     this.def.handles.forEach((h, k) => { const [x, y] = this.toScreen(h.x, h.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
     return best;
   }
+  /** Which curve-handle end of the selected point is under (sx, sy): 'out', 'in' or ''. */
+  _hitBez(sx, sy) {
+    if (this.sel < 0 || !this.def.handles[this.sel] || this.blank) return '';
+    const h = this.def.handles[this.sel], [vx, vz] = curveHandle(this.def.handles, this.sel);
+    const [ox, oy] = this.toScreen(h.x + vx, h.z + vz), [ix, iy] = this.toScreen(h.x - vx, h.z - vz);
+    if ((ox - sx) ** 2 + (oy - sy) ** 2 < 100) return 'out';
+    if ((ix - sx) ** 2 + (iy - sy) ** 2 < 100) return 'in';
+    return '';
+  }
   _hitProp(sx, sy, r = 12) {
     let best = -1, bd = r * r;
     this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
@@ -666,7 +684,7 @@ export class Editor {
     if (this.pen.length < 4) { this.cb.toast('Place at least 4 points first.'); return; }
     if (!this.blank && !confirm('Replace this track with the new shape?\n\nThe old track and its obstacles will go (Undo brings them back).')) return;
     if (!this.blank) this.snapshot();
-    const handles = this.pen.map((a) => ({ x: Math.round(a.x * 10) / 10, y: 0.65, z: Math.round(a.z * 10) / 10, w: 0, bank: 0, gap: 0 }));      // exactly the points you placed
+    const handles = smoothHandles(this.pen.map((a) => ({ x: a.x, y: 0.65, z: a.z, w: 0, bank: 0, gap: 0 })), 0.3, { merge: false }).handles;      // the points you placed (no more, no fewer), eased a little so no kinks are left in the drawn shape
     const keep = { name: this.def.name, width: this.def.width, walls: this.def.walls, defaultLaps: this.def.defaultLaps };
     this.def = normalizeTrack({ ...keep, handles, props: [] }); this.blank = false; this.pen = []; this.penRedo = [];
     this.sel = -1; this.selProp = -1; this._setTool('road');
@@ -771,6 +789,8 @@ export class Editor {
         if (i >= 0) { this.drag = null; this.insertAt(i); this.updateInspector(); } else this.cb.toast('Click on the track to add a point there.');
         return;
       }
+      const bez = e.button === 0 && !this._placing() ? this._hitBez(sx, sy) : '';
+      if (bez) { this.drag = { type: 'bez', side: bez, k: this.sel, moved: false }; return; }
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
       const works = this.tool === 'gap';
       const xc = (works || (k < 0 && pk < 0)) && e.button === 0 && !this._placing() ? this._crossAt(sx, sy, works ? 26 : 15) : null;   // with the Roadworks tool a crossing wins over a point sitting on it
@@ -802,6 +822,14 @@ export class Editor {
         const [wx, wz] = this.toWorld(sx, sy), p = this.def.props[d.k], q = placeProp(this.track, wx, wz);
         p.x = Math.round(q.x * 100) / 100; p.z = Math.round(q.z * 100) / 100; p.y = Math.round(q.y * 100) / 100;
         this.propsChanged();
+      } else if (d.type === 'bez') {
+        if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
+        const [wx, wz] = this.toWorld(sx, sy), h = this.def.handles[d.k];
+        let vx = (d.side === 'out' ? wx - h.x : h.x - wx), vz = (d.side === 'out' ? wz - h.z : h.z - wz);
+        const len = Math.hypot(vx, vz); if (len > 150) { vx *= 150 / len; vz *= 150 / len; }
+        if (len < 1) { vx = 1; vz = 0; }
+        h.hx = Math.round(vx * 10) / 10; h.hz = Math.round(vz * 10) / 10;
+        this.rebuild(); this.draw();
       } else if (d.type === 'handle') {
         if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
         const [wx, wz] = this.toWorld(sx, sy), snap = e.altKey ? 0.1 : 2, h = this.def.handles[d.k];
@@ -819,11 +847,13 @@ export class Editor {
         if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : 'barrel', d.sx, d.sy, this.tool === 'skull');
         else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
       }
-      if (d?.type === 'handle' && d.moved) this.rebuild(true);
+      if ((d?.type === 'handle' || d?.type === 'bez') && d.moved) this.rebuild(true);
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
     c.addEventListener('dblclick', (e) => {
       if (this.tool !== 'road') return;
+      const [sx0, sy0] = pos(e), hb = this._hitBez(sx0, sy0);
+      if (hb) { const h = this.def.handles[this.sel]; if (h.hx !== undefined) { this.snapshot(); delete h.hx; delete h.hz; this.rebuild(true); this.draw(); this.cb.toast('Curve handle back to automatic.'); } return; }
       const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
       const i = this._nearestSample(sx, sy); if (i >= 0) this.insertAt(i);
     });
@@ -893,7 +923,7 @@ export class Editor {
     };
     $('ed-rev').onclick = () => {
       this.snapshot(); const [h0, ...rest] = this.def.handles; this.def.handles = [h0, ...rest.reverse()];
-      this.def.handles.forEach((h) => { h.bank = -h.bank; });
+      this.def.handles.forEach((h) => { h.bank = -h.bank; if (h.hx !== undefined) { h.hx = -h.hx; h.hz = -h.hz; } });
       this.sel = -1; this.rebuild(true); this.updateUI(); this.draw();
     };
     $('ed-template').onchange = (e) => {

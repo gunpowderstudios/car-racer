@@ -4,13 +4,13 @@
 const LAMBDA = 0.45, MU = -0.47, MAX_PASSES = 8;
 
 /** `amount` 0..1: 0 leaves the track as it is, 1 is very smooth. */
-export function smoothHandles(handles, amount = 0.4) {
+export function smoothHandles(handles, amount = 0.4, { merge = true } = {}) {
   let H = handles.map((h) => ({ ...h }));
   if (!(amount > 0)) return { handles: H, merged: 0 };
   const MIN_GAP = 3 + amount * 8;
   const n0 = H.length;
   // merge crowded points (never a gap point, never below 4 points)
-  for (let i = 0; i < H.length && H.length > 4;) {
+  for (let i = 0; merge && i < H.length && H.length > 4;) {
     const a = H[i], b = H[(i + 1) % H.length];
     if (!a.gap && !b.gap && Math.hypot(a.x - b.x, a.z - b.z) < MIN_GAP) {
       const j = (i + 1) % H.length;
