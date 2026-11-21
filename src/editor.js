@@ -1,5 +1,6 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
+import { pendingJunctions, keepCrossroad, makeGap, GAP_HEIGHT } from './junctions.js';
 import { Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp } from './track.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
@@ -32,9 +33,11 @@ export class Editor {
   }
 
   // ------------------------------------------------------------- lifecycle
-  open(def) {
+  /** `keepUndo`: coming back from a Test Drive, so the undo history survives. */
+  open(def, keepUndo = false) {
     this.def = normalizeTrack(def);
-    this.undoStack = []; this.redoStack = []; this.sel = -1; this.selProp = -1; this._setTool('road');
+    if (!keepUndo) { this.undoStack = []; this.redoStack = []; }
+    this.sel = -1; this.selProp = -1; this._setTool('road');
     this.visible = true;
     $('ed-name').value = this.def.name;
     this._resize(); this._resizeProfile();
@@ -42,16 +45,17 @@ export class Editor {
     this._show3d(this.show3d); this.preview?.fit();
     this._memMsg = ''; this._guard(true);
   }
-  close() { this.visible = false; this.preview?.stop(); this._guard(false); }
+  close() { this._askBox?.remove(); this._askBox = null; this._autosave(); this.visible = false; this.preview?.stop(); this._guard(false); }
 
   // ------------------------------------------------------ crash protection: a memory gauge, and a copy of the work kept every few seconds
-  /** Starts or stops the watchers while the editor is open. The copy (cr.autosave) is wiped on a clean close or a save, so it only survives a crash. */
+  /** Starts or stops the watchers while the editor is open. The copy (cr.autosave) is kept when you leave and is only cleared by a Save, so a reload never loses the work. */
   _guard(on) {
     clearInterval(this._guardT); this._guardT = 0;
-    if (!on) { try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ } return; }
+    if (!on) return;                                                              // (the copy stays after leaving: it is only cleared by a Save, so a reload or a trip to the menu never loses the work)
     this._lastSaved = JSON.stringify(this.def);
     const tick = () => { this._autosave(); this._memory(); };
     this._guardT = setInterval(tick, 4000); tick();
+    if (!this._unload) { this._unload = () => this._autosave(); addEventListener('pagehide', this._unload); }
   }
   _autosave() {
     if (!this.visible || !this.def) return;
@@ -105,11 +109,32 @@ export class Editor {
     try { this.track = new Track(this.def); } catch (e) { return; }
     this.preview?.setTrack(this.track); this.preview?.setProps(this.def.props);
     clearTimeout(this._analyzeT);
-    const run = () => { this.analysis = analyzeTrack(this.track); this.updateIssues(); this.draw(); };
+    const run = () => { this.analysis = analyzeTrack(this.track); this.updateIssues(); this.draw(); if (!this.drag) this._junctionAsk(); };
     if (analyseNow) run(); else this._analyzeT = setTimeout(run, 140);
     const km = this.track.length / 1000;
     $('ed-length').textContent = `Length ${km.toFixed(2)} km, ${this.def.handles.length} points`;
     this._buttons();
+  }
+  /** A flat crossing nobody has answered yet: ask whether it is a crossroad or a gap (one road lifted 5 m over the other). One question at a time. */
+  _junctionAsk() {
+    if (!this.visible || !this.track || this._askBox || this.def.mode === 'lastStanding') return;
+    const c = pendingJunctions(this.track, this.def)[0]; if (!c) return;
+    const host = this.c.parentElement, box = this._askBox = document.createElement('div');
+    box.className = 'ed-junction'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Two roads cross here');
+    box.innerHTML = '<b>The road crosses itself here</b><label><input type="checkbox" data-a="cross"> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"> <span><u>Gap</u> lift one road 5 m over the other</span></label><small>Tick one. Closing this makes it a crossroad.</small><button type="button" class="x" aria-label="Close">&times;</button>';
+    const [sx, sy] = this.toScreen(c.x, c.z), hw = host.clientWidth, hh = host.clientHeight;
+    box.style.left = Math.max(8, Math.min(hw - 300, sx + 22)) + 'px'; box.style.top = Math.max(8, Math.min(hh - 150, sy - 40)) + 'px';
+    host.appendChild(box);
+    const finish = (how) => {
+      if (!this._askBox) return; this._askBox.remove(); this._askBox = null;
+      this.snapshot();
+      if (how === 'gap') { const m = makeGap(this.def, c); this.cb.toast(m ? `Gap made: one road lifted ${m.toFixed(1)} m so cars can pass under.` : 'Could not lift that road.'); }
+      else { keepCrossroad(this.def, c); this.cb.toast('Crossroad made. Drive straight over it, and give way.'); }
+      this.rebuild(true); this.updateInspector(); this.draw(); setTimeout(() => this._junctionAsk(), 60);
+    };
+    box.querySelectorAll('input').forEach((i) => { i.onchange = () => { if (i.checked) finish(i.dataset.a); }; });
+    box.querySelector('.x').onclick = () => finish('cross');
+    this.draw();
   }
   changed() { this.rebuild(); this.updateInspector(); this.draw(); }
 
@@ -486,8 +511,13 @@ export class Editor {
   _setTool(t) {
     this.tool = t; this._ghost = null;
     $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire'));
-    if (this.c) this.c.style.cursor = t === 'barrel' || t === 'skull' ? 'copy' : 'crosshair';
+    const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits' };
+    $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
+    this._obstMenu(false);
+    if (this.c) this.c.style.cursor = this._placing() ? 'copy' : 'crosshair';
   }
+  /** Open or close the Obstacles dropdown. */
+  _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
   addProp(type, sx, sy, lethal = false) {
     if (!this.track) return;
@@ -565,7 +595,7 @@ export class Editor {
       }
     });
     const end = () => {
-      const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair';
+      const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair'; setTimeout(() => this._junctionAsk(), 220);
       if (d?.type === 'pan' && !d.moved) {
         if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : 'barrel', d.sx, d.sy, this.tool === 'skull');
         else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
@@ -622,6 +652,8 @@ export class Editor {
     // toolbar
     $('ed-undo').onclick = () => this.undo(); $('ed-redo').onclick = () => this.redo();
     $('ed-add').onclick = () => this.addPoint(); $('ed-del').onclick = () => this.removeSelected();
+    $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) this._obstMenu(false); });
     $('ed-tool-fire').onclick = () => { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); };
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };

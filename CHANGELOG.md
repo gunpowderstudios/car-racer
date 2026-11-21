@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.631 — Editor: crossroad or gap, Obstacles menu, back to editor
+
+- When two parts of the road cross in the track editor, a small box asks "Crossroad or Gap?". Tick Gap and one road is lifted 5 m over the other (a bridge you can drive under); tick Crossroad (or close the box) to join them. The answer is remembered in the track.
+- Crossroads now look joined: the barriers end exactly where the two roads' walls meet, a plain asphalt patch covers the junction so the painted lines of the two roads stop at its edge, each approach has a dashed white give-way line, and a give-way sign stands beside every approach.
+- Barrels, Skull barrels and Fire pits now live in one Obstacles menu in the editor (keys B, K and L still work), ready for more.
+- Test Drive has a "Back to editor" button (and the E key) that returns to the same track with your undo history.
+- The editor keeps a copy of your work until you Save, so reloading the page or going to the menu no longer loses it; the game offers to carry on where you left off.
+
 ## v17.630 — Crossroads
 
 - A road that crosses itself at the same height is now a crossroad instead of a problem. Through the junction the two roads are levelled to one height, the barriers are opened across it, and the track editor marks it with a white square (no more red crosses). Raise one road by 5 m or more and it is a bridge, as before; crossings that are too uneven or too shallow are still reported.

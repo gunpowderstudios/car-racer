@@ -165,6 +165,7 @@ html.invite-loading #invite-loading {
 
 <!-- ============================ HUD ============================ -->
 <!-- the little house sits outside the HUD so the replay and the multiplayer screens have it too -->
+<button id="back-editor" type="button" hidden title="Back to the track editor (E)">&#9664; Back to editor</button>
 <button id="home-btn" type="button" aria-label="Back to the home page" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 3.5l9 7.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.6 10v9.6h4.4v-5.4h4v5.4h4.4V10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <div id="hud" hidden>
   <div id="mirror" hidden></div>
@@ -560,10 +561,13 @@ html.invite-loading #invite-loading {
       <button id="ed-bank" title="Lean every corner automatically">Auto-bank</button>
       <button id="ed-rev" title="Drive the other way round">Reverse</button>
     </div>
-    <div class="ed-group">
-      <button id="ed-tool-barrel" title="Drop explosive barrels: click the map to place one (B)" aria-pressed="false">Barrels</button>
-      <button id="ed-tool-skull" title="Drop skull barrels: they explode the moment anything touches them and wreck the car (K)" aria-pressed="false">Skull barrels</button>
-      <button id="ed-tool-fire" title="Drop fire pits: every few seconds they roar into a column of flame that throws a car into the air and burns it (L)" aria-pressed="false">Fire pits</button>
+    <div class="ed-group ed-menu">
+      <button id="ed-obst" title="Obstacles to drop on the track: click one, then click the map" aria-haspopup="true" aria-expanded="false" aria-pressed="false">Obstacles &#9662;</button>
+      <div id="ed-obst-menu" class="ed-dropdown" role="menu" hidden>
+        <button id="ed-tool-barrel" role="menuitem" title="Drop explosive barrels: click the map to place one (B)" aria-pressed="false">Barrels <kbd>B</kbd></button>
+        <button id="ed-tool-skull" role="menuitem" title="Drop skull barrels: they explode the moment anything touches them and wreck the car (K)" aria-pressed="false">Skull barrels <kbd>K</kbd></button>
+        <button id="ed-tool-fire" role="menuitem" title="Drop fire pits: every few seconds they roar into a column of flame that throws a car into the air and burns it (L)" aria-pressed="false">Fire pits <kbd>L</kbd></button>
+      </div>
     </div>
     <div class="ed-group">
       <button id="ed-fit" title="Fit the whole track on screen (F)">Fit</button>

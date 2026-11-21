@@ -269,6 +269,7 @@ export function normalizeTrack(input) {
     walls: src.walls !== false,
     handles,
     props: normalizeProps(src.props),
+    junctions: (Array.isArray(src.junctions) ? src.junctions : []).filter((j) => j && Number.isFinite(j.x) && Number.isFinite(j.z)).slice(0, 40).map((j) => ({ x: j.x, z: j.z })),
   };
   if (src.assault) { const as = normalizeAssault(src.assault); if (as) out.assault = as; }       // Apple Crumple: a solo timed obstacle course
   if (src.defaultLaps) out.defaultLaps = clamp(Math.round(Number(src.defaultLaps)) || 1, 1, 3);      // how many laps this track starts with, until the player picks a number of laps themselves
@@ -420,17 +421,39 @@ export class Track {
       if (gap[ia] || gap[ib] || Math.abs(bank[ia]) > 0.06 || Math.abs(bank[ib]) > 0.06) continue;
       const La = hw[ib] / c.sin + 2.5, Lb = hw[ia] / c.sin + 2.5, blend = 10;      // half the opening along each road, and how far the levelling fades out
       const y = (py[ia] + py[ib]) / 2, dA = y - py[ia], dB = y - py[ib] + CROSS_LIFT;
-      const lev = (i0, Lh, d, mark) => {
+      const lev = (i0, Lh, d) => {
         const reach = Math.ceil((Lh + blend) / ds);
         for (let k = -reach; k <= reach; k++) {
           const i = ((i0 + k) % n + n) % n, a = Math.abs(k) * ds;
           if (gap[i]) continue;
           py[i] += d * (a <= Lh ? 1 : 1 - smoothstep((a - Lh) / blend));
-          if (mark && a <= Lh) this.junc[i] = 1;
         }
       };
-      lev(ia, La, dA, true); lev(ib, Lb, dB, true);
-      this.crossroads.push({ x: c.x, z: c.z, y, sA: s[ia], sB: s[ib], r: Math.max(La, Lb) + 6, sin: c.sin });
+      lev(ia, La, dA); lev(ib, Lb, dB);
+      const tg = (i) => { const p = (i - 1 + n) % n, q = (i + 1) % n, l = Math.hypot(px[q] - px[p], pz[q] - pz[p]) || 1; return [(px[q] - px[p]) / l, (pz[q] - pz[p]) / l]; };
+      const [tax, taz] = tg(ia), [tbx, tbz] = tg(ib);
+      this.crossroads.push({ x: c.x, z: c.z, y, sA: s[ia], sB: s[ib], r: Math.max(La, Lb) + 6, sin: c.sin, tax, taz, tbx, tbz, hwA: hw[ia], hwB: hw[ib], ia, ib });
+    }
+  }
+
+  /**
+   * Open the barriers exactly where one road's wall runs through the other road: a wall sample is open if it lies inside the
+   * other road's wall-to-wall band. The two walls then end exactly where they meet, so the corners of the junction are joined.
+   * `junc[i]` bit 1 = left wall open, bit 2 = right wall open.
+   */
+  _junctionWalls() {
+    const n = this.n, { px, pz, lx, lz, hw } = this;
+    for (const c of this.crossroads) {
+      for (const [i0, ox, oz, hwO, along] of [[c.ia, c.tbx, c.tbz, c.hwB, c.sin], [c.ib, c.tax, c.taz, c.hwA, c.sin]]) {
+        const band = hwO + WALL_GAP + WALL_T * 0.5 + 0.05, reach = Math.ceil((band / along + 8) / this.ds);
+        for (let k = -reach; k <= reach; k++) {
+          const i = ((i0 + k) % n + n) % n, wi = hw[i] + WALL_GAP + WALL_T * 0.5;
+          for (const sg of [1, -1]) {
+            const wx = px[i] + lx[i] * wi * sg - c.x, wz = pz[i] + lz[i] * wi * sg - c.z;
+            if (Math.abs(wx * -oz + wz * ox) < band) this.junc[i] |= sg > 0 ? 1 : 2;
+          }
+        }
+      }
     }
   }
 
@@ -543,6 +566,7 @@ export class Track {
       curv[i] = wrapPi(yaw[q] - yaw[p]) / (4 * ds);        // + = turning left
     }
 
+    this._junctionWalls();
     this._buildGrid();
   }
 
@@ -713,7 +737,7 @@ export class Track {
 
   /** Penetration (m) into the wall at a query result for a point at height y; 0 if none. */
   wallPenetration(q, y) {
-    if (q.idx < 0 || this.wallOff[q.idx] || this.junc[q.idx] || !(this.def.walls || this.inTank(q.idx))) return 0;
+    if (q.idx < 0 || this.wallOff[q.idx] || (this.junc[q.idx] & (q.d > 0 ? 1 : 2)) || !(this.def.walls || this.inTank(q.idx))) return 0;
     const ad = Math.abs(q.d), face = q.hw + WALL_GAP;
     if (ad <= face || ad > face + 2.4) return 0;
     if (y > q.edgeY + (this.def.walls ? WALL_HEIGHT : TANK_H)) return 0;

@@ -5,6 +5,7 @@ import { Track, normalizeTrack, analyzeTrack } from '../src/track.js';
 import { Vehicle } from '../src/vehicle.js';
 import { placeOnRoad } from '../src/derby.js';
 import { DT } from './harness.mjs';
+import { makeTemplate } from '../src/templates.js';
 
 // a figure of eight at one height: the middle crosses itself
 const eight = (dy = 0) => {
@@ -64,4 +65,16 @@ test('a car drives through a crossroad without being stopped or turned', () => {
   }
   assert.equal(jumped, 0);
   assert.ok(minSpeed > 6, 'kept moving ' + minSpeed.toFixed(1));
+});
+
+test('a crossroad gets an asphalt patch, give-way lines and four give-way signs, and joined barrier ends', async () => {
+  const { buildTrackGeometry } = await import('../src/trackGeometry.js');
+  const t = new Track(eight()), g = buildTrackGeometry(t);
+  assert.ok(g.junction.index.length > 0, 'asphalt patch');
+  assert.ok(g.signs.index.length > 0, 'signs');
+  const g0 = buildTrackGeometry(new Track(makeTemplate('speedway')));
+  assert.equal(g0.signs.index.length, 0, 'no signs on a track with no crossroad');
+  // each wall is open only where it runs through the other road: both sides open somewhere, shut far away
+  const open = [0, 0]; for (let i = 0; i < t.n; i++) { if (t.junc[i] & 1) open[0]++; if (t.junc[i] & 2) open[1]++; }
+  assert.ok(open[0] > 0 && open[1] > 0 && open[0] + open[1] < t.n / 3, 'openings ' + open);
 });

@@ -264,7 +264,7 @@ const input = new Input({
   onBoom: () => selfDestruct(),
   onReplay: () => startReplay(),
   onMenu: () => (mode === 'drive' ? showMenu() : null),
-  onEditor: () => mode === 'drive' && openEditor(def),
+  onEditor: () => mode === 'drive' && (testDrive && editor.def ? openEditor(editor.def, true) : openEditor(def)),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
   onMusic: () => { sound.setEnabled('music', !sound.musicOn); syncSoundUI(); },
   onMirror: () => mode === 'drive' && toggleMirror(),
@@ -1553,6 +1553,7 @@ function setMode(m) {
   if (m === 'drive' && podiumReplay) { podiumReplay = false; setTimeout(reshowPodium, 0); }          // back from the replay: the podium is still there
   mode = m; document.body.className = 'mode-' + m + (derby.demolition ? ' arena' : '') + ((assault || weeval) ? ' course' : '') + (getaway ? ' getaway' : '') + (home2 ? ' home2' : '');
   $('hud').hidden = m !== 'drive';
+  $('back-editor').hidden = !(m === 'drive' && testDrive && !matchMedia('(pointer: coarse)').matches);
   if (m === 'drive' && assault && !assault.active && assaultCard) showAssaultCard();
   if (m === 'drive' && weeval && weevalCard && (weeval.state === 'clear' || weeval.state === 'failed' || weeval.state === 'over')) showWeevalCardNow();       // back from the replay: the card is still there
   if (m === 'drive' && getaway && getaway.game.over && getaway.card) showGetawayCard();       // back from the replay: the result card is still there       // back from the replay: the result card is still there
@@ -1734,10 +1735,10 @@ function beginDriving() {
   hud.banner(derby.demolition ? 'Last one standing wins!' : derby.enabled ? 'Race! Wrecked? You respawn' : 'Get to the start line', 1600);
   raceStartLights();
 }
-function openEditor(d) {
+function openEditor(d, keepUndo) {
   // the editor needs a mouse and a big screen - on touch devices just say so
   if (matchMedia('(pointer: coarse)').matches) { toast('The track editor only works on a desktop computer.'); return; }
-  setMode('edit'); editor.open(d || def || makeTemplate('speedway'));
+  setMode('edit'); editor.open(d || def || makeTemplate('speedway'), keepUndo);
 }
 
 const editor = window.__editor = new Editor({
@@ -2517,6 +2518,7 @@ async function shareRace() {
     catch { window.prompt('Copy this link and send it to a friend:', url); }
   } catch { toast('Could not make a link for this race.'); }
 }
+$('back-editor').onclick = (e) => { e.currentTarget.blur(); if (editor.def) openEditor(editor.def, true); };
 $('home-btn').addEventListener('pointerdown', (e) => e.preventDefault());   // (never takes focus: Space stays the boost)
 $('home-btn').addEventListener('click', (e) => { if (mode === 'edit') editor.cb.onClose(editor.def); else showMenu(); e.currentTarget.blur(); });
 $('share-btn').addEventListener('pointerdown', (e) => e.preventDefault());   // never take focus, so Space stays the boost
@@ -2579,12 +2581,14 @@ let autoDrive = false, autoSolo = false;
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
 
-// ---- crash recovery: the editor keeps a copy of the track being edited (cr.autosave) and removes it when you leave cleanly, so if one is still here the game stopped while you were editing
+// ---- the editor keeps a copy of the track being edited (cr.autosave) until you Save it, so a reload, a crash or a trip to the menu never loses the work: offer to carry on where you left off
 setTimeout(() => {
-  let saved = null; try { saved = JSON.parse(localStorage.getItem('cr.autosave') || 'null'); localStorage.removeItem('cr.autosave'); } catch { /* blocked or damaged */ }
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('cr.autosave') || 'null'); } catch { /* blocked or damaged */ }
   if (!saved || !saved.def || matchMedia('(pointer: coarse)').matches) return;
   const mins = Math.max(1, Math.round((Date.now() - saved.t) / 60000)), name = String(saved.def.name || 'your track').slice(0, 40);
-  if (window.confirm(`The game stopped while you were editing "${name}". Get it back? (copy made ${mins < 60 ? mins + ' min' : Math.round(mins / 60) + ' h'} ago)`)) { try { openEditor(normalizeTrack(saved.def)); } catch { toast('Sorry, that copy could not be opened.'); } }
+  const ago = mins < 60 ? mins + ' min' : mins < 2880 ? Math.round(mins / 60) + ' h' : Math.round(mins / 1440) + ' days';
+  if (window.confirm(`You were editing "${name}" (unsaved, ${ago} ago). Carry on where you left off?`)) { try { openEditor(normalizeTrack(saved.def)); } catch { toast('Sorry, that copy could not be opened.'); } }
+  else { try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ } }
 }, 1200);
 
 // ---- "Get the app": Chrome, Edge, Silk (Fire tablets) and Android offer a real install; iPhone and iPad need Share > Add to Home Screen, so the button explains that

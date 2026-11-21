@@ -203,6 +203,8 @@ export class Stage {
     const dirty = !!track.def.dirt, roadMat = new THREE.MeshStandardMaterial({ map: dirty ? dirtRoadTexture(this.aniso || 8) : this.textures.road, roughness: 0.93, metalness: 0, side: THREE.DoubleSide });
     const vcMat = (rough = 0.9) => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: 0, side: THREE.DoubleSide });
     mesh(geo.road, roadMat);
+    if (geo.junction.index.length) { const jm = vcMat(0.93); jm.polygonOffset = true; jm.polygonOffsetFactor = -2; jm.polygonOffsetUnits = -2; mesh(geo.junction, jm); }
+    if (geo.signs.index.length) mesh(geo.signs, vcMat(0.6), { cast: true });
     if (!dirty) mesh(geo.kerb, vcMat(0.8));
     mesh(geo.bank, vcMat(1));
     mesh(geo.slab, vcMat(0.95), { cast: true });

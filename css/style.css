@@ -437,6 +437,12 @@ body:not(.mode-drive) .mp-label { display: none; }
   background: linear-gradient(rgba(16,51,95,.9), rgba(16,51,95,0)); pointer-events: none; }
 .ed-3d-bar .muted { opacity: .6; font-size: 12px; }
 #editor .ed-3d-bar button { margin-left: auto; pointer-events: auto; padding: 0 8px; font-size: 20px; line-height: 1.2; }
+#editor .ed-menu { position: relative; overflow: visible; }
+#editor .ed-dropdown { position: absolute; top: 100%; left: -1px; z-index: 30; min-width: 190px; display: flex; flex-direction: column; background: #12305f; border: 1px solid rgba(234,246,255,.5); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+#editor .ed-dropdown[hidden] { display: none; }
+#editor .ed-dropdown button { border: 0; border-bottom: 1px solid rgba(234,246,255,.2); text-align: left; padding: 9px 12px; display: flex; justify-content: space-between; gap: 14px; }
+#editor .ed-dropdown button:last-child { border-bottom: 0; }
+#editor .ed-dropdown kbd { opacity: .55; font: inherit; font-size: .85em; }
 #editor button[aria-pressed="true"] { background: rgba(234,246,255,.18); }
 #ed-help b { color: var(--amber); }
 #ed-help { position: absolute; left: 12px; bottom: 10px; font-size: 13px; color: rgba(234,246,255,.8); background: rgba(16,51,95,.85); padding: 5px 9px; }
@@ -1028,6 +1034,10 @@ body:not(.mode-menu) #gp-credit { display: none; }
 /* a little white house, top right beside the cog, on every screen but the home page */
 #home-btn { position: fixed; z-index: 100; top: max(8px, env(safe-area-inset-top)); right: 58px; width: 40px; height: 40px; padding: 8px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45);
   background: rgba(42,29,74,.82); color: #fff; cursor: pointer; pointer-events: auto; transition: border-color .2s, transform .15s; }
+#back-editor { position: fixed; z-index: 100; top: max(8px, env(safe-area-inset-top)); right: 106px; height: 40px; padding: 0 16px; border-radius: 20px; border: 2px solid #ffc933; background: rgba(20,14,0,.78); color: #ffc933; font: inherit; font-weight: 700; letter-spacing: .02em; cursor: pointer; }
+#back-editor:hover { background: #ffc933; color: #2a1a00; }
+#back-editor[hidden] { display: none; }
+body:not(.mode-drive) #back-editor { display: none; }
 #home-btn svg { display: block; width: 100%; height: 100%; }
 #home-btn:hover { border-color: #fff; transform: scale(1.06); }
 body.mode-menu #home-btn { display: none; }
@@ -1137,3 +1147,12 @@ body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; 
   body.home2 #menu #home-play-go { min-width: 0; padding: 6px 30px; font-size: 30px; flex: none; }
   body.home2 #menu .menu-inner { padding-bottom: 96px; }
 }
+
+/* editor: the "crossroad or gap?" question next to a new crossing */
+#editor .ed-junction { position: absolute; z-index: 20; width: 288px; padding: 12px 14px 10px; background: #12305f; border: 2px solid #fff; box-shadow: 0 10px 28px rgba(0,0,0,.55); display: flex; flex-direction: column; gap: 9px; font-size: 14px; }
+#editor .ed-junction b { font-size: 16px; letter-spacing: .02em; }
+#editor .ed-junction label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; line-height: 1.3; }
+#editor .ed-junction input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: #ffc933; }
+#editor .ed-junction u { text-decoration: none; font-weight: 700; color: #ffc933; margin-right: 4px; }
+#editor .ed-junction small { opacity: .65; }
+#editor .ed-junction .x { position: absolute; top: 2px; right: 6px; border: 0; background: none; color: #fff; font-size: 20px; padding: 2px 6px; cursor: pointer; }

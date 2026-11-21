@@ -191,7 +191,7 @@ export function buildTrackGeometry(track) {
           { p: [ib[0], yt, ib[2]], n: [0, 1, 0], c }, { p: [ob[0], yt, ob[2]], n: [0, 1, 0], c },
           { p: [ob[0], yt, ob[2]], n: outward, c }, { p: [ob[0], ob[1] - 0.1, ob[2]], n: outward, c },
         ];
-      }, 6, sv, (i) => track.wallOff[i] || track.junc[i]);
+      }, 6, sv, (i) => track.wallOff[i] || (track.junc[i] & (sg > 0 ? 1 : 2)));
       // Columns 1->2 and 3->4 join faces at identical points, so those quads are zero-area.
     }
   }
@@ -267,6 +267,64 @@ export function buildTrackGeometry(track) {
     lx: track.lx[0], lz: track.lz[0], hw: track.hw[0],                // horizontal left, half width
   };
 
+
+  // ---- crossroads: a plain asphalt patch over the junction (the painted edge and centre lines of the two roads stop at its edge, so
+  // they join up), a dashed white give-way line across every approach, and a give-way sign beside each one
+  const junction = new Buf(), signs = new Buf();
+  {
+    const ASPHALT = [0.13, 0.133, 0.15], WHITE = [0.82, 0.8, 0.74], RED = [0.78, 0.07, 0.07], PALE = [0.95, 0.95, 0.93], POLE = [0.45, 0.46, 0.48];
+    const tri = (buf, a, b, c, nn, col) => quad(buf, a, b, c, c, nn, col);
+    const UP = [0, 1, 0], q = Track.newQuery();
+    const surf = (x, z, yHint) => { track.groundAt(x, z, yHint, q, true); return q.idx >= 0 ? q.y : yHint; };
+    for (const c of track.crossroads || []) {
+      const nax = -c.taz, naz = c.tax, nbx = -c.tbz, nbz = c.tbx, det = nax * nbz - naz * nbx;
+      const at = (u, v) => {                                                    // the point u*hwA across road A and v*hwB across road B, measured from the crossing
+        const a = u * c.hwA, b = v * c.hwB;
+        const x = c.x + (a * nbz - naz * b) / det, z = c.z + (nax * b - nbx * a) / det;
+        return [x, surf(x, z, c.y + 0.3) + 0.045, z];
+      };
+      const G = 6, pts = [];
+      for (let i = 0; i <= G; i++) for (let j = 0; j <= G; j++) pts.push(at(-1 + (2 * i) / G, -1 + (2 * j) / G));
+      for (let i = 0; i < G; i++) for (let j = 0; j < G; j++) {
+        const a = pts[i * (G + 1) + j], b = pts[i * (G + 1) + j + 1], d = pts[(i + 1) * (G + 1) + j], e = pts[(i + 1) * (G + 1) + j + 1];
+        quad(junction, a, b, e, d, UP, ASPHALT);
+      }
+      // approaches: [road, direction of travel (+1 = the way the road runs), tangent, left normal, half width, how far the other road reaches]
+      const cosA = Math.abs(c.tax * c.tbx + c.taz * c.tbz);
+      for (const [t, hw, hwO, dir, i0] of [[[c.tax, c.taz], c.hwA, c.hwB, 1, c.ia], [[c.tax, c.taz], c.hwA, c.hwB, -1, c.ia], [[c.tbx, c.tbz], c.hwB, c.hwA, 1, c.ib], [[c.tbx, c.tbz], c.hwB, c.hwA, -1, c.ib]]) {
+        const reach = (hwO + hw * cosA) / c.sin + 0.7;                           // from the middle of the junction back to where the other road's edge line is clear
+        const fx = t[0] * dir, fz = t[1] * dir, lx = -fz, lz = fx;                // the way the car is heading, and its left (the sign goes on the left kerb)
+        const bx = c.x - fx * reach, bz = c.z - fz * reach, by = surf(bx, bz, c.y + 0.3) + 0.05;
+        const lineY = (x, z) => surf(x, z, by) + 0.045;
+        // dashed give-way line across the road: dashes 0.9 m wide and 0.45 m long, with gaps
+        const DASH = 0.9, nDash = Math.max(3, Math.floor((hw * 1.9) / (DASH * 1.6)));
+        for (let k = 0; k < nDash; k++) {
+          const o = -hw * 0.93 + (k + 0.5) * ((hw * 1.86) / nDash), w2 = (hw * 1.86) / nDash * 0.3;
+          const cx = bx + lx * o, cz = bz + lz * o;
+          const p = (du, dv) => { const x = cx + lx * du + fx * dv, z = cz + lz * du + fz * dv; return [x, lineY(x, z), z]; };
+          quad(junction, p(-w2, -0.22), p(w2, -0.22), p(w2, 0.22), p(-w2, 0.22), UP, WHITE);
+        }
+        // give-way sign: a pole on the left kerb, outside the wall, with the red-and-white downward triangle facing the oncoming car
+        const sx = bx - fx * 2.2 + lx * (hw + WALL_GAP + WALL_T + 1.1), sz = bz - fz * 2.2 + lz * (hw + WALL_GAP + WALL_T + 1.1);
+        const sy = Math.max(by - 0.2, surf(sx, sz, by) ), top = by + 2.4, side = [lx, 0, lz], face = [-fx, 0, -fz];
+        const box = (hx, hz, y0, y1, col) => {                                  // a thin square post
+          const a = [sx - hx, y0, sz - hz], b = [sx + hx, y0, sz - hz], c2 = [sx + hx, y0, sz + hz], d = [sx - hx, y0, sz + hz];
+          const a2 = [a[0], y1, a[2]], b2 = [b[0], y1, b[2]], c3 = [c2[0], y1, c2[2]], d2 = [d[0], y1, d[2]];
+          quad(signs, a, b, b2, a2, [0, 0, -1], col); quad(signs, b, c2, c3, b2, [1, 0, 0], col); quad(signs, c2, d, d2, c3, [0, 0, 1], col); quad(signs, d, a, a2, d2, [-1, 0, 0], col);
+        };
+        box(0.05, 0.05, Math.min(sy, by) - 0.3, top, POLE);
+        const W = 1.5, cy = top - 0.25, face3 = (u, v, off) => [sx + side[0] * u + face[0] * off, cy + v, sz + side[2] * u + face[2] * off];
+        const triPts = (w, off) => { const h = 0.866 * w; return [face3(-w / 2, h / 3, off), face3(w / 2, h / 3, off), face3(0, -2 * h / 3, off)]; };
+        const [o0, o1, o2] = triPts(W, 0.06), [i0p, i1p, i2p] = triPts(W * 0.56, 0.075);
+        for (const sgn of [1, -1]) {                                            // both faces (the back is plain red)
+          const off = (v, extra) => [v[0] + face[0] * extra * sgn, v[1], v[2] + face[2] * extra * sgn];
+          if (sgn > 0) { tri(signs, o0, o1, o2, face, RED); tri(signs, i0p, i1p, i2p, face, PALE); }
+          else { tri(signs, off(o0, 0.0), off(o2, 0.0), off(o1, 0.0), [-face[0], 0, -face[2]], RED); }
+        }
+      }
+    }
+  }
+
   // bounds for scenery
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < n; i++) {
@@ -275,7 +333,7 @@ export function buildTrackGeometry(track) {
   }
 
   return {
-    road: road.arrays(), kerb: kerb.arrays(), bank: bank.arrays(), slab: slab.arrays(), wall: wall.arrays(),
+    road: road.arrays(), junction: junction.arrays(), signs: signs.arrays(), kerb: kerb.arrays(), bank: bank.arrays(), slab: slab.arrays(), wall: wall.arrays(),
     pillars, lamps, start, bounds: { minX, maxX, minZ, maxZ },
   };
 }
