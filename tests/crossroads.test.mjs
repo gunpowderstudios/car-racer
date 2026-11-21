@@ -133,3 +133,14 @@ test('a banked road is levelled flat through a crossroad (auto-bank never tilts 
   const c = t.crossroads[0];
   for (const i0 of [c.ia, c.ib]) for (let k = -8; k <= 8; k++) assert.ok(Math.abs(t.bank[((i0 + k) % t.n + t.n) % t.n]) < 0.01, 'bank ' + t.bank[i0]);
 });
+
+test('the roads run dead straight through a crossroad', () => {
+  const t = new Track(eight());
+  assert.ok(t.crossroads.length >= 1);
+  const c = t.crossroads[0];
+  for (const [i0, tx, tz] of [[c.ia, c.tax, c.taz], [c.ib, c.tbx, c.tbz]]) {
+    let worst = 0;
+    for (let k = -12; k <= 12; k++) { const i = ((i0 + k) % t.n + t.n) % t.n, off = (t.px[i] - c.x) * -tz + (t.pz[i] - c.z) * tx; worst = Math.max(worst, Math.abs(off)); }
+    assert.ok(worst < 0.15, 'sideways wobble ' + worst);
+  }
+});

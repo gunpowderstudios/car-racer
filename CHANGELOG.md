@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.644 — Neat crossroads: straight approaches
+
+- Both roads now run dead straight through a crossroad, for the whole junction and 8 m past it, and ease back into their bend over about 14 m. Crossings come out as a neat cross even when the points were placed on a curve. The 2D editor map shows the straightened road.
+
 ## v17.643 — No banking at crossroads
 
 - Roads lean (auto-bank or hand-set banking) no longer get in the way of a crossroad: through the junction, and for the same stretch either side, the road lies completely flat on the ground, then eases back into its banking. A banked crossing used to be refused as a crossroad.

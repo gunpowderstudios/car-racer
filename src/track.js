@@ -30,6 +30,7 @@ const MAX_OVERSHOOT = 1.0;          // metres a segment may claim beyond its end
 const ARENA_OVERSHOOT = 8.0;        // an arena's floor is wide, so the wedge outside each bend of its centreline is too
 export const CROSS_MAX_DY = 2.0;      // roads crossing within this height of each other, with no gap, are a crossroad (more than this and it is a ramp-and-bridge problem to fix)
 export const CROSS_MIN_SIN = 0.3;     // ...and they must cross at more than about 17 degrees, or the "junction" would be a long shared strip
+const STRAIGHT_EXTRA = 8;     // metres of dead-straight road past the flat stretch on each side of a crossroad
 const CROSS_LIFT = 0.05;       // the second road sits this much higher through a junction, so the two surfaces do not z-fight
 const QUERY_MARGIN = 4.5;
 const BERM_MARGIN = 14;             // a dirt-banked stage's embankments reach this far past the road edge
@@ -437,6 +438,17 @@ export class Track {
         }
       };
       lev(ia, La, yA); lev(ib, Lb, yB);
+      const straighten = (i0, Lh, tx, tz) => {                                      // a neat cross: each road runs dead straight through the junction (and a little beyond), then eases back into its bend
+        const Ls = Lh + STRAIGHT_EXTRA, reach = Math.ceil((Ls + blend) / ds), ox = [], oz = [];
+        for (let k = -reach; k <= reach; k++) { const i = ((i0 + k) % n + n) % n; ox.push(px[i]); oz.push(pz[i]); }
+        for (let k = -reach; k <= reach; k++) {
+          const i = ((i0 + k) % n + n) % n, a = Math.abs(k) * ds;
+          if (gap[i]) continue;
+          const w = a <= Ls ? 1 : 1 - smoothstep((a - Ls) / blend), tX = c.x + tx * k * ds, tZ = c.z + tz * k * ds;
+          px[i] = ox[k + reach] + (tX - ox[k + reach]) * w; pz[i] = oz[k + reach] + (tZ - oz[k + reach]) * w;
+        }
+      };
+      straighten(ia, La, tax, taz); straighten(ib, Lb, tbx, tbz);
       this.crossroads.push({ x: c.x, z: c.z, y, sA: s[ia], sB: s[ib], r: Math.max(La, Lb) + 6, sin: c.sin, tax, taz, tbx, tbz, hwA: hw[ia], hwB: hw[ib], ia, ib });
     }
   }
