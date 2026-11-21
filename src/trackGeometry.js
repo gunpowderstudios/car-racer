@@ -270,9 +270,9 @@ export function buildTrackGeometry(track) {
 
   // ---- crossroads: a plain asphalt patch over the junction (the painted edge and centre lines of the two roads stop at its edge, so
   // they join up), a dashed white give-way line across every approach, and a give-way sign beside each one
-  const junction = new Buf(), signs = new Buf();
+  const junction = new Buf(), marks = new Buf(), signs = new Buf();
   {
-    const ASPHALT = [0.13, 0.133, 0.15], WHITE = [0.82, 0.8, 0.74], RED = [0.78, 0.07, 0.07], PALE = [0.95, 0.95, 0.93], POLE = [0.45, 0.46, 0.48];
+    const WHITE = [0.82, 0.8, 0.74], RED = [0.78, 0.07, 0.07], PALE = [0.95, 0.95, 0.93], POLE = [0.45, 0.46, 0.48];
     const tri = (buf, a, b, c, nn, col) => quad(buf, a, b, c, c, nn, col);
     const UP = [0, 1, 0], q = Track.newQuery();
     const surf = (x, z, yHint) => { track.groundAt(x, z, yHint, q, true); return q.idx >= 0 ? q.y : yHint; };
@@ -287,7 +287,36 @@ export function buildTrackGeometry(track) {
       for (let i = 0; i <= G; i++) for (let j = 0; j <= G; j++) pts.push(at(-1 + (2 * i) / G, -1 + (2 * j) / G));
       for (let i = 0; i < G; i++) for (let j = 0; j < G; j++) {
         const a = pts[i * (G + 1) + j], b = pts[i * (G + 1) + j + 1], d = pts[(i + 1) * (G + 1) + j], e = pts[(i + 1) * (G + 1) + j + 1];
-        quad(junction, a, b, e, d, UP, ASPHALT);
+        const k = Math.min(1, Math.hypot(e[0] - a[0], e[2] - a[2]) / vgrid) || 0.1, W = [1, 1, 1];     // (the road's own texture: its plain asphalt strip, with no painted lines)
+        const v0 = junction.vert(a[0], a[1], a[2], 0, 1, 0, W, 0.1, 0), v1 = junction.vert(b[0], b[1], b[2], 0, 1, 0, W, 0.26, 0), v2 = junction.vert(e[0], e[1], e[2], 0, 1, 0, W, 0.26, k), v3 = junction.vert(d[0], d[1], d[2], 0, 1, 0, W, 0.1, k);
+        junction.idx.push(v0, v1, v2, v0, v2, v3);
+      }
+
+      // the barriers: each road's wall ends where it meets the other road's wall; a block from the end of each to the exact corner closes the gap, with a square corner
+      {
+        const lAx = c.taz, lAz = -c.tax, lBx = c.tbz, lBz = -c.tbx, dt = lAx * lBz - lAz * lBx;
+        const wA = c.hwA + WALL_GAP + WALL_T / 2, wB = c.hwB + WALL_GAP + WALL_T / 2, H = WALL_HEIGHT;
+        const block = (p0, p1, y0, y1, col) => {                                  // a wall block from p0 to p1 (x, z), WALL_T thick, from y0 up to y1
+          const dx = p1[0] - p0[0], dz = p1[1] - p0[1], len = Math.hypot(dx, dz); if (len < 0.05) return;
+          const ux = dx / len, uz = dz / len, hx = -uz * WALL_T / 2, hz = ux * WALL_T / 2;
+          const bl = [p0[0] - hx, y0, p0[1] - hz], br = [p0[0] + hx, y0, p0[1] + hz], fr = [p1[0] + hx, y0, p1[1] + hz], fl = [p1[0] - hx, y0, p1[1] - hz];
+          const up = (q) => [q[0], y1, q[2]];
+          quad(wall, up(bl), up(br), up(fr), up(fl), UP, col);
+          quad(wall, bl, fl, up(fl), up(bl), [-hx / (WALL_T / 2), 0, -hz / (WALL_T / 2)], col);
+          quad(wall, br, fr, up(fr), up(br), [hx / (WALL_T / 2), 0, hz / (WALL_T / 2)], col);
+          quad(wall, fl, fr, up(fr), up(fl), [ux, 0, uz], col);
+        };
+        for (const sa of [1, -1]) for (const sb of [1, -1]) {
+          const a = sa * wA, b = sb * wB, px = c.x + (a * lBz - lAz * b) / dt, pz = c.z + (lAx * b - lBx * a) / dt;     // the corner of the two wall lines
+          for (const [i0, tx, tz, sg, lx, lz, hwR, col] of [[c.ia, c.tax, c.taz, sa, lAx, lAz, c.hwA, C_WALL_B], [c.ib, c.tbx, c.tbz, sb, lBx, lBz, c.hwB, C_WALL_A]]) {
+            const dir = ((px - c.x) * tx + (pz - c.z) * tz) >= 0 ? 1 : -1, bit = sg > 0 ? 1 : 2;
+            let i = i0, guard = 0; while ((track.junc[i] & bit) && guard++ < 400) i = (i + dir + n) % n;            // walk out along that road to where its wall starts again
+            if (guard >= 400) continue;
+            const wi = track.hw[i] + WALL_GAP + WALL_T / 2, ex = track.px[i] + track.lx[i] * sg * wi, ez = track.pz[i] + track.lz[i] * sg * wi;
+            const ux = px - ex, uz = pz - ez, ul = Math.hypot(ux, uz) || 1, y0 = Math.min(track.py[i], c.y) - 0.1, y1 = Math.max(track.py[i], c.y) + H;
+            block([ex - (ux / ul) * 0.3, ez - (uz / ul) * 0.3], [px + (ux / ul) * WALL_T / 2, pz + (uz / ul) * WALL_T / 2], y0, y1, col);
+          }
+        }
       }
       // approaches: [road, direction of travel (+1 = the way the road runs), tangent, left normal, half width, how far the other road reaches]
       const cosA = Math.abs(c.tax * c.tbx + c.taz * c.tbz);
@@ -302,7 +331,7 @@ export function buildTrackGeometry(track) {
           const o = -hw * 0.93 + (k + 0.5) * ((hw * 1.86) / nDash), w2 = (hw * 1.86) / nDash * 0.3;
           const cx = bx + lx * o, cz = bz + lz * o;
           const p = (du, dv) => { const x = cx + lx * du + fx * dv, z = cz + lz * du + fz * dv; return [x, lineY(x, z), z]; };
-          quad(junction, p(-w2, -0.22), p(w2, -0.22), p(w2, 0.22), p(-w2, 0.22), UP, WHITE);
+          quad(marks, p(-w2, -0.22), p(w2, -0.22), p(w2, 0.22), p(-w2, 0.22), UP, WHITE);
         }
         // give-way sign: a pole on the left kerb, outside the wall, with the red-and-white downward triangle facing the oncoming car
         const sx = bx - fx * 2.2 + lx * (hw + WALL_GAP + WALL_T + 1.1), sz = bz - fz * 2.2 + lz * (hw + WALL_GAP + WALL_T + 1.1);
@@ -333,7 +362,7 @@ export function buildTrackGeometry(track) {
   }
 
   return {
-    road: road.arrays(), junction: junction.arrays(), signs: signs.arrays(), kerb: kerb.arrays(), bank: bank.arrays(), slab: slab.arrays(), wall: wall.arrays(),
+    road: road.arrays(), junction: junction.arrays(), marks: marks.arrays(), signs: signs.arrays(), kerb: kerb.arrays(), bank: bank.arrays(), slab: slab.arrays(), wall: wall.arrays(),
     pillars, lamps, start, bounds: { minX, maxX, minZ, maxZ },
   };
 }

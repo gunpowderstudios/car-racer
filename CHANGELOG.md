@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.634 — Crossroads look like the road
+
+- The crossroad surface now uses the same tarmac texture and colour as the rest of the track instead of a flat patch.
+- The give-way dashes are drawn on top as their own layer.
+- The road walls at each corner of a crossroad now run on and meet each other, so there are no gaps between the two roads' walls.
+- Each crossroad or gap can be clicked on its own, so one track can mix both.
+
 ## v17.633 — Editor: change a crossing at any time
 
 - Click a crossing's marker (white square for a crossroad, amber arch for a gap, red cross for one that is not joined yet) and the "Crossroad or Gap?" box opens again with the current answer ticked; tick the other one to change it.

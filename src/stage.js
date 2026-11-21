@@ -203,7 +203,8 @@ export class Stage {
     const dirty = !!track.def.dirt, roadMat = new THREE.MeshStandardMaterial({ map: dirty ? dirtRoadTexture(this.aniso || 8) : this.textures.road, roughness: 0.93, metalness: 0, side: THREE.DoubleSide });
     const vcMat = (rough = 0.9) => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: 0, side: THREE.DoubleSide });
     mesh(geo.road, roadMat);
-    if (geo.junction.index.length) { const jm = vcMat(0.93); jm.polygonOffset = true; jm.polygonOffsetFactor = -2; jm.polygonOffsetUnits = -2; mesh(geo.junction, jm); }
+    if (geo.junction.index.length) { const jm = roadMat.clone(); jm.polygonOffset = true; jm.polygonOffsetFactor = -2; jm.polygonOffsetUnits = -2; mesh(geo.junction, jm); }          // the junction: the road's own surface over the crossing, so the painted lines of the two roads stop at its edge
+    if (geo.marks.index.length) { const mm = vcMat(0.9); mm.polygonOffset = true; mm.polygonOffsetFactor = -4; mm.polygonOffsetUnits = -4; mesh(geo.marks, mm); }       // the dashed give-way lines
     if (geo.signs.index.length) mesh(geo.signs, vcMat(0.6), { cast: true });
     if (!dirty) mesh(geo.kerb, vcMat(0.8));
     mesh(geo.bank, vcMat(1));
