@@ -1,7 +1,7 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, structureAt, setStructure, GAP_HEIGHT, TUNNEL_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
-import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal } from './track.js';
+import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal, openRoad } from './track.js';
 import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
@@ -39,7 +39,7 @@ export class Editor {
   // ------------------------------------------------------------- lifecycle
   /** `keepUndo`: coming back from a Test Drive, so the undo history survives. */
   open(def, keepUndo = false) {
-    this.def = normalizeTrack(def);
+    this.def = openRoad(normalizeTrack(def));
     if (!keepUndo) { this.undoStack = []; this.redoStack = []; }
     this.blank = !!def.blank; this.pen = []; this.penRedo = [];
     this.sel = -1; this.selProp = -1; this._setTool(this.blank ? 'pen' : 'road');
@@ -101,7 +101,7 @@ export class Editor {
   }
   _restore(str) {
     const raw = JSON.parse(str);
-    this.def = normalizeTrack(raw); this.blank = !!raw.blank; if (this.blank) this.def.blank = true;
+    this.def = openRoad(normalizeTrack(raw)); this.blank = !!raw.blank; if (this.blank) this.def.blank = true;
     this.pen = []; this.penRedo = []; if (this.blank && this.tool !== 'pen') this._setTool('pen'); else if (!this.blank && this.tool === 'pen') this._setTool('road');
     if (this.sel >= this.def.handles.length) this.sel = -1; this.multi?.clear();
     this.selProp = -1;
@@ -850,6 +850,7 @@ export class Editor {
   }
   insertAt(i) {
     const t = this.track, s = t.s[i]; let k = 0;
+    if (this.def.weeval?.oneRoad && s > t.handleS[this.def.handles.length - 1] + 1) { this.cb.toast('That is the hidden return road that closes the loop. Click along your own road.'); return; }
     for (let q = 0; q < t.handleS.length; q++) if (t.handleS[q] <= s) k = q;
     this.snapshot();
     this.def.handles.splice(k + 1, 0, { x: Math.round(t.px[i]), y: Math.round(t.py[i] * 2) / 2, z: Math.round(t.pz[i]), w: 0, bank: Math.round(t.bank[i] * DEG * 2) / 2, gap: 0 });
@@ -866,11 +867,11 @@ export class Editor {
     if (this.sel < 0) return;
     if (this.multi?.size > 1) {
       const gone = [...this.multi].sort((a, b) => b - a);
-      if (this.def.handles.length - gone.length < 4) { this.cb.toast('A circuit needs at least 4 points.'); return; }
+      if (this.def.handles.length - gone.length < (this.def.weeval?.oneRoad ? 2 : 4)) { this.cb.toast('A circuit needs at least 4 points.'); return; }
       this.snapshot(); for (const k of gone) this.def.handles.splice(k, 1); this.multi.clear(); this.sel = -1;
       this.rebuild(true); this.updateUI(); this.draw(); return;
     }
-    if (this.def.handles.length <= 4) { this.cb.toast('A circuit needs at least 4 points.'); return; }
+    if (this.def.handles.length <= (this.def.weeval?.oneRoad ? 2 : 4)) { this.cb.toast('A circuit needs at least 4 points.'); return; }
     this.snapshot(); this.def.handles.splice(this.sel, 1); this.sel = -1; this.multi?.clear();
     this.rebuild(true); this.updateUI(); this.draw();
   }

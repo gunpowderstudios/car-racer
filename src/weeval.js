@@ -63,8 +63,9 @@ export function customLayout(def) {
     return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2, cx: p.x, cz: p.z, rot, i, y: p.y + (p.up || 0), ground: p.y };
   });
   const stacks = props.filter((p) => p.type === 'boxes').map((p) => ({ x: p.x, z: p.z }));
+  const e = def.weeval.oneRoad ? H[(def.weeval.roadN || H.length) - 1] : null;      // (a one-road track ends at its last point, at a barrier)
   return { stage: 1, custom: true, buses: busList.length, busList, stacks, gap, cx: h.x, cz: h.z, lipX, gapEnd, zoneX: target ? target.x : gapEnd + 30, zoneZ: target ? target.z : h.z, landEnd: gapEnd + 100,
-    endX: Infinity, stackX: gapEnd + 60, boomX: gapEnd + 80, startX: H[0] ? H[0].x : 0, lipY, top: H[0] ? H[0].y : lipY, deckTop: lipY, landLen: 100, low: GROUND_Y, width: def.width || W.width };
+    endX: e ? e.x : Infinity, endZ: e ? e.z : 0, stackX: gapEnd + 60, boomX: gapEnd + 80, startX: H[0] ? H[0].x : 0, lipY, top: H[0] ? H[0].y : lipY, deckTop: lipY, landLen: 100, low: GROUND_Y, width: def.width || W.width };
 }
 /** The layout of whichever jump this track is: one of the five stages, or a stunt track from the editor. */
 export const layoutFor = (def) => (def.weeval.custom ? customLayout(def) : stageLayout(def.weeval.stage));

@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.666 — Stunt tracks are one road
+
+- **No loop to build.** A stunt track (the Stunt Jump template, or any track with stunt props placed on it) is now just the one road you draw, from the start to the end. The game adds the hidden return road that closes it into a loop, and it is never saved, so your track file and share link hold only your road.
+- **The road ends at a barrier** with a chequered finish line in front of it, so the car stops at the end like a real race. The Stunt Jump template now opens as a single straight road.
+- In the editor the hidden return road is still drawn on the map (you cannot add points to it), and a stunt road needs only 2 points rather than 4.
+
 ## v17.665 — Build your own stunt jumps in the editor
 
 - **New track: Stunt Jump** (Stunt and Shunts). Stage 1 of Weeval Knievel as an ordinary track you can edit: a high ramp, a gap, three buses, a bullseye, a stack of cardboard boxes and skull barrels.

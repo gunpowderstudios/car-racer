@@ -554,7 +554,8 @@ export function makeTemplate(key) {
     for (let i = 0; i < 3; i++) props.push({ type: 'bus', x: Math.round((X + (i - 1) * WEEVAL.bus.w) * 100) / 100, z: 0, y: 0, up: Math.round(L.deckTop * 10) / 10 });
     props.push({ type: 'boxes', x: L.stackX, z: 0, y: L.low });
     for (const p of w.props) props.push({ ...p });
-    return normalizeTrack({ name: 'Stunt Jump', width: WEEVAL.width, walls: true, defaultLaps: 1, handles: w.handles, weeval: { stage: 1, custom: true }, props });
+    const road = w.handles.slice(0, w.handles.findIndex((h) => h.x === Math.round(L.endX)) + 1);      // one road: from the top of the ramp to the barrier (the game adds the loop that closes it)
+    return normalizeTrack({ name: 'Stunt Jump', width: WEEVAL.width, walls: true, defaultLaps: 1, handles: road, weeval: { stage: 1, custom: true, oneRoad: true }, props });
   }
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];

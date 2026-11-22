@@ -48,7 +48,7 @@ export class WeevalView {
     this.mat = { concrete: m(0x9b9a93, { roughness: 0.95 }), dark: m(0x1d1d24), glass: m(0x20303c, { roughness: 0.25, metalness: 0.4 }), tyre: m(0x151515, { roughness: 0.9 }),
       white: m(0xf0efe8), red: m(0xc0281f), yellow: m(0xffc21a), steel: m(0xc9ccd2, { metalness: 0.6, roughness: 0.4 }) };
     this.t = 0; this.flare = 0;
-    if (this.L.custom) { this._pylons(); this._abutments(); this._busesCustom(); this._bullseye(); this._boxes(); this._flames(); }      // (a stunt track from the editor: its own buses, stacks and target, no barrier or signs)
+    if (this.L.custom) { this._pylons(); this._abutments(); this._busesCustom(); this._bullseye(); this._boxes(); this._flames(); if (isFinite(this.L.endX)) { this._barrier(); this._finishLine(); } }      // (a stunt track from the editor: its own buses, stacks and target, no barrier or signs)
     else { this._pylons(); this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._boxes(); this._flames(); this._signs(); }
   }
 
@@ -283,10 +283,18 @@ export class WeevalView {
 
   /** The concrete barrier at the end of the run-out (the cardboard stack in front of it is drawn by _boxes, and the skull barrels in front of that are real props, see weeval.js). */
   _barrier() {
-    const L = this.L, W = WEEVAL.width, y = this.track.query(L.endX - 6, L.lipY, 0, undefined, 12).y;
+    const L = this.L, W = WEEVAL.width, ez = L.endZ || 0, y = this.track.query(L.endX - 6, L.lipY, ez, undefined, 12).y;
     const stripe = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#ffc21a'; g.fillRect(0, 0, w, h); g.fillStyle = '#1b1b1b'; for (let i = -2; i < 10; i++) { g.beginPath(); g.moveTo(i * 40, h); g.lineTo(i * 40 + 20, h); g.lineTo(i * 40 + 20 + h, 0); g.lineTo(i * 40 + h, 0); g.fill(); } });
-    this._box(this.mat.concrete, 4, 3.6, W + 8, L.endX - 2, y + 1.8, 0);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(W + 8, 1.4), new THREE.MeshStandardMaterial({ map: stripe, roughness: 0.7 })); face.rotation.y = -Math.PI / 2; face.position.set(L.endX - 4.05, y + 2.6, 0); face.frustumCulled = false; this.group.add(face);
+    this._box(this.mat.concrete, 4, 3.6, W + 8, L.endX - 2, y + 1.8, ez);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(W + 8, 1.4), new THREE.MeshStandardMaterial({ map: stripe, roughness: 0.7 })); face.rotation.y = -Math.PI / 2; face.position.set(L.endX - 4.05, y + 2.6, ez); face.frustumCulled = false; this.group.add(face);
+  }
+
+  /** A chequered finish line across the road, a little way before the barrier (a one-road stunt track). */
+  _finishLine() {
+    const L = this.L, W = WEEVAL.width, ez = L.endZ || 0, x = L.endX - 18, y = this.track.query(x, L.lipY, ez, undefined, 12).y + 0.06;
+    const tex = canvasTex(256, 64, (g, w, h) => { const c = 16; for (let i = 0; i < w / c; i++) for (let j = 0; j < h / c; j++) { g.fillStyle = (i + j) % 2 ? '#111' : '#f4f1e8'; g.fillRect(i * c, j * c, c, c); } });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, W), new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, ez); m.frustumCulled = false; this.group.add(m);
   }
 
   _sign(text, sub, x, z, y, face = 1) {

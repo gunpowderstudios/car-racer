@@ -304,7 +304,17 @@ export function normalizeTrack(input) {
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
-  if (src.weeval && src.weeval.custom) { out.weeval = { stage: 1, custom: true }; out.blocks = normalizeBlocks(stuntBlocks(out.props)); out.defaultLaps = 1; }      // a stunt jump made in the editor: its blocks come from its props
+  if (src.weeval && src.weeval.custom) {
+    out.weeval = { stage: 1, custom: true }; out.defaultLaps = 1;
+    const bl = stuntBlocks(out.props);
+    if (src.weeval.oneRoad) {                                                  // one road, not a loop: the game closes it with a return road nobody drives (closeRoad), and a barrier ends the road
+      out.weeval.oneRoad = true;
+      const rn = Math.round(+src.weeval.roadN); if (rn >= 2 && rn < handles.length) out.weeval.roadN = rn;
+      const e = handles[(out.weeval.roadN || handles.length) - 1];
+      if (e) bl.push({ x0: e.x - 4, x1: e.x, z0: e.z - width / 2 - 4, z1: e.z + width / 2 + 4, kind: 'wall', y: GROUND_Y, h: e.y + 4 });
+    }
+    out.blocks = normalizeBlocks(bl);
+  }
   else if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
   if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
@@ -369,9 +379,30 @@ function densePolyline(def) {
 
 // -------------------------------------------------------------------- Track
 
+/** The hairpin, return road and hairpin that close a one-road stunt track into the loop the game needs. Always to the north (+z) of the road, never driven. */
+export function returnRoad(H) {
+  const f = H[0], e = H[H.length - 1], R = 30, back = Math.max(...H.map((h) => h.z)) + 2 * R, ro = (back - e.z) / 2, ri = (back - f.z) / 2, L = e.x - f.x, out = [];
+  const P = (x, y, z) => out.push({ x: Math.round(x), y: Math.round(y * 100) / 100, z: Math.round(z) });
+  for (const a of [-45, 0, 45, 90]) P(e.x + Math.cos(a * DEG) * ro, e.y, e.z + ro + Math.sin(a * DEG) * ro);
+  for (const t of [0.15, 0.4, 0.65, 0.9]) P(e.x - L * t, e.y + (f.y - e.y) * t, back);
+  for (const a of [135, 180, 225]) P(f.x + Math.cos(a * DEG) * ri, f.y, f.z + ri + Math.sin(a * DEG) * ri);
+  return out;
+}
+/** A one-road stunt track as the game drives it: the road plus its return loop (roadN says how many handles are the real road). */
+export function closeRoad(def) {
+  if (!def.weeval || !def.weeval.oneRoad || def.weeval.roadN || def.handles.length < 2) return def;
+  return normalizeTrack({ ...def, handles: [...def.handles, ...returnRoad(def.handles)], weeval: { ...def.weeval, roadN: def.handles.length } });
+}
+/** ...and back to just the road, for the editor and for saving. */
+export function openRoad(def) {
+  if (!def.weeval || !def.weeval.roadN) return def;
+  const w = { ...def.weeval }; delete w.roadN;
+  return normalizeTrack({ ...def, handles: def.handles.slice(0, def.weeval.roadN), weeval: w });
+}
+
 export class Track {
   constructor(input) {
-    this.def = normalizeTrack(input);
+    this.def = closeRoad(normalizeTrack(input));
     this.apron = this.def.walls ? APRON : 0;
     this.overshoot = this.def.getaway ? 60 : this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;       // (the town floor is 440 m wide: far from the little centre oval the strips of neighbouring segments must overlap)
     this.bumps = this.def.bumps || null;

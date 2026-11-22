@@ -1,7 +1,7 @@
 // Share a track as a link: the whole track is packed into the web address itself (compressed, no server, no account).
 //   https://bangersandsmash.co.uk/#t=<packed track>
 // The friend opens it and the game offers to drive it, edit it or keep it. See main.js (openSharedTrack) and editor.js (Share link).
-import { normalizeTrack, STUNT_TYPES } from './track.js';
+import { normalizeTrack, openRoad, STUNT_TYPES } from './track.js';
 
 const PREFIX = '#t=';
 const MAX_PACKED = 60000;        // longest packed text we will even try to read
@@ -85,7 +85,7 @@ function encodeTrack(d) {
   for (const b of st) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.type === 'tunnel' ? 1 : 0); px = x; pz = z; }
   if (d.weeval && d.weeval.custom) {                                            // a stunt jump from the editor: its buses, boxes and bullseye
     const sp = (d.props || []).filter((p) => STUNT_TYPES.includes(p.type));
-    o.u(1); o.u(sp.length); px = 0; pz = 0;
+    o.u(d.weeval.oneRoad ? 2 : 1); o.u(sp.length); px = 0; pz = 0;
     for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(STUNT_TYPES.indexOf(p.type) + (p.rot === 90 ? 8 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); px = x; pz = z; }
   }
   return Uint8Array.from(o.b);
@@ -131,8 +131,9 @@ function decodeTrack(bytes) {
     for (let i = 0, c = r.count(40); i < c; i++) { px += r.z(); pz += r.z(); st.push({ x: px / Q.xz, z: pz / Q.xz, type: r.u() ? 'tunnel' : 'flyover' }); }
     if (st.length) def.structures = st;
   }
-  if (r.i < r.a.length && r.u() === 1) {                                         // a stunt jump (links made before them end here)
-    def.weeval = { stage: 1, custom: true }; px = 0; pz = 0;
+  let stuntFlag = 0; if (r.i < r.a.length) stuntFlag = r.u();
+  if (stuntFlag === 1 || stuntFlag === 2) {                                         // a stunt jump (links made before them end here)
+    def.weeval = { stage: 1, custom: true, ...(stuntFlag === 2 ? { oneRoad: true } : {}) }; px = 0; pz = 0;
     for (let i = 0, c = r.count(200); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: STUNT_TYPES[(k & 7) % STUNT_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 8) pr.rot = 90; def.props.push(pr); }
   }
   return def;
@@ -140,7 +141,7 @@ function decodeTrack(bytes) {
 
 /** The packed text for a track (just the part after "#t="): "~" then base64 of [0 raw | 1 deflated] + the compact binary. */
 export async function packTrack(def) {
-  const raw = encodeTrack(normalizeTrack(def));
+  const raw = encodeTrack(openRoad(normalizeTrack(def)));
   const sq = await pump(raw, new CompressionStream('deflate-raw'));
   const body = sq.length < raw.length ? Uint8Array.from([1, ...sq]) : Uint8Array.from([0, ...raw]);
   return '~' + toB64(body);
