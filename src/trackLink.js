@@ -1,7 +1,7 @@
 // Share a track as a link: the whole track is packed into the web address itself (compressed, no server, no account).
 //   https://bangersandsmash.co.uk/#t=<packed track>
 // The friend opens it and the game offers to drive it, edit it or keep it. See main.js (openSharedTrack) and editor.js (Share link).
-import { normalizeTrack } from './track.js';
+import { normalizeTrack, STUNT_TYPES } from './track.js';
 
 const PREFIX = '#t=';
 const MAX_PACKED = 60000;        // longest packed text we will even try to read
@@ -63,7 +63,7 @@ function encodeTrack(d) {
     if (m & 16) o.u(h.kick * Q.kick);
     if (m & 128) { o.z(Math.round(h.hx * Q.xz)); o.z(Math.round(h.hz * Q.xz)); }
   }
-  const props = d.props || [];
+  const props = (d.props || []).filter((p) => !STUNT_TYPES.includes(p.type));      // (the stunt props go in their own section at the end, so links made before them still read)
   o.u(props.length); px = 0; pz = 0;
   for (const p of props) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(p.type === 'fire' ? FIRE_CODE : p.type === 'vehicle' ? VEHICLE_CODE : PROP_KINDS.indexOf(p.type) + (p.lethal ? PROP_KINDS.length : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); px = x; pz = z; if (p.type === 'vehicle') { o.u(p.mode === 'driving' ? 1 : 0); o.u(Math.round((p.yaw + Math.PI) * 100)); o.str(p.car || ''); } }
   const bumps = d.bumps || [];
@@ -83,6 +83,11 @@ function encodeTrack(d) {
   const st = d.structures || [];
   o.u(st.length); px = 0; pz = 0;
   for (const b of st) { const x = Math.round(b.x * Q.xz), z = Math.round(b.z * Q.xz); o.z(x - px); o.z(z - pz); o.u(b.type === 'tunnel' ? 1 : 0); px = x; pz = z; }
+  if (d.weeval && d.weeval.custom) {                                            // a stunt jump from the editor: its buses, boxes and bullseye
+    const sp = (d.props || []).filter((p) => STUNT_TYPES.includes(p.type));
+    o.u(1); o.u(sp.length); px = 0; pz = 0;
+    for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(STUNT_TYPES.indexOf(p.type) + (p.rot === 90 ? 8 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); px = x; pz = z; }
+  }
   return Uint8Array.from(o.b);
 }
 
@@ -125,6 +130,10 @@ function decodeTrack(bytes) {
     const st = []; px = 0; pz = 0;
     for (let i = 0, c = r.count(40); i < c; i++) { px += r.z(); pz += r.z(); st.push({ x: px / Q.xz, z: pz / Q.xz, type: r.u() ? 'tunnel' : 'flyover' }); }
     if (st.length) def.structures = st;
+  }
+  if (r.i < r.a.length && r.u() === 1) {                                         // a stunt jump (links made before them end here)
+    def.weeval = { stage: 1, custom: true }; px = 0; pz = 0;
+    for (let i = 0, c = r.count(200); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: STUNT_TYPES[(k & 7) % STUNT_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 8) pr.rot = 90; def.props.push(pr); }
   }
   return def;
 }

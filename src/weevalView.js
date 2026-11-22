@@ -7,7 +7,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { loadGltf } from './modelCache.js';
 import { assetUrl } from './assetVersion.js';
 import { Track, GROUND_Y } from './track.js';
-import { WEEVAL, stageLayout } from './weeval.js';
+import { WEEVAL, layoutFor } from './weeval.js';
 
 const BOXES = { S: 1.8, depth: 5, top: 3 };      // the cardboard stack: box size (m), rows deep, and how many high at the back (about half as many boxes again, each bigger)
 const BUS_COLOURS = [0xc0281f, 0xc0281f, 0xc0281f, 0xb5241b, 0xc0281f, 0xc0281f, 0xd0402a, 0xc0281f];      // London red, mostly
@@ -43,12 +43,13 @@ const signTex = (a, b) => canvasTex(512, 160, (g, w, h) => {
 export class WeevalView {
   /** `group` is the track's mesh group (it is disposed with the track). */
   constructor(track, group) {
-    this.track = track; this.group = group; this.L = stageLayout(track.def.weeval.stage);
+    this.track = track; this.group = group; this.L = layoutFor(track.def);
     const m = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0.1, ...o });
     this.mat = { concrete: m(0x9b9a93, { roughness: 0.95 }), dark: m(0x1d1d24), glass: m(0x20303c, { roughness: 0.25, metalness: 0.4 }), tyre: m(0x151515, { roughness: 0.9 }),
       white: m(0xf0efe8), red: m(0xc0281f), yellow: m(0xffc21a), steel: m(0xc9ccd2, { metalness: 0.6, roughness: 0.4 }) };
     this.t = 0; this.flare = 0;
-    this._pylons(); this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._boxes(); this._flames(); this._signs();
+    if (this.L.custom) { this._pylons(); this._abutments(); this._busesCustom(); this._bullseye(); this._boxes(); this._flames(); }      // (a stunt track from the editor: its own buses, stacks and target, no barrier or signs)
+    else { this._pylons(); this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._boxes(); this._flames(); this._signs(); }
   }
 
   _box(mat, w, h, d, x, y, z, parent = this.group, cast = true) {
@@ -71,10 +72,10 @@ export class WeevalView {
 
   /** Blocks of concrete under both lips of the gap, so the road does not hang in the air. */
   _abutments() {
-    const L = this.L, W = WEEVAL.width, top = (x) => this.track.query(x, L.lipY + 6, 0, undefined, 6).y - 0.7;
+    const L = this.L, W = WEEVAL.width, cz = L.cz || 0, top = (x) => this.track.query(x, L.lipY + 6, cz, undefined, 6).y - 0.7;
     for (const [x0, x1] of [[L.lipX - 14, L.lipX - 0.4], [L.gapEnd + 0.4, L.gapEnd + 9]]) {
       const y = top((x0 + x1) / 2), h = Math.max(1, y - GROUND_Y);
-      this._box(this.mat.concrete, x1 - x0, h, W, (x0 + x1) / 2, GROUND_Y + h / 2, 0);
+      this._box(this.mat.concrete, x1 - x0, h, W, (x0 + x1) / 2, GROUND_Y + h / 2, cz);
     }
   }
 
@@ -104,6 +105,31 @@ export class WeevalView {
     this._busModel(slots, deck);
   }
 
+  /** The buses of a stunt track from the editor: each is wherever its prop is (a quarter turn if asked), on a concrete platform if it is raised off the ground. */
+  _busesCustom() {
+    const B = WEEVAL.bus, L = this.L, slots = [];
+    const w = B.w * 0.94, bodyG = new THREE.BoxGeometry(w, B.h - 0.5, B.len), glassG = new THREE.BoxGeometry(w + 0.06, 0.85, B.len - 1.6), roofG = new THREE.BoxGeometry(w * 0.86, 0.14, B.len - 0.5);
+    const whG = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14); whG.rotateZ(Math.PI / 2);
+    const frontG = new THREE.PlaneGeometry(w * 0.9, 0.9), lampG = new THREE.CircleGeometry(0.17, 10), grilleG = new THREE.PlaneGeometry(w * 0.5, 0.5);
+    for (const b of L.busList) {
+      const g = new THREE.Group(); g.position.set(b.cx, 0, b.cz); g.rotation.y = b.rot ? Math.PI / 2 : 0; this.group.add(g);
+      const deck = b.y, y0 = deck + 0.5;
+      if (b.ground < GROUND_Y + 1 && deck - GROUND_Y > 0.5) {
+        this._box(this.mat.concrete, B.w + 2, deck - GROUND_Y, B.len + 2, 0, GROUND_Y + (deck - GROUND_Y) / 2, 0, g);
+        this._box(this.mat.white, B.w + 2.4, 0.3, B.len + 2.4, 0, deck + 0.15, 0, g);
+      }
+      const mat = new THREE.MeshStandardMaterial({ color: BUS_COLOURS[b.i % BUS_COLOURS.length], roughness: 0.55, metalness: 0.15 });
+      const bg = new THREE.Group(); g.add(bg); slots.push({ bg, cx: 0, deck });
+      const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = geo.type === 'BoxGeometry'; o.frustumCulled = false; bg.add(o); };
+      add(bodyG, mat, 0, y0 + (B.h - 0.5) / 2, 0); add(glassG, this.mat.glass, 0, y0 + 1.3, 0); add(glassG, this.mat.glass, 0, y0 + 3.0, 0); add(roofG, this.mat.white, 0, y0 + B.h - 0.5 + 0.07, 0);
+      for (const sx of [-1, 1]) for (const z of [-3.2, 3.2]) add(whG, this.mat.tyre, sx * (w / 2 - 0.05), deck + 0.5, z);
+      const zf = -B.len / 2 - 0.02;
+      add(frontG, this.mat.glass, 0, y0 + 1.5, zf, Math.PI); add(frontG, this.mat.glass, 0, y0 + 3.1, zf, Math.PI); add(grilleG, this.mat.dark, 0, y0 + 0.4, zf, Math.PI);
+      for (const sx of [-1, 1]) add(lampG, this.mat.yellow, sx * w * 0.36, y0 + 0.4, zf - 0.01, Math.PI);
+    }
+    if (slots.length) this._busModel(slots, 0);
+  }
+
   /** Swap the plain boxes for the real Rootmaster from the main game once its model has loaded (the boxes stay if it cannot be loaded). */
   async _busModel(slots, deck) {
     try {
@@ -111,11 +137,12 @@ export class WeevalView {
       const model = gltf.scene, box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
       const alongX = size.x > size.z, k = WEEVAL.bus.len / (alongX ? size.x : size.z);
       model.traverse((o) => { if (o.isMesh) { if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals(); o.castShadow = true; o.frustumCulled = false; } });
-      slots.forEach(({ bg, cx }, i) => {
+      slots.forEach((slot, i) => {
+        const { bg, cx } = slot;
         const m = i === 0 ? model : model.clone(true);
         const holder = new THREE.Group(); m.position.set(-mid.x, -box.min.y, -mid.z); holder.add(m); holder.scale.setScalar(k);
         holder.rotation.y = alongX ? (WEEVAL.bus.flip ? -Math.PI / 2 : Math.PI / 2) : (WEEVAL.bus.flip ? 0 : Math.PI);          // (the nose points the way -z, to the left looking down the ramp)
-        holder.position.set(cx, deck, 0);
+        holder.position.set(cx, slot.deck ?? deck, 0);
         bg.clear(); bg.add(holder);
       });
     } catch (e) { console.warn('Could not load the bus model; plain boxes will do.', e); }
@@ -141,7 +168,7 @@ export class WeevalView {
     const L = this.L, W = WEEVAL.width, n = Math.max(2, Math.round(L.gap / 18) + 1), poleG = new THREE.BoxGeometry(0.45, 1, 0.45), burnG = new THREE.CylinderGeometry(0.7, 0.55, 0.5, 12);
     this.jets = [];
     for (const side of [-1, 1]) for (let i = 0; i < n; i++) {
-      const x = L.lipX + L.gap * (i / (n - 1)), z = side * (W / 2 + 4), h = L.lipY - GROUND_Y;
+      const x = L.lipX + L.gap * (i / (n - 1)), z = (L.cz || 0) + side * (W / 2 + 4), h = L.lipY - GROUND_Y;
       const pole = new THREE.Mesh(poleG, this.mat.steel); pole.scale.y = h; pole.position.set(x, GROUND_Y + h / 2, z); pole.frustumCulled = false; this.group.add(pole);
       const burner = new THREE.Mesh(burnG, this.mat.dark); burner.position.set(x, L.lipY + 0.25, z); burner.frustumCulled = false; this.group.add(burner);
       const flame = new THREE.Group(); flame.position.set(x, L.lipY + 0.4, z);
@@ -153,22 +180,29 @@ export class WeevalView {
     }
   }
 
-  /** The ground under the stack: the landing ramp slopes, so a box's floor is a plane along it. */
-  _floor(x) { return Math.max(this.L.low, this.gy0 + this.gsl * (x - this.gx0)); }
+  /** The ground under a box's stack: the landing ramp slopes, so the floor is a plane along it. */
+  _floor(x, b) { const k = b.stk; return Math.max(this.L.low, k.gy0 + k.gsl * (x - k.x)); }
   _boxHome(b, d, c, k) {
-    const { S, depth } = BOXES, cols = Math.floor((WEEVAL.width - 1) / S);
-    b.x = this.L.stackX + (d - (depth - 1) / 2) * S; b.z = (c - (cols - 1) / 2) * S; b.y = this._floor(b.x) + b.sz / 2 + k * S;
+    const { S } = BOXES, st = b.stk;
+    b.x = st.x + (d - (st.depth - 1) / 2) * S; b.z = st.z + (c - (st.cols - 1) / 2) * S; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
     b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
   }
-  /** A big stack of cardboard boxes down the landing ramp, tallest at the back. Drive into it and they fly, tumble, knock each other about and crumple. */
+  /** Big stacks of cardboard boxes, tallest at the back: the official one down the landing ramp, or each 'boxes' prop of a stunt track. Drive into them and the boxes fly, tumble, knock each other about and crumple. */
   _boxes() {
-    const L = this.L, W = WEEVAL.width, { S, depth, top } = BOXES, cols = Math.floor((W - 1) / S), t = this.track;
-    this.gx0 = L.stackX; this.gy0 = t.query(L.stackX, L.lipY, 0, undefined, 60).y; this.gsl = (t.query(L.stackX + 6, L.lipY, 0, undefined, 60).y - t.query(L.stackX - 6, L.lipY, 0, undefined, 60).y) / 12;
+    const L = this.L, W = WEEVAL.width, { S, depth, top } = BOXES, t = this.track, q = Track.newQuery();
+    const spots = L.custom ? L.stacks.map((s) => ({ x: s.x, z: s.z, cols: 5, depth: 4 })) : [{ x: L.stackX, z: 0, cols: Math.floor((W - 1) / S), depth }];
+    this.stacks = spots.map((sp) => {
+      const at = (x) => { t.query(x, L.lipY, sp.z, q, 60); return q.idx >= 0 ? q.y : GROUND_Y; };
+      return { ...sp, gy0: at(sp.x), gsl: (at(sp.x + 6) - at(sp.x - 6)) / 12 };
+    });
     this.boxes = [];
-    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) {
-      const sz = S * (0.88 + ((d * 7 + c * 13 + k * 5) % 10) * 0.012), b = { sz, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, wx: 0, wy: 0, wz: 0, awake: false, hit: false, crush: 1, col: d * cols + c, layer: k };
-      this._boxHome(b, d, c, k); this.boxes.push(b);
-    }
+    this.stacks.forEach((st, si) => {
+      for (let d = 0; d < st.depth; d++) for (let c = 0; c < st.cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) {
+        const sz = S * (0.88 + ((d * 7 + c * 13 + k * 5) % 10) * 0.012), b = { sz, stk: st, d, c, k, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, wx: 0, wy: 0, wz: 0, awake: false, hit: false, crush: 1, col: si * 1000 + d * st.cols + c, layer: k };
+        this._boxHome(b, d, c, k); this.boxes.push(b);
+      }
+    });
+    if (!this.boxes.length) { this.boxes = null; return; }
     const tex = canvasTex(128, 128, (g, w, h) => {
       g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 18, 2); }
       g.fillStyle = '#d9c28f'; g.fillRect(0, h / 2 - 7, w, 14); g.strokeStyle = '#7a5a30'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
@@ -185,15 +219,13 @@ export class WeevalView {
   /** Put the stack back as it was (a new try). */
   reset() {
     if (!this.boxes) return;
-    const { S, depth, top } = BOXES, cols = Math.floor((WEEVAL.width - 1) / S);
-    let n = 0;
-    for (let d = 0; d < depth; d++) for (let c = 0; c < cols; c++) for (let k = 0; k < Math.min(top, d + 1); k++) this._boxHome(this.boxes[n++], d, c, k);
+    for (const b of this.boxes) this._boxHome(b, b.d, b.c, b.k);
     this._boxAll = true; this._syncBoxes();
   }
   _stepBoxes(dt, car) {
     let hits = 0, moved = false;
     const B = this.boxes;
-    if (car && Math.abs(car.pos.x - this.L.stackX) < 40) {                        // the car ploughs in: whatever it touches is thrown up and out, hard
+    if (car && this.stacks.some((st) => Math.hypot(car.pos.x - st.x, car.pos.z - st.z) < 40)) {                        // the car ploughs in: whatever it touches is thrown up and out, hard
       const ax = car.ax, ay = car.ay, az = car.az;
       for (const b of B) {
         const dx = b.x - car.pos.x, dy = b.y - car.pos.y, dz = b.z - car.pos.z;
@@ -229,7 +261,7 @@ export class WeevalView {
       if (!b.awake) continue;
       moved = true;
       b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
-      const floor = this._floor(b.x) + b.sz * b.crush / 2;
+      const floor = this._floor(b.x, b) + b.sz * b.crush / 2;
       if (b.y <= floor) { b.y = floor; if (b.vy < -1.5) b.vy = -b.vy * 0.3; else b.vy = 0; b.vx *= 0.88; b.vz *= 0.88; b.wx *= 0.7; b.wy *= 0.7; b.wz *= 0.7; b.rx *= 0.85; b.rz *= 0.85; }
       if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.2) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
     }

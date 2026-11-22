@@ -395,7 +395,7 @@ function loadTrack(newDef) {
   chase.low = !!def.lowCam; chase.arena = def.mode === 'lastStanding' ? arenaInfo(track) : null;      // (see pickStartCamera)
   stage.setTrack(track);
   assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
-  weeval = def.weeval && !net ? new Weeval(track, weevalRun || (weevalRun = newRun())) : null; if (!weeval) weevalRun = null; weevalHudShow(!!weeval);
+  weeval = def.weeval && !net ? new Weeval(track, def.weeval.custom ? (weevalRun = newRun()) : weevalRun || (weevalRun = newRun())) : null; if (!weeval) weevalRun = null; weevalHudShow(!!weeval);
   document.body.classList.toggle('course', !!(assault || weeval));
   getaway = def.getaway ? makeGetaway() : null; getawayHudShow(!!getaway); gwRoster(getaway); syncGetawayVehicle();
   hud.buildMap(track);
@@ -534,11 +534,11 @@ function weevalAttempt(how) {
   derby.repairPlayer?.(); if (derby.player) derby._wheelsOn?.(derby.player); visual.restoreWheels?.(); visual.clearDents(); visual.setLook(1, 0); if (derby.player) hud.setDamage(derby.player.health);      // every try starts with a whole car: armour, wheels and all
   weeval.reset(); stage.weevalView?.reset(); wr.t = null; frozen = true;
   const go = () => { if (weeval && weeval.state === 'ready') { frozen = false; weeval.go(); } };
-  if (how === 'first') { hud.banner(`Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }
+  if (how === 'first') { hud.banner(weeval.custom ? (weeval.L.buses ? `Stunt jump: ${weeval.L.buses} bus${weeval.L.buses === 1 ? '' : 'es'}!` : 'Stunt jump!') : `Stage ${weeval.stage}: ${weeval.L.buses} buses!`, 1800); startRaceLights(go, (f, d, g) => sound.beep(f, d, g)); }
   else { hud.banner(how === 'retry' ? `Try again - ${weeval.tries} ${weeval.tries === 1 ? 'try' : 'tries'} left` : 'Back at the top', 1100); setTimeout(go, 900); }
 }
 /** A whole new run from stage 1. */
-function weevalNew() { weevalRun = newRun(); loadTrack(weevalDef(1)); weevalAttempt('first'); }
+function weevalNew() { const d = weeval?.custom ? track.def : weevalDef(1); weevalRun = newRun(); loadTrack(d); weevalAttempt('first'); }
 /** On to the next stage: a new track (more buses, a longer gap), the same run. */
 function weevalNext() { if (!weeval.advance()) { weevalNew(); return; } loadTrack(weevalDef(weevalRun.stage)); weevalAttempt('first'); }
 const RING_WORDS = ['BULLSEYE!', 'So close!', 'On target', 'Outer ring'];
@@ -549,20 +549,20 @@ function weevalEvents() {
       weevalPop(e.ring >= 0 ? RING_WORDS[e.ring] : 'On the ramp', `${e.points} pts` + (e.flat ? ' + flat landing' : ' - bumpy landing'));
       chase.impact(Math.min(14, 3 + e.air * 2));
     } else if (e.type === 'clear') {
-      const st = weevalStore(), best = Math.max(st.best || 0, e.total), stage = Math.max(st.stage || 0, e.stage + (e.done ? 0 : 0));
-      store.set('cr.weeval', { best, stage });
+      const st = weevalStore(), cust = weeval.custom, bkey = 'cr.stunt.' + (track.def.name || ''), best = cust ? Math.max(store.get(bkey, 0), e.total) : Math.max(st.best || 0, e.total), stage = Math.max(st.stage || 0, e.stage);
+      if (cust) store.set(bkey, best); else store.set('cr.weeval', { best, stage });
       const lines = [e.ring >= 0 ? `${RING_WORDS[e.ring]} ${e.ringPoints} pts` : `On the ramp ${e.ringPoints} pts`, e.flat ? 'Level landing +' + WEEVAL.flatBonus : 'Bumpy landing - no bonus', e.clean ? 'No damage +' + WEEVAL.cleanBonus : 'Car damaged - no bonus', `Total ${e.total}` + (e.total >= best ? ' - best ever!' : ` - best ${best}`)];
       weevalCard = e.done
-        ? { title: 'Weeval Knievel complete!', big: `${e.total}`, lines: [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        ? { title: cust ? 'Stunt cleared!' : 'Weeval Knievel complete!', big: `${e.total}`, lines: cust ? lines : [`All ${WEEVAL.stages} stages cleared`, ...lines.slice(0, 3)], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
         : { title: `Stage ${e.stage} clear!`, big: `+${e.points}`, lines, buttons: [{ label: 'Next stage (Enter)', run: weevalNext }, ...(weeval.tries > 1 ? [{ label: `Go again (-1 try, ${weeval.tries - 1} left)`, alt: true, run: () => { if (weeval.goAgain()) weevalAttempt('retry'); } }] : []), { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && weeval.state === 'clear' && mode === 'drive') showWeevalCardNow(); }, 1600);
     } else if (e.type === 'fail') {
       const why = { short: 'Too short - you landed in the buses!', exploded: 'BOOM! You hit the explosives!', wrecked: 'Wrecked!', flipped: 'You landed upside down!', reset: 'Reset' }[e.why] || 'Missed!';
-      const total = weeval.run.total, best = Math.max(weevalStore().best || 0, total);
-      if (e.over) store.set('cr.weeval', { best, stage: Math.max(weevalStore().stage || 0, e.stage) });
+      const cust = weeval.custom, total = weeval.run.total, best = cust ? Math.max(store.get('cr.stunt.' + (track.def.name || ''), 0), total) : Math.max(weevalStore().best || 0, total);
+      if (e.over && !cust) store.set('cr.weeval', { best, stage: Math.max(weevalStore().stage || 0, e.stage) });
       weevalCard = e.over
-        ? { title: 'Run over!', big: `${total}`, lines: [why, e.why === 'exploded' ? `Game over on stage ${e.stage}` : `Out of tries on stage ${e.stage}`, total >= best && total > 0 ? 'New best score!' : `Best ${best}`], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
-        : { title: why, lines: [`Stage ${e.stage}: ${e.tries} ${e.tries === 1 ? 'try' : 'tries'} left`], buttons: [{ label: 'Try again (Enter)', run: () => weevalAttempt('retry') }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
+        ? { title: 'Run over!', big: `${total}`, lines: [why, e.why === 'exploded' ? (cust ? 'Game over' : `Game over on stage ${e.stage}`) : (cust ? 'Out of tries' : `Out of tries on stage ${e.stage}`), total >= best && total > 0 ? 'New best score!' : `Best ${best}`], buttons: [{ label: 'Play again (Enter)', run: weevalNew }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] }
+        : { title: why, lines: [`${cust ? 'Stunt' : 'Stage ' + e.stage}: ${e.tries} ${e.tries === 1 ? 'try' : 'tries'} left`], buttons: [{ label: 'Try again (Enter)', run: () => weevalAttempt('retry') }, { label: 'Watch replay', alt: true, run: startReplay }, { label: 'Menu (Esc)', alt: true, run: showMenu }] };
       setTimeout(() => { if (weeval && (weeval.state === 'failed' || weeval.state === 'over') && mode === 'drive') showWeevalCardNow(); }, e.why === 'short' || e.why === 'wrecked' ? 1500 : 1000);
     }
   }
@@ -1511,7 +1511,7 @@ function frame(now) {
     drawPos.copy(curPos); drawQ.copy(curQ);
     if (mode === 'menu') {
       orbit += dt * 0.07;
-      const f = weeval ? { x: weeval.L.lipX + weeval.L.gap / 2, y: weeval.L.lipY, z: 0 } : track.frameAt(0), R = weeval ? 110 : 46;      // (the bus jump is watched from the middle of the gap)
+      const f = weeval ? { x: weeval.L.lipX + weeval.L.gap / 2, y: weeval.L.lipY, z: weeval.L.cz || 0 } : track.frameAt(0), R = weeval ? 110 : 46;      // (the bus jump is watched from the middle of the gap)
       camera.position.set(f.x + Math.cos(orbit) * R, f.y + 16 + Math.sin(orbit * 0.7) * 3, f.z + Math.sin(orbit) * R);
       camera.lookAt(f.x, f.y + 1.2, f.z); camera.fov = 52; camera.updateProjectionMatrix();
       chase.snap();
@@ -1864,7 +1864,7 @@ function renderMenu() {
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
-  group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin']) addTemplate(k);
+  group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin', 'stunt']) addTemplate(k);
   group('Driving Tests (beta)'); addTemplate('apple'); addTemplate('soundwave');
   { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]).dataset.slug = slugOf('getaway'); }
   if (Object.keys(userTracks()).length) group('My tracks');

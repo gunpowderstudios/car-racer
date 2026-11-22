@@ -64,7 +64,9 @@ export function takeoffRamp(h) {
 /** Things the editor can drop on the track. Each one is { type, x, z, y } in world metres:
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
-export const PROP_TYPES = ['barrel', 'fire', 'vehicle'];      // (an old saved track or link that still has chickens in it just loses them)
+export const STUNT_TYPES = ['bus', 'boxes', 'target'];      // stunt-jump props (see stuntBlocks): a double-decker, a stack of cardboard boxes, the painted bullseye
+export const STUNT_BUS = { w: 2.6, len: 9, h: 4.7 };         // a bus: w along the run, len across it (turned a quarter when rot is 90)
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 400;
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
@@ -96,6 +98,7 @@ export function normalizeProps(list) {
     if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
     if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
+    if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' && Number(p.rot) === 90) o.rot = 90; }      // up: raised on a platform this far above the ground it stands on
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);
   }
@@ -133,6 +136,18 @@ export function bumpAt(bumps, x, z, out) {
 const _bump = { h: 0, gx: 0, gz: 0 };
 
 // ---------------------------------------------------------------- buildings (The Getaway)
+/** The solid boxes a stunt track's props make: each bus (and a concrete platform under it when it is raised). Worked out again whenever the track loads, so they can never disagree with the props. */
+export function stuntBlocks(props) {
+  const out = [];
+  for (const p of props || []) {
+    if (p.type !== 'bus') continue;
+    const rot = p.rot === 90, w = rot ? STUNT_BUS.len : STUNT_BUS.w, d = rot ? STUNT_BUS.w : STUNT_BUS.len, base = p.y + (p.up || 0);
+    if ((p.up || 0) > 0.5 && p.y < GROUND_Y + 1) out.push({ x0: p.x - w / 2 - 1, x1: p.x + w / 2 + 1, z0: p.z - d / 2 - 1, z1: p.z + d / 2 + 1, kind: 'wall', y: GROUND_Y, h: base - GROUND_Y });      // (the platform)
+    out.push({ x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2, kind: 'bus', y: base, h: STUNT_BUS.h });
+  }
+  return out;
+}
+
 /** Solid boxes cars cannot enter: { x0, x1, z0, z1 } on the ground plan (the town's blocks and its border wall). */
 export const MAX_BLOCKS = 128;
 export function normalizeBlocks(list) {
@@ -289,7 +304,8 @@ export function normalizeTrack(input) {
     const rollers = normalizeRollers(src.rollers); if (rollers.length) out.rollers = rollers;
   }
   const puddles = normalizePuddles(src.puddles); if (puddles.length) out.puddles = puddles;          // pools of water (a rally stage, or a flooded dip)
-  if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
+  if (src.weeval && src.weeval.custom) { out.weeval = { stage: 1, custom: true }; out.blocks = normalizeBlocks(stuntBlocks(out.props)); out.defaultLaps = 1; }      // a stunt jump made in the editor: its blocks come from its props
+  else if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
   if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins

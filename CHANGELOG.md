@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.665 — Build your own stunt jumps in the editor
+
+- **New track: Stunt Jump** (Stunt and Shunts). Stage 1 of Weeval Knievel as an ordinary track you can edit: a high ramp, a gap, three buses, a bullseye, a stack of cardboard boxes and skull barrels.
+- **New editor props** (Obstacles menu): **Stunt bus** (with a Height slider to stand it on a concrete platform, and a quarter-turn button), **Cardboard boxes** (a stack that flies when you hit it) and **Bullseye target** (only one; placing it again moves it). Placing any of them turns the track into a stunt track.
+- **How a stunt track plays.** It is one stage with Weeval Knievel's rules: three tries, points for the ring you land in, a bonus for a level landing and for no damage, skull barrels end the run. The jump is the point with a gap; run the road left to right (east) over it. Your best score is kept per track name.
+- Heights up to 120 m and gaps up to 150 m are allowed in the editor on a stunt track. Share links carry the buses, boxes and bullseye.
+- The editor's small 3D preview does not draw the stunt props yet (the map does); Test Drive shows them all.
+
 ## v17.664 — The Getaway: the other cars drive like a town
 
 - **Everyone follows the streets.** Traffic and the police now wander junction to junction on their own side of the road, taking each corner properly (slowing for it, not cutting across the pavement). In a test run, hits on buildings dropped from about a dozen every two minutes to none, and bumps between cars from about eight to none.

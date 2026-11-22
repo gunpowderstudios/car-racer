@@ -6,7 +6,7 @@
 //   weevalDef(n)    the track definition for stage n (a normal closed-loop track: the "loop" is a return road that is never driven)
 //   Weeval          the rules: tries, scoring, what counts as a clean landing
 
-import { normalizeTrack, GROUND_Y } from './track.js';
+import { normalizeTrack, GROUND_Y, STUNT_BUS } from './track.js';
 
 export const WEEVAL = {
   stages: 5, tries: 3,                 // (five for now, more to come)
@@ -17,7 +17,7 @@ export const WEEVAL = {
   gapStart: 70, gapStep: 30,         // the gap (m, lip to lip) on stage 1, and how much longer it gets each stage
   zoneStart: 30, zoneStep: 0,        // how far past the far lip the bullseye is on stage 1, and how much further each stage
   width: 18,                         // the road is this wide
-  bus: { w: 2.6, len: 9, h: 4.7, flip: false }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
+  bus: { ...STUNT_BUS, flip: false }, // a double-decker parked side-on to the ramp, nose to the left: w along the run, len across the road
   topStep: 15,                       // the start platform climbs this much MORE than the rest each stage (on top of riseStep): a taller drop-in each time, for the vertigo
   top: 80,                           // the start platform's height on stage 1
   lipY: 20,                          // the takeoff lip's height on stage 1
@@ -49,6 +49,25 @@ export function stageLayout(n) {
   const boomX = Math.max(landEnd + 14, endX - 26 - W.boomStep * (stage - 1));      // the skull barrels: in front of the boxes on stage 1, then 10 m nearer the jump every stage (never on the landing ramp)
   return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, stackX, boomX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
 }
+
+/**
+ * The layout of a stunt jump made in the editor (def.weeval.custom), with the same fields as stageLayout: the jump is the handle that has a gap,
+ * the buses and cardboard stacks are props, the bullseye is the target prop (or 30 m past the far lip). The run goes along +x.
+ */
+export function customLayout(def) {
+  const W = WEEVAL, H = def.handles || [], j = Math.max(0, H.findIndex((h) => h.gap > 0)), h = H[j] || { x: 0, z: 0, y: 0, gap: 40 }, gap = h.gap || 40;
+  const props = def.props || [], target = props.find((p) => p.type === 'target');
+  const lipX = h.x - gap / 2, gapEnd = h.x + gap / 2, lipY = h.y;
+  const busList = props.filter((p) => p.type === 'bus').map((p, i) => {
+    const rot = p.rot === 90, w = rot ? W.bus.len : W.bus.w, d = rot ? W.bus.w : W.bus.len;
+    return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2, cx: p.x, cz: p.z, rot, i, y: p.y + (p.up || 0), ground: p.y };
+  });
+  const stacks = props.filter((p) => p.type === 'boxes').map((p) => ({ x: p.x, z: p.z }));
+  return { stage: 1, custom: true, buses: busList.length, busList, stacks, gap, cx: h.x, cz: h.z, lipX, gapEnd, zoneX: target ? target.x : gapEnd + 30, zoneZ: target ? target.z : h.z, landEnd: gapEnd + 100,
+    endX: Infinity, stackX: gapEnd + 60, boomX: gapEnd + 80, startX: H[0] ? H[0].x : 0, lipY, top: H[0] ? H[0].y : lipY, deckTop: lipY, landLen: 100, low: GROUND_Y, width: def.width || W.width };
+}
+/** The layout of whichever jump this track is: one of the five stages, or a stunt track from the editor. */
+export const layoutFor = (def) => (def.weeval.custom ? customLayout(def) : stageLayout(def.weeval.stage));
 
 /** The track definition for stage n. A straight run with a jump in it; the loop closes by a hairpin and a return road that nobody drives. */
 export function weevalDef(n) {
@@ -86,7 +105,7 @@ export function ringOf(L, x, z) {
 export class Weeval {
   /** `track` is the stage's Track; `run` is the persistent run object (newRun()). */
   constructor(track, run) {
-    this.track = track; this.run = run; this.L = stageLayout(track.def.weeval.stage); this.events = [];
+    this.track = track; this.run = run; this.L = layoutFor(track.def); this.custom = !!track.def.weeval.custom; this.events = [];
     this.reset();
   }
   get stage() { return this.run.stage; }
@@ -164,7 +183,7 @@ export class Weeval {
     const kept = prev ? Math.max(pts, prev.last.points) : pts;
     this.state = 'clear'; this.run.total += prev ? kept - prev.last.points : pts;
     if (prev) this.run.scores[this.run.scores.length - 1] = kept; else this.run.scores.push(pts);
-    const done = this.run.stage >= WEEVAL.stages;
+    const done = this.custom || this.run.stage >= WEEVAL.stages;
     this.last = { points: kept, attempt: pts, again: !!prev, ring: l.ring, d: l.d, flat, clean, ringPoints: l.points, tilt: l.tilt, total: this.run.total, stage: this.run.stage, done, hitEnd };
     this.events.push({ type: 'clear', ...this.last });
     if (done) this.run.over = true;

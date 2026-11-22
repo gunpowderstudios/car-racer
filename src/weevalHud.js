@@ -49,7 +49,7 @@ export function weevalHudShow(on) {
 /** Refresh the panel. `w` is the Weeval, `kmh` whether speeds are shown in km/h, `speed` the car's speed (m/s). */
 export function weevalHudUpdate(w, kmh, speed) {
   const el = ensure(); if (!el || el.hidden) return;
-  el.querySelector('.wk-stage').textContent = `Stage ${w.run.stage}/${WEEVAL.stages} - ${w.L.buses} buses`;
+  el.querySelector('.wk-stage').textContent = w.custom ? `Stunt jump${w.L.buses ? ` - ${w.L.buses} bus${w.L.buses === 1 ? '' : 'es'}` : ''}` : `Stage ${w.run.stage}/${WEEVAL.stages} - ${w.L.buses} buses`;
   el.querySelector('.wk-tries').innerHTML = Array.from({ length: WEEVAL.tries }, (_, i) => `<i class="${i < w.run.tries ? '' : 'gone'}"></i>`).join('');
   el.querySelector('.wk-score').textContent = `${w.run.total} pts`;
   const aim = WEEVAL.aim[w.L.stage - 1], k = kmh ? 3.6 : 2.23694, unit = kmh ? 'km/h' : 'mph', a = el.querySelector('.wk-aim');
@@ -58,8 +58,8 @@ export function weevalHudUpdate(w, kmh, speed) {
   const show = w.state === 'ready' || w.state === 'run';
   a.hidden = !show;
   if (show) {
-    a.textContent = `Aim ${Math.round(aim * k)} ${unit}` + (w.state === 'run' ? ` - now ${Math.round(Math.max(0, speed) * k)}` : '');
-    const e = Math.abs(speed - aim); a.className = 'wk-aim' + (w.state === 'run' && e < 1 ? ' good' : w.state === 'run' && e < 3 ? ' near' : '');
+    a.textContent = w.custom ? `Speed ${Math.round(Math.max(0, speed) * k)} ${unit}` : `Aim ${Math.round(aim * k)} ${unit}` + (w.state === 'run' ? ` - now ${Math.round(Math.max(0, speed) * k)}` : '');
+    const e = w.custom ? 99 : Math.abs(speed - aim); a.className = 'wk-aim' + (w.state === 'run' && e < 1 ? ' good' : w.state === 'run' && e < 3 ? ' near' : '');
   }
 }
 

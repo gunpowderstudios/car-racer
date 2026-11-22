@@ -2,6 +2,7 @@
 // the car drives from handle 0 towards handle 1.
 
 import { Track, suggestBanks, normalizeTrack, analyzeTrack } from './track.js';
+import { weevalDef, stageLayout, WEEVAL } from './weeval.js';
 import { placeProp } from './props.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
 import { townLayout } from './getaway.js';
@@ -548,6 +549,13 @@ export function makeTemplate(key) {
     const base = normalizeTrack({ name: 'Apple Crumple', width: CRUMPLE.width, defaultLaps: 1, handles: crumpleHandles(), walls: true });
     return normalizeTrack(crumpleCourse(base));
   }
+  if (key === 'stunt') {                                  // Stunt Jump: stage 1 of Weeval Knievel as an ordinary editable track (buses, boxes and bullseye are props, so they can be moved about or added to)
+    const w = weevalDef(1), L = stageLayout(1), X = L.lipX + L.gap / 2, props = [{ type: 'target', x: L.zoneX, z: 0, y: 0 }];
+    for (let i = 0; i < 3; i++) props.push({ type: 'bus', x: Math.round((X + (i - 1) * WEEVAL.bus.w) * 100) / 100, z: 0, y: 0, up: Math.round(L.deckTop * 10) / 10 });
+    props.push({ type: 'boxes', x: L.stackX, z: 0, y: L.low });
+    for (const p of w.props) props.push({ ...p });
+    return normalizeTrack({ name: 'Stunt Jump', width: WEEVAL.width, walls: true, defaultLaps: 1, handles: w.handles, weeval: { stage: 1, custom: true }, props });
+  }
   if (key === 'random') return makeRandomTrack(RANDOM_TEMPLATE_SEED);   // fixed seed: reproducible for tests/previews
   const raw = RAW[key];
   if (!raw) throw new Error('Unknown template ' + key);
@@ -572,6 +580,7 @@ export const TEMPLATE_INFO = {
   technical: 'Tight and twisty, lots of braking',
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
+  stunt: 'Weeval Knievel as a track you can change: a high ramp, a gap with buses, a bullseye and a stack of boxes. Open it in the editor and move things about, add more buses, lengthen the gap.',
   soundwave: "Pump up da' volume! A hi-fidelity criss-cross of a track that goes up to 11: two crossroads and banking that flips at every crossing.",
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',
