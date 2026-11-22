@@ -33,6 +33,62 @@ export class GetawayDriver {
     this.shotCool = 1 + rng() * 1.5; this.fire = null; this.hotR = HOT_RANGE;
   }
 
+  _nbrs(n) {
+    const { cols, rows } = this.game.L.T, i = n % (cols + 1), j = Math.floor(n / (cols + 1)), out = [];
+    if (i > 0) out.push(n - 1); if (i < cols) out.push(n + 1); if (j > 0) out.push(n - (cols + 1)); if (j < rows) out.push(n + (cols + 1));
+    return out;
+  }
+  /** At junction `n`, having come from `from`: straight on about half the time, otherwise a turn; a dead end turns round. */
+  _choose(from, n) {
+    const L = this.game.L, nd = L.nodes[n], fr = L.nodes[from], opts = this._nbrs(n).filter((m) => m !== from);
+    if (!opts.length) return from;
+    const dx = nd.x - fr.x, dz = nd.z - fr.z, dl = Math.hypot(dx, dz) || 1;
+    const w = opts.map((m) => { const q = L.nodes[m], ex = q.x - nd.x, ez = q.z - nd.z, dot = (dx * ex + dz * ez) / (dl * (Math.hypot(ex, ez) || 1)); return dot > 0.5 ? 2 : 1; });
+    let r = this.rng() * w.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < opts.length; k++) { r -= w[k]; if (r <= 0) return opts[k]; }
+    return opts[opts.length - 1];
+  }
+  /** Wander the streets junction to junction (traffic, and police with nothing to chase): where to head next. `node` is the junction being driven to. */
+  _wander(car) {
+    const L = this.game.L;
+    if (this.to == null) {                        // start: head for the junction ahead on the street the car is facing along
+      const n0 = nearestNode(L, car.pos.x, car.pos.z), nd = L.nodes[n0];
+      const ahead = this._nbrs(n0).filter((m) => (L.nodes[m].x - nd.x) * car.az.x + (L.nodes[m].z - nd.z) * car.az.z > 0);
+      this.from = n0; this.to = ahead.length ? ahead[Math.floor(this.rng() * ahead.length)] : this._nbrs(n0)[0]; this.next = this._choose(this.from, this.to);
+    }
+    let T = L.nodes[this.to];
+    const Nn = L.nodes[this.next], dT = Math.hypot(T.x - car.pos.x, T.z - car.pos.z);
+    // on to the next junction only once this one is behind the car (till then the corner at it is in view, so the car slows for it and takes it properly)
+    const rx = car.pos.x - T.x, rz = car.pos.z - T.z, lo = Math.hypot(Nn.x - T.x, Nn.z - T.z) || 1, li = Math.hypot(T.x - L.nodes[this.from].x, T.z - L.nodes[this.from].z) || 1;
+    const pastOut = (rx * (Nn.x - T.x) + rz * (Nn.z - T.z)) / lo > 5, pastIn = (rx * (T.x - L.nodes[this.from].x) + rz * (T.z - L.nodes[this.from].z)) / li > 1;
+    if (dT < 3 || (dT < 20 && (pastOut || pastIn))) { this.from = this.to; this.to = this.next; this.next = this._choose(this.from, this.to); T = L.nodes[this.to]; }
+    const N = L.nodes[this.next];
+    return { x: T.x, z: T.z, kind: 'drive', node: this.to, path: [{ x: T.x, z: T.z }, { x: N.x, z: N.z }] };
+  }
+
+  /**
+   * Junction manners for a wandering car: stop at the line, wait a moment, and go only when no other car is in the junction or has
+   * been let in ahead of it (one at a time). Returns the speed to keep to (Infinity = free to go).
+   */
+  _junction(car, G, ctx, dt) {
+    const g = this.game, L = g.L, n = G.node, nd = L.nodes[n], px = car.pos.x, pz = car.pos.z, d = Math.hypot(nd.x - px, nd.z - pz);
+    if (this.jxDone === n || d > 45) { if (d > 45) this.jxWait = 0; return Infinity; }
+    const jx = g.jx || (g.jx = {});
+    if (d < 8.5) { this.jxDone = n; this.jxWait = 0; return Infinity; }          // (already in it: just clear it)
+    const LINE = 14, vs = Math.sqrt(2 * 3 * Math.max(d - LINE, 0));
+    if (d > LINE + 4 || car.fwdSpeed > 1.2) { this.jxWait = 0; return vs; }
+    this.jxWait = (this.jxWait || 0) + dt;                                         // at the line: wait a moment, then look
+    if (this.jxWait < 0.7) return 0;
+    let free = true;
+    const cl = jx[n]; if (cl && cl.car !== car && g.time - cl.t < 6 && Math.hypot(cl.car.pos.x - nd.x, cl.car.pos.z - nd.z) < 16) free = false;
+    if (free) for (const c of ctx.cars || []) {
+      if (c === car) continue;
+      if (Math.abs(c.pos.x - nd.x) < 9.5 && Math.abs(c.pos.z - nd.z) < 9.5 && Math.abs(c.pos.y - car.pos.y) < 3) { free = false; break; }
+    }
+    if (free || this.jxWait > 9) { jx[n] = { car, t: g.time }; this.jxDone = n; this.jxWait = 0; return Infinity; }
+    return 0;
+  }
+
   /** A fast U-turn swings the car across the street: only do it near the middle of a street (or junction) with clear road about it. */
   _roomToSpin(L, px, pz, sA) {
     if (!sA) return false;
@@ -95,11 +151,7 @@ export class GetawayDriver {
       }
       return tail;
     }
-    if (!this.patrol || g.time > this.patrolT || Math.hypot(this.patrol.x - cx, this.patrol.z - cz) < 12) {
-      const out = g.loose(), pick = out.length && this.rng() < 0.75 ? out[Math.floor(this.rng() * out.length)] : null;       // (mostly: where a bag is out, so they are close when it is lifted)
-      const bk = pick ? { bag: { x: pick.x, z: pick.z } } : g.L.banks[Math.floor(this.rng() * g.L.banks.length)]; this.patrol = { x: bk.bag.x, z: bk.bag.z }; this.patrolT = g.time + 25;
-    }
-    return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
+    return this._wander(car);      // nothing to chase: cruise the streets like the traffic, each car on its own random way (not all waiting at the banks)
   }
 
   /** The junctions the robber will probably pass (shared by every police car, worked out about twice a second). */
@@ -206,6 +258,8 @@ export class GetawayDriver {
       if (G.kind === 'guard' && dist < 9) vT = 0;
       if (G.kind === 'block') vT = Math.min(vT, 6 + dist * 0.8);
     }
+    if (G.kind === 'drive') vT = Math.min(vT, this._junction(car, G, ctx, dt));      // wandering: stop at the line for a moment, one car through a junction at a time
+    else if (this.to != null) { this.to = null; this.jxDone = null; this.jxWait = 0; }      // (a chase starts: pick the wander up afresh later)
 
     // stay on the tarmac: never aim for the pavement, and steer back to the road if the car has strayed onto it (except on the way into the garage)
     const garage = G.kind === 'safehouse' && g.safehouse.gx !== undefined && Math.hypot(px - g.safehouse.gx, pz - g.safehouse.street) < 34;
@@ -220,7 +274,8 @@ export class GetawayDriver {
         if (c === car || (chase && c === foe)) continue;
         const tr = this.role === 'traffic' || !g.alarm, human = c === foe;       // traffic, and the police and robber until a robbery starts, stop for anything in the way
         const rx = c.pos.x - px, rz = c.pos.z - pz, ahead = rx * fx + rz * fz, side = Math.abs(rz * fx - rx * fz);
-        if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && side < (tr ? 3.6 : 3.3) && Math.abs(c.pos.y - car.pos.y) < 3 && ((tr && human) || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
+        const onWay = tr && Math.hypot(c.pos.x - ax, c.pos.z - az) < 3.6;      // (a car sitting where we are heading - round a corner, say - counts too)
+        if (ahead > 0 && ahead < (tr ? 10 : 7) + Math.max(v, 0) * 0.8 && (side < (tr ? 3.6 : 3.3) || onWay) && Math.abs(c.pos.y - car.pos.y) < 3 && ((tr && human) || c.az.x * fx + c.az.z * fz > 0.2 || c.speed < 2.5)) {
           const gap = ahead - (tr ? 7 : 5.5); if (tr && human) humanBlock = true; vT = Math.min(vT, gap <= 0 ? 0 : gap * 1.3 + Math.max(0, c.fwdSpeed ?? 0) * 0.8); blocked = true;
         }
       }
@@ -245,6 +300,7 @@ export class GetawayDriver {
     const err = vT - v;
     let throttle = err > 0 ? clamp(0.12 + err / 4, 0, 1) : 0;
     let brk = err < -2.5 && v > 3 ? clamp((-err - 1.5) / 9, 0, 1) : 0;
+    if (vT < 1 && v > 0.2 && G.kind !== 'idle') { throttle = 0; brk = Math.max(brk, v > 3 ? 0.8 : 0.5); }      // (told to stop: stop, not coast on at a few m/s)
     if (G.kind === 'idle') { throttle = 0; brk = v > 1 ? 0.5 : 0; }
 
     if (this.reverse > 0) {
@@ -285,31 +341,5 @@ export class GetawayDriver {
 /** Ordinary traffic: drives straight down a street, and at each junction goes straight on or turns left or right at random (never turning round), in the left-hand lane. */
 export class TrafficDriver extends GetawayDriver {
   constructor(rng, game) { super(rng, game, 'traffic', 0.4); this.cruise = 9 + rng() * 5; this.lane = 3.2; this.from = null; this.to = null; this.next = null; }
-  _nbrs(n) {
-    const { cols, rows } = this.game.L.T, i = n % (cols + 1), j = Math.floor(n / (cols + 1)), out = [];
-    if (i > 0) out.push(n - 1); if (i < cols) out.push(n + 1); if (j > 0) out.push(n - (cols + 1)); if (j < rows) out.push(n + (cols + 1));
-    return out;
-  }
-  /** At junction `n`, having come from `from`: straight on about half the time, otherwise a turn; a dead end turns round. */
-  _choose(from, n) {
-    const L = this.game.L, nd = L.nodes[n], fr = L.nodes[from], opts = this._nbrs(n).filter((m) => m !== from);
-    if (!opts.length) return from;
-    const dx = nd.x - fr.x, dz = nd.z - fr.z, dl = Math.hypot(dx, dz) || 1;
-    const w = opts.map((m) => { const q = L.nodes[m], ex = q.x - nd.x, ez = q.z - nd.z, dot = (dx * ex + dz * ez) / (dl * (Math.hypot(ex, ez) || 1)); return dot > 0.5 ? 2 : 1; });
-    let r = this.rng() * w.reduce((a, b) => a + b, 0);
-    for (let k = 0; k < opts.length; k++) { r -= w[k]; if (r <= 0) return opts[k]; }
-    return opts[opts.length - 1];
-  }
-  think(car) {
-    const L = this.game.L;
-    if (this.to == null) {                        // start: head for the junction ahead on the street the car is facing along
-      const n0 = nearestNode(L, car.pos.x, car.pos.z), nd = L.nodes[n0];
-      const ahead = this._nbrs(n0).filter((m) => (L.nodes[m].x - nd.x) * car.az.x + (L.nodes[m].z - nd.z) * car.az.z > 0);
-      this.from = n0; this.to = ahead.length ? ahead[Math.floor(this.rng() * ahead.length)] : this._nbrs(n0)[0]; this.next = this._choose(this.from, this.to);
-    }
-    let T = L.nodes[this.to];
-    if (Math.hypot(T.x - car.pos.x, T.z - car.pos.z) < 8) { this.from = this.to; this.to = this.next; this.next = this._choose(this.from, this.to); T = L.nodes[this.to]; }
-    const N = L.nodes[this.next];
-    return { x: T.x, z: T.z, kind: 'drive', path: [{ x: T.x, z: T.z }, { x: N.x, z: N.z }] };
-  }
+  think(car) { return this._wander(car); }
 }

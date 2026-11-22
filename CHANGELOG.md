@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.664 — The Getaway: the other cars drive like a town
+
+- **Everyone follows the streets.** Traffic and the police now wander junction to junction on their own side of the road, taking each corner properly (slowing for it, not cutting across the pavement). In a test run, hits on buildings dropped from about a dozen every two minutes to none, and bumps between cars from about eight to none.
+- **Junction manners.** A car slows to a stop at the line, waits a moment, and goes only when the junction is clear; one car through at a time.
+- **They stop for each other** (and for you), including a car sitting where they are about to turn. Cars told to stop now really stop instead of rolling on at a few m/s.
+- **Police on patrol are spread out.** With nothing to chase they cruise the town at random like the traffic, not all waiting around the banks. The chase behaviour is unchanged for now.
+
 ## v17.663 — The Getaway: much smarter police
 
 - **They know where you are going.** The police work out the junctions you will pass on your way to the safehouse and set up on them (cars 1 and 5 hold the next junctions; before it was only a guess from your heading).
