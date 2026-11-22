@@ -105,10 +105,10 @@ export function buildTrackGeometry(track) {
       if ((track.structures || []).some((st) => Math.hypot(track.px[i] - st.x, track.pz[i] - st.z) < 24)) { blocked[i] = 1; continue; }
       for (let k = 0; k < n; k += 2) {
         let d = Math.abs(i - k); d = Math.min(d, n - d); if (d < cut || track.py[k] + 0.5 >= track.py[i] - SLAB) continue;
-        if (Math.hypot(track.px[k] - track.px[i], track.pz[k] - track.pz[i]) < track.hw[i] + track.hw[k] + 3) { blocked[i] = 1; break; }
+        if (Math.hypot(track.px[k] - track.px[i], track.pz[k] - track.pz[i]) < track.hw[i] + track.hw[k] - 1) { blocked[i] = 1; break; }
       }
     }
-    const wide = Math.max(1, Math.round(8 / track.ds));
+    const wide = Math.max(1, Math.round(4 / track.ds));
     for (let i = 0; i < n; i++) {
       if (track.gap[i] || track.py[i] < 3.2) continue;
       let ok = true; for (let d = -wide; d <= wide && ok; d++) if (blocked[(i + d + n) % n]) ok = false;

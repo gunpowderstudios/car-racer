@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.669 — Solid walls under all the high hills
+
+- High hills now stand on the same solid wall as the low ones. The wall used to be skipped wherever any lower road ran near it sideways, which left gaps on steep hills; now it is only skipped where another road really passes underneath (or at a flyover or tunnel).
+- Jumps already cut straight down at the gap, and still do.
+
 ## v17.668 — Raised roads stand on solid walls, not pillars
 
 - **No more supports poking through the road.** Pillars are gone from every track. A raised road now has solid sides, the same width as the road, going straight down to the ground.
