@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.661 — Weeval Knievel: boxes instead of skull barrels
+
+- The skull barrels (and their HIGH EXPLOSIVES gantry) are gone from the run-out. The big stack of cardboard boxes now stands where they were, at the far end of the run-out, and comes 10 m nearer the jump every stage, so you have to stop sooner and more accurately after each landing. Crash into it and the boxes fly and slow you down, but it no longer ends the run.
+- The start platform now climbs 20 m higher each stage (80 m on stage 1, 160 m on stage 5; it was only 5 m a stage), so every drop-in feels taller. The takeoff and landing heights are unchanged.
+
 ## v17.660 — Natural handling back, more grip
 
 - Reverted the handling experiments that made the car feel strange: the 30% tighter steering, the extra tail swing in tight corners and the helper changes that went with it are gone.
