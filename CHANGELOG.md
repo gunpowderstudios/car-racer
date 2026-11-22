@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.660 — Natural handling back, more grip
+
+- Reverted the handling experiments that made the car feel strange: the 30% tighter steering, the extra tail swing in tight corners and the helper changes that went with it are gone.
+- The anti-roll help now only steps in when a car is about to tip over (about 20 degrees of lean and more), so normal cornering lean looks natural again. The campervan has the steady anti-roll assist the other tall cars have.
+- Your tyres have 25% more grip (was 20%), so the car slides less when cornering. Rivals unchanged.
+
 ## v17.659 — More tyre grip
 
 - Your car's tyres have 20% more grip (rivals unchanged), and the tail-swing in tight powered corners is eased back from 55% to 40% rear-grip loss, so the car slides less overall while the back end still steps out in tight corners.

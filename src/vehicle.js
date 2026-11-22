@@ -26,8 +26,8 @@ export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it
 export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const DONUT_MAX = 12;         // m/s: Boost + steering below this speed swings the back end round (a donut); above it the normal drift is all there is
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;
-export const ROLL_SOFT = { strength: 0.7, from: 0.2, to: 0.5 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
-export const TIGHT_SLIDE = 0.4;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
+export const ROLL_SOFT = { strength: 0.9, from: 0.36, to: 0.6 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
+export const TIGHT_SLIDE = 0;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 /** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
@@ -354,7 +354,7 @@ export class Vehicle {
     for (const w of this.wheels) if (w.contact) { gx += w.normal.x; gy += w.normal.y; gz += w.normal.z; }
     const gl = Math.hypot(gx, gy, gz); if (gl > 0.5 && gy / gl > 0.3) { gx /= gl; gy /= gl; gz /= gl; } else { gx = 0; gy = 1; gz = 0; }
     const roll = (this.ay.y * gz - this.ay.z * gy) * this.az.x + (this.ay.z * gx - this.ay.x * gz) * this.az.y + (this.ay.x * gy - this.ay.y * gx) * this.az.z;                       // (ay x up) along the car's long axis: the sine of how far it has rolled, signed so a torque of +roll rights it
-    const soft = ROLL_SOFT.strength * clamp((this.speed - (this.turnMul > 1 ? 9 : 16)) / 8, 0, 1) * clamp((Math.abs(roll) - ROLL_SOFT.from) / (ROLL_SOFT.to - ROLL_SOFT.from), 0, 1);      // (the always-on part, for speed only - a slow hairpin cannot tip it: nothing for a normal lean, more the further over it goes)
+    const soft = ROLL_SOFT.strength * clamp((this.speed - 16) / 8, 0, 1) * clamp((Math.abs(roll) - ROLL_SOFT.from) / (ROLL_SOFT.to - ROLL_SOFT.from), 0, 1);      // (the always-on part, for speed only - a slow hairpin cannot tip it: nothing for a normal lean, more the further over it goes)
     const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0, this.spec.rollGuard || 0, this.aiRollGuard || 0, soft);      // AI rivals can get extra stability without changing the player's vehicle
     if (g <= 0) return;
     const rate = this.angVel.dot(this.az);
@@ -413,7 +413,7 @@ export class Vehicle {
     const want = clamp(ref, -lim, lim);
     // how much faster than wanted it is turning, in the direction it is already turning (turning the wrong way counts in full)
     const over = Math.sign(yaw) === Math.sign(want) || Math.abs(want) < 0.05 ? Math.abs(yaw) - Math.abs(want) : Math.abs(yaw) + Math.abs(want);
-    const tol = 0.18 + 0.2 * Math.abs(this.steerState) * clamp((16 - v) / 6, 0, 1);                                              // rad/s of slack before it steps in
+    const tol = 0.18;                                              // rad/s of slack before it steps in
     const alpha = over > tol ? clamp((over - tol) * 7 * k, 0, 5.5 * k) : 0;    // rad/s^2 of correcting yaw acceleration
     this.stabTorque = alpha;
     if (alpha > 0) this.T.addScaled(this.ay, -Math.sign(yaw) * alpha * sp.inertia.y * (1 - drifting));
@@ -449,7 +449,7 @@ export class Vehicle {
       const stab = this.opts.stability || 0;                              // Arcade handling: the helper steps in earlier, harder and quicker
       const over = Math.max(0, Math.abs(rearSlip) - (0.12 - 0.04 * stab));
       const gain = this.opts.assist * clamp((this.speed - 4) / 6, 0, 1);
-      assist = Math.sign(rearSlip) * clamp(over * (1 + 0.5 * stab) * gain, 0, 0.28 + 0.06 * stab) * (1 - 0.6 * this._tightAmt());      // (a tight powered corner: the helper lets the tail hang out longer)
+      assist = Math.sign(rearSlip) * clamp(over * (1 + 0.5 * stab) * gain, 0, 0.28 + 0.06 * stab);
     }
     this.assistAngle += (assist - this.assistAngle) * (1 - Math.exp(-dt / (0.12 - 0.04 * (this.opts.stability || 0))));   // no snapping
     angle += this.assistAngle;

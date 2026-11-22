@@ -120,6 +120,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   campervan: {
+    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): a tall van tips over far too easily with grippy tyres
     reference: '1972 VW Type 2 1600 campervan',
     mass: 1280,
     frontWeight: 0.44,
