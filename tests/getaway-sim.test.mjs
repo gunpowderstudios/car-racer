@@ -87,10 +87,10 @@ test('police cars have different jobs in a chase: tail, cut him off at the junct
   const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true; game.safehouse = { x: L.policeStart.x, z: L.policeStart.z };
   const foe = { pos: { x: rob.x - 60, z: rob.z }, vel: { x: 20, z: 0 }, speed: 20 }, cop = { pos: { x: rob.x + 120, z: rob.z + 40 }, vel: { x: 0, z: 0 }, speed: 0, fwdSpeed: 0, az: { x: 1, z: 0 } };
   const kind = (slot) => new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind;
-  assert.equal(kind(0), 'robber'); assert.equal(kind(1), 'intercept'); assert.equal(kind(2), 'guard'); assert.equal(kind(3), 'block'); assert.equal(kind(4), 'intercept'); assert.equal(kind(5), 'intercept'); assert.equal(kind(6), 'robber');
+  assert.equal(kind(0), 'robber'); assert.equal(kind(1), 'intercept'); assert.equal(kind(2), 'guard'); assert.equal(kind(3), 'block'); assert.equal(kind(4), 'block'); assert.equal(kind(5), 'intercept'); assert.equal(kind(6), 'robber');
   const at = (slot) => { const t = new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe); return t; };
-  assert.notEqual(at(1).x + ',' + at(1).z, at(4).x + ',' + at(4).z, 'the net spreads over different junctions');
-  const b = at(3); assert.ok(b.x > foe.pos.x + 20 && Math.abs(b.hx) > 0.9, 'the roadblock sits ahead of the robber, across his way');
+  assert.notEqual(at(1).x + ',' + at(1).z, at(5).x + ',' + at(5).z, 'the net spreads over different junctions');
+  const b = at(3); assert.ok(Math.hypot(b.x - foe.pos.x, b.z - foe.pos.z) > 40 && Math.abs(Math.hypot(b.hx, b.hz) - 1) < 0.01, 'the roadblock sits well ahead of the robber, across a street on his way');
 });
 
 test('police cars are allowed the boost donut (fast U-turns and parking broadside), the AI robber is not', () => {
@@ -160,9 +160,9 @@ test('the bank sign hangs out in front of the cornice, not behind it like a bar'
   assert.match(readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), /sign\.position\.set\(b\.cx, y0 \+ 6\.6, b\.cz \+ b\.hz \+ 0\.8\)/);
 });
 
-test('when the robber has the cash and a police car is close, every police car drops its job and goes straight for him', () => {
+test('when the robber has the cash and a police car is close, the chasing cars drop their jobs and go straight for him (the two roadblock cars and the safehouse watcher hold their posts)', () => {
   const L = townLayout(), game = new GetawayGame(L), rob = L.nodes[Math.floor(L.nodes.length / 2)];
   const bag = game.bags.find((b) => b.state === 'home'); game.robberBag = bag; bag.state = 'robber'; game.alarm = true; game.safehouse = { x: L.policeStart.x, z: L.policeStart.z };
   const foe = { pos: { x: rob.x - 60, z: rob.z }, vel: { x: 20, z: 0 }, speed: 20 }, cop = { pos: { x: rob.x - 10, z: rob.z + 20 }, vel: { x: 0, z: 0 }, speed: 0, fwdSpeed: 0, az: { x: 1, z: 0 } };
-  for (let slot = 0; slot < 8; slot++) assert.equal(new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind, 'robber', `slot ${slot} goes for him`);
+  for (let slot = 0; slot < 8; slot++) assert.equal(new GetawayDriver(rngOf(3 + slot), game, 'police', 0.7, slot).think(cop, foe).kind, { 2: 'guard', 3: 'block', 4: 'block' }[slot % 7] || 'robber', `slot ${slot}`);
 });

@@ -4,7 +4,7 @@
 // by following the junction route from getaway.js, so it never tries to cut through a building.
 
 import { clamp } from './math.js';
-import { route, streetAt, nearestNode, safehouseRoute } from './getaway.js';
+import { route, streetAt, nearestNode, safehouseRoute, predictJunctions, routeOpen, edgeKey } from './getaway.js';
 
 /** How far (m, up to `max`) a car can go from (x,z) in direction (dx,dz) before it would touch a building or wall, keeping `m` clear at the sides. */
 export function clearAhead(L, x, z, dx, dz, max, m = 1.4) {
@@ -16,7 +16,8 @@ export function clearAhead(L, x, z, dx, dz, max, m = 1.4) {
   return max;
 }
 
-const HOT_RANGE = 110;      // metres: a police car this close to a robber who has the cash drops everything and rams him
+const HOT_RANGE = 110;      // metres: a police car this close to a robber who has the cash drops everything and rams him (more the longer he runs: see GetawayGame.heat)
+const SHOT = { range: 45, cone: 0.965, cool: 1.1, dmg: 4 };      // a police car lined up on the robber within this range (m) and cone (cosine of the angle) fires a shot every so often
 
 export class GetawayDriver {
   /** `game` is the GetawayGame, `role` the side this driver plays ('robber' or 'police'). */
@@ -29,6 +30,7 @@ export class GetawayDriver {
     this.lane = role === 'traffic' ? 4 : 3.4;      // metres to the left of the middle of the street (keep left, like the traffic)
     this.patrol = null; this.patrolT = 0; this.goal = null; this.path = []; this.repathT = 0;
     this.input = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false };
+    this.shotCool = 1 + rng() * 1.5; this.fire = null; this.hotR = HOT_RANGE;
   }
 
   /** A fast U-turn swings the car across the street: only do it near the middle of a street (or junction) with clear road about it. */
@@ -60,33 +62,36 @@ export class GetawayDriver {
       return best ? { x: best.x, z: best.z, kind: 'bag' } : { x: cx, z: cz, kind: 'idle' };
     }
     // police: with the alarm on, each car has its own job (see `slot`); otherwise wait near the banks where a bag is out
+    if (!(foe && g.robberBag) && this.block) this._releaseBlock();
     if (foe && g.robberBag) {
       const d = Math.hypot(foe.pos.x - cx, foe.pos.z - cz), lead = d < 70 ? clamp(d / Math.max(car.speed + 6, 14), 0, 1.5) : 0;
-      const tail = { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' }, job = this.slot % 6;
-      if (this.role === 'police' && g.alarm && d < HOT_RANGE) return tail;      // he has the cash and is close: every car drops its job and goes straight for him
+      const tail = { x: foe.pos.x + foe.vel.x * lead, z: foe.pos.z + foe.vel.z * lead, kind: 'robber' }, job = this.slot % 7, heat = Math.min(g.heat || 0, 70);
+      const hotR = this.hotR = HOT_RANGE + heat * 1.6;      // the longer he runs with the cash, the further away a car drops its job and joins the ramming
       const sp = Math.hypot(foe.vel.x, foe.vel.z), hx = sp > 3 ? foe.vel.x / sp : foe.az.x, hz = sp > 3 ? foe.vel.z / sp : foe.az.z;
-      // the net: junctions ahead of him on the way he is heading, nearest first; cars 1, 4 and 5 take the 1st, 2nd and 3rd so they spread across different streets
-      const ahead = [];
-      for (const n of g.L.nodes) { const ex = n.x - foe.pos.x, ez = n.z - foe.pos.z, along = ex * hx + ez * hz; if (along > 25 && along < 190 && Math.abs(ex * hz - ez * hx) < 70) ahead.push({ n, along, side: Math.abs(ex * hz - ez * hx) }); }
-      ahead.sort((p, q) => (p.along + p.side * 1.5) - (q.along + q.side * 1.5));
-      const rank = job === 1 ? 0 : job === 4 ? 1 : job === 5 ? 2 : -1;
-      if (rank >= 0 && ahead.length) {
-        const best = ahead[Math.min(rank, ahead.length - 1)].n, mine = Math.hypot(best.x - cx, best.z - cz);
-        if (mine > 14) return { x: best.x, z: best.z, kind: 'intercept' };
-        if (d > 35) return { x: best.x, z: best.z, kind: 'guard' };      // in place: hold the junction (a real car, so he can ram his way through) until he is close
+      const pred = this._predict(foe, hx, hz, sp);      // the junctions he is likely to pass on his way to the safehouse (the police know where it is)
+      // roadblock: cars 3 and 4 park across a street he must use, ahead of him, with a gap between them - but never so that the safehouse can no longer be reached
+      if (job === 3 || job === 4) {
+        const blk = this._roadblock(foe, hx, hz, pred);
+        if (blk && d > 22) { const off = job === 3 ? -5.0 : 4.8, cxv = -blk.hz, czv = blk.hx; return { x: blk.x + cxv * off, z: blk.z + czv * off, kind: 'block', hx: blk.hx, hz: blk.hz }; }
       }
-      if (job === 3) {                                 // roadblock: parked broadside across the street ahead of him, just short of a junction
-        let blk = this.block;
-        if (blk && ((blk.x - foe.pos.x) * hx + (blk.z - foe.pos.z) * hz < -6 || Math.hypot(blk.x - cx, blk.z - cz) > 260)) blk = this.block = null;     // (he is past it: back to the chase)
-        if (!blk && ahead.length) {
-          const cand = ahead.find((q) => q.along > 55 && q.side < 14) || ahead[0], n = cand.n;
-          this.block = blk = { x: n.x - hx * 13, z: n.z - hz * 13, hx, hz };
-        }
-        if (blk && d > 22) return { x: blk.x, z: blk.z, kind: 'block', hx: blk.hx, hz: blk.hz };
-      }
-      if (job === 2 && g.safehouse && d > 22) {        // watch the safehouse: wait at the junction nearest it, and join in when he comes close
+      if (job === 2 && g.safehouse && d > 40) {        // watch the safehouse: wait at the junction nearest it, and join in when he comes close
         const nd = g.L.nodes[nearestNode(g.L, g.safehouse.x, g.safehouse.z)];
         if (Math.hypot(foe.pos.x - nd.x, foe.pos.z - nd.z) > 60) return { x: nd.x, z: nd.z, kind: 'guard' };
+      }
+      if (this.role === 'police' && g.alarm && d < hotR) return tail;      // he has the cash and is close: every other car drops its job and goes straight for him
+      // the net: junctions on his predicted way, nearest first; cars 1 and 5 take the 1st and 2nd (past 40 m), so they spread across different streets
+      const rank = job === 1 ? 0 : job === 5 ? 1 : -1;
+      if (rank >= 0) {
+        const ahead = pred.filter((q) => q.along > 40 && q.along < 230);
+        if (ahead.length) {
+          const best = g.L.nodes[ahead[Math.min(rank, ahead.length - 1)].n], mine = Math.hypot(best.x - cx, best.z - cz);
+          if (mine > 14) return { x: best.x, z: best.z, kind: 'intercept' };
+          if (d > 35) return { x: best.x, z: best.z, kind: 'guard' };      // in place: hold the junction (a real car, so he can ram his way through) until he is close
+        }
+      }
+      if (job === 6 && d < 160) {                      // the pincer: come up alongside him on the side nearest, so the car behind and this one box him in
+        const cxv = -hz, czv = hx, side = ((cx - foe.pos.x) * cxv + (cz - foe.pos.z) * czv) >= 0 ? 1 : -1, ahead = clamp(sp * 0.9, 4, 22);
+        if (d > 24) return { x: foe.pos.x + hx * ahead + cxv * side * 5, z: foe.pos.z + hz * ahead + czv * side * 5, kind: 'robber' };
       }
       return tail;
     }
@@ -96,6 +101,50 @@ export class GetawayDriver {
     }
     return { x: this.patrol.x, z: this.patrol.z, kind: 'patrol' };
   }
+
+  /** The junctions the robber will probably pass (shared by every police car, worked out about twice a second). */
+  _predict(foe, hx, hz, sp) {
+    const g = this.game;
+    if (!g._pred || g.time - g._pred.t > 0.45 || g._pred.sh !== g.safehouse) {
+      const list = g.safehouse ? predictJunctions(g.L, foe.pos.x, foe.pos.z, hx, hz, sp, g.safehouse, g.safehouse) : [];
+      g._pred = { t: g.time, list: list.filter((q) => q.along > 6), sh: g.safehouse };
+    }
+    return g._pred.list;
+  }
+
+  /** The roadblock the cars in slots 3 and 4 share: a spot just short of a junction on his predicted way, 60-210 m ahead, on a street that can be shut without sealing the safehouse off. */
+  _roadblock(foe, hx, hz, pred) {
+    const g = this.game, L = g.L;
+    let blk = g.roadblock;
+    if (blk && (((blk.x - foe.pos.x) * hx + (blk.z - foe.pos.z) * hz < -8) || Math.hypot(blk.x - foe.pos.x, blk.z - foe.pos.z) > 260)) { blk = g.roadblock = null; g.blocks.delete(3); g.blocks.delete(4); }      // (he is past it, or it is far behind: set up another)
+    if (blk) return blk;
+    const S = g.safehouse, target = nearestNode(L, S.gx !== undefined ? S.gx : S.x, S.street !== undefined ? S.street : S.z);
+    const garageEdge = (() => { const s2 = streetAt(L, S.gx !== undefined ? S.gx : S.x, S.street !== undefined ? S.street : S.z); if (!s2 || s2.kind === 'node') return null; return s2.kind === 'h' ? edgeKey(s2.j * (L.T.cols + 1) + s2.i, s2.j * (L.T.cols + 1) + s2.i + 1) : edgeKey(s2.j * (L.T.cols + 1) + s2.i, (s2.j + 1) * (L.T.cols + 1) + s2.i); })();
+    const start = pred.length ? (pred[0].from !== null && pred[0].from !== undefined ? pred[0].from : pred[0].n) : nearestNode(L, foe.pos.x, foe.pos.z);
+    for (const q of pred) {
+      if (q.along < 60 || q.along > 210 || q.from === null || q.from === undefined) continue;
+      const key = edgeKey(q.from, q.n); if (key === garageEdge) continue;
+      const blocked = g.blockedEdges(); blocked.add(key);
+      if (!routeOpen(L, start, target, blocked)) continue;      // that street is the only way to the safehouse: leave it open
+      const a = L.nodes[q.from], b = L.nodes[q.n], dl = Math.hypot(b.x - a.x, b.z - a.z) || 1, dx = (b.x - a.x) / dl, dz = (b.z - a.z) / dl;
+      blk = g.roadblock = { x: b.x - dx * 13, z: b.z - dz * 13, hx: dx, hz: dz, a: q.from, b: q.n };
+      g.blocks.set(3, { a: q.from, b: q.n }); g.blocks.set(4, { a: q.from, b: q.n });
+      return blk;
+    }
+    return null;
+  }
+  /** A police car that has the robber in its sights (close, straight ahead, nothing in the way) fires every second or so; the game applies the hit (see Derby.shoot). */
+  _aim(car, foe, dt, sk) {
+    this.shotCool -= dt;
+    const L = this.game.L, dx = foe.pos.x - car.pos.x, dz = foe.pos.z - car.pos.z, d = Math.hypot(dx, dz);
+    if (this.shotCool > 0 || d > SHOT.range || d < 3 || car.speed < 3) return;
+    if ((car.az.x * dx + car.az.z * dz) / d < SHOT.cone) return;
+    if (clearAhead(L, car.pos.x, car.pos.z, dx / d, dz / d, d, 1.0) < d - 2) return;
+    this.shotCool = SHOT.cool + this.rng() * 0.7;
+    const p = clamp(0.9 - d / 70, 0.15, 0.85) * clamp(1 - Math.abs(foe.angVel.y) * 0.7, 0.35, 1) * (0.7 + 0.3 * clamp(sk, 0, 1));      // a car that is swerving is harder to hit
+    this.fire = { hit: this.rng() < p, d };
+  }
+  _releaseBlock() { const g = this.game; this.block = null; if (g.roadblock) { g.roadblock = null; g.blocks.delete(3); g.blocks.delete(4); } }
 
   /** The point `ahead` metres along a list of points, and the way that stretch runs (for staying in lane). */
   _along(P, ahead) {
@@ -124,8 +173,8 @@ export class GetawayDriver {
     }
     this.backing = false;
     // The police pick up speed as the robber gets bags home (a little each), ease off after a strike, and in a chase match whatever he is doing (the cars are all equally fast now)
-    const sk = clamp(this.skill + 0.06 * (g.robbed || 0) - 0.03 * (g.strikes || 0), 0.3, 1.15), cruise = this.role === 'police' ? 22 + sk * 8 : this.cruise;
-    const hot = this.role === 'police' && !!foe && g.alarm && !!g.robberBag && Math.hypot(foe.pos.x - px, foe.pos.z - pz) < HOT_RANGE;      // the robber is carrying the cash: ram him, as hard and as fast as possible
+    const sk = clamp(this.skill + 0.06 * (g.robbed || 0) - 0.03 * (g.strikes || 0) + 0.12 * Math.min((g.heat || 0) / 60, 1), 0.3, 1.2), cruise = this.role === 'police' ? 22 + sk * 8 : this.cruise;
+    const hot = this.role === 'police' && !!foe && g.alarm && !!g.robberBag && Math.hypot(foe.pos.x - px, foe.pos.z - pz) < this.hotR;      // the robber is carrying the cash: ram him, as hard and as fast as possible
     const keepUp = (this.role === 'police' && foe && g.alarm) ? (hot ? Math.min(60, Math.max(foe.speed, 0) * 1.2 + 10) : Math.min(50, Math.max(foe.speed, 0) * (0.9 + 0.2 * sk) + 3)) : 0;
     let vT = G.kind === 'idle' ? 0 : Math.max(cruise * (this.role === 'police' ? (g.alarm ? (hot ? 1.4 : 1.12) : 0.6) : this.role === 'robber' && g.robberBag ? 1.3 : 1), G.kind === 'robber' || G.kind === 'intercept' ? keepUp : 0), ax = G.x, az = G.z, chase = false;
     const sA = streetAt(L, px, pz), sB = streetAt(L, G.x, G.z);
@@ -227,6 +276,7 @@ export class GetawayDriver {
     inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
     const ram = hot ? chase && dist > 4 && dist < 90 && Math.abs(ang) < 0.3 && v > 8 && car.boostFuel > 0.12
       : this.role === 'police' && chase && sk > 0.5 && dist > 6 && dist < 40 && Math.abs(ang) < 0.12 && v > 10 && car.boostFuel > 0.3;      // the last stretch of a chase: nitro, so the hit lands above ramming speed
+    if (this.role === 'police' && foe && g.alarm && g.robberBag) this._aim(car, foe, dt, sk);      // shots: lined up on him, close, clear road between
     inp.boost = ram || this.skill > 0.5 && this.role !== 'traffic' && (G.kind === 'robber' || G.kind === 'intercept' || (this.role === 'robber' && G.kind === 'safehouse')) && dist > 25 && Math.abs(ang) < 0.1 && v > 12 && car.boostFuel > 0.3;
     return inp;
   }

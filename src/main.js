@@ -880,6 +880,7 @@ function getawayDoor(G) {
   else { rob.reset(new V3(p.x, track.py[0] + rob.restHeight + 0.08, p.z), new V3(p.fx, 0, p.fz), new V3(0, 1, 0), 0); derby._pose(foe, foe.cur); derby._pose(foe, foe.prev); }
   getawayPop(me ? 'The garage door shuts - you are away!' : 'The garage door shuts - the robber has slipped away!', 2200);
 }
+let gwShotPop = 0;                                    // (the 'Shots fired!' message shows at most every four seconds)
 function getawayStep() {
   const G = getaway, f = derby.rivals[0]; if (!f || G.game.over) return;
   const rams = G.rams, copIds = new Set(derby.rivals.filter((x) => x.cop).map((x) => x.id)); rams.length = 0;
@@ -887,6 +888,12 @@ function getawayStep() {
   const mine = { x: car.pos.x, z: car.pos.z }, theirs = { x: f.car.pos.x, z: f.car.pos.z };
   G.game.step(DT, G.role === 'robber' ? mine : theirs, G.role === 'robber' ? theirs : mine, rams, G.role === 'robber' ? derby.rivals.filter((x) => x.cop).map((x) => ({ x: x.car.pos.x, z: x.car.pos.z })) : null);
   getawayDoor(G); gwOutStep(G);
+  if (G.role === 'robber' && !G.online && derby.player) for (const x of derby.rivals) {       // the police fire at you (see GetawayDriver._aim): a hit chips the car, and you hear it
+    const sh = x.cop && x.driver ? x.driver.fire : null; if (!sh) continue; x.driver.fire = null;
+    if (!sh.hit || x.wrecked) { if (Math.hypot(x.car.pos.x - car.pos.x, x.car.pos.z - car.pos.z) < 40) sound.hit(2, 'car', 0); continue; }
+    derby.shoot(x, derby.player); sound.hit(7, 'car', 0);
+    if (performance.now() - (gwShotPop || 0) > 4000) { gwShotPop = performance.now(); getawayPop('Shots fired!', 900); }
+  }
   if (G.game.events.length) getawayEvents();
   if (car.ay.y < 0.3 && car.speed < 3) { G.flipT += DT; if (G.flipT > 3) { G.flipT = 0; respawn('flip'); } } else G.flipT = 0;       // upside down for good: stood back up at a junction
 }

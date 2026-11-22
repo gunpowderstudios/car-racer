@@ -2,6 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.663 — The Getaway: much smarter police
+
+- **They know where you are going.** The police work out the junctions you will pass on your way to the safehouse and set up on them (cars 1 and 5 hold the next junctions; before it was only a guess from your heading).
+- **Real roadblocks.** Two cars park across a street ahead of you with a gap you can squeeze through (and a bigger damage hit if you crash into them). The game checks first, so a roadblock is never put where it would cut you off from the safehouse: at least one route to the lock-up is always open.
+- **Pincer.** One car races up alongside you while the others tail you, to box you in.
+- **Shooting.** A police car lined up behind you (within 45 m, clear street) fires about once a second. Hits chip the zone facing them (the back of your car if they are behind) with a gunshot sound and a "Shots fired!" flash; swerving makes you harder to hit.
+- **Pressure.** The longer you run with the cash, the further away the police give up their jobs and ram you, and the faster they drive (up to about 70 s of heat).
+
 ## v17.662 — Weeval Knievel: barrels in front of the boxes, a taller start
 
 - The cardboard boxes now stay at the back of the run-out, just in front of the wall, on every stage. The skull barrels (with their HIGH EXPLOSIVES gantry) stand in front of them, 26 m before the wall on stage 1, and come 10 m nearer the jump each stage, so you have to brake and stop sooner and more accurately every time.

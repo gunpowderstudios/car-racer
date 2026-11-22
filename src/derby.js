@@ -738,6 +738,15 @@ export class Derby {
 
   _remove(f) { f.gone = true; this._refreshCars(); this.events.push({ type: 'gone', id: f.id }); }
 
+  /** A police car shoots the robber (The Getaway): a small hit on the zone facing the shooter, so shots from behind chew the back of the car. */
+  shoot(by, f) {
+    if (!f || f.wrecked || !by) return;
+    const c = f.car, rx = by.car.pos.x - c.pos.x, rz = by.car.pos.z - c.pos.z, lz = rx * c.az.x + rz * c.az.z, lx = rx * c.ax.x + rz * c.ax.z;
+    const zone = Math.abs(lz) >= Math.abs(lx) ? (lz >= 0 ? 'front' : 'back') : (lx >= 0 ? 'right' : 'left');
+    this._damage(f, zone, DAMAGE.bullet, by);
+    this.events.push({ type: 'shot', id: f.id, by: by.id, isPlayer: f.isPlayer, zone });
+  }
+
   _hitEvent(kind, speed, x, y, z, involvesPlayer = false, a = -1, b = -1) {
     const dist = this._dist(x, y, z);
     if (dist > 110) return;

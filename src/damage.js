@@ -40,6 +40,7 @@ export const DAMAGE = {
   barrel: { radius: 10, point: 90 },
   lethal: { radius: 7, point: 100000 },            // a black-and-yellow barrel: anything within a few metres is wrecked on the spot
   wreck: { radius: 8, point: 60, push: 4.5 },      // a wrecked car going up hurts its neighbours too
+  bullet: 4,            // a police shot that hits (The Getaway): hit points off the zone it strikes (a single hard crash is 20-100)
   burnPerSecond: 16,    // a rival lying on its roof cooks itself at this rate
 };
 

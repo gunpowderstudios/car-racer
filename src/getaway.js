@@ -161,6 +161,38 @@ function neighbours(L, n) {
   return out;
 }
 
+/** A street between two neighbouring junctions, as one key (the same whichever way round). */
+export const edgeKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+
+/** Can you still drive from junction `a` to junction `b` when the street segments in `blocked` (a Set of edgeKey strings) are shut? */
+export function routeOpen(L, a, b, blocked) {
+  if (a === b) return true;
+  const seen = new Set([a]), q = [a];
+  while (q.length) {
+    const u = q.shift();
+    for (const v of neighbours(L, u)) {
+      if (seen.has(v) || blocked.has(edgeKey(u, v))) continue;
+      if (v === b) return true;
+      seen.add(v); q.push(v);
+    }
+  }
+  return false;
+}
+
+/** The junctions a robber heading for `to` (the safehouse, or the next bag) is likely to pass, nearest first, each with how far along his way it is (m): [{ n, along, from }]
+ *  (`from` is the junction he comes from, so the police know which street segment he will be on when he gets there). */
+export function predictJunctions(L, x, z, hx, hz, speed, to, safehouse = null) {
+  const pts = safehouse && safehouse.gx !== undefined ? safehouseRoute(L, safehouse, x, z, hx, hz, speed) : route(L, x, z, hx, hz, to.x, to.z, speed);
+  const out = []; let acc = 0, px = x, pz = z, prevN = null;
+  for (const q of pts) {
+    acc += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z;
+    const n = L.nodes.findIndex((nd) => Math.abs(nd.x - q.x) < 0.8 && Math.abs(nd.z - q.z) < 0.8);
+    if (n >= 0) { out.push({ n, along: acc, from: prevN }); prevN = n; }
+  }
+  if (out.length && out[0].from === null) { const f = nearestNode(L, x, z); out[0].from = f !== out[0].n ? f : null; }
+  return out;
+}
+
 /** The junctions at the two ends of the street segment a point is on (or just the junction it is at). */
 function endsOf(L, s, x, z) {
   if (!s) return [nearestNode(L, x, z)];
@@ -253,9 +285,15 @@ export class GetawayGame {
     this.robberBag = null;       // the bag the robber is carrying (or null)
     this.ramCoolUntil = 0; this.events = [];
     this.alarm = false;     // a robbery in progress: the robber has a bag
+    this.heat = 0;          // seconds the robber has been running with the cash: the longer, the harder the police press him
+    this.roadblock = null; this._pred = null;
+    this.blocks = new Map();      // police roadblocks: slot number -> { a, b } the street segment (junction ids) that car is helping to block
     this.door = null;       // the garage door that has just come down after a drop: { gx, mouth, t, moved }
     this._spawn(null, null);       // only one bag is out at a time; the rest are hidden until it is safe
   }
+
+  /** Street segments the police roadblocks have shut right now (a Set of edgeKey strings), leaving out `except` (a slot's own block). */
+  blockedEdges(except = -1) { const s = new Set(); for (const [k, e] of this.blocks) if (k !== except) s.add(edgeKey(e.a, e.b)); return s; }
 
   /** Put the next bag out at a random bank (the hidden ones only), keeping away from both cars when it can. */
   _spawn(robber, police, not = null) {
@@ -312,6 +350,8 @@ export class GetawayGame {
         break;
       }
     }
+    this.heat = this.robberBag && this.alarm ? this.heat + dt : Math.max(0, this.heat - dt * 3);
+    if (!this.robberBag && (this.blocks.size || this.roadblock)) { this.blocks.clear(); this.roadblock = null; }
     if (this.robberBag) { this.robberBag.x = robber.x; this.robberBag.z = robber.z; }
     if (this.robberBag && Math.hypot(robber.x - this.safehouse.x, robber.z - this.safehouse.z) < T.safeR) {      // delivery to the safehouse (the car is in the garage)
       const b = this.robberBag; this.robberBag = null; b.state = 'safe'; b.x = this.safehouse.x; b.z = this.safehouse.z; this.alarm = false; this.robbed++; this.ramCount = 0;
