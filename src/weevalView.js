@@ -249,7 +249,7 @@ export class WeevalView {
     return this.boxes ? this._stepBoxes(Math.min(dt, 0.05), car) : 0;
   }
 
-  /** The concrete barrier at the end of the run-out (the cardboard stack in front of it is the stage's obstacle, see _boxes). */
+  /** The concrete barrier at the end of the run-out (the cardboard stack in front of it is drawn by _boxes, and the skull barrels in front of that are real props, see weeval.js). */
   _barrier() {
     const L = this.L, W = WEEVAL.width, y = this.track.query(L.endX - 6, L.lipY, 0, undefined, 12).y;
     const stripe = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#ffc21a'; g.fillRect(0, 0, w, h); g.fillStyle = '#1b1b1b'; for (let i = -2; i < 10; i++) { g.beginPath(); g.moveTo(i * 40, h); g.lineTo(i * 40 + 20, h); g.lineTo(i * 40 + 20 + h, 0); g.lineTo(i * 40 + h, 0); g.fill(); } });
@@ -282,5 +282,6 @@ export class WeevalView {
     this._sign('WEEVAL KNIEVEL', 'THE GREAT BUS JUMP', 4, -W / 2 - 9, L.top, 1);
     this._sign(`STAGE ${L.stage}`, `${L.buses} BUSES`, L.lipX - 40, W / 2 + 9, yAt(L.lipX - 40), 1);
     this._sign('LAND HERE', 'CLOSER TO THE MIDDLE = MORE POINTS', L.gapEnd + 4, -W / 2 - 9, yAt(L.gapEnd + 4), 1);
+    this._warning();
   }
 }

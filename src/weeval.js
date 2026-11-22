@@ -23,7 +23,7 @@ export const WEEVAL = {
   lipY: 20,                          // the takeoff lip's height on stage 1
   lowY: 6,                           // the landing ramp's low end and the run-out: this height whatever the stage
   lipKick: 25, lipRise: 2.6,         // the takeoff kicker: its angle (degrees) and height
-  boomStep: 10,                     // the cardboard boxes (they used to be skull barrels) move this much nearer the jump each stage, so you have to stop sooner
+  boomStep: 10,                     // the skull barrels move this much nearer the jump each stage, so you have to stop sooner (the cardboard stack stays at the back)
   landLen: 170, landStep: 20, runOut: 80,   // the landing ramp's length (it grows each stage) then the flat run-out to the barrier
   rings: [2.4, 4.8, 7, 9],         // the painted bullseye's ring radii (m), centre outwards
   points: [1000, 600, 300, 150], ramp_pts: 50,    // what each ring is worth (and landing anywhere else on the ramp)
@@ -45,8 +45,9 @@ export function stageLayout(n) {
   const busList = [], bx0 = cx - buses * W.bus.w / 2;
   for (let i = 0; i < (W.showBuses ? buses : 0); i++) busList.push({ x0: bx0 + i * W.bus.w, x1: bx0 + (i + 1) * W.bus.w, z0: -W.bus.len / 2, z1: W.bus.len / 2, i, y: deckTop });
   const landEnd = gapEnd + landLen, endX = landEnd + W.runOut;
-  const stackX = Math.max(landEnd + 14, endX - 12 - W.boomStep * (stage - 1));      // the cardboard stack sits at the end of the run-out and comes 10 m nearer the jump every stage (never onto the landing ramp)
-  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, stackX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
+  const stackX = endX - 12;      // the cardboard stack: at the back, just in front of the wall, the same every stage
+  const boomX = Math.max(landEnd + 14, endX - 26 - W.boomStep * (stage - 1));      // the skull barrels: in front of the boxes on stage 1, then 10 m nearer the jump every stage (never on the landing ramp)
+  return { stage, buses, busList, gap, cx, lipX, gapEnd, zoneX, zoneZ: 0, landEnd, endX, stackX, boomX, startX: -28, lipY, top, deckTop, landLen, low: W.lowY, width: W.width };
 }
 
 /** The track definition for stage n. A straight run with a jump in it; the loop closes by a hairpin and a return road that nobody drives. */
@@ -65,7 +66,8 @@ export function weevalDef(n) {
   const blocks = L.busList.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, kind: 'bus', y: L.deckTop, h: W.bus.h }));
   if (L.busList.length) blocks.push({ x0: L.busList[0].x0 - 1, x1: L.busList[L.busList.length - 1].x1 + 1, z0: -W.bus.len / 2 - 1.5, z1: W.bus.len / 2 + 1.5, kind: 'wall', y: GROUND_Y, h: L.deckTop - GROUND_Y });   // the platform they stand on
   blocks.push({ x0: L.endX - 4, x1: L.endX, z0: -W.width / 2 - 4, z1: W.width / 2 + 4, kind: 'wall', y: GROUND_Y, h: low + 4 });   // the barrier that ends the run-out
-  const props = [];                                                           // (no props: the cardboard stack at the end of the run-out is drawn and simulated by weevalView.js)
+  const props = [];                                                           // a staggered double row of black skull barrels right across the run-out: hit one and the car is gone (the cardboard stack behind them is weevalView.js)
+  for (let r = 0; r < 2; r++) for (let z = -W.width / 2 + 1.5 + r * 0.75; z <= W.width / 2 - 1.2; z += 1.5) props.push({ type: 'barrel', lethal: true, x: L.boomX + r * 1.2, z: Math.round(z * 100) / 100, y: low });
   return normalizeTrack({ name: 'Weeval Knievel', width: W.width, walls: true, defaultLaps: 1, handles: H, weeval: { stage: L.stage }, blocks, props });
 }
 

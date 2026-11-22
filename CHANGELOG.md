@@ -2,10 +2,14 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
-## v17.661 — Weeval Knievel: boxes instead of skull barrels
+## v17.662 — Weeval Knievel: barrels in front of the boxes, a taller start
 
-- The skull barrels (and their HIGH EXPLOSIVES gantry) are gone from the run-out. The big stack of cardboard boxes now stands where they were, at the far end of the run-out, and comes 10 m nearer the jump every stage, so you have to stop sooner and more accurately after each landing. Crash into it and the boxes fly and slow you down, but it no longer ends the run.
+- The cardboard boxes now stay at the back of the run-out, just in front of the wall, on every stage. The skull barrels (with their HIGH EXPLOSIVES gantry) stand in front of them, 26 m before the wall on stage 1, and come 10 m nearer the jump each stage, so you have to brake and stop sooner and more accurately every time.
 - The start platform now climbs 20 m higher each stage (80 m on stage 1, 160 m on stage 5; it was only 5 m a stage), so every drop-in feels taller. The takeoff and landing heights are unchanged.
+
+## v17.661 — Weeval boxes (superseded by v17.662)
+
+- The cardboard stack briefly replaced the skull barrels; v17.662 puts the barrels back in front of the boxes.
 
 ## v17.660 — Natural handling back, more grip
 
