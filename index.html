@@ -580,6 +580,12 @@ html.invite-loading #invite-loading {
         <button id="ed-tool-fire" role="menuitem" title="Drop fire pits: every few seconds they roar into a column of flame that throws a car into the air and burns it (L)" aria-pressed="false">Fire pits <kbd>L</kbd></button>
       </div>
     </div>
+    <div class="ed-group ed-menu">
+      <button id="ed-keys-btn" title="Keyboard shortcuts" aria-haspopup="true" aria-expanded="false">Shortcuts &#9662;</button>
+      <div id="ed-keys-menu" class="ed-dropdown ed-keys" role="region" aria-label="Keyboard shortcuts" hidden>
+        <dl><dt>Double-click</dt><dd>add a point</dd><dt>Shift + click / drag</dt><dd>pick several points</dd><dt>Esc</dt><dd>deselect / stop tool</dd><dt>Delete</dt><dd>remove</dd><dt>A</dt><dd>add point</dd><dt>P</dt><dd>draw</dd><dt>G · O · U</dt><dd>gap · flyover · tunnel</dd><dt>B · K · L · V</dt><dd>barrel · skull · fire · car</dd><dt>[ ]</dt><dd>previous / next point</dd><dt>Ctrl+Z / Y</dt><dd>undo / redo</dd><dt>F · 3 · 0</dt><dd>fit · 3D view · reset 3D</dd></dl>
+      </div>
+    </div>
     <div class="ed-group">
       <button id="ed-fit" title="Fit the whole track on screen (F)">Fit</button>
       <button id="ed-3d-toggle" title="Show or hide the 3D view (3)" aria-pressed="true">3D view</button>
@@ -607,7 +613,6 @@ html.invite-loading #invite-loading {
         <canvas id="ed-3d-canvas" aria-label="3D view of the track. Drag to turn it, scroll to zoom, double-click or press 0 to reset."></canvas>
         <div class="ed-3d-bar"><span>3D view</span><span class="muted" id="ed-3d-ex"></span><button id="ed-3d-hide" title="Hide the 3D view" aria-label="Hide the 3D view">&times;</button></div>
       </div>
-      <dl id="ed-keys" aria-label="Keyboard shortcuts"><dt>Double-click</dt><dd>add a point</dd><dt>Shift + click / drag</dt><dd>pick several points</dd><dt>Esc</dt><dd>deselect / stop tool</dd><dt>Delete</dt><dd>remove</dd><dt>A</dt><dd>add point</dd><dt>P</dt><dd>draw</dd><dt>G · O · U</dt><dd>gap · flyover · tunnel</dd><dt>B · K · L · V</dt><dd>barrel · skull · fire · car</dd><dt>[ ]</dt><dd>previous / next point</dd><dt>Ctrl+Z / Y</dt><dd>undo / redo</dd><dt>F · 3 · 0</dt><dd>fit · 3D view · reset 3D</dd></dl>
       <div id="ed-help">Drag points to reshape. Double-click the road to add a point. <b>B</b> drops barrels. Scroll or pinch to zoom, drag empty space to pan, <b>F</b> fits the track, <b>0</b> resets the 3D view.</div>
     </div>
     <aside id="ed-side">

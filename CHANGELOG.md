@@ -2,6 +2,25 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.658 — Smoother drift, editor remembers your track
+
+- Pressing Drift in a corner no longer jolts the car: the starting twist is given over about a third of a second, the slide eases in over about a quarter of a second and out over about half a second.
+- Going to the main menu and clicking Design-a-track! again brings back the track you were editing (with its undo history), not a fresh one.
+
+## v17.657 — Nothing pokes up through a road above
+
+- Lamp posts are left out wherever another road passes over them (under a bridge, flyover or tunnel), and flyover pillars now stop at the real underside of the deck where they stand, so neither can stick up through the road above.
+
+## v17.656 — Shortcuts menu, 30% tighter turns, more tail swing
+
+- The editor shortcut legend is now a **Shortcuts** dropdown in the top menu, closed until you open it.
+- Your car turns 30% tighter at every speed (rivals are unchanged), with the roll guard coming in sooner to keep it on its wheels.
+- The tail swings out more in tight powered corners (rear tyres lose up to 55% grip, was 42%).
+
+## v17.655 — "You were editing" only in the editor
+
+- The "You were editing ... carry on where you left off?" question no longer pops up on the menu a second after the page loads. It now appears the first time you go into the editor after loading the page (Say no and the old copy is dropped).
+
 ## v17.654 — Editor shortcut legend
 
 - A small shortcut legend sits under the 3D view in the editor (it moves up when the 3D view is hidden).

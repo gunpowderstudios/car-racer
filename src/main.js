@@ -119,6 +119,7 @@ renderer.domElement.addEventListener('webglcontextlost', (e) => e.preventDefault
 renderer.domElement.addEventListener('webglcontextrestored', () => { stage.resetShadowMap(); }, false);
 const car = new Vehicle(); car.lockMul = 1.15;      // your wheels turn 15% further at low speed (tighter turns); the rivals keep the old lock, which is what their driving is tuned to
 car.mpEqual = true;                          // every vehicle pulls and tops out the same (MP_EQUAL)
+car.turnMul = 1.3;                           // 30% more steering angle at every speed: the player's car turns tighter (rivals keep 1)
 car.donutOk = true;                          // Boost at walking pace swings the back end round (the player only)
 let visual = new CarVisual(stage.scene, car.restHeight);       // (let: picking another vehicle on the menu swaps it, see swapVehicle)
 const caravan = new Caravan(HITCH[selectedVehicle().id] || HITCH.escort), caravanView = new CaravanView(stage.scene);   // the 70s Saloon can tow a caravan (see caravan.js)
@@ -1741,7 +1742,24 @@ function beginDriving() {
 function openEditor(d, keepUndo) {
   // the editor needs a mouse and a big screen - on touch devices just say so
   if (matchMedia('(pointer: coarse)').matches) { toast('The track editor only works on a desktop computer.'); return; }
+  if (!keepUndo && offerAutosave()) return;
   setMode('edit'); editor.open(d || def || makeTemplate('speedway'), keepUndo);
+}
+/** The editor keeps a copy of the track being edited (cr.autosave) until you Save it, so a reload, a crash or a trip to the menu never loses the work. The first time you
+ *  go INTO the editor after loading the page, offer to carry on where you left off (never at the menu or while driving). Returns true when it opened that copy instead. */
+let autosaveOffered = false;
+function offerAutosave() {
+  if (autosaveOffered) return false;
+  autosaveOffered = true;
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('cr.autosave') || 'null'); } catch { /* blocked or damaged */ }
+  if (!saved || !saved.def) return false;
+  const mins = Math.max(1, Math.round((Date.now() - saved.t) / 60000)), name = String(saved.def.name || 'your track').slice(0, 40);
+  const ago = mins < 60 ? mins + ' min' : mins < 2880 ? Math.round(mins / 60) + ' h' : Math.round(mins / 1440) + ' days';
+  if (window.confirm(`You were editing "${name}" (unsaved, ${ago} ago). Carry on where you left off?`)) {
+    try { setMode('edit'); editor.open(normalizeTrack(saved.def)); return true; } catch { toast('Sorry, that copy could not be opened.'); return false; }
+  }
+  try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ }
+  return false;
 }
 
 const editor = window.__editor = new Editor({
@@ -1926,7 +1944,8 @@ function bindMenu() {
     b.onclick = () => { opts.paint = i; visual.setPaint(hex); store.set('cr.opts', opts); [...sw.children].forEach((c, j) => c.setAttribute('aria-checked', String(j === i))); };
     sw.appendChild(b);
   });
-  $('btn-new').onclick = () => { const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
+  $('btn-new').onclick = () => { if (editor.def) { openEditor(editor.def, true); return; }      // (the track you were editing is still there after a trip to the menu: carry on with it, undo history and all)
+    const d = makeTemplate('speedway'); d.name = 'My track'; openEditor(d); };
   const quickDef = () => { const d = makeRandomTrack(); d.quickRace = true; if (opts.mode !== 'race') opts.mode = 'jamboree'; return d; };
   const weevalGo = (d) => { weevalRun = newRun(); startDriving(d); };                      // Weeval Knievel: the bus jump, from stage 1
   const demoDef = () => { const d = makeTemplate('oval'); d.demoDay = true; return d; };   // Demolition Day: always Deep Pan Pizza, Last One Standing
@@ -2583,16 +2602,6 @@ let autoDrive = false, autoSolo = false;
 
 // What the story mode (storyMode.js) needs from the game: start a track, go back to the menu, hold the race still, read the settings.
 window.__app = { car, get visual() { return visual; }, replayRec, replay, sound, startDriving, showMenu, makeTemplate, opts, derby, freeze(v) { frozen = !!v; } };
-
-// ---- the editor keeps a copy of the track being edited (cr.autosave) until you Save it, so a reload, a crash or a trip to the menu never loses the work: offer to carry on where you left off
-setTimeout(() => {
-  let saved = null; try { saved = JSON.parse(localStorage.getItem('cr.autosave') || 'null'); } catch { /* blocked or damaged */ }
-  if (!saved || !saved.def || matchMedia('(pointer: coarse)').matches) return;
-  const mins = Math.max(1, Math.round((Date.now() - saved.t) / 60000)), name = String(saved.def.name || 'your track').slice(0, 40);
-  const ago = mins < 60 ? mins + ' min' : mins < 2880 ? Math.round(mins / 60) + ' h' : Math.round(mins / 1440) + ' days';
-  if (window.confirm(`You were editing "${name}" (unsaved, ${ago} ago). Carry on where you left off?`)) { try { openEditor(normalizeTrack(saved.def)); } catch { toast('Sorry, that copy could not be opened.'); } }
-  else { try { localStorage.removeItem('cr.autosave'); } catch { /* blocked */ } }
-}, 1200);
 
 // ---- "Get the app": Chrome, Edge, Silk (Fire tablets) and Android offer a real install; iPhone and iPad need Share > Add to Home Screen, so the button explains that
 {

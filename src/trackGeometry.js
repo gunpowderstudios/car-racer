@@ -238,6 +238,15 @@ export function buildTrackGeometry(track) {
 
   // ---- pillars under raised road, lamp posts, start gantry data
   const pillars = [], lamps = [];
+  /** Is another stretch of road (not the one at arc position `s0`) passing over the point (x, y, z) within `h` metres above it? */
+  const roadAbove = (x, y, z, s0, h) => {
+    for (let k = 0; k < n; k++) {
+      if (track.py[k] - SLAB < y + 0.3 || track.py[k] - y > h + 1) continue;
+      let ds2 = Math.abs(track.s[k] - s0); if (ds2 > L / 2) ds2 = L - ds2; if (ds2 < 30) continue;
+      if (Math.hypot(track.px[k] - x, track.pz[k] - z) < track.hw[k] + 2.5) return true;
+    }
+    return false;
+  };
   for (let i = 0; i < n; i += 24) {
     if (track.gap[i] || track.py[i] < 3.2) continue;
     if ((track.structures || []).some((st) => Math.hypot(track.px[i] - st.x, track.pz[i] - st.z) < 24)) continue;       // (a flyover or tunnel has its own supports)
@@ -258,6 +267,7 @@ export function buildTrackGeometry(track) {
     const o = out(i, sg, WALL_GAP + WALL_T + 0.9);
     if (o[1] > track.py[i] + 3 || o[1] < 0.05) { /* fine either way */ }
     if ((track.crossroads || []).some((c) => Math.hypot(o[0] - c.x, o[2] - c.z) < Math.max(c.hwA, c.hwB) / c.sin + 4)) continue;      // (no lamp posts in the middle of a crossroad)
+    if (roadAbove(o[0], o[1], o[2], track.s[i], 10)) continue;      // (a post from the road below must not stand up through a bridge or flyover over it)
     lamps.push({ x: o[0], y: Math.max(o[1], 0), z: o[2], dx: -track.lx[i] * sg, dz: -track.lz[i] * sg });
   }
 

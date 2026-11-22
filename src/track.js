@@ -493,7 +493,10 @@ export class Track {
         const wLow = low.hw + WALL_GAP + WALL_T + 1.4, wUp = up.hw + 1.0;
         for (const sa of [1, -1]) for (const sb of [1, -1]) {
           const a = sa * wLow, b = sb * wUp;
-          this.drums.push({ x: best.x + (a * lBz - lAz * b) / dt, y: low.y - 0.6, z: best.z + (lAx * b - lBx * a) / dt, r: 0.95, top: up.y - 0.9, pillar: true, st: this.structures[this.structures.length - 1] });
+          const dx = best.x + (a * lBz - lAz * b) / dt, dz = best.z + (lAx * b - lBx * a) / dt;
+          let top = up.y - 0.9;
+          for (let k = -40; k <= 40; k++) { const j = ((ib + k) % n + n) % n; if (Math.hypot(px[j] - dx, pz[j] - dz) < up.hw + 1.2) top = Math.min(top, py[j] - 1.0); }       // (never above the deck's real underside where the pillar stands, so it cannot poke up through the road)
+          this.drums.push({ x: dx, y: low.y - 0.6, z: dz, r: 0.95, top, pillar: true, st: this.structures[this.structures.length - 1] });
         }
       }
     }

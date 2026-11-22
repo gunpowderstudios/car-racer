@@ -27,7 +27,7 @@ export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const DONUT_MAX = 12;         // m/s: Boost + steering below this speed swings the back end round (a donut); above it the normal drift is all there is
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;
 export const ROLL_SOFT = { strength: 0.7, from: 0.2, to: 0.5 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
-export const TIGHT_SLIDE = 0.42;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
+export const TIGHT_SLIDE = 0.55;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 /** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
@@ -113,6 +113,7 @@ export class Vehicle {
     this.q = Track.newQuery();
     this.events = [];
     this.hurt = { front: 0, back: 0, left: 0, right: 0, roof: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
+    this.turnMul = 1;                                        // the whole steering angle, at every speed, times this (main.js gives the player's car 1.3: 30% tighter turns); rivals keep 1
     this.lockMul = 1;                                        // front-wheel lock multiplier: main.js gives the player's car 1.15 (tighter turns); rivals and bots keep 1
     this.donutOk = false;           // only the player's own car does donuts (main.js turns it on); a rival's nitro at low speed must not break its rear tyres loose
     this.engineOff = false; this.crank = 0;                  // stalled by a big hit: throttle and boost are dead until the driver restarts it (restartEngine)
@@ -150,7 +151,7 @@ export class Vehicle {
     this.gear = 1; this.rpm = this.spec.engine.idle; this.shiftTimer = 0; this.spinFactor = 0;
     this.fwdSpeed = speed; this.speed = speed; this.latSpeed = 0; this.sideSlip = 0;
     this.onGround = false; this.airTime = 0; this.scraping = false; this.handbrake = false;
-    this.driftActive = false; this.tight = false; this.driftBlend = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
+    this.driftActive = false; this.tight = false; this.driftBlend = 0; this._kickLeft = 0; this._kickYaw = 0; this.driftTarget = 0; this.driftBase = 0; this._handPrev = false;
     this.boosting = false; this.engineOff = false; this.crank = 0;
     this.events.length = 0;
     if (this.tow) this.tow.reset(this);                       // a caravan goes back behind the car
@@ -306,8 +307,14 @@ export class Vehicle {
 
       // Give the rear a controlled initial rotation into the chosen corner so pressing Drift
       // is immediately visible. The sustained yaw spring below catches it before it spins out.
-      const yawKick = 0.65 + Math.abs(steer) * 0.45;
-      this.angVel.addScaled(this.ay, -sign * yawKick);
+      // (given over about a third of a second rather than all in one frame: the instant kick was the jolt when Drift was pressed mid-corner)
+      this._kickLeft = 1; this._kickYaw = -sign * (0.65 + Math.abs(steer) * 0.45);
+    }
+
+    if (this._kickLeft > 0) {
+      const step = Math.min(this._kickLeft, dt / 0.35);
+      this.angVel.addScaled(this.ay, this._kickYaw * step); this._kickLeft -= step;
+      if (!handNow) this._kickLeft = 0;
     }
 
     // Once a drift has started, keep it latched until Shift/Drift is released or speed falls away.
@@ -321,10 +328,10 @@ export class Vehicle {
       const intoCorner = clamp(-sign * steer, -1, 1);
       const mag = clamp(this.driftBase + intoCorner * 0.14, 0.24, 0.58);
       this.driftTarget = sign * mag;
-      this.driftBlend += (1 - this.driftBlend) * (1 - Math.exp(-dt / 0.10));
+      this.driftBlend += (1 - this.driftBlend) * (1 - Math.exp(-dt / 0.24));      // (eases in over about a quarter of a second)
     } else {
       // Restore normal rear grip smoothly on release instead of snapping straight.
-      this.driftBlend *= Math.exp(-dt / 0.32);
+      this.driftBlend *= Math.exp(-dt / 0.55);      // (and out over about half a second)
       if (this.driftBlend < 0.01) this.driftBlend = 0;
     }
 
@@ -346,7 +353,7 @@ export class Vehicle {
     for (const w of this.wheels) if (w.contact) { gx += w.normal.x; gy += w.normal.y; gz += w.normal.z; }
     const gl = Math.hypot(gx, gy, gz); if (gl > 0.5 && gy / gl > 0.3) { gx /= gl; gy /= gl; gz /= gl; } else { gx = 0; gy = 1; gz = 0; }
     const roll = (this.ay.y * gz - this.ay.z * gy) * this.az.x + (this.ay.z * gx - this.ay.x * gz) * this.az.y + (this.ay.x * gy - this.ay.y * gx) * this.az.z;                       // (ay x up) along the car's long axis: the sine of how far it has rolled, signed so a torque of +roll rights it
-    const soft = ROLL_SOFT.strength * clamp((this.speed - 16) / 8, 0, 1) * clamp((Math.abs(roll) - ROLL_SOFT.from) / (ROLL_SOFT.to - ROLL_SOFT.from), 0, 1);      // (the always-on part, for speed only - a slow hairpin cannot tip it: nothing for a normal lean, more the further over it goes)
+    const soft = ROLL_SOFT.strength * clamp((this.speed - (this.turnMul > 1 ? 9 : 16)) / 8, 0, 1) * clamp((Math.abs(roll) - ROLL_SOFT.from) / (ROLL_SOFT.to - ROLL_SOFT.from), 0, 1);      // (the always-on part, for speed only - a slow hairpin cannot tip it: nothing for a normal lean, more the further over it goes)
     const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0, this.spec.rollGuard || 0, this.aiRollGuard || 0, soft);      // AI rivals can get extra stability without changing the player's vehicle
     if (g <= 0) return;
     const rate = this.angVel.dot(this.az);
@@ -428,7 +435,7 @@ export class Vehicle {
     // Full lock at low speed, tapering to roughly the front tyres' peak slip angle at speed.
     const lock = Math.min(st.max * this.lockMul, 0.17 + 36.6 / Math.max(v * v, 60));
     const hu = this.hurt;
-    let angle = this.steerState * lock;
+    let angle = this.steerState * lock * this.turnMul;
     angle *= angle > 0 ? 1 - 0.5 * hu.left : 1 - 0.5 * hu.right;                  // a crumpled left side turns left less, a crumpled right side turns right less...
     if (this.speed > 3) angle += 0.022 * (hu.left - hu.right);                      // ...and a hurt side drags the car towards it
     // Counter-steer assist: when the REAR axle slides past its grip, point the front
@@ -445,7 +452,7 @@ export class Vehicle {
     }
     this.assistAngle += (assist - this.assistAngle) * (1 - Math.exp(-dt / (0.12 - 0.04 * (this.opts.stability || 0))));   // no snapping
     angle += this.assistAngle;
-    this.steerAngle = clamp(angle, -st.max, st.max);
+    this.steerAngle = clamp(angle, -st.max * this.turnMul, st.max * this.turnMul);
   }
 
   // ------------------------------------------------------ wheel probing

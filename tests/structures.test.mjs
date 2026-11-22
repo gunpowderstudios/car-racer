@@ -60,3 +60,19 @@ test('the plain support boxes are left out under a flyover or tunnel crossing, w
   assert.equal(near(f), 0);
   assert.ok(buildTrackGeometry(g).pillars.length >= 0);
 });
+
+test('nothing stands up through a road above it: no lamp post under a bridge, and flyover pillars stop under the deck', () => {
+  for (const type of ['', 'flyover', 'tunnel']) {
+    const { t } = build(type), g = buildTrackGeometry(t);
+    for (const l of g.lamps) {
+      let own = 0, bd = 1e9; for (let k = 0; k < t.n; k++) { const d = Math.hypot(t.px[k] - l.x, t.pz[k] - l.z); if (d < bd) { bd = d; own = k; } }
+      for (let k = 0; k < t.n; k++) {
+        let ds = Math.abs(t.s[k] - t.s[own]); if (ds > t.length / 2) ds = t.length - ds;
+        if (ds < 40 || t.py[k] - 0.7 < l.y + 0.5 || t.py[k] - l.y > 11) continue;
+        assert.ok(Math.hypot(t.px[k] - l.x, t.pz[k] - l.z) >= t.hw[k] + 2.5, `${type || 'gap'}: a lamp at ${l.x.toFixed(0)},${l.z.toFixed(0)} stands up through the road ${(t.py[k] - l.y).toFixed(1)} m above it`);
+      }
+    }
+  }
+  const { t } = build('flyover');
+  for (const d of t.drums.filter((q) => q.pillar)) for (let k = 0; k < t.n; k++) if (Math.hypot(t.px[k] - d.x, t.pz[k] - d.z) < t.hw[k] + 1.2 && t.py[k] > d.y + 3) assert.ok(d.top <= t.py[k] - 0.9, 'a pillar pokes above the deck');
+});

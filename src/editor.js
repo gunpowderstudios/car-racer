@@ -784,8 +784,9 @@ export class Editor {
   }
 
   /** Open or close the Obstacles dropdown. */
-  _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; if (open) this._worksMenu(false); m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
-  _worksMenu(open) { const m = $('ed-works-menu'); if (!m) return; m.hidden = !open; $('ed-works').setAttribute('aria-expanded', String(open)); }
+  _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; if (open) { this._worksMenu(false); this._keysMenu(false); } m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
+  _keysMenu(open) { const m = $('ed-keys-menu'); if (!m) return; if (open) { this._obstMenu(false); this._worksMenu(false); } m.hidden = !open; $('ed-keys-btn').setAttribute('aria-expanded', String(open)); }
+  _worksMenu(open) { const m = $('ed-works-menu'); if (!m) return; if (open) this._keysMenu(false); m.hidden = !open; $('ed-works').setAttribute('aria-expanded', String(open)); }
   propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
   addProp(type, sx, sy, lethal = false) {
     if (!this.track) return;
@@ -1003,8 +1004,9 @@ export class Editor {
     $('ed-tool-gap').onclick = () => { this._setTool(this.tool === 'gap' ? 'road' : 'gap'); this.draw(); };
     $('ed-tool-fly').onclick = () => { this._setTool(this.tool === 'flyover' ? 'road' : 'flyover'); this.draw(); };
     $('ed-tool-tunnel').onclick = () => { this._setTool(this.tool === 'tunnel' ? 'road' : 'tunnel'); this.draw(); };
+    $('ed-keys-btn').onclick = (e) => { e.stopPropagation(); this._keysMenu($('ed-keys-menu').hidden); };
     $('ed-obst').onclick = (e) => { e.stopPropagation(); this._obstMenu($('ed-obst-menu').hidden); };
-    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) { this._obstMenu(false); this._worksMenu(false); } });
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.ed-menu')) { this._obstMenu(false); this._worksMenu(false); this._keysMenu(false); } });
     $('ed-tool-vehicle').onclick = () => { this._setTool(this.tool === 'vehicle' ? 'road' : 'vehicle'); this.draw(); };
     $('ed-veh-car').onchange = (e) => this._vehEdit((o) => { if (e.target.value) o.car = e.target.value; else delete o.car; });
     $('ed-veh-mode').onchange = (e) => this._vehEdit((o) => { o.mode = e.target.value; });

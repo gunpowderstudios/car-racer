@@ -178,8 +178,8 @@ test('handbrake drift assist holds a controllable slide instead of forcing a spi
   assert.match(vehicle, /_updateDriftAssist\(dt, input, handNow\)/);
   assert.match(vehicle, /this\.driftTarget = sign \* this\.driftBase/);
   assert.match(vehicle, /this\.driftBase \+ intoCorner \* 0\.14/);
-  assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, -sign \* yawKick\)/);
-  assert.match(vehicle, /this\.driftBlend \*= Math\.exp\(-dt \/ 0\.32\)/);
+  assert.match(vehicle, /this\.angVel\.addScaled\(this\._kickYaw|this\.angVel\.addScaled\(this\.ay, this\._kickYaw \* step\)/);
+  assert.match(vehicle, /this\.driftBlend \*= Math\.exp\(-dt \/ 0\.55\)/);
   assert.match(vehicle, /_applyDriftYawAssist\(\)/);
   assert.match(vehicle, /const yawAccel = clamp\(-error \* 9\.5 - yawRate \* 2\.5/);
   assert.match(vehicle, /const driftRearGrip = !w\.front \? 1 - 0\.34 \* this\.driftBlend : 1/);
@@ -219,8 +219,8 @@ test('Drift applies throttle on desktop mobile and gamepad', () => {
 test('Drift deliberately initiates left or right powered slides', () => {
   assert.match(vehicle, /Math\.abs\(steer\) > 0\.08\s*\? -Math\.sign\(steer\)/);
   assert.match(vehicle, /this\.driftBase = clamp\(0\.30 \+ Math\.abs\(steer\) \* 0\.16/);
-  assert.match(vehicle, /const yawKick = 0\.65 \+ Math\.abs\(steer\) \* 0\.45/);
-  assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, -sign \* yawKick\)/);
+  assert.match(vehicle, /this\._kickYaw = -sign \* \(0\.65 \+ Math\.abs\(steer\) \* 0\.45\)/);      // (the starting twist, given over a third of a second)
+  assert.match(vehicle, /this\.angVel\.addScaled\(this\.ay, this\._kickYaw \* step\)/);
 });
 
 
