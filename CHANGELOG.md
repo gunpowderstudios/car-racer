@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.659 — More tyre grip
+
+- Your car's tyres have 20% more grip (rivals unchanged), and the tail-swing in tight powered corners is eased back from 55% to 40% rear-grip loss, so the car slides less overall while the back end still steps out in tight corners.
+
 ## v17.658 — Smoother drift, editor remembers your track
 
 - Pressing Drift in a corner no longer jolts the car: the starting twist is given over about a third of a second, the slide eases in over about a quarter of a second and out over about half a second.

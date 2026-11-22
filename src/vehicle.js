@@ -27,7 +27,7 @@ export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const DONUT_MAX = 12;         // m/s: Boost + steering below this speed swings the back end round (a donut); above it the normal drift is all there is
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;
 export const ROLL_SOFT = { strength: 0.7, from: 0.2, to: 0.5 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
-export const TIGHT_SLIDE = 0.55;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
+export const TIGHT_SLIDE = 0.4;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 /** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
@@ -113,6 +113,7 @@ export class Vehicle {
     this.q = Track.newQuery();
     this.events = [];
     this.hurt = { front: 0, back: 0, left: 0, right: 0, roof: 0 };   // 0..1 share of each body zone's armour lost; derby.js keeps it up to date. Damaged cars drive worse (see _steer, _tyre, the engine force)
+    this.gripMul = 1;                                        // every tyre's grip times this (main.js gives the player's car 1.2); rivals keep 1
     this.turnMul = 1;                                        // the whole steering angle, at every speed, times this (main.js gives the player's car 1.3: 30% tighter turns); rivals keep 1
     this.lockMul = 1;                                        // front-wheel lock multiplier: main.js gives the player's car 1.15 (tighter turns); rivals and bots keep 1
     this.donutOk = false;           // only the player's own car does donuts (main.js turns it on); a rival's nitro at low speed must not break its rear tyres loose
@@ -620,7 +621,7 @@ export class Vehicle {
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
     const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
     const lostGrip = w.lost ? LOST_WHEEL_GRIP : 1;
-    const mu = lostGrip * muBase * surfMu * driftRearGrip * tightSlide * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const mu = this.gripMul * lostGrip * muBase * surfMu * driftRearGrip * tightSlide * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.

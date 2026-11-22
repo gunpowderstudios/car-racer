@@ -119,6 +119,7 @@ renderer.domElement.addEventListener('webglcontextlost', (e) => e.preventDefault
 renderer.domElement.addEventListener('webglcontextrestored', () => { stage.resetShadowMap(); }, false);
 const car = new Vehicle(); car.lockMul = 1.15;      // your wheels turn 15% further at low speed (tighter turns); the rivals keep the old lock, which is what their driving is tuned to
 car.mpEqual = true;                          // every vehicle pulls and tops out the same (MP_EQUAL)
+car.gripMul = 1.2;                           // 20% more tyre grip on every tyre: the player's car slides less (rivals keep 1)
 car.turnMul = 1.3;                           // 30% more steering angle at every speed: the player's car turns tighter (rivals keep 1)
 car.donutOk = true;                          // Boost at walking pace swings the back end round (the player only)
 let visual = new CarVisual(stage.scene, car.restHeight);       // (let: picking another vehicle on the menu swaps it, see swapVehicle)
