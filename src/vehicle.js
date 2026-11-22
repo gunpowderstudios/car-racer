@@ -25,7 +25,9 @@ export const GRIP_BOOST_REAR = 1.25;   // the back tyres get a little more of it
 /** While a drift is held, the slide bends the car's path into the corner by this much (m/s², about 0.6 g at full effect) and gives back this share of the speed the slide would scrub off. */
 export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const DONUT_MAX = 12;         // m/s: Boost + steering below this speed swings the back end round (a donut); above it the normal drift is all there is
-export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;      // the drift roll guard (see Vehicle._rollGuard)
+export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;
+export const ROLL_SOFT = { strength: 0.7, from: 0.2, to: 0.5 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
+export const TIGHT_SLIDE = 0.3;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 /** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
@@ -339,12 +341,14 @@ export class Vehicle {
     // The guard eases IN over about a third of a second when a drift starts (switching it on at full strength used to slam a leaning car down onto the road
     // the instant Shift was pressed) and fades out over most of a second afterwards.
     this.rollGuard = this.driftActive || this.driftBlend > 0.05 ? (this.rollGuard || 0) + (1 - (this.rollGuard || 0)) * (1 - Math.exp(-dt / 0.3)) : (this.rollGuard || 0) * Math.exp(-dt / 0.7);
-    const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0, this.spec.rollGuard || 0, this.aiRollGuard || 0);      // AI rivals can get extra stability without changing the player's vehicle
-    if (g <= 0 || !this.onGround) return;
+    if (!this.onGround) return;
     let gx = 0, gy = 0, gz = 0;                                                         // the roll is measured against the road under the wheels, not against flat ground: on a banked road a car that is level with the road is not rolled
     for (const w of this.wheels) if (w.contact) { gx += w.normal.x; gy += w.normal.y; gz += w.normal.z; }
     const gl = Math.hypot(gx, gy, gz); if (gl > 0.5 && gy / gl > 0.3) { gx /= gl; gy /= gl; gz /= gl; } else { gx = 0; gy = 1; gz = 0; }
     const roll = (this.ay.y * gz - this.ay.z * gy) * this.az.x + (this.ay.z * gx - this.ay.x * gz) * this.az.y + (this.ay.x * gy - this.ay.y * gx) * this.az.z;                       // (ay x up) along the car's long axis: the sine of how far it has rolled, signed so a torque of +roll rights it
+    const soft = ROLL_SOFT.strength * clamp((this.speed - 16) / 8, 0, 1) * clamp((Math.abs(roll) - ROLL_SOFT.from) / (ROLL_SOFT.to - ROLL_SOFT.from), 0, 1);      // (the always-on part, for speed only - a slow hairpin cannot tip it: nothing for a normal lean, more the further over it goes)
+    const g = Math.max(this.rollGuard < 0.02 ? 0 : this.rollGuard, this.tow && !this.tow.wrecked ? ROLL_GUARD_TOW : 0, this.spec.rollGuard || 0, this.aiRollGuard || 0, soft);      // AI rivals can get extra stability without changing the player's vehicle
+    if (g <= 0) return;
     const rate = this.angVel.dot(this.az);
     const acc = (ROLL_K * roll - ROLL_C * rate) * g;
     this.T.addScaled(this.az, acc * this.spec.inertia.z);
@@ -401,7 +405,7 @@ export class Vehicle {
     const want = clamp(ref, -lim, lim);
     // how much faster than wanted it is turning, in the direction it is already turning (turning the wrong way counts in full)
     const over = Math.sign(yaw) === Math.sign(want) || Math.abs(want) < 0.05 ? Math.abs(yaw) - Math.abs(want) : Math.abs(yaw) + Math.abs(want);
-    const tol = 0.18;                                              // rad/s of slack before it steps in
+    const tol = 0.18 + 0.2 * Math.abs(this.steerState) * clamp((16 - v) / 6, 0, 1);                                              // rad/s of slack before it steps in
     const alpha = over > tol ? clamp((over - tol) * 7 * k, 0, 5.5 * k) : 0;    // rad/s^2 of correcting yaw acceleration
     this.stabTorque = alpha;
     if (alpha > 0) this.T.addScaled(this.ay, -Math.sign(yaw) * alpha * sp.inertia.y * (1 - drifting));
@@ -600,12 +604,13 @@ export class Vehicle {
     const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
     const muBase = w.front ? ty.muFront * GRIP_BOOST : ty.muRear * GRIP_BOOST_REAR;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
+    const tightSlide = !w.front && this.onGround ? 1 - TIGHT_SLIDE * Math.abs(this.steerState) * clamp(this.thr * 1.5 - this.brk * 3, 0, 1) * clamp((this.speed - 5) / 4, 0, 1) * clamp((16 - this.speed) / 5, 0, 1) * (1 - this.driftBlend) : 1;      // a tight, hard-steered corner: the back steps out
     const donutGrip = !w.front && this.tight ? 0.5 : 1;      // Boost at walking pace while steering: the rear tyres let go and spin
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
     const climb = w.driven && drv.force !== 0 ? clamp(f.y * Math.sign(drv.force), 0, 0.8) : 0;
     const lostGrip = w.lost ? LOST_WHEEL_GRIP : 1;
-    const mu = lostGrip * muBase * surfMu * driftRearGrip * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
+    const mu = lostGrip * muBase * surfMu * driftRearGrip * tightSlide * donutGrip * hurtGrip * (1 + 1.4 * climb) * clamp(1 - ty.loadSens * (Fz / ty.nominalLoad - 1), 0.6, 1.25);
     const Fmax = mu * Fz;
     const capL = 0.25 * mEffLong / dt, capT = 0.25 * mEffLat / dt;
     // At speed in a turn, Shift/Hand becomes a controlled drift rather than fully locking the rear.

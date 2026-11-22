@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.651 — Harder to roll over, tails step out in tight corners
+
+- Every vehicle now has a soft anti-roll assist: a normal lean in a corner looks the same, but past about 12 degrees, at speed, it fades in and by about 30 degrees it holds the car down, so cars (the campervan especially) no longer tip over on full lock or in a quick weave. Drift's own roll guard is unchanged. Jumps, crashes and being in the air can still flip you.
+- Tight corners: at full steering between about 5 and 16 m/s with the throttle down the rear tyres give up to 30% of their grip, so the back end steps out more. The arcade stability layer waits a little longer before pulling it straight in those corners.
+
 ## v17.650 — Sound Waves
 
 - New track in **Driving Tests (beta)**: **Sound Waves** - "Pump up da' volume in this hi-fidelity criss-cross of a track that goes up to 11!" About 1 km, two open crossroads, 22 m wide with walls, banked left and right.
