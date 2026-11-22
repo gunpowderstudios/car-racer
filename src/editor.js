@@ -101,7 +101,7 @@ export class Editor {
     const raw = JSON.parse(str);
     this.def = normalizeTrack(raw); this.blank = !!raw.blank; if (this.blank) this.def.blank = true;
     this.pen = []; this.penRedo = []; if (this.blank && this.tool !== 'pen') this._setTool('pen'); else if (!this.blank && this.tool === 'pen') this._setTool('road');
-    if (this.sel >= this.def.handles.length) this.sel = -1;
+    if (this.sel >= this.def.handles.length) this.sel = -1; this.multi?.clear();
     this.selProp = -1;
     $('ed-name').value = this.def.name;
     this.rebuild(true); this.updateUI(); this.draw();
@@ -142,19 +142,14 @@ export class Editor {
   _junctionAsk(forced = null, preset = null) {
     if (!this.visible || !this.track || this.def.mode === 'lastStanding') return;
     if (this._askBox && !forced) return;
-    let c = forced, auto = false;
-    if (!c) {
-      const pend = pendingJunctions(this.track, this.def)[0];
-      if (pend) { c = { ...pend, kind: 'crossroad', dy: 0 }; auto = true; }
-      else { c = this._crossings().find((q) => q.kind === 'problem' && !(this._dismissed ||= new Set()).has(Math.round(q.x / 10) + ',' + Math.round(q.z / 10))); if (c) auto = true; }
-    }
-    if (!c) return;
+    const c = forced, auto = false;
+    if (!c) return;      // (nothing pops up by itself: a flat crossing is simply a crossroad until its marker is clicked, so the shape of the track can be sorted out first)
     this._askBox?.remove(); this._askBox = null;
     const host = this.c.parentElement, box = this._askBox = document.createElement('div');
     const shallow = c.sin < CROSS_MIN_SIN, here = c.kind === 'crossroad' ? 'cross' : c.kind === 'bridge' ? (c.struct === 'flyover' ? 'fly' : c.struct === 'tunnel' ? 'tunnel' : 'gap') : '';
     const note = c.kind === 'problem' ? `<small class="warn">The two roads are ${c.dy.toFixed(1)} m apart.${shallow ? ' They also cross at too shallow an angle to join.' : ''}</small>` : c.kind === 'bridge' ? `<small>This is already a ${c.struct || 'gap'}: one road is ${c.dy.toFixed(1)} m over the other.</small>` : '';
     box.className = 'ed-junction'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Two roads cross here');
-    box.innerHTML = `<b>The road crosses itself here</b>${note}<label><input type="checkbox" data-a="cross"${here === 'cross' ? ' checked' : ''}${shallow ? ' disabled' : ''}> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"${here === 'gap' ? ' checked' : ''}> <span><u>Gap</u> one road over the other (at least 5 m)</span></label><label><input type="checkbox" data-a="fly"${here === 'fly' ? ' checked' : ''}> <span><u>Flyover</u> a gap with a bridge deck on pillars</span></label><label><input type="checkbox" data-a="tunnel"${here === 'tunnel' ? ' checked' : ''}> <span><u>Tunnel</u> the lower road runs under a roof</span></label><small>${auto ? 'Tick one. Closing this makes a flat crossing a crossroad.' : 'Tick the other one to change it.'}</small><button type="button" class="x" aria-label="Close">&times;</button>`;
+    box.innerHTML = `<b>The road crosses itself here</b>${note}<label><input type="checkbox" data-a="cross"${here === 'cross' ? ' checked' : ''}${shallow ? ' disabled' : ''}> <span><u>Crossroad</u> join the roads, with give way signs</span></label><label><input type="checkbox" data-a="gap"${here === 'gap' ? ' checked' : ''}> <span><u>Gap</u> one road over the other (at least 5 m)</span></label><label><input type="checkbox" data-a="fly"${here === 'fly' ? ' checked' : ''}> <span><u>Flyover</u> a gap with a bridge deck on pillars</span></label><label><input type="checkbox" data-a="tunnel"${here === 'tunnel' ? ' checked' : ''}> <span><u>Tunnel</u> the lower road runs under a roof</span></label><small>Tick the other one to change it.</small><button type="button" class="x" aria-label="Close">&times;</button>`;
     const [sx, sy] = this.toScreen(c.x, c.z), hw = host.clientWidth, hh = host.clientHeight;
     box.style.left = Math.max(8, Math.min(hw - 300, sx + 22)) + 'px'; box.style.top = Math.max(8, Math.min(hh - 190, sy - 40)) + 'px';
     host.appendChild(box);
@@ -378,9 +373,10 @@ export class Editor {
     // props
     this._drawProps(g);
 
+    if (this.drag?.type === 'marquee') { const m = this.drag; g.save(); g.fillStyle = 'rgba(255,170,0,0.12)'; g.strokeStyle = AMBER; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.fillRect(Math.min(m.sx, m.x2), Math.min(m.sy, m.y2), Math.abs(m.x2 - m.sx), Math.abs(m.y2 - m.sy)); g.strokeRect(Math.min(m.sx, m.x2), Math.min(m.sy, m.y2), Math.abs(m.x2 - m.sx), Math.abs(m.y2 - m.sy)); g.restore(); }
     // handles
     this.def.handles.forEach((h, k) => {
-      const [x, y] = this.toScreen(h.x, h.z), on = k === this.sel, hov = k === this.hover;
+      const [x, y] = this.toScreen(h.x, h.z), on = k === this.sel || !!this.multi?.has(k), hov = k === this.hover;
       g.beginPath(); g.arc(x, y, on ? 9 : 7, 0, 7);
       g.fillStyle = on ? AMBER : PAPER_DEEP; g.fill();
       g.lineWidth = hov || on ? 3 : 2; g.strokeStyle = on ? '#fff' : INK; g.stroke();
@@ -830,9 +826,22 @@ export class Editor {
   removeSelected() {
     if (this.selProp >= 0) { this.removeProp(); return; }
     if (this.sel < 0) return;
+    if (this.multi?.size > 1) {
+      const gone = [...this.multi].sort((a, b) => b - a);
+      if (this.def.handles.length - gone.length < 4) { this.cb.toast('A circuit needs at least 4 points.'); return; }
+      this.snapshot(); for (const k of gone) this.def.handles.splice(k, 1); this.multi.clear(); this.sel = -1;
+      this.rebuild(true); this.updateUI(); this.draw(); return;
+    }
     if (this.def.handles.length <= 4) { this.cb.toast('A circuit needs at least 4 points.'); return; }
-    this.snapshot(); this.def.handles.splice(this.sel, 1); this.sel = -1;
+    this.snapshot(); this.def.handles.splice(this.sel, 1); this.sel = -1; this.multi?.clear();
     this.rebuild(true); this.updateUI(); this.draw();
+  }
+
+  /** Start dragging every selected point at once (the pointer's world spot and each point's start are remembered). */
+  _groupDrag(sx, sy) {
+    const [wx, wz] = this.toWorld(sx, sy), orig = new Map();
+    for (const k of this.multi) { const h = this.def.handles[k]; if (h) orig.set(k, { x: h.x, z: h.z }); }
+    this.drag = { type: 'group', sx, sy, wx, wz, orig, moved: false };
   }
 
   _bind() {
@@ -845,6 +854,19 @@ export class Editor {
         if (i >= 0) { this.drag = null; this.insertAt(i); this.updateInspector(); } else this.cb.toast('Click on the track to add a point there.');
         return;
       }
+      this.multi ||= new Set();
+      if (e.shiftKey && e.button === 0 && !this._placing()) {               // Shift: add points to the selection (click) or box-select (drag on empty space), then drag them all together
+        const hk = this._hit(sx, sy);
+        if (hk >= 0) {
+          if (this.sel >= 0 && !this.multi.size) this.multi.add(this.sel);
+          if (this.multi.has(hk)) { this._groupDrag(sx, sy); this.drag.toggle = hk; this.draw(); return; }      // (already picked: a drag moves the group, a plain click lets it go)
+          this.multi.add(hk); this.sel = hk; this.selProp = -1; this._groupDrag(sx, sy);
+          this.updateInspector(); this.draw(); return;
+        }
+        this.drag = { type: 'marquee', sx, sy, x2: sx, y2: sy }; return;
+      }
+      if (e.button === 0 && this.multi.size > 1 && this._hit(sx, sy) >= 0 && this.multi.has(this._hit(sx, sy))) { this._groupDrag(sx, sy); this.draw(); return; }
+      if (e.button === 0 && this.multi.size && this._hit(sx, sy) < 0) this.multi.clear();
       const bez = e.button === 0 && !this._placing() ? this._hitBez(sx, sy) : null;
       if (bez) { this.sel = bez.k; this.drag = { type: 'bez', side: bez.side, k: bez.k, moved: false }; this.updateInspector(); return; }
       const k = e.button === 0 ? this._hit(sx, sy) : -1, pk = k < 0 && e.button === 0 ? this._hitProp(sx, sy) : -1;
@@ -857,7 +879,7 @@ export class Editor {
         if (i >= 0) { this.drag = null; this.insertAt(i); const h = this.def.handles[this.sel]; h.gap = 30; h.lip = 0.5; h.kick = 0; this.rebuild(true); this.updateInspector(); this.draw(); this.cb.toast('Jump gap added: 30 m. Change it in the point settings.'); return; }
         this.cb.toast('Click on the road to add a gap.'); return;
       }
-      if (k >= 0) { this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false }; this.updateInspector(); this.draw(); }
+      if (k >= 0) { this.multi.clear(); this.sel = k; this.selProp = -1; this.drag = { type: 'handle', k, moved: false, xc: !works ? this._crossAt(sx, sy, 15) : null }; this.updateInspector(); this.draw(); }
       else if (pk >= 0) { this.selProp = pk; this.sel = -1; this.drag = { type: 'prop', k: pk, moved: false }; this.updateInspector(); this.draw(); }
       else this.drag = { type: 'pan', sx, sy, vx: this.view.x, vz: this.view.z, moved: false, button: e.button };
     });
@@ -873,6 +895,13 @@ export class Editor {
           c.style.cursor = k >= 0 || pk >= 0 ? 'grab' : placing ? 'copy' : 'crosshair'; this.draw();
         }
         return;
+      }
+      if (d.type === 'marquee') { d.x2 = sx; d.y2 = sy; this.draw(); return; }
+      if (d.type === 'group') {
+        if (!d.moved) { if (Math.abs(sx - d.sx) + Math.abs(sy - d.sy) < 3) return; this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
+        const [wx, wz] = this.toWorld(sx, sy), snap = e.altKey ? 0.1 : 2, dx = wx - d.wx, dz = wz - d.wz;
+        for (const [k, o] of d.orig) { const h = this.def.handles[k]; if (h) { h.x = Math.round((o.x + dx) / snap) * snap; h.z = Math.round((o.z + dz) / snap) * snap; } }
+        this.rebuild(); this.updateInspector(); this.draw(); return;
       }
       if (d.type === 'prop') {
         if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
@@ -902,9 +931,19 @@ export class Editor {
       const d = this.drag; this.drag = null; c.style.cursor = this._placing() ? 'copy' : 'crosshair'; setTimeout(() => this._junctionAsk(), 220);
       if (d?.type === 'pan' && !d.moved) {
         if ((this._placing()) && d.button === 0) this.addProp(this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : 'barrel', d.sx, d.sy, this.tool === 'skull');
-        else { this.sel = -1; this.selProp = -1; this.updateInspector(); this.draw(); }
+        else { this.sel = -1; this.selProp = -1; this.multi?.clear(); this.updateInspector(); this.draw(); }
       }
-      if ((d?.type === 'handle' || d?.type === 'bez') && d.moved) this.rebuild(true);
+      if (d?.type === 'marquee') {
+        const x0 = Math.min(d.sx, d.x2), x1 = Math.max(d.sx, d.x2), y0 = Math.min(d.sy, d.y2), y1 = Math.max(d.sy, d.y2);
+        this.multi ||= new Set();
+        if (x1 - x0 > 4 || y1 - y0 > 4) this.def.handles.forEach((h, k) => { const [x, y] = this.toScreen(h.x, h.z); if (x >= x0 && x <= x1 && y >= y0 && y <= y1) this.multi.add(k); });
+        if (this.multi.size) { this.sel = [...this.multi][0]; this.selProp = -1; this.cb.toast(`${this.multi.size} point${this.multi.size > 1 ? 's' : ''} selected: drag one to move them all, Esc to deselect.`); }
+        this.updateInspector();
+      }
+      if (d?.type === 'handle' && !d.moved && d.xc) { this._junctionAsk(d.xc); return; }      // a plain click on a point that sits on a crossing opens its crossroad / gap question
+      if ((d?.type === 'handle' || d?.type === 'bez' || d?.type === 'group') && d.moved) this.rebuild(true);
+      if (d?.type === 'group' && !d.moved && d.toggle !== undefined) { this.multi.delete(d.toggle); this.sel = this.multi.size ? [...this.multi][0] : -1; this.updateInspector(); }
+      if (d?.type === 'group') { c.style.cursor = 'crosshair'; this.draw(); }
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
     c.addEventListener('dblclick', (e) => {
@@ -1065,7 +1104,7 @@ export class Editor {
       else if (e.key === 'f' || e.key === 'F') { this.fit(); this.draw(); }
       else if (e.key === '3') { this._show3d(!this.show3d); this.draw(); }
       else if (e.key === '0') { this.preview?.resetView(); this.draw(); }
-      else if (e.key === 'Escape') { if (this.tool === 'pen' && (this.pen.length || this.blank)) { this.pen = []; this.penRedo = []; this.draw(); return; } if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; } this.updateInspector(); this.draw(); }
+      else if (e.key === 'Escape') { if (this.tool === 'pen' && (this.pen.length || this.blank)) { this.pen = []; this.penRedo = []; this.draw(); return; } if (this.tool !== 'road') this._setTool('road'); else { this.sel = -1; this.selProp = -1; this.multi?.clear(); } this.updateInspector(); this.draw(); }
       else if (e.key === '[' || e.key === ']') { const n = this.def.handles.length; this.sel = (((this.sel < 0 ? 0 : this.sel) + (e.key === ']' ? 1 : -1)) + n) % n; this.updateInspector(); this.draw(); }
     });
   }

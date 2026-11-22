@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.652 — Crossings quiet by default, Shift to select several points
+
+- When the road crosses itself in the editor nothing pops up any more: a flat crossing is simply a crossroad, so you can shape the track (and clear the red tight-corner warnings) first. Click the crossing's marker (or a point sitting on it) to open the Crossroad / Gap / Flyover / Tunnel question.
+- Hold **Shift** and click points to pick several (click a picked one to let it go), or Shift-drag a box on empty ground to pick everything inside it. Then drag any picked point to move them all together; Delete removes them; **Esc** deselects.
+
 ## v17.651 — Harder to roll over, tails step out in tight corners
 
 - Every vehicle now has a soft anti-roll assist: a normal lean in a corner looks the same, but past about 12 degrees, at speed, it fades in and by about 30 degrees it holds the car down, so cars (the campervan especially) no longer tip over on full lock or in a quick weave. Drift's own roll guard is unchanged. Jumps, crashes and being in the air can still flip you.
