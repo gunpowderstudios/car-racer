@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.668 — Raised roads stand on solid walls, not pillars
+
+- **No more supports poking through the road.** Pillars are gone from every track. A raised road now has solid sides, the same width as the road, going straight down to the ground.
+- The wall breaks where it should: under flyovers, tunnels and anywhere another road passes beneath, so cars can still drive through.
+- Sky-high roads (Thin, Twister and the stunt ramps) get walls too.
+- **Workshop Notes removed.** The link on the home page and the notes page itself are gone.
+
 ## v17.667 — Easier to pick up props in the editor, and buses and boxes at any angle
 
 - **Bigger props on the map.** Barrels, fire pits, cars, buses, cardboard stacks and the bullseye are drawn about twice as big at the sizes they used to be too small (they still draw to true size once you zoom in), and the area you can click to pick one up is bigger too.

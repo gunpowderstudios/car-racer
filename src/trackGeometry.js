@@ -96,6 +96,25 @@ export function buildTrackGeometry(track) {
       if ((d < -half && d > -half - ramp.len - 1) || (d > half && d < half + LANDING_SPAN + 1)) solid[i] = 1;
     }
   });
+  // A raised road stands on a solid wall the full width of the road, all the way down to the ground (no pillars to poke through the surface). Not where it crosses over
+  // another road, or by a flyover or tunnel (they have their own supports and the lower road must run clear beneath).
+  {
+    const blocked = new Uint8Array(n), cut = Math.max(2, Math.round(30 / track.ds));
+    for (let i = 0; i < n; i++) {
+      if (track.gap[i] || track.py[i] < 3.2) continue;
+      if ((track.structures || []).some((st) => Math.hypot(track.px[i] - st.x, track.pz[i] - st.z) < 24)) { blocked[i] = 1; continue; }
+      for (let k = 0; k < n; k += 2) {
+        let d = Math.abs(i - k); d = Math.min(d, n - d); if (d < cut || track.py[k] + 0.5 >= track.py[i] - SLAB) continue;
+        if (Math.hypot(track.px[k] - track.px[i], track.pz[k] - track.pz[i]) < track.hw[i] + track.hw[k] + 3) { blocked[i] = 1; break; }
+      }
+    }
+    const wide = Math.max(1, Math.round(8 / track.ds));
+    for (let i = 0; i < n; i++) {
+      if (track.gap[i] || track.py[i] < 3.2) continue;
+      let ok = true; for (let d = -wide; d <= wide && ok; d++) if (blocked[(i + d + n) % n]) ok = false;
+      if (ok) solid[i] = 1;
+    }
+  }
   const depth = (i, e) => (solid[i] ? Math.max(SLAB, e[1]) : SLAB);
 
   // ---- slab sides + underside (dark concrete) so raised road has thickness
@@ -256,10 +275,16 @@ export function buildTrackGeometry(track) {
     if (q.surface === SURF.ROAD && q.idx >= 0 && Math.abs(track.s[i] - q.s) > 40 && Math.abs(track.s[i] - q.s) < L - 40) clear = false;
     if (!clear) continue;
     const w = Math.min(track.hw[i] * 2 - 4, 8), halfW = w / 2, bank = track.bank[i];
-    const hL = edge(i, 1)[1] - SLAB, hR = edge(i, -1)[1] - SLAB;         // true underside height at each edge
-    // pick the tallest the (rolled) box can be while its top still clears both true edges - never pokes through
-    const h = Math.min(hL - halfW * Math.sin(bank), hR + halfW * Math.sin(bank));
-    pillars.push({ x: track.px[i], z: track.pz[i], h, w, yaw: Math.atan2(track.tx[i], track.tz[i]), bank });
+    // pick the tallest the (rolled) box can be while its top still clears the true underside at both edges, and at the front and back of the pillar too:
+    // on a steep hill (or over a crest) the road is lower than at the middle a little way along it, and a flat-topped pillar would show through there
+    const kk = Math.max(1, Math.round(0.9 / track.ds));
+    let h = Infinity;
+    for (const j of [i - kk, i - kk / 2 | 0, i, i + kk / 2 | 0, i + kk]) {
+      const jj = ((j % n) + n) % n, hL = edge(jj, 1)[1] - SLAB, hR = edge(jj, -1)[1] - SLAB;
+      h = Math.min(h, hL - halfW * Math.sin(bank), hR + halfW * Math.sin(bank));
+    }
+    h -= 0.1;
+    // (no pillars any more: a raised road stands on a solid side wall, see `solid` above. The sums are kept in case a free-standing support is ever wanted again.)
   }
   for (let i = 12, k = 0; i < n; i += 52, k++) {
     if (track.gap[i]) continue;

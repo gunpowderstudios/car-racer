@@ -76,3 +76,10 @@ test('nothing stands up through a road above it: no lamp post under a bridge, an
   const { t } = build('flyover');
   for (const d of t.drums.filter((q) => q.pillar)) for (let k = 0; k < t.n; k++) if (Math.hypot(t.px[k] - d.x, t.pz[k] - d.z) < t.hw[k] + 1.2 && t.py[k] > d.y + 3) assert.ok(d.top <= t.py[k] - 0.9, 'a pillar pokes above the deck');
 });
+
+test('a raised road stands on a solid wall to the ground, but not where a flyover crosses over the road below', () => {
+  const atGround = (g, st) => { let c = 0; for (let k = 0; k < g.slab.position.length; k += 3) if (Math.abs(g.slab.position[k + 1]) < 1e-6 && Math.hypot(g.slab.position[k] - st.x, g.slab.position[k + 2] - st.z) < 20) c++; return c; };
+  const f = build('flyover').t, geo = buildTrackGeometry(f);
+  assert.equal(atGround(geo, f.structures[0]), 0, 'the wall stops short of the crossing, so the road below runs clear');
+  assert.equal(geo.pillars.length, 0);
+});

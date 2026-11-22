@@ -79,14 +79,9 @@ test('a pillar under a tall, steeply banked stretch of road never pokes through 
   const g = buildTrackGeometry(track);
   const SLAB = 0.7;
   const edgeY = (i, sg) => track.py[i] - (track.nx[i] * track.lx[i] * track.hw[i] * sg + track.nz[i] * track.lz[i] * track.hw[i] * sg) / track.ny[i];
-  assert.ok(g.pillars.length > 0, 'this track should need pillars');
-  let worst = Infinity;
-  for (const p of g.pillars) {
-    let bi = 0, bd = Infinity;
-    for (let i = 0; i < track.n; i++) { const d = (track.px[i] - p.x) ** 2 + (track.pz[i] - p.z) ** 2; if (d < bd) { bd = d; bi = i; } }
-    const hL = edgeY(bi, 1) - SLAB, hR = edgeY(bi, -1) - SLAB, halfW = p.w / 2;
-    const clearL = hL - (p.h + Math.sin(p.bank) * halfW), clearR = hR - (p.h - Math.sin(p.bank) * halfW);
-    worst = Math.min(worst, clearL, clearR);
-  }
-  assert.ok(worst >= -0.01, `a pillar pokes through by ${(-worst).toFixed(2)}m`);
+  // (a raised road no longer stands on free-standing pillars, which could show through the surface: it has a solid wall down each side to the ground)
+  assert.equal(g.pillars.length, 0, 'no pillars');
+  const atGround = (arr) => { let c = 0; for (let k = 1; k < arr.position.length; k += 3) if (Math.abs(arr.position[k]) < 1e-6) c++; return c; };
+  assert.ok(atGround(g.slab) > 50, 'the side walls reach the ground under the raised road');
+  assert.ok(edgeY && SLAB);
 });
