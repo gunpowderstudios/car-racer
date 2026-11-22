@@ -2,6 +2,15 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.654 — Editor shortcut legend
+
+- A small shortcut legend sits under the 3D view in the editor (it moves up when the 3D view is hidden).
+- Double-clicking anywhere on the road surface adds a point, not just on the centre line.
+
+## v17.653 — Tails swing out a little more
+
+- Tight powered corners: the rear tyres now give up to 42% of their grip (was 30%) up to about 18 m/s (was 16), and the counter-steer helper eases off by up to 60% there so the tail hangs out longer before it is caught. Braking or coasting is unchanged, and it is your car only (rivals and police are tuned without it).
+
 ## v17.652 — Crossings quiet by default, Shift to select several points
 
 - When the road crosses itself in the editor nothing pops up any more: a flat crossing is simply a crossroad, so you can shape the track (and clear the red tight-corner warnings) first. Click the crossing's marker (or a point sitting on it) to open the Crossroad / Gap / Flyover / Tunnel question.

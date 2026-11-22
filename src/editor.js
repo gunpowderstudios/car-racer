@@ -951,7 +951,8 @@ export class Editor {
       const [sx0, sy0] = pos(e), hb = this._hitBez(sx0, sy0);
       if (hb) { const h = this.def.handles[hb.k]; if (h.hx !== undefined) { this.snapshot(); delete h.hx; delete h.hz; this.rebuild(true); this.draw(); this.cb.toast('Curve handle back to automatic.'); } return; }
       const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
-      const i = this._nearestSample(sx, sy); if (i >= 0) this.insertAt(i);
+      const i = this._nearestSample(sx, sy, Math.max(14, (this.track?.hw?.[0] || 10) * this.view.scale));      // (anywhere on the road surface, not only on the centre line)
+      if (i >= 0) this.insertAt(i);
     });
     // Wheel / trackpad / Magic Mouse. Zoom follows how far you actually scrolled (so the stream of
     // small momentum events from a Magic Mouse or trackpad glides instead of jumping), capped per event.

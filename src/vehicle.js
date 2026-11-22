@@ -27,7 +27,7 @@ export const DRIFT_PULL = 6, DRIFT_KEEP = 0.5;
 export const DONUT_MAX = 12;         // m/s: Boost + steering below this speed swings the back end round (a donut); above it the normal drift is all there is
 export const ROLL_K = 140, ROLL_C = 20, ROLL_GUARD_TOW = 0.5;
 export const ROLL_SOFT = { strength: 0.7, from: 0.2, to: 0.5 };      // every car: past about 12 degrees of lean (at speed) the roll guard fades in (full by about 30), so a car still tilts in a corner but does not tip over on its own
-export const TIGHT_SLIDE = 0.3;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
+export const TIGHT_SLIDE = 0.42;      // tight corners: at full lock between about 5 and 16 m/s the rear tyres lose up to this share of their grip, so the back end steps out      // the drift roll guard (see Vehicle._rollGuard)
 export const HILL_CRAWL = 8.2;     // m/s of game speed = 20 mph on the speedometer (20 / 2.237 / GAME_SPEED): the slowest a car may be made to climb a hill
 
 /** Multiplayer equaliser: straight-line pull (m/s^2 off the line) and the speed (m/s) it fades out at, the same for every vehicle. */
@@ -415,6 +415,9 @@ export class Vehicle {
   /** Switch a stalled engine back on: it cranks for a moment, then the car is drivable again. */
   restartEngine() { if (this.engineOff && this.crank <= 0) { this.crank = 1.6; return true; } return false; }
 
+  /** 0..1: how much of a tight, powered, hard-steered corner this is (full lock, throttle down, between about 5 and 18 m/s, not a drift; the player's car only, the rivals and police are tuned without it). */
+  _tightAmt() { if (!(this.lockMul > 1)) return 0; return Math.abs(this.steerState) * clamp(this.thr * 1.5 - this.brk * 3, 0, 1) * clamp((this.speed - 5) / 4, 0, 1) * clamp((18 - this.speed) / 5, 0, 1) * (1 - this.driftBlend); }
+
   _steer(dt, input) {
     const st = this.spec.steer;
     const target = clamp(input.steer, -1, 1);
@@ -438,7 +441,7 @@ export class Vehicle {
       const stab = this.opts.stability || 0;                              // Arcade handling: the helper steps in earlier, harder and quicker
       const over = Math.max(0, Math.abs(rearSlip) - (0.12 - 0.04 * stab));
       const gain = this.opts.assist * clamp((this.speed - 4) / 6, 0, 1);
-      assist = Math.sign(rearSlip) * clamp(over * (1 + 0.5 * stab) * gain, 0, 0.28 + 0.06 * stab);
+      assist = Math.sign(rearSlip) * clamp(over * (1 + 0.5 * stab) * gain, 0, 0.28 + 0.06 * stab) * (1 - 0.6 * this._tightAmt());      // (a tight powered corner: the helper lets the tail hang out longer)
     }
     this.assistAngle += (assist - this.assistAngle) * (1 - Math.exp(-dt / (0.12 - 0.04 * (this.opts.stability || 0))));   // no snapping
     angle += this.assistAngle;
@@ -604,7 +607,7 @@ export class Vehicle {
     const surfMu = (w.surface === SURF.ROAD ? (this.roadMu || 1) : 0.6) * (1 - 0.28 * (w.wet || 0));
     const muBase = w.front ? ty.muFront * GRIP_BOOST : ty.muRear * GRIP_BOOST_REAR;
     const driftRearGrip = !w.front ? 1 - 0.34 * this.driftBlend : 1;
-    const tightSlide = !w.front && this.onGround ? 1 - TIGHT_SLIDE * Math.abs(this.steerState) * clamp(this.thr * 1.5 - this.brk * 3, 0, 1) * clamp((this.speed - 5) / 4, 0, 1) * clamp((16 - this.speed) / 5, 0, 1) * (1 - this.driftBlend) : 1;      // a tight, hard-steered corner: the back steps out
+    const tightSlide = !w.front && this.onGround ? 1 - TIGHT_SLIDE * this._tightAmt() : 1;      // a tight, hard-steered corner: the back steps out
     const donutGrip = !w.front && this.tight ? 0.5 : 1;      // Boost at walking pace while steering: the rear tyres let go and spin
     const hurtGrip = 1 - 0.14 * (w.left ? this.hurt.left : this.hurt.right) - (w.front ? 0.06 * this.hurt.front : 0.10 * this.hurt.back);   // a bent corner grips less
     // climbing: the driven tyres bite harder the steeper it is (the weight shifts back and the tread digs in), so a car with its foot down does not slide back
