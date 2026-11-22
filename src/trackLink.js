@@ -86,7 +86,7 @@ function encodeTrack(d) {
   if (d.weeval && d.weeval.custom) {                                            // a stunt jump from the editor: its buses, boxes and bullseye
     const sp = (d.props || []).filter((p) => STUNT_TYPES.includes(p.type));
     o.u(d.weeval.oneRoad ? 2 : 1); o.u(sp.length); px = 0; pz = 0;
-    for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(STUNT_TYPES.indexOf(p.type) + (p.rot === 90 ? 8 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); px = x; pz = z; }
+    for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(STUNT_TYPES.indexOf(p.type) + (p.rot ? 16 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); if (p.rot) o.u(p.rot); px = x; pz = z; }
   }
   return Uint8Array.from(o.b);
 }
@@ -134,7 +134,7 @@ function decodeTrack(bytes) {
   let stuntFlag = 0; if (r.i < r.a.length) stuntFlag = r.u();
   if (stuntFlag === 1 || stuntFlag === 2) {                                         // a stunt jump (links made before them end here)
     def.weeval = { stage: 1, custom: true, ...(stuntFlag === 2 ? { oneRoad: true } : {}) }; px = 0; pz = 0;
-    for (let i = 0, c = r.count(200); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: STUNT_TYPES[(k & 7) % STUNT_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 8) pr.rot = 90; def.props.push(pr); }
+    for (let i = 0, c = r.count(200); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: STUNT_TYPES[(k & 7) % STUNT_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 16) pr.rot = r.u(); else if (k & 8) pr.rot = 90; def.props.push(pr); }
   }
   return def;
 }

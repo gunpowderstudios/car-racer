@@ -98,7 +98,7 @@ export function normalizeProps(list) {
     if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
     if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
-    if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' && Number(p.rot) === 90) o.rot = 90; }      // up: raised on a platform this far above the ground it stands on
+    if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' || p.type === 'boxes') { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; } }      // up: raised on a platform this far above the ground it stands on
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);
   }
@@ -141,15 +141,22 @@ export function stuntBlocks(props) {
   const out = [];
   for (const p of props || []) {
     if (p.type !== 'bus') continue;
-    const rot = p.rot === 90, w = rot ? STUNT_BUS.len : STUNT_BUS.w, d = rot ? STUNT_BUS.w : STUNT_BUS.len, base = p.y + (p.up || 0);
-    if ((p.up || 0) > 0.5 && p.y < GROUND_Y + 1) out.push({ x0: p.x - w / 2 - 1, x1: p.x + w / 2 + 1, z0: p.z - d / 2 - 1, z1: p.z + d / 2 + 1, kind: 'wall', y: GROUND_Y, h: base - GROUND_Y });      // (the platform)
-    out.push({ x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2, kind: 'bus', y: base, h: STUNT_BUS.h });
+    const hw = STUNT_BUS.w / 2, hd = STUNT_BUS.len / 2, base = p.y + (p.up || 0), th = (p.rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(th)), sn = Math.abs(Math.sin(th));
+    const ex = c * hw + sn * hd, ez = sn * hw + c * hd;                              // (half the box that holds the turned bus)
+    if ((p.up || 0) > 0.5 && p.y < GROUND_Y + 1) out.push({ x0: p.x - ex - 1, x1: p.x + ex + 1, z0: p.z - ez - 1, z1: p.z + ez + 1, kind: 'wall', y: GROUND_Y, h: base - GROUND_Y });      // (the platform)
+    if (sn < 1e-3 || c < 1e-3) { out.push({ x0: p.x - ex, x1: p.x + ex, z0: p.z - ez, z1: p.z + ez, kind: 'bus', y: base, h: STUNT_BUS.h }); continue; }      // square on: one box
+    const nx = Math.ceil(2 * hw), nz = Math.ceil(2 * hd), sx = 2 * hw / nx, sz = 2 * hd / nz, cs = Math.cos(th), sS = Math.sin(th);
+    const hx = 0.8 * (c * sx / 2 + sn * sz / 2), hz = 0.8 * (sn * sx / 2 + c * sz / 2);      // at an angle: a grid of small boxes that follows the bus's outline
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+      const lx = -hw + sx * (i + 0.5), lz = -hd + sz * (j + 0.5), wx = p.x + lx * cs + lz * sS, wz = p.z - lx * sS + lz * cs;
+      out.push({ x0: wx - hx, x1: wx + hx, z0: wz - hz, z1: wz + hz, kind: 'bus', y: base, h: STUNT_BUS.h });
+    }
   }
   return out;
 }
 
 /** Solid boxes cars cannot enter: { x0, x1, z0, z1 } on the ground plan (the town's blocks and its border wall). */
-export const MAX_BLOCKS = 128;
+export const MAX_BLOCKS = 400;
 export function normalizeBlocks(list) {
   const out = [];
   if (!Array.isArray(list)) return out;

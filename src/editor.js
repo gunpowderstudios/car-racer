@@ -418,12 +418,12 @@ export class Editor {
   _toolType() { return this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : STUNT_TOOLS.includes(this.tool) ? this.tool : 'barrel'; }
 
   _drawProps(g) {
-    const S = this.view.scale, R = Math.max(4.5, BARREL.radius * S * 1.7);
+    const S = this.view.scale, R = Math.max(9, BARREL.radius * S * 3.4);      // (props are drawn twice as big as they once were, so they are easy to pick up)
     const icon = (x, y, on, ghost, type, skull, vp) => {
       g.globalAlpha = ghost ? 0.5 : 1;
       if (type === 'vehicle') {                                   // a car seen from above, nose pointing the way it faces; green and arrowed if it drives, blue-grey and parked if not
         const yaw = vp?.yaw || 0, [ex, ey] = this.toScreen(vp ? vp.x + Math.sin(yaw) : 0, vp ? vp.z + Math.cos(yaw) : 0), [cx, cy] = vp ? this.toScreen(vp.x, vp.z) : [x, y];
-        const ang = vp ? Math.atan2(ey - cy, ex - cx) : -Math.PI / 2, len = Math.max(13, 4.4 * S), wid = Math.max(7, 1.9 * S), driving = (vp ? vp.mode : this.vehOpts.mode) === 'driving';
+        const ang = vp ? Math.atan2(ey - cy, ex - cx) : -Math.PI / 2, len = Math.max(26, 4.4 * S), wid = Math.max(14, 1.9 * S), driving = (vp ? vp.mode : this.vehOpts.mode) === 'driving';
         g.save(); g.translate(x, y); g.rotate(ang);
         g.beginPath(); g.roundRect(-len / 2, -wid / 2, len, wid, Math.min(4, wid / 3)); g.fillStyle = driving ? '#2f9d5b' : '#6f86a6'; g.fill(); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke();
         g.fillStyle = 'rgba(10,20,40,.75)'; g.fillRect(len * 0.08, -wid * 0.36, len * 0.2, wid * 0.72);           // windscreen, toward the nose
@@ -431,22 +431,24 @@ export class Editor {
         if (!driving) { g.fillStyle = '#fff'; g.font = `700 ${Math.round(wid * 0.8)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.rotate(-ang); g.fillText('P', 0, 1); }
         g.restore(); g.globalAlpha = 1; return;
       }
-      if (type === 'bus' || type === 'boxes' || type === 'target') {      // stunt props, to scale: a bus (turned a quarter if asked), a stack of boxes, the bullseye
-        const rot = vp ? vp.rot === 90 : false, up = vp?.up || 0;
+      if (type === 'bus' || type === 'boxes' || type === 'target') {      // stunt props: true size when zoomed in, never smaller than a good handful of pixels, turned by their angle
+        const th = (vp?.rot || 0) * Math.PI / 180, up = vp?.up || 0;
+        g.save(); g.translate(x, y); g.rotate(-th);
         if (type === 'bus') {
-          const w = Math.max(9, 2.6 * S), l = Math.max(18, 9 * S), [ww, ll] = rot ? [l, w] : [w, l];
-          g.fillStyle = '#c0281f'; g.fillRect(x - ww / 2, y - ll / 2, ww, ll); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.strokeRect(x - ww / 2, y - ll / 2, ww, ll);
-          g.fillStyle = 'rgba(10,20,40,.7)'; if (rot) g.fillRect(x - ww / 2 + 2, y - ll / 2 + 2, ww * 0.16, ll - 4); else g.fillRect(x - ww / 2 + 2, y - ll / 2 + 2, ww - 4, ll * 0.16);       // (the windscreen: the nose points up the map)
-          if (up > 0.5) { g.fillStyle = '#fff'; g.font = '700 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`${up}m`, x, y); g.textAlign = 'start'; g.textBaseline = 'alphabetic'; }
+          const w = Math.max(18, 2.6 * S), l = Math.max(36, 9 * S);
+          g.fillStyle = '#c0281f'; g.fillRect(-w / 2, -l / 2, w, l); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.strokeRect(-w / 2, -l / 2, w, l);
+          g.fillStyle = 'rgba(10,20,40,.7)'; g.fillRect(-w / 2 + 2, -l / 2 + 2, w - 4, l * 0.16);       // (the windscreen: the nose points up the map)
         } else if (type === 'boxes') {
-          const s2 = Math.max(12, 9 * S);
-          g.fillStyle = '#b98a54'; g.fillRect(x - s2 / 2, y - s2 / 2, s2, s2); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : '#7a5a30'; g.strokeRect(x - s2 / 2, y - s2 / 2, s2, s2);
-          g.strokeStyle = '#7a5a30'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 5; i++) { g.moveTo(x - s2 / 2 + i * s2 / 5, y - s2 / 2); g.lineTo(x - s2 / 2 + i * s2 / 5, y + s2 / 2); g.moveTo(x - s2 / 2, y - s2 / 2 + i * s2 / 5); g.lineTo(x + s2 / 2, y - s2 / 2 + i * s2 / 5); } g.stroke();
+          const s2 = Math.max(24, 9 * S);
+          g.fillStyle = '#b98a54'; g.fillRect(-s2 / 2, -s2 / 2, s2, s2); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : '#7a5a30'; g.strokeRect(-s2 / 2, -s2 / 2, s2, s2);
+          g.strokeStyle = '#7a5a30'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 5; i++) { g.moveTo(-s2 / 2 + i * s2 / 5, -s2 / 2); g.lineTo(-s2 / 2 + i * s2 / 5, s2 / 2); g.moveTo(-s2 / 2, -s2 / 2 + i * s2 / 5); g.lineTo(s2 / 2, -s2 / 2 + i * s2 / 5); } g.stroke();
         } else {
-          const R2 = Math.max(10, 9 * S);
-          [['#f4f1e8', 1], ['#d02a1f', 0.78], ['#f4f1e8', 0.53], ['#d02a1f', 0.27]].forEach(([c, k]) => { g.beginPath(); g.arc(x, y, R2 * k, 0, 7); g.fillStyle = c; g.fill(); });
-          g.beginPath(); g.arc(x, y, R2, 0, 7); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke(); g.beginPath(); g.arc(x, y, R2 * 0.12, 0, 7); g.fillStyle = '#ffc21a'; g.fill();
+          const R2 = Math.max(20, 9 * S);
+          [['#f4f1e8', 1], ['#d02a1f', 0.78], ['#f4f1e8', 0.53], ['#d02a1f', 0.27]].forEach(([c, k]) => { g.beginPath(); g.arc(0, 0, R2 * k, 0, 7); g.fillStyle = c; g.fill(); });
+          g.beginPath(); g.arc(0, 0, R2, 0, 7); g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.stroke(); g.beginPath(); g.arc(0, 0, R2 * 0.12, 0, 7); g.fillStyle = '#ffc21a'; g.fill();
         }
+        g.restore();
+        if (type === 'bus' && up > 0.5) { g.fillStyle = '#fff'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`${up}m`, x, y); g.textAlign = 'start'; g.textBaseline = 'alphabetic'; }
         g.globalAlpha = 1; return;
       }
       if (type === 'fire') {
@@ -677,9 +679,13 @@ export class Editor {
     }
     return null;
   }
-  _hitProp(sx, sy, r = 12) {
-    let best = -1, bd = r * r;
-    this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
+  _hitProp(sx, sy, r = 22) {
+    let best = -1, bd = Infinity;
+    const S = this.view.scale;
+    this.def.props.forEach((p, k) => {
+      const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2, rr = Math.max(r, p.type === 'bus' ? 9 * S * 0.5 : p.type === 'boxes' ? 9 * S * 0.5 : p.type === 'target' ? 9 * S : 0);
+      if (d < rr * rr && d < bd) { bd = d; best = k; }
+    });
     return best;
   }
   _setTool(t) {
@@ -790,9 +796,11 @@ export class Editor {
   /** The Stunt bus options (its height on a platform, a quarter turn): shown with a bus selected. */
   _stuntPanel() {
     const box = $('ed-stunt'); if (!box) return;
-    const sel = this.def && this.def.props[this.selProp], isBus = sel && sel.type === 'bus';
-    box.hidden = !isBus; if (!isBus) return;
+    const sel = this.def && this.def.props[this.selProp], on = sel && (sel.type === 'bus' || sel.type === 'boxes');
+    box.hidden = !on; if (!on) return;
+    $('ed-stunt-up-f').hidden = sel.type !== 'bus';
     $('ed-stunt-up').value = sel.up || 0; $('ed-stunt-up-o').textContent = `${(sel.up || 0).toFixed(1)} m`;
+    $('ed-stunt-turn').value = sel.rot || 0; $('ed-stunt-turn-o').textContent = `${sel.rot || 0}\u00b0`;
   }
   /** The Vehicle options (which car, parked or driving, which way it faces): shown while placing cars or with a car selected. Changing them changes the selected car, or what the next one placed will be. */
   _vehPanel() {
@@ -1053,7 +1061,10 @@ export class Editor {
     for (const k of STUNT_TOOLS) $('ed-tool-' + k).onclick = () => { this._setTool(this.tool === k ? 'road' : k); this.draw(); };
     $('ed-stunt-up').oninput = (e) => { const p = this.def.props[this.selProp]; if (!p || p.type !== 'bus') return; if (!this._stuntSnap) { this.snapshot(); this._stuntSnap = true; } p.up = +e.target.value; if (!p.up) delete p.up; $('ed-stunt-up-o').textContent = `${(+e.target.value).toFixed(1)} m`; this.draw(); };
     $('ed-stunt-up').onchange = () => { this._stuntSnap = false; this.propsChanged(); };
-    $('ed-stunt-rot').onclick = () => { const p = this.def.props[this.selProp]; if (!p || p.type !== 'bus') return; this.snapshot(); if (p.rot === 90) delete p.rot; else p.rot = 90; this.propsChanged(); };
+    const turnable = () => { const p = this.def.props[this.selProp]; return p && (p.type === 'bus' || p.type === 'boxes') ? p : null; };
+    $('ed-stunt-turn').oninput = (e) => { const p = turnable(); if (!p) return; if (!this._stuntSnap) { this.snapshot(); this._stuntSnap = true; } p.rot = +e.target.value; if (!p.rot) delete p.rot; $('ed-stunt-turn-o').textContent = `${+e.target.value}\u00b0`; this.draw(); };
+    $('ed-stunt-turn').onchange = () => { this._stuntSnap = false; this.propsChanged(); };
+    $('ed-stunt-rot').onclick = () => { const p = turnable(); if (!p) return; this.snapshot(); p.rot = ((p.rot || 0) + 90) % 360; if (!p.rot) delete p.rot; this.propsChanged(); this._stuntPanel(); };
     $('ed-tool-fire').onclick = () => { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); };
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };

@@ -59,10 +59,10 @@ export function customLayout(def) {
   const props = def.props || [], target = props.find((p) => p.type === 'target');
   const lipX = h.x - gap / 2, gapEnd = h.x + gap / 2, lipY = h.y;
   const busList = props.filter((p) => p.type === 'bus').map((p, i) => {
-    const rot = p.rot === 90, w = rot ? W.bus.len : W.bus.w, d = rot ? W.bus.w : W.bus.len;
-    return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2, cx: p.x, cz: p.z, rot, i, y: p.y + (p.up || 0), ground: p.y };
+    const th = (p.rot || 0) * Math.PI / 180, ex = Math.abs(Math.cos(th)) * W.bus.w / 2 + Math.abs(Math.sin(th)) * W.bus.len / 2, ez = Math.abs(Math.sin(th)) * W.bus.w / 2 + Math.abs(Math.cos(th)) * W.bus.len / 2;
+    return { x0: p.x - ex, x1: p.x + ex, z0: p.z - ez, z1: p.z + ez, cx: p.x, cz: p.z, rot: p.rot || 0, i, y: p.y + (p.up || 0), ground: p.y };
   });
-  const stacks = props.filter((p) => p.type === 'boxes').map((p) => ({ x: p.x, z: p.z }));
+  const stacks = props.filter((p) => p.type === 'boxes').map((p) => ({ x: p.x, z: p.z, rot: p.rot || 0 }));
   const e = def.weeval.oneRoad ? H[(def.weeval.roadN || H.length) - 1] : null;      // (a one-road track ends at its last point, at a barrier)
   return { stage: 1, custom: true, buses: busList.length, busList, stacks, gap, cx: h.x, cz: h.z, lipX, gapEnd, zoneX: target ? target.x : gapEnd + 30, zoneZ: target ? target.z : h.z, landEnd: gapEnd + 100,
     endX: e ? e.x : Infinity, endZ: e ? e.z : 0, stackX: gapEnd + 60, boomX: gapEnd + 80, startX: H[0] ? H[0].x : 0, lipY, top: H[0] ? H[0].y : lipY, deckTop: lipY, landLen: 100, low: GROUND_Y, width: def.width || W.width };

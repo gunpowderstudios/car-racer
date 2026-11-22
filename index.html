@@ -642,8 +642,9 @@ html.invite-loading #invite-loading {
       <h2>Props</h2>
       <div class="readout" id="ed-props-count"></div>
       <div id="ed-stunt" hidden>
-        <div class="field"><label for="ed-stunt-up">Height</label><input id="ed-stunt-up" type="range" min="0" max="40" step="0.5"><output id="ed-stunt-up-o"></output></div>
-        <div class="field"><button id="ed-stunt-rot" type="button">Turn a quarter</button></div>
+        <div class="field" id="ed-stunt-up-f"><label for="ed-stunt-up">Height</label><input id="ed-stunt-up" type="range" min="0" max="40" step="0.5"><output id="ed-stunt-up-o"></output></div>
+        <div class="field"><label for="ed-stunt-turn">Angle</label><input id="ed-stunt-turn" type="range" min="0" max="355" step="5"><output id="ed-stunt-turn-o"></output></div>
+        <div class="field"><button id="ed-stunt-rot" type="button">Turn 90&deg;</button></div>
       </div>
       <div id="ed-veh" hidden>
         <div class="field"><label for="ed-veh-car">Vehicle</label><select id="ed-veh-car"></select></div>

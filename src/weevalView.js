@@ -112,7 +112,7 @@ export class WeevalView {
     const whG = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14); whG.rotateZ(Math.PI / 2);
     const frontG = new THREE.PlaneGeometry(w * 0.9, 0.9), lampG = new THREE.CircleGeometry(0.17, 10), grilleG = new THREE.PlaneGeometry(w * 0.5, 0.5);
     for (const b of L.busList) {
-      const g = new THREE.Group(); g.position.set(b.cx, 0, b.cz); g.rotation.y = b.rot ? Math.PI / 2 : 0; this.group.add(g);
+      const g = new THREE.Group(); g.position.set(b.cx, 0, b.cz); g.rotation.y = (b.rot || 0) * Math.PI / 180; this.group.add(g);
       const deck = b.y, y0 = deck + 0.5;
       if (b.ground < GROUND_Y + 1 && deck - GROUND_Y > 0.5) {
         this._box(this.mat.concrete, B.w + 2, deck - GROUND_Y, B.len + 2, 0, GROUND_Y + (deck - GROUND_Y) / 2, 0, g);
@@ -184,13 +184,14 @@ export class WeevalView {
   _floor(x, b) { const k = b.stk; return Math.max(this.L.low, k.gy0 + k.gsl * (x - k.x)); }
   _boxHome(b, d, c, k) {
     const { S } = BOXES, st = b.stk;
-    b.x = st.x + (d - (st.depth - 1) / 2) * S; b.z = st.z + (c - (st.cols - 1) / 2) * S; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
-    b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
+    const lx = (d - (st.depth - 1) / 2) * S, lz = (c - (st.cols - 1) / 2) * S, th = st.rot || 0, cs = Math.cos(th), sn = Math.sin(th);      // (a turned stack: the whole stack swings round its middle)
+    b.x = st.x + lx * cs + lz * sn; b.z = st.z - lx * sn + lz * cs; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
+    b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = th + ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
   }
   /** Big stacks of cardboard boxes, tallest at the back: the official one down the landing ramp, or each 'boxes' prop of a stunt track. Drive into them and the boxes fly, tumble, knock each other about and crumple. */
   _boxes() {
     const L = this.L, W = WEEVAL.width, { S, depth, top } = BOXES, t = this.track, q = Track.newQuery();
-    const spots = L.custom ? L.stacks.map((s) => ({ x: s.x, z: s.z, cols: 5, depth: 4 })) : [{ x: L.stackX, z: 0, cols: Math.floor((W - 1) / S), depth }];
+    const spots = L.custom ? L.stacks.map((s) => ({ x: s.x, z: s.z, rot: (s.rot || 0) * Math.PI / 180, cols: 5, depth: 4 })) : [{ x: L.stackX, z: 0, cols: Math.floor((W - 1) / S), depth }];
     this.stacks = spots.map((sp) => {
       const at = (x) => { t.query(x, L.lipY, sp.z, q, 60); return q.idx >= 0 ? q.y : GROUND_Y; };
       return { ...sp, gy0: at(sp.x), gsl: (at(sp.x + 6) - at(sp.x - 6)) / 12 };

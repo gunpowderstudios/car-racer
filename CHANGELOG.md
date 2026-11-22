@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.667 — Easier to pick up props in the editor, and buses and boxes at any angle
+
+- **Bigger props on the map.** Barrels, fire pits, cars, buses, cardboard stacks and the bullseye are drawn about twice as big at the sizes they used to be too small (they still draw to true size once you zoom in), and the area you can click to pick one up is bigger too.
+- **Turn a bus or a stack of boxes to any angle.** Select one and use the new Angle slider (0 to 355 degrees) or the Turn 90 button. A bus at an angle is solid along its real outline, and a turned stack of boxes swings round its middle. Angles are saved and sent in share links.
+- Stunt tracks can now hold more solid pieces (up to 400).
+
 ## v17.666 — Stunt tracks are one road
 
 - **No loop to build.** A stunt track (the Stunt Jump template, or any track with stunt props placed on it) is now just the one road you draw, from the start to the end. The game adds the hidden return road that closes it into a loop, and it is never saved, so your track file and share link hold only your road.

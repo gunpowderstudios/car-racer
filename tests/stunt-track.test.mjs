@@ -89,3 +89,19 @@ test('on a one-road track the car runs into the end barrier after the jump and i
   assert.equal(back.weeval.oneRoad, true); assert.equal(back.handles.length, d.handles.length);
   assert.deepEqual(closeRoad(back).handles.length, new Track(d).def.handles.length);
 });
+
+test('a bus or a stack of boxes can stand at any angle: the bus becomes a staircase of small boxes that follows its outline, and the angle survives a link', async () => {
+  const sq = stuntBlocks([{ type: 'bus', x: 0, z: 0, y: 0, rot: 0 }]);
+  assert.equal(sq.length, 1);
+  const tilted = stuntBlocks([{ type: 'bus', x: 100, z: 50, y: 0, rot: 40 }]);
+  assert.ok(tilted.length > 10 && tilted.every((b) => b.kind === 'bus'), 'a grid of small boxes');
+  const hits = (x, z) => tilted.some((b) => x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1);
+  const th = 40 * Math.PI / 180, at = (lx, lz) => [100 + lx * Math.cos(th) + lz * Math.sin(th), 50 - lx * Math.sin(th) + lz * Math.cos(th)];
+  assert.ok(hits(...at(0, 0)) && hits(...at(0, 4)) && hits(...at(0, -4)), 'along the bus is solid');
+  assert.ok(!hits(...at(3.5, 0)) && !hits(...at(0, 6.5)), 'beside and beyond it is not');
+  const d = makeTemplate('stunt'); d.props.find((p) => p.type === 'bus').rot = 37; d.props.find((p) => p.type === 'boxes').rot = 123;
+  const back = await unpackTrack(await packTrack(normalizeTrack(d)));
+  assert.equal(back.props.find((p) => p.type === 'bus').rot, 37); assert.equal(back.props.find((p) => p.type === 'boxes').rot, 123);
+  assert.equal(normalizeTrack({ ...d, props: [{ type: 'bus', x: 0, z: 0, y: 0, rot: -90 }] }).props[0].rot, 270, 'angles are kept between 0 and 359');
+  assert.equal(customLayout(normalizeTrack(d)).stacks[0].rot, 123);
+});
