@@ -242,6 +242,7 @@ export function specForVehicle(cfg) {
     brakeTotal: (p.brakeG ?? 1.35) * p.mass * 9.81, brakeBias: p.brakeBias, wallBounce: p.wallBounce,
     aero: { ...p.aero }, steer: { ...p.steer }, boost: { ...p.boost },
     profileName: p.reference || cfg.name,
+    rollGuard: p.rollGuard || 0,
   };
   if (p.body) { s.hull = makeHull(p.body); s.body = { width: p.body.width, length: p.body.length }; }
   specCache.set(cfg.id, s);

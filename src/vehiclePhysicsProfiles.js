@@ -8,6 +8,7 @@
 // unchanged so introducing the profile system does not silently retune the cars.
 export const VEHICLE_PHYSICS_PROFILES = {
   car: {
+    rollGuard: 1.3,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1969 Charger-style RWD muscle car',
     mass: 1450,
     frontWeight: 0.52,
@@ -37,7 +38,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   escort: {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.35,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1970s Ford Escort-style lightweight RWD saloon',
     mass: 920,
     frontWeight: 0.53,
@@ -63,7 +64,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   bmw: {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.24,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: 'late-1980s German compact RWD saloon',
     mass: 1080,
     frontWeight: 0.52,
@@ -89,7 +90,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'v8-pilot': {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.94,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: 'late-1940s Ford V8 Pilot-style RWD saloon',
     mass: 1510,
     frontWeight: 0.54,
@@ -120,7 +121,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   campervan: {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): a tall van tips over far too easily with grippy tyres
+    rollGuard: 0.4,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1972 VW Type 2 1600 campervan',
     mass: 1280,
     frontWeight: 0.44,
@@ -161,6 +162,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'motor-home': {
+    rollGuard: 0.47,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1970s V8 motor home',
     mass: 2800,
     frontWeight: 0.52,
@@ -186,6 +188,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   mini: {
+    rollGuard: 0.29,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1960s Mini-style pocket-sized classic (go-kart handling)',
     mass: 700,
     frontWeight: 0.57,
@@ -212,7 +215,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'french-cheese': {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.38,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1970s Citroen 2CV-style bouncy French classic (soft, tall, rolls and bobs)',
     mass: 640,
     frontWeight: 0.60,
@@ -239,7 +242,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'bus': {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 1.95,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1960s Routemaster-style London double-decker (very heavy, tall, slow to turn, hard to stop)',
     mass: 4300,
     frontWeight: 0.50,
@@ -265,6 +268,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'panda': {
+    rollGuard: 0.09,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: 'Fiat Panda-style supermini (small, tall, light, surprisingly tough and grippy)',
     mass: 860,
     frontWeight: 0.61,
@@ -291,7 +295,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'volvo': {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.3,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1980s Volvo 240 estate-style RWD load-lugger (heavy, solid, stable, a bit understeery)',
     mass: 1420,
     frontWeight: 0.56,
@@ -319,6 +323,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'big-apple': {
+    rollGuard: 0.73,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1970s Checker-style New York yellow cab (huge, heavy, floaty, a landboat that keeps going)',
     mass: 1900,
     frontWeight: 0.55,
@@ -346,6 +351,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'police': {
+    rollGuard: 0.68,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1980s American police cruiser (big V8, soft and bouncy, quick off the line, wallowy in the bends)',
     mass: 1650,
     frontWeight: 0.55,
@@ -373,7 +379,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'mobility-car': {
-    rollGuard: 0.5,       // a steady anti-roll assist (see Vehicle._rollGuard): this car tipped over too easily on full lock
+    rollGuard: 0.22,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1960s fibreglass three-wheeled mobility car with a little two-stroke (featherweight, twitchy, easily bent)',
     mass: 380,
     frontWeight: 0.44,
@@ -400,6 +406,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
   },
 
   'saab': {
+    rollGuard: 0.21,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: '1980s Saab 900 Turbo-style front-driver (nose-heavy, grippy, a big turbo kick when you boost)',
     mass: 1250,
     frontWeight: 0.60,
@@ -428,6 +435,7 @@ export const VEHICLE_PHYSICS_PROFILES = {
 
   // Template/default for the next three-wheeler. It is harmless until a vehicle points at it.
   'tuk-tuk': {
+    rollGuard: 0.32,       // how hard this vehicle is to roll over (anti-roll assist, see Vehicle._rollGuard), tuned so the sideways-kick test flips it at the number the game's owner chose
     reference: 'Bajaj/Piaggio-style three-wheeler',
     mass: 520,
     frontWeight: 0.38,

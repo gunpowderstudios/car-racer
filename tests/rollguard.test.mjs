@@ -55,3 +55,19 @@ test('the drift roll guard eases in (it used to switch on at full strength, whic
   assert.ok(first < 0.2, `the guard started at ${first}`);
 });
 
+
+test('every vehicle is as hard to roll as it was tuned to be: a sideways kick that flips the light ones leaves the heavy ones on their wheels', () => {
+  const kickRolls = (id, kick) => {
+    const track = new Track(DRAG_DEF), car = new Vehicle(spec(id)); car.opts.stability = 1; car.opts.assist = 0.7;
+    placeOnTrack(car, track, track.progressAt(0, 0.65, -900), 0, 25);
+    for (let i = 0; i < 30; i++) { car.step(DT, { throttle: 0.4, brake: 0, steer: 0, handbrake: false, boost: false }, track); car.events.length = 0; }
+    car.angVel.addScaled(car.az, kick);
+    for (let i = 0; i < 3 / DT; i++) { car.step(DT, { throttle: 0.4, brake: 0, steer: 0, handbrake: false, boost: false }, track); car.events.length = 0; if (car.ay.y < 0) return true; }
+    return false;
+  };
+  assert.ok(vehiclePhysicsProfile('car').rollGuard > 1 && vehiclePhysicsProfile('bus').rollGuard > vehiclePhysicsProfile('car').rollGuard, 'the heavy ones carry the most');
+  for (const [id, stays, rolls] of [['bus', 30, null], ['car', 22, null], ['mobility-car', 8, 20], ['mini', 10, 24]]) {
+    assert.ok(!kickRolls(id, stays), `${id} stays up at a kick of ${stays}`);
+    if (rolls) assert.ok(kickRolls(id, rolls), `${id} rolls at a kick of ${rolls}`);
+  }
+});

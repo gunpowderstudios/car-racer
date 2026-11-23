@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.695 — Every vehicle rolls as it should
+
+- **Each vehicle now has its own roll resistance, tuned to your numbers.** The bus and the Dodge are heavy at the base and very hard to flip; the Saab, BMW and V8 Pilot are steady; the Mini, tuk-tuk, motor home and Panda tip more easily; the mobility car tips easiest. A sideways-kick test now flips them at about 40 (bus), 30 (Dodge), 28 (Saab), 25 (BMW and V8 Pilot), 22 (Big Apple, police), 20 (campervan, Escort), 18 (French cheese), 15 (Mini, tuk-tuk, motor home, Panda) and 12 (mobility car). The Volvo stays unflippable.
+- **A fix behind it:** the old per-vehicle roll-assist numbers in the vehicle profiles were never being passed to the cars, so they did nothing. They are now.
+- Heavier values also keep a car a little flatter in corners.
+
 ## v17.694 — Target easier to see
 
 - **The target is now 10% transparent** (it was set to 90% transparent in v17.689, which was too faint), so it reads as paint on the road but is easy to see.
