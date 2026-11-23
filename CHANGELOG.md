@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.681 — Buildings that look like buildings
+
+- **Editor buildings no longer look like a bank of lights.** Windows are now bigger (about 1.8 m by 2.4 m, four across and three floors per 12 m) with frames, sills and soot, mostly dark with a few lit warm and some with blinds down.
+- Walls use the lighter brick and stone colours of the Getaway town instead of near-black blocks, and the windows tile in whole repeats so none is cut in half at a corner.
+
 ## v17.680 — Editor cars lean like yours
 
 - **Cars you place in the editor now lean and roll over exactly like your own car.** They were getting the computer drivers' extra roll stiffening, which made their tilt in corners look jerky and unlike the main game.
