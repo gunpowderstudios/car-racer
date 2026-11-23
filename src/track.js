@@ -157,6 +157,11 @@ export function rampList(props) {
   for (const p of props || []) { if (p.type !== 'ramp') continue; const th = (p.rot || 0) * Math.PI / 180; out.push({ x: p.x, z: p.z, sn: Math.sin(th), cs: Math.cos(th), half: (p.d || RAMP.d) / 2, hw: (p.w || RAMP.w) / 2, h: p.h || RAMP.h }); }
   return out;
 }
+/** A ramp's rise at distance `u` along its length `L` (full height `h`): it eases up from the road over the first few metres, so a car driving on does not hit a sudden slope, then climbs straight to the lip. Returns [height, slope]. */
+export function rampProfile(u, L, h) {
+  const s = Math.max(0, Math.min(1, u / L)), tl = Math.min(0.45, 6 / L), n = 1 - tl / 2;
+  return s < tl ? [h * s * s / (2 * tl) / n, h * (s / tl) / n / L] : [h * (s - tl / 2) / n, h / n / L];
+}
 /** Height of the ramps at (x, z) and its slope, added into `out` (h, gx, gz). */
 export function rampAt(ramps, x, z, out) {
   let h = 0, gx = 0, gz = 0;
@@ -165,7 +170,7 @@ export function rampAt(ramps, x, z, out) {
     if (dx > big || dx < -big || dz > big || dz < -big) continue;
     const u = dx * r.sn + dz * r.cs + r.half, v = dx * r.cs - dz * r.sn;
     if (u < 0 || u > 2 * r.half || v < -r.hw || v > r.hw) continue;
-    const k = r.h / (2 * r.half); h += k * u; gx += k * r.sn; gz += k * r.cs;
+    const [ph, pk] = rampProfile(u, 2 * r.half, r.h); h += ph; gx += pk * r.sn; gz += pk * r.cs;
   }
   out.h = h; out.gx = gx; out.gz = gz;
   return out;
@@ -481,7 +486,7 @@ export class Track {
     const out = [], q = Track.newQuery(), tmp = { h: 0, gx: 0, gz: 0 };
     for (const r of this.ramps) {
       this.query(r.x, this.py[0] + 20, r.z, q, 6); rampAt([r], r.x, r.z, tmp);
-      const y0 = (q.idx >= 0 ? q.y - tmp.h : this.py[0]) - 1.5, L = 2 * r.half, k = r.h / L, ac = Math.abs(r.cs), as = Math.abs(r.sn);
+      const y0 = (q.idx >= 0 ? q.y - tmp.h : this.py[0]) - 1.5, L = 2 * r.half, ac = Math.abs(r.cs), as = Math.abs(r.sn);
       const box = (u, v, sz, top) => {                                                     // a small square cell centred at (u, v) from the ramp's low end, up to `top` above the road (squares keep the box close to the ramp's true outline when it is turned)
         if (top < 0.3) return;
         const cx = r.x + (u - r.half) * r.sn + v * r.cs, cz = r.z + (u - r.half) * r.cs - v * r.sn, e = 0.5 * sz * (ac + as) * 0.82;
@@ -489,7 +494,7 @@ export class Track {
       };
       const cell = Math.max(0.7, Math.max(L, 2 * r.hw) / 40), nv = Math.max(1, Math.round(2 * r.hw / cell)), sv = 2 * r.hw / nv, nu = Math.max(1, Math.round(L / cell)), su = L / nu;
       for (let j = 0; j < nv; j++) box(L - su / 2, -r.hw + sv * (j + 0.5), Math.max(su, sv), r.h - 0.25);              // the back of the lip: one row of cells right under it
-      for (let i = 0; i < nu; i++) for (const sd of [-1, 1]) box(su * (i + 0.5), sd * (r.hw - sv / 2), Math.max(su, sv), k * su * i - 0.05);      // the sides, stepping up the slope, kept inside the ramp's own edge
+      for (let i = 0; i < nu; i++) for (const sd of [-1, 1]) box(su * (i + 0.5), sd * (r.hw - sv / 2), Math.max(su, sv), rampProfile(su * i, L, r.h)[0] - 0.05);      // the sides, stepping up the slope, kept inside the ramp's own edge
     }
     return out;
   }

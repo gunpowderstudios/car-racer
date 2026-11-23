@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.693 — Smooth ramp entry
+
+- **Driving onto a ramp is smooth.** The ramp used to start at its full slope right at the foot, which gave the car a sudden jolt. It now eases up from the road over its first few metres, then climbs straight to the lip. The drawn shape, the driving surface and the solid walls all follow the same curve, so they still match exactly.
+
 ## v17.692 — Hanging boxes fall
 
 - **A box left floating when the ones under it are knocked away now tumbles down.** Before, only boxes the car touched directly brought down what was stacked above them; boxes knocked by other boxes could leave a stack hanging in mid-air.

@@ -1,7 +1,7 @@
 // Draws the buildings (and tunnels) placed in the editor. The parts come from buildings.js, the same ones the solid blocks are made from,
 // so what you see is what you hit. Eight looks: brick, concrete, glass, sandstone and so on, each with its own rows of windows.
 import * as THREE from 'three';
-import { Track, rampAt } from './track.js';
+import { Track, rampAt, rampProfile } from './track.js';
 
 // Muted brick and stone walls, like the town buildings in The Getaway, with proper windows: a tile 12 m across and 12 m tall holds 4 columns and 3 floors of
 // windows about 1.8 m by 2.4 m (a few lit warm, most dark, some with blinds down), each with a sill, over sooty grime.
@@ -64,10 +64,10 @@ function buildRamps(track) {
   const top = new THREE.MeshStandardMaterial({ color: 0x8a8780, roughness: 0.9 }), side = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide });
   const base = (x, z, y0) => { track.query(x, y0 + 14, z, q, 3); const y = q.idx >= 0 ? q.y : y0; rampAt(track.ramps, x, z, tmp); return y - tmp.h; };      // (the road's own height: the car's query already includes the ramp)
   for (const r of track.ramps) {
-    const n = Math.max(4, Math.round(r.half * 2 / 2)), L = r.half * 2, pos = [], idx = [], uv = [];
+    const n = Math.max(8, Math.round(r.half * 2)), L = r.half * 2, pos = [], idx = [], uv = [];
     const pt = (u, v) => [r.x + (u - r.half) * r.sn + v * r.cs, r.z + (u - r.half) * r.cs - v * r.sn];
     const y0 = base(r.x, r.z, 0);
-    for (let i = 0; i <= n; i++) for (const v of [-r.hw, r.hw]) { const u = L * i / n, [x, z] = pt(u, v), b = base(x, z, y0); pos.push(x, b + r.h * u / L + 0.04, z, x, b - 0.05, z); uv.push(v < 0 ? 0 : 1, u / 4, v < 0 ? 0 : 1, u / 4); }
+    for (let i = 0; i <= n; i++) for (const v of [-r.hw, r.hw]) { const u = L * i / n, [x, z] = pt(u, v), b = base(x, z, y0); pos.push(x, b + rampProfile(u, L, r.h)[0] + 0.04, z, x, b - 0.05, z); uv.push(v < 0 ? 0 : 1, u / 4, v < 0 ? 0 : 1, u / 4); }
     const A = (i, s2, k) => (i * 2 + s2) * 2 + k;           // vertex: segment i, side s2 (0 left, 1 right), k (0 top, 1 bottom)
     const T = [], S = idx;
     for (let i = 0; i < n; i++) {

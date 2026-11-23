@@ -16,7 +16,7 @@ test('a ramp on the road lifts the surface along its length, then drops away at 
   const { T0, T, i } = setup(), q = Track.newQuery(), q0 = Track.newQuery();
   const h = (back) => { const [x, z] = along(T, i, back); T.query(x, 10, z, q); T0.query(x, 10, z, q0); return q.y - q0.y; };
   assert.ok(Math.abs(h(-6.9)) < 0.5, 'near the foot it is almost level with the road');
-  assert.ok(h(0) > 1.2 && h(0) < 1.8, 'half way up it is about half the height');
+  assert.ok(h(0) > 0.8 && h(0) < 1.5, 'half way up it is a little under half the height (it eases up from the road)');
   assert.ok(h(6.5) > 2.6 && h(6.5) <= 3.1, 'at the lip it is the full height');
   assert.ok(Math.abs(h(8)) < 0.2, 'past the lip the road is back to normal');
   assert.ok(Math.abs(h(30)) < 0.2, 'and nowhere near it is untouched');
