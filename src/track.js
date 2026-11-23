@@ -70,7 +70,7 @@ export const STUNT_TYPES = ['bus', 'boxes', 'target'];      // stunt-jump props 
 export const hasStuntProps = (def) => !!(def && (def.props || []).some((p) => STUNT_TYPES.includes(p.type)));
 export const STUNT_BUS = { w: 2.6, len: 9, h: 4.7 };         // a bus: w along the run, len across it (turned a quarter when rot is 90)
 export const SIGNAL_TYPES = ['lights', 'crossing'];      // traffic lights and a pedestrian crossing, set on the road (see signals.js)
-export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', 'ramp', ...STUNT_TYPES, ...SIGNAL_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', 'ramp', ...STUNT_TYPES, ...SIGNAL_TYPES, 'tower'];      // ('tower': the Crystal Palace transmitter, scenery you can see from miles off; h is its height)      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 600;      // (a town of buildings needs room)
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
@@ -115,6 +115,7 @@ export function normalizeProps(list) {
       const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot;
       const nm = String(p.name || '').replace(/\s+/g, ' ').trim().slice(0, 24); if (nm) o.name = nm;          // a name on the front (the +depth side), such as a pub sign
     }
+    if (p.type === 'tower') o.h = clamp(Math.round(Number(p.h)) || 328, 20, 600);
     if (SIGNAL_TYPES.includes(p.type)) { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; }      // the way the road runs here (the traffic it stops comes from that way)
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);

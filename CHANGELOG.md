@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.701 — Crystal Palace transmitter tower
+
+- New scenery piece, the **Transmitter tower**: a tapering lattice mast with platforms, a slim upper shaft and the white aerial on top, 328 m tall by default (the Height slider changes it). It is scenery, not solid. Find it in the Scenery menu and on the icon bar.
+- The Crystal Palace track now has one, 0.6 miles north-west of the top-left corner of the triangle, so you can see it over the rooftops. Drag it wherever you like in the editor.
+- **Skull barrels fixed**: the three vertical lines are gone; the skulls now sit cleanly on black (the picture was stretching where it wrapped round the barrel).
+
 ## v17.700 — Traffic, race cars, traffic lights and crossings
 
 - **Vehicles** in the editor now have a Behaviour of **Parked**, **Regular traffic** or **Race rival** (the old "Driving" is still there as "Driving (fast)"). A regular car drives round at ordinary traffic speed, keeps to its lane, steers round other vehicles and never goes after you. A race rival is a real opponent: it starts on the grid, counts in your race position and you have to beat it. Several race cars make the whole field, and the Rivals setting is ignored on that track.

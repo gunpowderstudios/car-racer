@@ -45,8 +45,14 @@ function hazardMaterial() {
   return new THREE.MeshStandardMaterial({ vertexColors: true, map, color: map ? 0xffffff : 0x111111, roughness: 0.5, metalness: 0.3 });
 }
 function lethalGeometry(base) {
-  const g = base.clone(), pos = g.attributes.position, uv = new Float32Array(pos.count * 2), h = BARREL.height / 2;
-  for (let i = 0; i < pos.count; i++) { uv[i * 2] = Math.atan2(pos.getZ(i), pos.getX(i)) / (Math.PI * 2) * 3 + 0.5; uv[i * 2 + 1] = (pos.getY(i) + h) / BARREL.height; }
+  const g = base.index ? base.toNonIndexed() : base.clone(), pos = g.attributes.position, n = pos.count, uv = new Float32Array(n * 2), h = BARREL.height / 2;
+  for (let i = 0; i < n; i++) { uv[i * 2] = Math.atan2(pos.getZ(i), pos.getX(i)) / (Math.PI * 2) * 3 + 0.5; uv[i * 2 + 1] = (pos.getY(i) + h) / BARREL.height; }
+  // Where the angle wraps round (the seam at the back of the drum) a triangle would get one corner at the start of the picture and one at the end, and
+  // stretch the whole picture across it: the thin vertical lines. Pull the low corners round a full turn (3 pictures) so the triangle spans the seam properly.
+  for (let t = 0; t + 2 < n; t += 3) {
+    const a = uv[t * 2], b = uv[(t + 1) * 2], c = uv[(t + 2) * 2], lo = Math.min(a, b, c), hi = Math.max(a, b, c);
+    if (hi - lo > 1.5) for (let k = 0; k < 3; k++) if (uv[(t + k) * 2] < lo + 1.5) uv[(t + k) * 2] += 3;
+  }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return g;
 }

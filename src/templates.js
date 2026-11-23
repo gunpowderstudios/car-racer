@@ -544,7 +544,7 @@ function getawayTrack() {
 }
 
 
-/** Crystal Palace: the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot (about 0.64 miles, all flat) with the buildings along it. Editor only: it is not in the race menus.
+/** Crystal Palace: the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot (about 0.64 miles, all flat) with the buildings along it and the Crystal Palace transmitter tower 0.6 miles away to the north-west. Editor only: it is not in the race menus.
  *  `mapFit` says where the matching screenshot goes behind it (metres), so the editor's Map button can line it up. */
 // [x, z, width, depth, height, turn, look, name]: the shops and houses along the three streets, with the three pubs named on their fronts (the first three)
 const CRYSTAL_PALACE_BUILDINGS = [
@@ -627,7 +627,7 @@ const CRYSTAL_PALACE_BUILDINGS = [
 ];
 function crystalPalaceTrack() {
   const P = [[-22, -128], [11, -126], [43, -122], [77, -122], [110, -126], [143, -132], [166, -131], [181, -118], [172, -92], [143, -64], [113, -37], [96, -9], [81, 20], [66, 50], [50, 80], [31, 106], [10, 133], [5, 158], [-12, 176], [-36, 184], [-56, 173], [-63, 148], [-58, 115], [-70, 84], [-81, 52], [-92, 21], [-104, -10], [-114, -42], [-125, -73], [-135, -105], [-124, -119], [-82, -128], [-56, -133]];
-  return normalizeTrack({ name: 'Crystal Palace', width: 14, walls: true, defaultLaps: 3, handles: P.map(([x, z]) => ({ x, y: 0, z })), props: CRYSTAL_PALACE_BUILDINGS.map(([x, z, w, d, h, rot, style, name]) => ({ type: 'building', x, z, y: 0, w, d, h, ...(rot ? { rot } : {}), style, ...(name ? { name } : {}) })), mapFit: { x: 0, z: 0, w: 502, rot: 0 } });
+  return normalizeTrack({ name: 'Crystal Palace', width: 14, walls: true, defaultLaps: 3, handles: P.map(([x, z]) => ({ x, y: 0, z })), props: CRYSTAL_PALACE_BUILDINGS.map(([x, z, w, d, h, rot, style, name]) => ({ type: 'building', x, z, y: 0, w, d, h, ...(rot ? { rot } : {}), style, ...(name ? { name } : {}) })).concat([{ type: 'tower', x: -813, z: -795, y: 0, h: 328 }]), mapFit: { x: 0, z: 0, w: 502, rot: 0 } });
 }
 
 export function makeTemplate(key) {

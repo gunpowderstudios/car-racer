@@ -38,14 +38,26 @@ test('Crystal Palace: editor-only, flat, about 0.6 miles, clean, and says where 
 
 test('Crystal Palace has its buildings, and the three pubs are named on their fronts', () => {
   const def = makeTemplate('crystalpalace'), t = new Track(def);
-  assert.ok(def.props.length > 40 && def.props.every((p) => p.type === 'building'));
+  const blds = def.props.filter((p) => p.type === 'building');
+  assert.ok(blds.length > 40);
   const names = def.props.filter((p) => p.name).map((p) => p.name).sort();
   assert.deepEqual(names, ['The Sparrowhawk', 'The Westow House', 'The White Hart']);
-  assert.equal(t.buildings.length, def.props.length);
+  assert.equal(t.buildings.length, blds.length);
   assert.ok(t.buildings.every((b) => !b.tunnel), 'no building may sit over the road');
   assert.deepEqual(t.buildings.filter((b) => b.name).map((b) => b.name).sort(), names);
   // a building's name is kept (trimmed, at most 24 characters) and a blank one is dropped
   const d2 = normalizeTrack({ ...def, props: [{ type: 'building', x: 0, z: 0, y: 0, name: '  The   Very Long Pub Name That Goes On And On  ' }, { type: 'building', x: 50, z: 0, y: 0, name: '   ' }] });
   assert.equal(d2.props[0].name, 'The Very Long Pub Name T');             // spaces tidied, cut at 24 characters
   assert.equal(d2.props[1].name, undefined);
+});
+
+test('Crystal Palace has its transmitter tower, 328 m tall, about 0.6 miles north-west of the top-left corner', () => {
+  const def = makeTemplate('crystalpalace'), tw = def.props.filter((p) => p.type === 'tower');
+  assert.equal(tw.length, 1); assert.equal(tw[0].h, 328);
+  const corner = def.handles.reduce((b, h) => (h.x + h.z < b.x + b.z ? h : b));          // the north-west-most point of the road
+  const d = Math.hypot(tw[0].x - corner.x, tw[0].z - corner.z);
+  assert.ok(d > 880 && d < 1050, `distance ${d}`);                                        // 0.6 miles is 966 m
+  assert.ok(tw[0].x < corner.x && tw[0].z < corner.z, 'north (up the map) and west (left)');
+  assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0 }] }).props[0].h, 328);        // the default height
+  assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0, h: 5000 }] }).props[0].h, 600);
 });
