@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.697 — Map backdrop in the editor
+
+- New **Map** button in the editor: add a screenshot (or any picture) of a real place and it lies flat under the grid, so you can draw the road over the top of it. Handy for tracing a town.
+- Drag the picture into place, change its size, turn it, and set how see-through it is. **Set scale**: click two places on the picture, type the real distance between them in metres, and the whole picture is resized to match.
+- It is a guide only: it never shows in the game. The picture is shrunk to a sensible size and remembered in your browser for that track name.
+
 ## v17.696 — Target looks painted on
 
 - The Weeval target is now 50% see-through (was 10%), so the road texture shows through and it looks painted on the surface.

@@ -11,6 +11,7 @@ import { clamp, lerp } from './math.js';
 import { arenaInfo, arenaOutline } from './arena.js';
 import { BUILDING } from './buildings.js';
 import { RAMP } from './track.js';
+import { EditorMap } from './editorMap.js';
 
 const $ = (id) => document.getElementById(id);
 const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#eaf6ff', AMBER = '#ffc857', RED = '#ff6b5e';
@@ -33,6 +34,7 @@ export class Editor {
     this.view = { x: 0, z: 0, scale: 0.5 };
     this.undoStack = []; this.redoStack = [];
     this.drag = null; this.visible = false; this._raf = 0; this._analyzeT = 0;
+    this.map = new EditorMap(this);                // (before _bind: its mouse handlers must run first)
     this._bind();
     const sel = $('ed-template');
     sel.innerHTML = '<option value="">Start from a template</option>' + TEMPLATE_KEYS.map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
@@ -49,6 +51,7 @@ export class Editor {
     this.sel = -1; this.selProp = -1; this._setTool(this.blank ? 'pen' : 'road');
     this.visible = true;
     $('ed-name').value = this.def.name;
+    if (!keepUndo) this.map.load(this.def.name); else this.map._sync();
     this._resize(); this._resizeProfile();
     this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     this._show3d(this.show3d); this.preview?.fit();
@@ -277,7 +280,7 @@ export class Editor {
     const g = this.g, t = this.track, S = this.view.scale;
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     g.fillStyle = PAPER; g.fillRect(0, 0, this.w, this.h);
-    this._grid(g);
+    this._grid(g); this.map.draw(g);
     if (this.blank || this.tool === 'pen') { if (this.tool === 'pen') this._drawPen(g); if (this.blank) return; }
 
     // road surface
@@ -1231,6 +1234,7 @@ export class Editor {
       $('ed-name').value = this.def.name; this.rebuild(true); this.view.x = 0; this.view.z = 0; this.view.scale = 0.5; this.updateUI(); this.propsChanged(); this.cb.toast('Blank page: click to place points (4 or more), then click the first point to close the circuit.');
     };
     $('ed-fit').onclick = () => { this.fit(); this.draw(); };
+    $('ed-map').onclick = () => this.map.toggle();
     $('ed-3d-toggle').onclick = () => { this._show3d(!this.show3d); this.draw(); };
     $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };
     $('ed-save').onclick = () => { if (this._needTrack()) return; this.cb.onSave(this.def); };
