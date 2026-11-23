@@ -34,12 +34,24 @@ export class Editor {
     this.view = { x: 0, z: 0, scale: 0.5 };
     this.undoStack = []; this.redoStack = [];
     this.drag = null; this.visible = false; this._raf = 0; this._analyzeT = 0;
+    this._iconBar();
     this.map = new EditorMap(this);                // (before _bind: its mouse handlers must run first)
     this._bind();
     const sel = $('ed-template');
     sel.innerHTML = '<option value="">Start from a template</option>' + EDITOR_TEMPLATE_KEYS.map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
     new ResizeObserver(() => { if (this.visible) { this._resize(); this.draw(); } }).observe(this.c.parentElement);
     new ResizeObserver(() => { if (this.visible) { this._resizeProfile(); this.drawProfile(); } }).observe(this.pc.parentElement);
+  }
+
+  /** The scenery icons along the bottom of the map: one click picks a tool, click the map to place it (the same tools as the Scenery menu). */
+  _iconBar() {
+    const items = [['barrel', '\u{1F6E2}\uFE0F', 'Barrel'], ['skull', '\u2620\uFE0F', 'Skull barrel'], ['fire', '\u{1F525}', 'Fire pit'], ['vehicle', '\u{1F697}', 'Car'], ['bus', '\u{1F68C}', 'Stunt bus'], ['boxes', '\u{1F4E6}', 'Cardboard boxes'], ['target', '\u{1F3AF}', 'Bullseye'], ['building', '\u{1F3E2}', 'Building'], ['ramp', '\u25E2', 'Ramp']];
+    const bar = this.iconBar = document.createElement('div'); bar.id = 'ed-icons'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Scenery');
+    for (const [k, ic, nm] of items) {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.tool = k; b.title = `${nm}: click, then click the map to place one`; b.setAttribute('aria-label', nm); b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = `<span>${ic}</span><small>${nm}</small>`; b.onclick = () => { $('ed-tool-' + k).click(); }; bar.appendChild(b);
+    }
+    this.c.parentElement.appendChild(bar);
   }
 
   // ------------------------------------------------------------- lifecycle
@@ -468,6 +480,24 @@ export class Editor {
   }
 
   _placing() { return this.tool === 'barrel' || this.tool === 'skull' || this.tool === 'fire' || this.tool === 'vehicle' || STUNT_TOOLS.includes(this.tool); }
+  /** Where the turn handle of a prop sits on screen (null if it cannot be turned): out from its middle, along the way it points. Dragging it round sets `rot` (degrees) or a car's `yaw`. */
+  _rotHandle(p) {
+    if (!p || !['building', 'ramp', 'bus', 'boxes', 'vehicle'].includes(p.type)) return null;
+    if (p.type === 'building' && this.track?.buildings?.find((q) => this.def.props[q.pi] === p)?.tunnel) return null;          // (a tunnel turns itself to follow the road)
+    const S = this.view.scale, [x, y] = this.toScreen(p.x, p.z);
+    let dx, dy, reach = 34;
+    if (p.type === 'vehicle') { const a = p.yaw || 0; dx = Math.sin(a); dy = Math.cos(a); }
+    else { const th = (p.rot || 0) * Math.PI / 180; if (p.type === 'ramp') { dx = Math.sin(th); dy = Math.cos(th); reach = 20 + Math.max(26, (p.d || RAMP.d) * S) / 2; } else { dx = -Math.sin(th); dy = -Math.cos(th); if (p.type === 'building') reach = 20 + Math.max(26, (p.d || BUILDING.d) * S) / 2; } }
+    return { x: x + dx * reach, y: y + dy * reach, cx: x, cy: y };
+  }
+  _rotateTo(p, sx, sy, free) {
+    const h = this._rotHandle(p); if (!h) return;
+    const px = sx - h.cx, py = sy - h.cy; if (px * px + py * py < 16) return;
+    const snap = (deg) => free ? Math.round(deg) : Math.round(deg / 5) * 5;
+    if (p.type === 'vehicle') { p.yaw = Math.round(Math.atan2(px, py) * 100) / 100; return; }
+    const th = p.type === 'ramp' ? Math.atan2(px, py) : Math.atan2(-px, -py), deg = (((snap(th * 180 / Math.PI)) % 360) + 360) % 360;
+    if (deg) p.rot = deg; else delete p.rot;
+  }
   _toolType() { return this.tool === 'fire' ? 'fire' : this.tool === 'vehicle' ? 'vehicle' : STUNT_TOOLS.includes(this.tool) ? this.tool : 'barrel'; }
 
   _drawProps(g) {
@@ -501,8 +531,9 @@ export class Editor {
         g.fillStyle = tun ? '#6a6a70' : ['#3a3550', '#4a4540', '#35465a', '#5a4a42', '#2f4a4a', '#553c48', '#4d5260', '#403a30'][(vp?.style || 0) % 8]; g.fillRect(-bw / 2, -bd / 2, bw, bd);
         g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(-bw / 2 + i * bw / 4, -bd / 2); g.lineTo(-bw / 2 + i * bw / 4, bd / 2); } g.stroke();
         g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.strokeRect(-bw / 2, -bd / 2, bw, bd);
+        if (vp?.name && !tun) { g.strokeStyle = '#ffc857'; g.lineWidth = 3; g.beginPath(); g.moveTo(-bw / 2, bd / 2); g.lineTo(bw / 2, bd / 2); g.stroke(); }          // (the front, where the name board goes)
         g.restore();
-        g.fillStyle = '#fff'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(tun ? 'tunnel' : `${vp?.h || BUILDING.h} m`, x, y); g.textAlign = 'start'; g.textBaseline = 'alphabetic';
+        g.fillStyle = '#fff'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(tun ? 'tunnel' : vp?.name || `${vp?.h || BUILDING.h} m`, x, y); g.textAlign = 'start'; g.textBaseline = 'alphabetic';
         g.globalAlpha = 1; return;
       }
       if (type === 'bus' || type === 'boxes' || type === 'target') {      // stunt props: true size when zoomed in, never smaller than a good handful of pixels, turned by their angle
@@ -540,7 +571,11 @@ export class Editor {
     this.def.props.forEach((p, k) => { const [x, y] = this.toScreen(p.x, p.z); icon(x, y, k === this.selProp || k === this.hoverProp, false, p.type, !!p.lethal, p); });
     if ((this._placing()) && this._ghost && !this.drag) icon(this._ghost[0], this._ghost[1], false, true, this._toolType(), this.tool === 'skull');
     if (this.selProp >= 0 && this.def.props[this.selProp]) {
-      const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z);
+      const p = this.def.props[this.selProp], [x, y] = this.toScreen(p.x, p.z), rh = this._rotHandle(p);
+      if (rh) {                                                                  // the turn handle: drag it round
+        g.save(); g.strokeStyle = AMBER; g.fillStyle = AMBER; g.lineWidth = 1.5; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(x, y); g.lineTo(rh.x, rh.y); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.arc(rh.x, rh.y, 8, 0, 7); g.fill(); g.fillStyle = '#2a1a00'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('\u21bb', rh.x, rh.y + 0.5); g.restore();
+      }
       g.fillStyle = INK; g.font = '600 13px "Barlow Condensed", sans-serif'; g.fillText(p.type === 'vehicle' ? (p.mode === 'driving' ? 'Driving car' : 'Parked car') : p.type === 'fire' ? 'Fire pit' : STUNT_LABEL[p.type] ? STUNT_LABEL[p.type] : p.lethal ? 'Skull barrel' : 'Barrel', x + R + 6, y + 4);
     }
   }
@@ -768,6 +803,7 @@ export class Editor {
   }
   _setTool(t) {
     this.tool = t; this._ghost = null;
+    this.iconBar?.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
     $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); for (const k of STUNT_TOOLS) $('ed-tool-' + k).setAttribute('aria-pressed', String(t === k)); this._vehPanel(); this._stuntPanel(); this._buildPanel();
     const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles', bus: 'Stunt bus', boxes: 'Cardboard boxes', target: 'Bullseye target', building: 'Buildings', ramp: 'Ramp' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Scenery') + ' &#9662;';
@@ -883,7 +919,7 @@ export class Editor {
     $('ed-bld-d').previousElementSibling.textContent = ramp ? 'Length' : 'Depth';
     set('w', v.w || (ramp ? RAMP.w : BUILDING.w), ' m'); set('d', v.d || (ramp ? RAMP.d : BUILDING.d), ' m'); set('h', v.h || (ramp ? RAMP.h : BUILDING.h), ' m'); set('turn', v.rot || 0, '\u00b0');
     $('ed-bld-turn').parentElement.hidden = !(isB || isR);
-    $('ed-bld-look').parentElement.hidden = ramp;
+    $('ed-bld-look').parentElement.hidden = ramp; $('ed-bld-name').parentElement.hidden = !isB; if (isB) $('ed-bld-name').value = sel.name || '';
     $('ed-bld-note').textContent = ramp ? 'Click the road to drop a ramp: it lines up with the road and you drive up it and off the lip. Drag it, turn it, make it longer or higher for a bigger jump. Width starts as the road.' : isB && this.track?.buildings?.find((q) => this.def.props[q.pi] === sel)?.tunnel ? 'Over the road: this is a tunnel. It lines up with the road and the road runs through it. Move it off the road for a building.' : 'Put one over the road and enlarge it to make a tunnel.';
   }
   _stuntPanel() {
@@ -1024,6 +1060,10 @@ export class Editor {
         if (i >= 0) { this.drag = null; this.insertAt(i); this.updateInspector(); } else this.cb.toast('Click on the track to add a point there.');
         return;
       }
+      if (e.button === 0 && this.selProp >= 0 && !this._placing()) {
+        const rh = this._rotHandle(this.def.props[this.selProp]);
+        if (rh && (rh.x - sx) ** 2 + (rh.y - sy) ** 2 < 144) { this.drag = { type: 'rot', k: this.selProp, moved: false }; c.style.cursor = 'grabbing'; return; }
+      }
       this.multi ||= new Set();
       if (e.shiftKey && e.button === 0 && !this._placing()) {               // Shift: add points to the selection (click) or box-select (drag on empty space), then drag them all together
         const hk = this._hit(sx, sy);
@@ -1073,7 +1113,10 @@ export class Editor {
         for (const [k, o] of d.orig) { const h = this.def.handles[k]; if (h) { h.x = Math.round((o.x + dx) / snap) * snap; h.z = Math.round((o.z + dz) / snap) * snap; } }
         this.rebuild(); this.updateInspector(); this.draw(); return;
       }
-      if (d.type === 'prop') {
+      if (d.type === 'rot') {
+        if (!d.moved) { this.snapshot(); d.moved = true; }
+        this._rotateTo(this.def.props[d.k], sx, sy, e.altKey); this.propsChanged(); this.updateInspector();
+      } else if (d.type === 'prop') {
         if (!d.moved) { this.snapshot(); d.moved = true; c.style.cursor = 'grabbing'; }
         const [wx, wz] = this.toWorld(sx, sy), p = this.def.props[d.k], q = placeProp(this.track, wx, wz);
         p.x = Math.round(q.x * 100) / 100; p.z = Math.round(q.z * 100) / 100; p.y = Math.round(q.y * 100) / 100;
@@ -1189,6 +1232,8 @@ export class Editor {
       const suf = key === 'rot' ? '\u00b0' : ' m'; $('ed-bld-' + k + '-o').textContent = `${val}${suf}`;
     }; $('ed-bld-' + k).onchange = () => { this._bldSnap = false; this._buildPanel(); }; };
     bld('w', 'w'); bld('d', 'd'); bld('h', 'h'); bld('turn', 'rot');
+    $('ed-bld-name').oninput = (e) => { const sel = this.def.props[this.selProp]; if (!sel || sel.type !== 'building') return; if (!this._nameSnap) { this.snapshot(); this._nameSnap = true; } const v = e.target.value.slice(0, 24); if (v.trim()) sel.name = v; else delete sel.name; this.draw(); clearTimeout(this._nameT); this._nameT = setTimeout(() => this.propsChanged(), 250); };
+    $('ed-bld-name').onchange = () => { this._nameSnap = false; this.propsChanged(); };
     $('ed-bld-look').onclick = () => { const sel = this.def.props[this.selProp]; if (sel && sel.type === 'building') { this.snapshot(); sel.style = ((sel.style || 0) + 1) % 8; this.propsChanged(); } else this.bldOpts.style = (this.bldOpts.style + 1) % 8; };
     $('ed-stunt-up').oninput = (e) => { const p = this.def.props[this.selProp]; if (!p || p.type !== 'bus') return; if (!this._stuntSnap) { this.snapshot(); this._stuntSnap = true; } p.up = +e.target.value; if (!p.up) delete p.up; $('ed-stunt-up-o').textContent = `${(+e.target.value).toFixed(1)} m`; this.draw(); };
     $('ed-stunt-up').onchange = () => { this._stuntSnap = false; this.propsChanged(); };

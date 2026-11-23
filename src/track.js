@@ -112,6 +112,7 @@ export function normalizeProps(list) {
       o.w = cl(p.w, BUILDING.minW, BUILDING.maxW, BUILDING.w); o.d = cl(p.d, BUILDING.minW, BUILDING.maxW, BUILDING.d); o.h = cl(p.h, BUILDING.minH, BUILDING.maxH, BUILDING.h);
       const st = Math.round(Number(p.style)) || 0; o.style = ((st % BUILDING.styles) + BUILDING.styles) % BUILDING.styles;
       const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot;
+      const nm = String(p.name || '').replace(/\s+/g, ' ').trim().slice(0, 24); if (nm) o.name = nm;          // a name on the front (the +depth side), such as a pub sign
     }
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);

@@ -49,6 +49,15 @@ export function buildBuildings(track) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), mats);
       mesh.position.set((q.u0 + q.u1) / 2, q.y + H / 2, (q.v0 + q.v1) / 2); mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; holder.add(mesh);
     }
+    if (b.name && !b.tunnel) {                                                                    // a name board on the front (the +v side), like a pub sign
+      const c = document.createElement('canvas'); c.width = 512; c.height = 128; const g = c.getContext('2d');
+      g.fillStyle = '#1c1410'; g.fillRect(0, 0, 512, 128); g.strokeStyle = '#d9b45a'; g.lineWidth = 8; g.strokeRect(6, 6, 500, 116);
+      let px = 64; g.font = `700 ${px}px Georgia, serif`; while (g.measureText(b.name).width > 470 && px > 20) { px -= 4; g.font = `700 ${px}px Georgia, serif`; }
+      g.fillStyle = '#f3d98b'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(b.name, 256, 68);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+      const bw = Math.min(b.w * 0.9, 16), bh = bw / 4, sign = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex }));
+      sign.position.set(0, b.y + Math.max(bh / 2 + 0.5, Math.min(4.6, b.h - bh / 2 - 0.6)), b.d / 2 + 0.08); sign.frustumCulled = false; holder.add(sign);
+    }
     if (b.tunnel) {                                                                               // a dark strip of ceiling lamps down the middle of the tunnel
       const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, b.d - 2), new THREE.MeshBasicMaterial({ color: 0xffe9a8 }));
       lamp.position.set(0, b.parts[2].y - 0.12, 0); lamp.frustumCulled = false; holder.add(lamp);

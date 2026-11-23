@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.699 — Turn handles, scenery icons, named buildings, Crystal Palace town
+
+- **Turn handles**: select a building, ramp, bus, boxes or car in the editor and a round amber handle appears out in front of it. Drag it round to turn the object (snaps to 5 degrees; hold Alt for free turning).
+- **Scenery icon bar** along the bottom of the editor map: barrel, skull barrel, fire pit, car, stunt bus, boxes, bullseye, building and ramp. One click picks it, then click the map to place it.
+- **Names on buildings**: a building can now have a name (up to 24 characters), shown on a sign on its front (the side marked with a yellow edge in the editor). Type it in the Name box when a building is selected.
+- **Crystal Palace** now comes with 76 buildings along the three streets, with The White Hart, The Sparrowhawk and The Westow House named on their fronts.
+
 ## v17.698 — Crystal Palace track for the editor
 
 - New editor template **Crystal Palace**: a flat 1.03 km (0.64 mile) loop round the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot. Pick it from "Start from a template" in the editor. It is editor-only, so it is not in the race menus.

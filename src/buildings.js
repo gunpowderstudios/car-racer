@@ -31,7 +31,7 @@ export function buildingLayout(track, groundY = 0) {
         { u0: -inner, u1: inner, v0: -d / 2, v1: d / 2, y: track.py[i] + CLEAR, h: top - CLEAR },
       ] });
     } else {
-      out.push({ pi, tunnel: false, x: p.x, z: p.z, th: (p.rot || 0) * Math.PI / 180, style: p.style || 0, w, d, h, y: p.y, parts: [{ u0: -w / 2, u1: w / 2, v0: -d / 2, v1: d / 2, y: p.y, h }] });
+      out.push({ pi, tunnel: false, x: p.x, z: p.z, th: (p.rot || 0) * Math.PI / 180, style: p.style || 0, name: p.name || '', w, d, h, y: p.y, parts: [{ u0: -w / 2, u1: w / 2, v0: -d / 2, v1: d / 2, y: p.y, h }] });
     }
   });
   return out;

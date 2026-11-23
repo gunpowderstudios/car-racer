@@ -25,13 +25,27 @@ test('drawing scale: one image pixel covers width*zoom/imagewidth screen pixels,
 });
 
 import { makeTemplate, TEMPLATE_KEYS, EDITOR_TEMPLATE_KEYS } from '../src/templates.js';
-import { Track, analyzeTrack } from '../src/track.js';
+import { Track, analyzeTrack, normalizeTrack } from '../src/track.js';
 test('Crystal Palace: editor-only, flat, about 0.6 miles, clean, and says where its picture goes', () => {
   assert.ok(!TEMPLATE_KEYS.includes('crystalpalace') && EDITOR_TEMPLATE_KEYS.includes('crystalpalace'));
   const def = makeTemplate('crystalpalace'), t = new Track(def), a = analyzeTrack(t);
   assert.equal(def.name, 'Crystal Palace');
   assert.ok(t.length > 900 && t.length < 1150, `length ${t.length}`);
   assert.deepEqual(a.tight, []); assert.equal(a.crossings.length, 0);
-  assert.ok(def.handles.every((h) => h.y === 0) && def.props.length === 0);
+  assert.ok(def.handles.every((h) => h.y === 0));
   assert.deepEqual(def.mapFit, { x: 0, z: 0, w: 502, rot: 0 });
+});
+
+test('Crystal Palace has its buildings, and the three pubs are named on their fronts', () => {
+  const def = makeTemplate('crystalpalace'), t = new Track(def);
+  assert.ok(def.props.length > 40 && def.props.every((p) => p.type === 'building'));
+  const names = def.props.filter((p) => p.name).map((p) => p.name).sort();
+  assert.deepEqual(names, ['The Sparrowhawk', 'The Westow House', 'The White Hart']);
+  assert.equal(t.buildings.length, def.props.length);
+  assert.ok(t.buildings.every((b) => !b.tunnel), 'no building may sit over the road');
+  assert.deepEqual(t.buildings.filter((b) => b.name).map((b) => b.name).sort(), names);
+  // a building's name is kept (trimmed, at most 24 characters) and a blank one is dropped
+  const d2 = normalizeTrack({ ...def, props: [{ type: 'building', x: 0, z: 0, y: 0, name: '  The   Very Long Pub Name That Goes On And On  ' }, { type: 'building', x: 50, z: 0, y: 0, name: '   ' }] });
+  assert.equal(d2.props[0].name, 'The Very Long Pub Name T');             // spaces tidied, cut at 24 characters
+  assert.equal(d2.props[1].name, undefined);
 });

@@ -1174,7 +1174,7 @@ body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; 
 #editor .ed-smoothbox label { cursor: default; }
 
 /* map backdrop panel (editor) */
-#ed-map-panel { position: absolute; left: 12px; bottom: 12px; width: 300px; background: rgba(16,51,95,.96); border: 1px solid rgba(234,246,255,.5); box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 8px 10px; display: grid; gap: 8px; font-size: 14px; z-index: 20; }
+#ed-map-panel { position: absolute; right: 12px; bottom: 118px; width: 300px; background: rgba(16,51,95,.96); border: 1px solid rgba(234,246,255,.5); box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 8px 10px; display: grid; gap: 8px; font-size: 14px; z-index: 20; }
 #ed-map-panel [hidden] { display: none !important; }
 #ed-map-panel[hidden] { display: none; }
 #ed-map-panel .mp-head { display: flex; justify-content: space-between; align-items: center; }
@@ -1184,3 +1184,11 @@ body.home2 #menu #home-play-go { display: block; width: auto; min-width: 240px; 
 #ed-map-panel label { display: grid; grid-template-columns: 86px 1fr 52px; align-items: center; gap: 6px; }
 #ed-map-panel input[type=number] { width: 70px; }
 #ed-map-panel button[aria-pressed="true"] { background: var(--amber); color: #2a1a00; }
+
+/* scenery icon bar along the bottom of the editor map */
+#ed-icons { position: absolute; left: 50%; transform: translateX(-50%); bottom: 52px; display: flex; gap: 4px; background: rgba(16,51,95,.94); border: 1px solid rgba(234,246,255,.5); padding: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.4); z-index: 15; max-width: calc(100% - 24px); overflow-x: auto; }
+#ed-icons button { display: grid; justify-items: center; gap: 1px; min-width: 56px; padding: 4px 6px; border: 1px solid rgba(234,246,255,.25); line-height: 1.1; }
+#ed-icons button span { font-size: 22px; }
+#ed-icons button small { font-size: 11px; opacity: .85; white-space: nowrap; }
+#ed-icons button[aria-pressed="true"] { background: var(--amber); color: #2a1a00; }
+#ed-build .field input[type=text] { grid-column: 2 / 4; min-width: 0; width: 100%; }
