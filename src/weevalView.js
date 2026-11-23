@@ -211,7 +211,7 @@ export class WeevalView {
     });
     this.boxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), this.boxes.length);
     this.boxMesh.frustumCulled = false; this.boxMesh.castShadow = true; this.boxMesh.receiveShadow = true; this.group.add(this.boxMesh);
-    this._boxDummy = new THREE.Object3D(); this._boxAll = true; this._syncBoxes();
+    this._boxDummy = new THREE.Object3D(); this._boxDummy.rotation.order = 'YXZ'; this._boxAll = true; this._syncBoxes();
   }
   _syncBoxes() {
     const D = this._boxDummy;
@@ -259,17 +259,32 @@ export class WeevalView {
         if (!o.hit) { o.hit = true; hits += 0.25; }
       }
     }
+    const Q = Math.PI / 2, E = this._boxEuler || (this._boxEuler = new THREE.Euler(0, 0, 0, 'YXZ')), M = this._boxMat || (this._boxMat = new THREE.Matrix4());
     for (const b of B) {
       if (!b.awake) continue;
       moved = true;
       b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
-      const floor = this._floor(b.x, b) + b.sz * b.crush / 2;
+      // how far the lowest corner sits below the centre at the angle it is now (a tilted box is taller than a flat one, so it never sinks into the road)
+      const e = M.makeRotationFromEuler(E.set(b.rx, b.ry, b.rz)).elements, hx = b.sz / 2, hy = b.sz * b.crush / 2;
+      const drop = Math.abs(e[1]) * hx + Math.abs(e[5]) * hy + Math.abs(e[9]) * hx;
+      const floor = this._floor(b.x, b) + drop;
+      let down = false;
       if (b.y <= floor) {
-        b.y = floor; if (b.vy < -1.5) b.vy = -b.vy * 0.12; else b.vy = 0;
-        b.vx *= 0.8; b.vz *= 0.8; b.wx *= 0.6; b.wy *= 0.6; b.wz *= 0.6;                     // (scraping on the ground: it slows quickly and stops where it fell)
-        const Q = Math.PI / 2; b.rx += (Math.round(b.rx / Q) * Q - b.rx) * 0.3; b.rz += (Math.round(b.rz / Q) * Q - b.rz) * 0.3;      // (and ends up lying flat on a face, not balanced on a corner)
+        down = true; const vin = -b.vy; b.y = floor;
+        if (vin > 1.2) {                                                                  // it bounces, like a tyre: lively at first, then smaller and smaller, and a knock on a corner sets it tumbling
+          b.vy = vin * 0.42; const k = Math.min(1, vin / 8);
+          b.wx += (Math.random() - 0.5) * 7 * k; b.wz += (Math.random() - 0.5) * 7 * k; b.wy += (Math.random() - 0.5) * 3 * k;
+          const sk = Math.exp(-dt * 6); b.vx *= sk; b.vz *= sk;                            // (a bounce costs it some of its slide)
+        } else b.vy = 0;
+        const fr = Math.exp(-dt * (b.vy > 0.3 ? 0.8 : 2.4)); b.vx *= fr; b.vz *= fr;       // on the ground it slides and scuffs to a stop; in a bounce it carries on
+        const sp = Math.exp(-dt * 2.2); b.wx *= sp; b.wy *= sp; b.wz *= sp;
       }
-      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.45) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
+      if (down && b.vy <= 0.3) {                                                           // settling: ease over onto the nearest flat face, however it landed, as the spin dies
+        const slow = Math.hypot(b.wx, b.wz) < 4, k = 1 - Math.exp(-dt * (slow ? 9 : 2));
+        b.rx += (Math.round(b.rx / Q) * Q - b.rx) * k; b.rz += (Math.round(b.rz / Q) * Q - b.rz) * k;
+      }
+      const flat = Math.abs(b.rx - Math.round(b.rx / Q) * Q) < 0.03 && Math.abs(b.rz - Math.round(b.rz / Q) * Q) < 0.03;
+      if (down && flat && b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.45 && Math.hypot(b.wx, b.wy, b.wz) < 0.8) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.rx = Math.round(b.rx / Q) * Q; b.rz = Math.round(b.rz / Q) * Q; b.awake = false; }
     }
     if (moved || hits) this._syncBoxes();
     return hits;

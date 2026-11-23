@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.682 — Boxes bounce and lie flat
+
+- **Cardboard boxes bounce like tyres** when they land: lively at first, smaller each time, and a knock on a corner sets them tumbling.
+- **They scuff to a stop** rather than halting dead the instant they touch the road.
+- **Every box now ends up lying flat on a face, never sunk into the ground.** Their rest height follows how they are tilted, and they keep easing over until they are flat before they settle (the old way could leave one balanced on a corner or half in the road).
+
 ## v17.681 — Buildings that look like buildings
 
 - **Editor buildings no longer look like a bank of lights.** Windows are now bigger (about 1.8 m by 2.4 m, four across and three floors per 12 m) with frames, sills and soot, mostly dark with a few lit warm and some with blinds down.
