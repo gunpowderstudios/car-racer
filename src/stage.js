@@ -321,7 +321,7 @@ export class Stage {
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
     if (track.def.weeval || hasStuntProps(track.def)) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
-    if (track.buildings && track.buildings.length) g.add(buildBuildings(track));          // buildings and tunnels from the editor
+    if ((track.buildings && track.buildings.length) || track.ramps) g.add(buildBuildings(track));          // buildings and tunnels from the editor
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;

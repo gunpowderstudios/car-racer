@@ -235,10 +235,10 @@ export class WeevalView {
         const lx = dx * ax.x + dy * ax.y + dz * ax.z, ly = dx * ay.x + dy * ay.y + dz * ay.z, lz = dx * az.x + dy * az.y + dz * az.z, h = b.sz / 2;
         if (Math.abs(lx) < 0.95 + h && Math.abs(lz) < 2.3 + h && ly > -0.5 - h && ly < 0.9 + h) {
           if (!b.hit) { b.hit = true; hits++; }
-          const sp = Math.max(6, car.speed), side = Math.sign(lx) || (Math.random() - 0.5), r = Math.random();
-          b.vx = car.vel.x * (1.0 + r * 0.35) + ax.x * side * (2 + r * 4); b.vz = car.vel.z * (1.0 + r * 0.35) + ax.z * side * (2 + r * 4);
-          b.vy = 4 + r * 5 + sp * (0.22 + 0.2 * Math.random()) + Math.max(0, ly) * 3;
-          b.wx = (Math.random() - 0.5) * 16; b.wz = (Math.random() - 0.5) * 16; b.wy = (Math.random() - 0.5) * 10; b.awake = true; b.crush = Math.max(0.45, b.crush * 0.82);
+          const sp = Math.max(6, car.speed), side = Math.sign(lx) || (Math.random() - 0.5), r = Math.random();                  // a real cardboard box has some weight: it is shoved along, not fired off
+          b.vx = car.vel.x * (0.5 + r * 0.2) + ax.x * side * (1 + r * 2); b.vz = car.vel.z * (0.5 + r * 0.2) + ax.z * side * (1 + r * 2);
+          b.vy = 1.5 + r * 2 + sp * (0.07 + 0.07 * Math.random()) + Math.max(0, ly) * 1.5;
+          b.wx = (Math.random() - 0.5) * 8; b.wz = (Math.random() - 0.5) * 8; b.wy = (Math.random() - 0.5) * 5; b.awake = true; b.crush = Math.max(0.5, b.crush * 0.85);
           for (const o of B) if (!o.awake && o.col === b.col && o.layer > b.layer) o.awake = true;          // whatever was stacked on it comes down
         }
       }
@@ -264,8 +264,12 @@ export class WeevalView {
       moved = true;
       b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
       const floor = this._floor(b.x, b) + b.sz * b.crush / 2;
-      if (b.y <= floor) { b.y = floor; if (b.vy < -1.5) b.vy = -b.vy * 0.3; else b.vy = 0; b.vx *= 0.88; b.vz *= 0.88; b.wx *= 0.7; b.wy *= 0.7; b.wz *= 0.7; b.rx *= 0.85; b.rz *= 0.85; }
-      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.2) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
+      if (b.y <= floor) {
+        b.y = floor; if (b.vy < -1.5) b.vy = -b.vy * 0.12; else b.vy = 0;
+        b.vx *= 0.8; b.vz *= 0.8; b.wx *= 0.6; b.wy *= 0.6; b.wz *= 0.6;                     // (scraping on the ground: it slows quickly and stops where it fell)
+        const Q = Math.PI / 2; b.rx += (Math.round(b.rx / Q) * Q - b.rx) * 0.3; b.rz += (Math.round(b.rz / Q) * Q - b.rz) * 0.3;      // (and ends up lying flat on a face, not balanced on a corner)
+      }
+      if (b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.45) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }
     }
     if (moved || hits) this._syncBoxes();
     return hits;

@@ -2,6 +2,19 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.679 — Ramp, shovable parked cars, wheels on the road
+
+- **New Ramp in the Scenery menu.** Drop it on a track and adjust width, length and height (and turn it) for a random jump. Only the road surface under it is lifted.
+- **Parked cars from the editor can now be rammed.** Once knocked they release the handbrake, roll and take damage like a normal vehicle.
+- **Wheels sit on the road.** Other vehicle types (editor cars, Jamboree rivals) were drawn with your car's ride height, which sank some into the road; each now uses its own.
+- Includes v17.678's cardboard boxes.
+
+## v17.678 — Cardboard boxes have some weight
+
+- **Boxes are shoved along, not fired off.** A box you hit now moves at about half your speed with a small hop and less spin, instead of flying off as fast as the car.
+- **They land with a thud, drag and stop where they fall**, ending up lying flat on a face rather than balanced on a corner. They stay put until the race restarts.
+- Ploughing through a stack slows the car a little more, as a real pile of boxes would.
+
 ## v17.677 — Smoother cornering, skyline buildings, Scenery menu
 
 - **Fast corners no longer jolt.** The help that stops a car tipping over used to wait until it had leaned about 21 degrees and then push it back up hard, which looked like a sudden lift. It now starts earlier and builds up gradually (easing in), so the body rolls on its suspension and settles smoothly, and it still stops the car going over.

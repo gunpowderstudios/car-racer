@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.677';
-export const NOTE = 'Smoother roll help in fast corners; skyline-style buildings; Obstacles menu is now Scenery';
+export const VERSION = '17.679';
+export const NOTE = 'Ramp scenery piece; parked editor cars can be shoved and damaged; rivals use their own ride height';

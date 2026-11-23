@@ -3,7 +3,7 @@
 // The friend opens it and the game offers to drive it, edit it or keep it. See main.js (openSharedTrack) and editor.js (Share link).
 import { normalizeTrack, openRoad, STUNT_TYPES } from './track.js';
 
-const PIECE_TYPES = [...STUNT_TYPES, 'building'];      // (the stunt pieces and buildings go in their own section at the end)
+const PIECE_TYPES = [...STUNT_TYPES, 'building', 'ramp'];      // (the stunt pieces and buildings go in their own section at the end)
 
 const PREFIX = '#t=';
 const MAX_PACKED = 60000;        // longest packed text we will even try to read
@@ -88,7 +88,7 @@ function encodeTrack(d) {
   if ((d.weeval && d.weeval.custom) || (d.props || []).some((p) => PIECE_TYPES.includes(p.type))) {      // a stunt jump from the editor, or buses, boxes and a bullseye on an ordinary track
     const sp = (d.props || []).filter((p) => PIECE_TYPES.includes(p.type));
     o.u(d.weeval && d.weeval.custom ? (d.weeval.oneRoad ? 2 : 1) : 3); o.u(sp.length); px = 0; pz = 0;
-    for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(PIECE_TYPES.indexOf(p.type) + (p.rot ? 16 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); if (p.rot) o.u(p.rot); if (p.type === 'building') { o.u((p.w || 20) * 2); o.u((p.d || 20) * 2); o.u((p.h || 25) * 2); o.u(p.style || 0); } px = x; pz = z; }
+    for (const p of sp) { const x = Math.round(p.x * Q.xz), z = Math.round(p.z * Q.xz); o.u(PIECE_TYPES.indexOf(p.type) + (p.rot ? 16 : 0)); o.z(x - px); o.z(z - pz); o.z(p.y * Q.xz); o.u((p.up || 0) * 10); if (p.rot) o.u(p.rot); if (p.type === 'building') { o.u((p.w || 20) * 2); o.u((p.d || 20) * 2); o.u((p.h || 25) * 2); o.u(p.style || 0); } else if (p.type === 'ramp') { o.u((p.w || 8) * 2); o.u((p.d || 14) * 2); o.u((p.h || 2.5) * 2); } px = x; pz = z; }
   }
   return Uint8Array.from(o.b);
 }
@@ -136,7 +136,7 @@ function decodeTrack(bytes) {
   let stuntFlag = 0; if (r.i < r.a.length) stuntFlag = r.u();
   if (stuntFlag >= 1 && stuntFlag <= 3) {                                         // a stunt jump, or stunt pieces on an ordinary track (3) (links made before them end here)
     if (stuntFlag !== 3) def.weeval = { stage: 1, custom: true, ...(stuntFlag === 2 ? { oneRoad: true } : {}) }; px = 0; pz = 0;
-    for (let i = 0, c = r.count(600); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: PIECE_TYPES[(k & 7) % PIECE_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 16) pr.rot = r.u(); else if (k & 8) pr.rot = 90; if (pr.type === 'building') { pr.w = r.u() / 2; pr.d = r.u() / 2; pr.h = r.u() / 2; pr.style = r.u(); } def.props.push(pr); }
+    for (let i = 0, c = r.count(600); i < c; i++) { const k = r.u(); px += r.z(); pz += r.z(); const pr = { type: PIECE_TYPES[(k & 7) % PIECE_TYPES.length], x: px / Q.xz, z: pz / Q.xz, y: r.z() / Q.xz }; const up = r.u() / 10; if (up) pr.up = up; if (k & 16) pr.rot = r.u(); else if (k & 8) pr.rot = 90; if (pr.type === 'building') { pr.w = r.u() / 2; pr.d = r.u() / 2; pr.h = r.u() / 2; pr.style = r.u(); } else if (pr.type === 'ramp') { pr.w = r.u() / 2; pr.d = r.u() / 2; pr.h = r.u() / 2; } def.props.push(pr); }
   }
   return def;
 }

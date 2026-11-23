@@ -234,8 +234,17 @@ const HUES = 7;
 const RIVAL_HITCH = { x: 0, y: -0.02, z: -2.55 };
 
 /** A parked car: nobody at the wheel, the handbrake on. */
-class ParkedDriver { drive() { return PARKED; } }
+class ParkedDriver {
+  drive(car, T, ctx, dt) {
+    const sp = Math.hypot(car.vel.x, car.vel.z);
+    // knocked hard enough to really move: let go of the handbrake so it rolls and spins like any car; once it has stopped again it is parked where it ended up
+    if (!this.free && sp > 1) { this.free = true; this.still = 0; }
+    if (this.free) { this.still = sp < 0.25 ? (this.still || 0) + (dt || 0.02) : 0; if (this.still > 1) this.free = false; }
+    return this.free ? SETTLING : PARKED;
+  }
+}
 const PARKED = Object.freeze({ ...IDLE, handbrake: true });
+const SETTLING = Object.freeze({ ...IDLE, brake: 0.6 });
 
 export class Derby {
   constructor() {
@@ -712,6 +721,7 @@ export class Derby {
     f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
     if (f.flipT > 3 && this.damageEnabled) this._damage(f, 'front', DAMAGE.burnPerSecond * dt, null);      // destruction: an engine fire, eventually
     f.idleT = c.speed < 2 && c.ay.y > 0.15 ? f.idleT + dt : 0;
+    if (f.placed && f.parked) { f.idleT = 0; f.offT = 0; f.wrongT = 0; }       // a car the track maker parked is never 'stuck' or 'lost': it stays where it was put
     T.query(c.pos.x, c.pos.y + 0.5, c.pos.z, this._q, 1.2);
     f.offT = this._q.idx < 0 || this._q.surface === SURF.BASE ? f.offT + dt : 0;
     const far = this._dist(c.pos.x, c.pos.y, c.pos.z) > 45;

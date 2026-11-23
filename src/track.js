@@ -69,7 +69,7 @@ export const STUNT_TYPES = ['bus', 'boxes', 'target'];      // stunt-jump props 
 /** Does this track have stunt pieces (buses, cardboard stacks or a bullseye) on it? */
 export const hasStuntProps = (def) => !!(def && (def.props || []).some((p) => STUNT_TYPES.includes(p.type)));
 export const STUNT_BUS = { w: 2.6, len: 9, h: 4.7 };         // a bus: w along the run, len across it (turned a quarter when rot is 90)
-export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', 'ramp', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 600;      // (a town of buildings needs room)
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
@@ -102,6 +102,11 @@ export function normalizeProps(list) {
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
     if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
     if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' || p.type === 'boxes') { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; } }      // up: raised on a platform this far above the ground it stands on
+    if (p.type === 'ramp') {                            // a straight wedge on the road: w across, d long (the car drives up it), h tall at the high end, turned by rot (the way it climbs)
+      const cl = (v, a, b, dflt) => clamp(Number.isFinite(+v) && v !== null && v !== '' ? Math.round(+v * 2) / 2 : dflt, a, b);
+      o.w = cl(p.w, 3, 60, RAMP.w); o.d = cl(p.d, 4, 60, RAMP.d); o.h = cl(p.h, 0.5, 12, RAMP.h);
+      const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot;
+    }
     if (p.type === 'building') {                       // w across, d deep, h tall (m), turned by rot, with one of a few looks
       const cl = (v, a, b, dflt) => clamp(Number.isFinite(+v) && v !== null && v !== '' ? Math.round(+v * 2) / 2 : dflt, a, b);
       o.w = cl(p.w, BUILDING.minW, BUILDING.maxW, BUILDING.w); o.d = cl(p.d, BUILDING.minW, BUILDING.maxW, BUILDING.d); o.h = cl(p.h, BUILDING.minH, BUILDING.maxH, BUILDING.h);
@@ -143,6 +148,28 @@ export function bumpAt(bumps, x, z, out) {
   return out;
 }
 const _bump = { h: 0, gx: 0, gz: 0 };
+
+/** A ramp you drop on the road in the editor (a 'ramp' prop): a straight wedge that rises along its direction and ends in a sheer lip, so you launch off it. */
+export const RAMP = { w: 8, d: 14, h: 2.5 };
+/** The ramps' list from a track's props: { x, z, sn, cs (the way it climbs), half (half its length), hw (half its width), h }. */
+export function rampList(props) {
+  const out = [];
+  for (const p of props || []) { if (p.type !== 'ramp') continue; const th = (p.rot || 0) * Math.PI / 180; out.push({ x: p.x, z: p.z, sn: Math.sin(th), cs: Math.cos(th), half: (p.d || RAMP.d) / 2, hw: (p.w || RAMP.w) / 2, h: p.h || RAMP.h }); }
+  return out;
+}
+/** Height of the ramps at (x, z) and its slope, added into `out` (h, gx, gz). */
+export function rampAt(ramps, x, z, out) {
+  let h = 0, gx = 0, gz = 0;
+  for (const r of ramps) {
+    const dx = x - r.x, dz = z - r.z, big = r.half + r.hw;
+    if (dx > big || dx < -big || dz > big || dz < -big) continue;
+    const u = dx * r.sn + dz * r.cs + r.half, v = dx * r.cs - dz * r.sn;
+    if (u < 0 || u > 2 * r.half || v < -r.hw || v > r.hw) continue;
+    const k = r.h / (2 * r.half); h += k * u; gx += k * r.sn; gz += k * r.cs;
+  }
+  out.h = h; out.gx = gx; out.gz = gz;
+  return out;
+}
 
 // ---------------------------------------------------------------- buildings (The Getaway)
 /** The solid boxes a stunt track's props make: each bus (and a concrete platform under it when it is raised). Worked out again whenever the track loads, so they can never disagree with the props. */
@@ -423,6 +450,7 @@ export class Track {
     this.apron = this.def.walls ? APRON : 0;
     this.overshoot = this.def.getaway ? 60 : this.def.mode === 'lastStanding' ? ARENA_OVERSHOOT : MAX_OVERSHOOT;       // (the town floor is 440 m wide: far from the little centre oval the strips of neighbouring segments must overlap)
     this.bumps = this.def.bumps || null;
+    { const rl = rampList(this.def.props); this.ramps = rl.length ? rl : null; }      // (ramps dropped on the road in the editor)
     this.kerbs = !!this.def.getaway;                                          // (The Getaway: the town's pavements stand a little above the road, see townKerb)
     this.berm = !!this.def.berm; this.margin = this.berm ? BERM_MARGIN : QUERY_MARGIN;
     this.puddles = this.def.puddles || null;
@@ -810,6 +838,7 @@ export class Track {
     if (ad <= hw) {
       yc = Cy - (Nx * (x - cx) + Nz * (z - cz)) / Ny; yEdge = yc;
       if (this.bumps) { bumpAt(this.bumps, x, z, _bump); yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; }
+      if (this.ramps) { rampAt(this.ramps, x, z, _bump); if (_bump.h > 0) { yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; } }
       if (this.kerbs) { townKerb(x, z, _bump); if (_bump.h > 0) { yc += _bump.h; Nx -= _bump.gx * Ny; Nz -= _bump.gz * Ny; } }
     } else {
       const sg = d < 0 ? -1 : 1;
