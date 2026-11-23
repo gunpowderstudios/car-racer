@@ -116,7 +116,7 @@ export class Stage {
 
   /** Apple Crumple: put every hazard where its clock says it is (`a` is the Assault run). */
   /** Weeval Knievel: the flames flare in the air and the cardboard boxes fly. Returns the number of boxes the car just hit. */
-  updateWeeval(dt, w, car) { return this.weevalView ? this.weevalView.update(dt, w, car) : 0; }
+  updateWeeval(dt, w, car, others) { return this.weevalView ? this.weevalView.update(dt, w, car, others) : 0; }
   updateAssault(a) { if (this.assaultView && a) this.assaultView.update(a); }
   /** The Getaway: bags, rings and the safehouse (`game` is the GetawayGame). */
   setGetawayRoute(pts) { if (this.getawayView) this.getawayView.setRoute(pts); }

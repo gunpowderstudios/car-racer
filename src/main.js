@@ -1536,7 +1536,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props); firePitView.update(firePits);
-  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval || stage.weevalView) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.45, 1 - hit * 0.011)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval || stage.weevalView) { const hit = stage.updateWeeval(1 / 60, weeval, car, derby.enabled ? derby.cars.filter((c) => c !== car) : undefined); if (hit) { car.vel.scale(Math.max(0.45, 1 - hit * 0.011)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);

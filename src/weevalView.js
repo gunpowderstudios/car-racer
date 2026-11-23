@@ -232,24 +232,28 @@ export class WeevalView {
     for (const b of this.boxes) this._boxHome(b, b.d, b.c, b.k);
     this._boxAll = true; this._syncBoxes();
   }
-  _stepBoxes(dt, car) {
+  _stepBoxes(dt, car, others = []) {
     let hits = 0, moved = false;
-    const B = this.boxes;
-    if (car && this.stacks.some((st) => Math.hypot(car.pos.x - st.x, car.pos.z - st.z) < 40)) {                        // the car ploughs in: whatever it touches is thrown up and out, hard
-      const ax = car.ax, ay = car.ay, az = car.az;
+    const B = this.boxes, cars = car ? [car, ...others] : others;                  // every vehicle on the track plays the same way: yours, the rivals and the parked cars
+    for (const c of cars) {
+      if (!c || !this.stacks.some((st) => Math.hypot(c.pos.x - st.x, c.pos.z - st.z) < 40)) continue;                        // the car ploughs in: whatever it touches is thrown up and out, hard
+      const ax = c.ax, ay = c.ay, az = c.az, w = c.spec?.body?.width || 1.9, hl = (c.spec?.body?.length || 4.6) / 2, mine = c === car;
+      let n = 0;
       for (const b of B) {
-        const dx = b.x - car.pos.x, dy = b.y - car.pos.y, dz = b.z - car.pos.z;
-        if (dx * dx + dz * dz > 30) continue;
+        const dx = b.x - c.pos.x, dy = b.y - c.pos.y, dz = b.z - c.pos.z;
+        if (dx * dx + dz * dz > 40) continue;
         const lx = dx * ax.x + dy * ax.y + dz * ax.z, ly = dx * ay.x + dy * ay.y + dz * ay.z, lz = dx * az.x + dy * az.y + dz * az.z, h = b.sz / 2;
-        if (Math.abs(lx) < 0.95 + h && Math.abs(lz) < 2.3 + h && ly > -0.5 - h && ly < 0.9 + h) {
-          if (!b.hit) { b.hit = true; hits++; }
-          const sp = Math.max(6, car.speed), side = Math.sign(lx) || (Math.random() - 0.5), r = Math.random();                  // a real cardboard box has some weight: it is shoved along, not fired off
-          b.vx = car.vel.x * (0.5 + r * 0.2) + ax.x * side * (1 + r * 2); b.vz = car.vel.z * (0.5 + r * 0.2) + ax.z * side * (1 + r * 2);
+        if (Math.abs(lx) < Math.max(0.95, w / 2) + h && Math.abs(lz) < Math.max(2.3, hl) + h && ly > -0.5 - h && ly < 0.9 + h) {
+          if (!b.hit) { b.hit = true; if (mine) hits++; }
+          n++;
+          const sp = Math.max(6, c.speed), side = Math.sign(lx) || (Math.random() - 0.5), r = Math.random();                  // a real cardboard box has some weight: it is shoved along, not fired off
+          b.vx = c.vel.x * (0.5 + r * 0.2) + ax.x * side * (1 + r * 2); b.vz = c.vel.z * (0.5 + r * 0.2) + ax.z * side * (1 + r * 2);
           b.vy = 1.5 + r * 2 + sp * (0.07 + 0.07 * Math.random()) + Math.max(0, ly) * 1.5;
           b.wx = (Math.random() - 0.5) * 8; b.wz = (Math.random() - 0.5) * 8; b.wy = (Math.random() - 0.5) * 5; b.awake = true; b.crush = Math.max(0.5, b.crush * 0.85);
           for (const o of B) if (!o.awake && o.col === b.col && o.layer > b.layer) o.awake = true;          // whatever was stacked on it comes down
         }
       }
+      if (n && !mine) c.vel.scale(Math.max(0.6, 1 - n * 0.011));                                           // (the same drag as the player gets for ploughing through a pile)
     }
     const awake = B.filter((b) => b.awake);
     for (const b of awake) {                                                       // boxes bang into each other: a moving box shoves whatever it touches
@@ -299,7 +303,7 @@ export class WeevalView {
   }
 
   /** Per frame: the flames flare while you are airborne, and the boxes fly. Returns how many boxes the car newly hit (the game slows the car for each). */
-  update(dt, w, car) {
+  update(dt, w, car, others) {
     this.t += dt;
     const on = w && (w.state === 'air' || (w.state === 'landed' && w.sinceLand < 1.5));
     this.flare += ((on ? 1 : 0) - this.flare) * Math.min(1, dt * (on ? 8 : 1.4));
@@ -307,7 +311,7 @@ export class WeevalView {
       const h = 1.1 + 0.35 * Math.sin(this.t * 14 + j.ph) + this.flare * (8 + 2.5 * Math.sin(this.t * 19 + j.ph * 2));
       j.layers.forEach((m, i) => { m.scale.y = Math.max(0.2, h * (1 - i * 0.18)); m.scale.x = m.scale.z = (1 + this.flare * 0.5) * (0.9 + 0.1 * Math.sin(this.t * 25 + i * 2 + j.ph)); m.position.y = m.scale.y / 2; });
     }
-    return this.boxes ? this._stepBoxes(Math.min(dt, 0.05), car) : 0;
+    return this.boxes ? this._stepBoxes(Math.min(dt, 0.05), car, others) : 0;
   }
 
   /** The concrete barrier at the end of the run-out (the cardboard stack in front of it is drawn by _boxes, and the skull barrels in front of that are real props, see weeval.js). */
