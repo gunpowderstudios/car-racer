@@ -1007,11 +1007,16 @@ function getawayFrame() {
 // ------------------------------------------------------- destruction derby
 const home2 = !/[?&]classic\b/.test(location.search);       // the new home screen (the old one is still at ?classic)
 let menuBackdrop = false, jamBuilt = false;      // the grid behind the home screen is a Jamboree on a computer; a phone or tablet keeps it plain, so it does not load a dozen models before anyone has pressed start
+/** The stunt buses of an ordinary track are real parked Rootmasters (they shove, dent and wreck like any car); a stunt-jump track keeps its solid buses. */
+function busCars(d) {
+  if (!d || d.weeval) return [];
+  return (d.props || []).filter((p) => p.type === 'bus').map((p) => ({ type: 'vehicle', x: p.x, z: p.z, y: p.y + (p.up || 0), mode: 'static', car: 'bus', yaw: (p.rot || 0) * Math.PI / 180 }));
+}
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  const placedCars = (def && def.props || []).filter((p) => p.type === 'vehicle');           // cars the track maker put on the track in the editor
+  const placedCars = busCars(def).concat((def && def.props || []).filter((p) => p.type === 'vehicle'));           // cars the track maker put on the track in the editor
   const placedSolo = placedCars.length > 0 && !getaway && !(track && track.def && track.def.mode === 'lastStanding') && (testDrive || !(opts.rivals > 0 || demoDay));      // (a Test Drive with placed cars: no rivals, but the cars are real and take real damage, like Apple Crumple)
   const solo = !!(assault || weeval) || placedSolo;
   const gw = !!getaway && !getaway.online;      // The Getaway: exactly one computer car, the other side, and nobody is hurt (online there are no computer cars: the other side is a person)

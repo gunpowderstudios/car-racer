@@ -119,6 +119,7 @@ export class WeevalView {
         this._box(this.mat.concrete, B.w + 2, deck - GROUND_Y, B.len + 2, 0, GROUND_Y + (deck - GROUND_Y) / 2, 0, g);
         this._box(this.mat.white, B.w + 2.4, 0.3, B.len + 2.4, 0, deck + 0.15, 0, g);
       }
+      if (L.pieces) continue;                                                                       // (on an ordinary track the bus itself is a real vehicle: only its platform is drawn here)
       const mat = new THREE.MeshStandardMaterial({ color: BUS_COLOURS[b.i % BUS_COLOURS.length], roughness: 0.55, metalness: 0.15 });
       const bg = new THREE.Group(); g.add(bg); slots.push({ bg, cx: 0, deck });
       const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = geo.type === 'BoxGeometry'; o.frustumCulled = false; bg.add(o); };

@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.683 — Stunt buses are real vehicles
+
+- **Buses you place on an ordinary track are now real parked Rootmasters.** Ram one and it shoves along, dents, smokes and can be wrecked, like any other car in the game (a bus is heavy, so it takes a proper hit to move it).
+- A raised platform under a bus is still solid scenery. The Weeval Knievel stunt tracks keep their fixed buses, so the scored jump is unchanged.
+- Buses need the car-damage rules on, as for editor cars, so they are not there in online multiplayer.
+
 ## v17.682 — Boxes bounce and lie flat
 
 - **Cardboard boxes bounce like tyres** when they land: lively at first, smaller each time, and a knock on a corner sets them tumbling.

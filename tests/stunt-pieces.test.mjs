@@ -19,8 +19,8 @@ function withPieces() {
 test('stunt pieces on an ordinary track leave it an ordinary track', () => {
   const def = withPieces();
   assert.equal(def.weeval, undefined);
-  assert.ok(def.blocks && def.blocks.some((b) => b.kind === 'bus'), 'the bus is solid');
-  const t = new Track(def); assert.ok(t.blocks.length >= 1);
+  assert.ok(!(def.blocks || []).some((b) => b.kind === 'bus'), 'the bus is a real parked vehicle now, not a fixed block');
+  const t = new Track(def);
   const L = layoutFor(def); assert.ok(L.pieces && L.hasTarget && L.busList.length === 1 && L.stacks.length === 1);
   assert.equal(piecesLayout(def).endX, Infinity);
 });

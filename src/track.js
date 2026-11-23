@@ -173,13 +173,14 @@ export function rampAt(ramps, x, z, out) {
 
 // ---------------------------------------------------------------- buildings (The Getaway)
 /** The solid boxes a stunt track's props make: each bus (and a concrete platform under it when it is raised). Worked out again whenever the track loads, so they can never disagree with the props. */
-export function stuntBlocks(props) {
+export function stuntBlocks(props, solidBuses = true) {
   const out = [];
   for (const p of props || []) {
     if (p.type !== 'bus') continue;
     const hw = STUNT_BUS.w / 2, hd = STUNT_BUS.len / 2, base = p.y + (p.up || 0), th = (p.rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(th)), sn = Math.abs(Math.sin(th));
     const ex = c * hw + sn * hd, ez = sn * hw + c * hd;                              // (half the box that holds the turned bus)
     if ((p.up || 0) > 0.5 && p.y < GROUND_Y + 1) out.push({ x0: p.x - ex - 1, x1: p.x + ex + 1, z0: p.z - ez - 1, z1: p.z + ez + 1, kind: 'wall', y: GROUND_Y, h: base - GROUND_Y });      // (the platform)
+    if (!solidBuses) continue;                                                   // (a bus on an ordinary track is a real parked Rootmaster, see main.js busCars: only its platform is scenery)
     if (sn < 1e-3 || c < 1e-3) { out.push({ x0: p.x - ex, x1: p.x + ex, z0: p.z - ez, z1: p.z + ez, kind: 'bus', y: base, h: STUNT_BUS.h }); continue; }      // square on: one box
     const nx = Math.ceil(2 * hw), nz = Math.ceil(2 * hd), sx = 2 * hw / nx, sz = 2 * hd / nz, cs = Math.cos(th), sS = Math.sin(th);
     const hx = 0.8 * (c * sx / 2 + sn * sz / 2), hz = 0.8 * (sn * sx / 2 + c * sz / 2);      // at an angle: a grid of small boxes that follows the bus's outline
@@ -360,7 +361,7 @@ export function normalizeTrack(input) {
   }
   else if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
   if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }
-  else if (!out.weeval) { const bl = stuntBlocks(out.props); if (bl.length) out.blocks = normalizeBlocks(bl); }      // buses on an ordinary track are solid too           // The Getaway: a town of solid buildings (see getaway.js)
+  else if (!out.weeval) { const bl = stuntBlocks(out.props, false); if (bl.length) out.blocks = normalizeBlocks(bl); }      // buses on an ordinary track are solid too           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
