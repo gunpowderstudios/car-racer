@@ -10,6 +10,7 @@
 
 import { clamp, lerp, smoothstep, wrapPi } from './math.js';
 import { townKerb } from './getaway.js';
+import { buildingLayout, buildingBlocks, BUILDING } from './buildings.js';
 
 export const TRACK_VERSION = 6;
 export const SURF = { ROAD: 0, VERGE: 1, BASE: 2 };
@@ -65,9 +66,11 @@ export function takeoffRamp(h) {
  *  y is the ground height where it was placed and is only a hint for picking the right level
  *  on a bridge; the game re-reads the real ground when the track loads. */
 export const STUNT_TYPES = ['bus', 'boxes', 'target'];      // stunt-jump props (see stuntBlocks): a double-decker, a stack of cardboard boxes, the painted bullseye
+/** Does this track have stunt pieces (buses, cardboard stacks or a bullseye) on it? */
+export const hasStuntProps = (def) => !!(def && (def.props || []).some((p) => STUNT_TYPES.includes(p.type)));
 export const STUNT_BUS = { w: 2.6, len: 9, h: 4.7 };         // a bus: w along the run, len across it (turned a quarter when rot is 90)
-export const PROP_TYPES = ['barrel', 'fire', 'vehicle', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
-export const MAX_PROPS = 400;
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
+export const MAX_PROPS = 600;      // (a town of buildings needs room)
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
 export function normalizeAssault(a) {
@@ -99,6 +102,12 @@ export function normalizeProps(list) {
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
     if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
     if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' || p.type === 'boxes') { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; } }      // up: raised on a platform this far above the ground it stands on
+    if (p.type === 'building') {                       // w across, d deep, h tall (m), turned by rot, with one of a few looks
+      const cl = (v, a, b, dflt) => clamp(Number.isFinite(+v) && v !== null && v !== '' ? Math.round(+v * 2) / 2 : dflt, a, b);
+      o.w = cl(p.w, BUILDING.minW, BUILDING.maxW, BUILDING.w); o.d = cl(p.d, BUILDING.minW, BUILDING.maxW, BUILDING.d); o.h = cl(p.h, BUILDING.minH, BUILDING.maxH, BUILDING.h);
+      const st = Math.round(Number(p.style)) || 0; o.style = ((st % BUILDING.styles) + BUILDING.styles) % BUILDING.styles;
+      const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot;
+    }
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);
   }
@@ -323,7 +332,8 @@ export function normalizeTrack(input) {
     out.blocks = normalizeBlocks(bl);
   }
   else if (src.weeval && Number.isFinite(+src.weeval.stage)) { out.weeval = { stage: clamp(Math.round(+src.weeval.stage), 1, 10) }; out.blocks = normalizeBlocks(src.blocks); }       // Weeval Knievel: the jump over the buses (see weeval.js)
-  if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }           // The Getaway: a town of solid buildings (see getaway.js)
+  if (src.getaway) { out.getaway = true; out.blocks = normalizeBlocks(src.blocks); }
+  else if (!out.weeval) { const bl = stuntBlocks(out.props); if (bl.length) out.blocks = normalizeBlocks(bl); }      // buses on an ordinary track are solid too           // The Getaway: a town of solid buildings (see getaway.js)
   if (src.mode === 'lastStanding') {
     out.mode = 'lastStanding';    // a free-for-all arena: no laps, the last car running wins
     const bumps = normalizeBumps(src.bumps); if (bumps.length) out.bumps = bumps;     // humps in the dirt floor
@@ -432,6 +442,8 @@ export class Track {
     if (!this.rocks.length) this.rocks = null;
     this._rq = Track.newQuery(); this._rollN = 0;
     if (this.def.blocks && this.def.blocks.length) { const y = this.py[0]; this.blocks = this.def.blocks.map((b) => ({ ...b, y: b.y ?? y, h: b.h ?? 14 })); }
+    this.buildings = buildingLayout(this, GROUND_Y);                         // buildings placed in the editor (and the tunnels where they sit over the road)
+    if (this.buildings.length) this.blocks = [...(this.blocks || []), ...buildingBlocks(this.buildings)];
   }
 
   /** Another player's boulder has been set off (multiplayer): ours rolls too, if it is still waiting. */

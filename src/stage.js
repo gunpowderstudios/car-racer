@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { roadTexture, dirtRoadTexture, grassTexture, windowTexture, checkerTexture, bannerTexture } from './textures.js';
 import { buildTrackGeometry } from './trackGeometry.js';
-import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H } from './track.js';
+import { Track, puddleShape, puddleEdge, WALL_GAP, TANK_H, hasStuntProps } from './track.js';
 import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
 import { WeevalView } from './weevalView.js';
+import { buildBuildings } from './buildingView.js';
 import { GetawayView } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
@@ -319,7 +320,8 @@ export class Stage {
 
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
-    if (track.def.weeval) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
+    if (track.def.weeval || hasStuntProps(track.def)) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
+    if (track.buildings && track.buildings.length) g.add(buildBuildings(track));          // buildings and tunnels from the editor
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;

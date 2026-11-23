@@ -48,7 +48,8 @@ export class WeevalView {
     this.mat = { concrete: m(0x9b9a93, { roughness: 0.95 }), dark: m(0x1d1d24), glass: m(0x20303c, { roughness: 0.25, metalness: 0.4 }), tyre: m(0x151515, { roughness: 0.9 }),
       white: m(0xf0efe8), red: m(0xc0281f), yellow: m(0xffc21a), steel: m(0xc9ccd2, { metalness: 0.6, roughness: 0.4 }) };
     this.t = 0; this.flare = 0;
-    if (this.L.custom) { this._abutments(); this._busesCustom(); this._bullseye(); this._boxes(); this._flames(); if (isFinite(this.L.endX)) { this._barrier(); this._finishLine(); } }      // (a stunt track from the editor: its own buses, stacks and target, no barrier or signs)
+    if (this.L.pieces) { this._busesCustom(); if (this.L.hasTarget) this._bullseye(); this._boxes(); }                  // stunt pieces on an ordinary track: just the pieces
+    else if (this.L.custom) { this._abutments(); this._busesCustom(); this._bullseye(); this._boxes(); this._flames(); if (isFinite(this.L.endX)) { this._barrier(); this._finishLine(); } }      // (a stunt track from the editor: its own buses, stacks and target, no barrier or signs)
     else { this._abutments(); this._buses(); this._bullseye(); this._barrier(); this._boxes(); this._flames(); this._signs(); }
   }
 

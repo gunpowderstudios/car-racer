@@ -371,7 +371,7 @@ export class Derby {
     let n = 0;
     for (const p of list) {
       if (p.type !== 'vehicle' || n >= 24) continue;
-      const kind = (p.car && kindFor && kindFor(p.car)) || null;
+      const kind = (kindFor && kindFor(p.car || '')) || null;          // (no car chosen = "same as your car": kindFor('') gives the player's own)
       const car = new Vehicle(kind?.spec), g = T.groundAt(p.x, p.z, (p.y || 0) + 1, undefined, true), gy = g && g.idx >= 0 ? g.y : (p.y || 0);
       let driver;
       if (p.mode === 'driving') {

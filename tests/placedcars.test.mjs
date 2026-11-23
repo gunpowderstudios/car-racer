@@ -36,3 +36,11 @@ test('placed cars: parked stays still, driving drives, and neither counts as a r
   assert.ok(Math.hypot(drive.car.pos.x - d0.x, drive.car.pos.z - d0.z) > 30, 'driving car did not drive');
   assert.equal(derby.rivals.length, 0);
 });
+
+test('a placed car with no car chosen asks for the player\'s own ("same as your car"), a chosen one for its own', () => {
+  const track = new Track(makeTemplate('speedway')), me = new Vehicle(), derby = new Derby(), asked = [];
+  derby.enabled = true; derby.start(track, me, 0, 7, 'race'); placeOnRoad(me, track, 10, 0, 0);
+  const a = track.frameAt(300), b = track.frameAt(400);
+  derby.addPlaced([{ type: 'vehicle', x: a.x, z: a.z, y: a.y, mode: 'static' }, { type: 'vehicle', x: b.x, z: b.z, y: b.y, mode: 'static', car: 'bus' }], (id) => { asked.push(id); return null; });
+  assert.deepEqual(asked, ['', 'bus']);
+});

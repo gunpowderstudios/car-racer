@@ -46,7 +46,7 @@ test('props are part of the track format: kept, cleaned and defaulted', () => {
   assert.deepEqual(normalizeTrack({ handles: makeTemplate('speedway').handles }).props, [], 'old files load with no props');
   const again = normalizeTrack(JSON.parse(JSON.stringify(def)));
   assert.deepEqual(again.props, def.props, 'survives an export / import round trip');
-  assert.ok(normalizeTrack({ props: Array.from({ length: 900 }, () => ({ type: 'barrel', x: 1, z: 1 })) }).props.length <= 400);
+  assert.ok(normalizeTrack({ props: Array.from({ length: 900 }, () => ({ type: 'barrel', x: 1, z: 1 })) }).props.length <= 600);
 });
 
 test('placeProp puts a barrel on the road, and never inside a barrier', () => {

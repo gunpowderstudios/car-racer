@@ -30,6 +30,7 @@ import { getawayHudShow, getawayHudUpdate, getawayPop, showGetawayResult, hideGe
 import { assaultHudShow, assaultHudUpdate, assaultPop, showResult, hideResult } from './assaultHud.js';
 import { startRaceLights, cancelRaceLights } from './raceLights.js';
 import { Weeval, WEEVAL, weevalDef, newRun } from './weeval.js';
+import { TargetScore } from './targetScore.js';
 import { weevalHudShow, weevalHudUpdate, weevalPop, showWeevalCard, hideWeevalCard } from './weevalHud.js';
 import { PropsView } from './propsView.js';
 import { FirePits } from './firePits.js';
@@ -384,6 +385,7 @@ for (const [id, act] of [['mq-mirror', 'mirror'], ['mq-reset', 'reset'], ['mq-bo
 
 // --------------------------------------------------------------------- track
 let demoDay = false;      // Demolition Day: the Bed Pan with 8 rivals, each a different vehicle, whatever the options say
+let targetScore = null;      // a bullseye on an ordinary track: land on it for points (targetScore.js)
 let weeval = null, weevalRun = null;      // Weeval Knievel: the bus jump (weeval.js) - null on every other track; weevalRun is the whole ten-stage run, which outlives each stage's track
 let assault = null;     // Apple Crumple: the solo obstacle course (assault.js) - null on every other track
 let testDrive = false, pendingTest = false;      // Test Drive from the editor: just your own car on the track, no rivals (any other way of loading a track clears it)
@@ -396,6 +398,7 @@ function loadTrack(newDef) {
   stage.setTrack(track);
   assault = def.assault && !net ? new Assault(track) : null; assaultHudShow(!!assault);
   weeval = def.weeval && !net ? new Weeval(track, def.weeval.custom ? (weevalRun = newRun()) : weevalRun || (weevalRun = newRun())) : null; if (!weeval) weevalRun = null; weevalHudShow(!!weeval);
+  targetScore = !weeval && !net ? new TargetScore(track) : null; if (targetScore && !targetScore.any) targetScore = null;
   document.body.classList.toggle('course', !!(assault || weeval));
   getaway = def.getaway ? makeGetaway() : null; getawayHudShow(!!getaway); gwRoster(getaway); syncGetawayVehicle();
   hud.buildMap(track);
@@ -458,7 +461,7 @@ function restartRace() {
   if (getaway) { getawayRound(getaway.role); return; }
   if (weeval) { weevalNew(); return; }
   race.laps = 0; race.lapStart = null; race.lastTime = null; race.reverseT = 0;
-  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset(); firePits.reset();
+  skid.clear(); particles.clear(); debris.clear(); scorch.clear(); props.reset(); firePits.reset(); stage.weevalView?.reset(); targetScore?.reset();       // (the cardboard stacks stand up again)
   placeCar(track.startS(12), 0, 0);
   car.boostFuel = 1;
   derbyStart();
@@ -573,7 +576,7 @@ const wrq = new THREE.Quaternion(), wrAx = new THREE.Vector3(), wrAy = new THREE
 const wr = { t: null, prev: null, car: { pos: { x: 0, y: 0, z: 0 }, vel: new THREE.Vector3(), speed: 0, ax: wrAx, ay: wrAy, az: wrAz } };
 function weevalReplayBoxes(R) {
   const v = stage.weevalView, p = R.player; if (!v || !p) return;
-  const L = weeval.L, step = (nt, dt) => {
+  const L = (weeval || v).L, step = (nt, dt) => {
     const e = p.sample(nt).find((q) => q.isPlayer); if (!e) { wr.prev = null; return; }
     const c = wr.car; wrq.set(e.qx, e.qy, e.qz, e.qw); wrAx.set(1, 0, 0).applyQuaternion(wrq); wrAy.set(0, 1, 0).applyQuaternion(wrq); wrAz.set(0, 0, 1).applyQuaternion(wrq);
     if (wr.prev && dt > 0) c.vel.set((e.x - wr.prev.x) / dt, (e.y - wr.prev.y) / dt, (e.z - wr.prev.z) / dt); else c.vel.set(0, 0, 0);
@@ -697,6 +700,7 @@ function stepPhysics(dt) {
     }
     if (assault) { assault.step(DT, car, race.unwrapped, derby); if (assault.events.length) assaultEvents(); }
     if (weeval) { weeval.step(DT, car, derby.player?.health); if (weeval.events.length) weevalEvents(); }
+    if (targetScore) { targetScore.step(DT, car); for (const e of targetScore.events) { weevalPop(RING_WORDS[e.ring], `${e.points} pts` + (e.flat ? ' + flat landing' : ' - bumpy landing') + (e.points !== targetScore.total ? ` (total ${e.total})` : '')); chase.impact(Math.min(14, 3 + e.air * 2)); } targetScore.events.length = 0; }
     if (derby.enabled) derby.step(DT, props.barrels);          // rivals, crashes, damage (reads this step's wall hits before they are cleared below)
     if (getaway) { if (getaway.online) gwOnlineStep(); else getawayStep(); }
     if (towViews.size) for (const f of derby.fighters) if (f.car.tow && !f.isPlayer) towViews.get(f.id)?.capture(f.car.tow);   // the rivals' caravans, now they have moved
@@ -1024,7 +1028,7 @@ function derbyStart() {
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
   derby.repairsMax = derby.enabled && !arena ? 0 : Infinity;      // no spanners (lives) in any racing game, Race Day included: the first wreck puts you out of the race
   if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
-  if (derby.enabled && !gw && !arena && placedCars.length) derby.addPlaced(placedCars, (id) => { const v = vehicleById(id); return v && v.id === id ? { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null } : null; });
+  if (derby.enabled && !gw && !arena && placedCars.length) derby.addPlaced(placedCars, (id) => { const v = id ? vehicleById(id) : selectedVehicle(); return v && (!id || v.id === id) ? { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null } : null; });
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();
   clearViews(); rivalKind.clear(); overAt = 0; overInfo = null;
@@ -1444,7 +1448,7 @@ function frame(now) {
       propsView.update(props); firePitView.update(firePits);
       if (f) drawPos.set(f.x, f.y, f.z);
       stage.update(drawPos, camera.position); stage.updateRollers();
-      if (weeval) weevalReplayBoxes(replay().state);
+      if (weeval || stage.weevalView) weevalReplayBoxes(replay().state);
       if (assault) { const at = replay().state.player?.hazardAt(replay().state.t); if (at != null) stage.updateAssault(Object.assign(Object.create(assault), { t: at })); }      // the hammers, spinners, rocks and presses move as they did in the run
       // cinematic depth of field: High tier on desktop only, and only while the replay is open (see replayDof.js)
       const dofCam = replay().state.camMode, dofOk = (tierName === 'high' || tierName === 'medium') && !device.touch && adapt.scale >= 0.8 && dofCam === 'TV';      // (only the trackside TV camera gets the blur; the chase, top and every other view stay sharp)
@@ -1525,7 +1529,7 @@ function frame(now) {
   vanHud(car.tow);
   if (derby.enabled || views.size) { syncViews(mode === 'drive' ? acc / DT : 1); syncTowViews(mode === 'drive' ? acc / DT : 1); }
   propsView.update(props); firePitView.update(firePits);
-  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
+  stage.update(drawPos, camera.position); stage.updateRollers(); stage.updateAssault(assault); if (weeval || stage.weevalView) { const hit = stage.updateWeeval(1 / 60, weeval, car); if (hit) { car.vel.scale(Math.max(0.5, 1 - hit * 0.006)); if (performance.now() - (weevalBoxSnd || 0) > 140) { weevalBoxSnd = performance.now(); sound.clang?.(3, 0); } } } stage.updateGetaway(getaway?.game, 1 / 60, getaway?.role);
   renderer.render(stage.scene, camera);
   if (mode === 'drive' && mirror.on && !$('hud').hidden) renderMirror();
   perfUpdate(now);
@@ -1794,8 +1798,18 @@ function saveUserTrack(d) {
   const all = userTracks(); all[d.name] = normalizeTrack(d); store.set('cr.tracks', all);
 }
 function toast(msg) {
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
+  const t = $('toast'); t.textContent = msg; t.classList.add('show'); t.classList.remove('sticky');
+  clearTimeout(toast._t); toast._t = null; toast._off?.(); toast._off = null;
+  if (document.body.classList.contains('mode-edit') && String(msg).length > 60) {            // a long message in the editor (what just changed, and why) stays until you click away or press the X
+    t.classList.add('sticky');
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'toast-x'; x.textContent = '\u00d7'; x.setAttribute('aria-label', 'Close message'); t.appendChild(x);
+    const close = () => { t.classList.remove('show', 'sticky'); toast._off?.(); toast._off = null; };
+    const away = (e) => { if (e.target === t || t.contains(e.target)) { if (e.target === x) close(); return; } close(); };
+    setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
+    toast._off = () => document.removeEventListener('pointerdown', away, true);
+    return;
+  }
+  toast._t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
 // ---------------------------------------------------------------------- menu

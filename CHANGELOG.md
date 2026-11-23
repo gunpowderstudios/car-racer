@@ -2,6 +2,20 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.675 — Buildings and tunnels in the editor
+
+- **New Building tool (Obstacles menu).** Click the map to place a solid building with a random look (eight styles), then set its Width, Depth, Height and Angle, or press Different look. Cars crash into it like a wall. Make as many as you like (up to 600 props) to build a town. Buildings are saved in share links.
+- **Tunnels.** Put a building's middle over the road and it snaps onto the road, lines up with it and becomes two side walls with a roof, so the road runs through. Enlarge it for a longer or taller tunnel; move it off the road and it is a building again.
+- **Fix: "Same as your car" for placed vehicles.** A car placed in the editor with no car chosen always came out as the default Dodge. It is now the car you picked in the menu (the Beema, say).
+- **Thinner barriers in the editor map.** The red and white barrier blocks are drawn about half as thick.
+
+## v17.674 — Buses, boxes and the bullseye work on any track
+
+- **No more "stunt track".** Placing a bus, a stack of cardboard boxes or the bullseye no longer changes the track into a Weeval-style stunt track. It stays an ordinary track (laps, rivals and all) with the pieces standing on it.
+- **Buses are solid**, cardboard stacks fly everywhere when you hit them (and stand up again when the race restarts), and a **bullseye scores your landing**: jump and come down on it for points by ring (1000 in the middle, then 600, 300, 150) plus 200 for a level touchdown. The score pops up when you land. Pieces are saved in share links.
+- **Editor messages stay put.** A long message in the editor now stays until you click elsewhere or press its X, instead of vanishing after a couple of seconds.
+- **The height chart at the bottom of the editor is hidden for now**, so the map fills the space.
+
 ## v17.672 — Barriers round solid arenas in the editor
 
 - A filled (solid) arena now shows its barriers as red and white blocks round the whole outline in the editor, when "Barriers along the edges" is ticked.

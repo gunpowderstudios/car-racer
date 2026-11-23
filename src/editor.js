@@ -1,14 +1,15 @@
 // Track editor: a top-down blueprint plus an elevation strip. It edits the same track
 // definition the game drives, using the same Track class, so what you see is what you drive.
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, structureAt, setStructure, GAP_HEIGHT, TUNNEL_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
-import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal, openRoad } from './track.js';
+import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal, openRoad, MAX_PROPS } from './track.js';
 import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
-const STUNT_TOOLS = ['bus', 'boxes', 'target'];
-const STUNT_LABEL = { bus: 'Bus', boxes: 'Cardboard boxes', target: 'Bullseye' };
+const STUNT_TOOLS = ['bus', 'boxes', 'target', 'building'];
+const STUNT_LABEL = { bus: 'Bus', boxes: 'Cardboard boxes', target: 'Bullseye', building: 'Building' };
 import { clamp, lerp } from './math.js';
 import { arenaInfo, arenaOutline } from './arena.js';
+import { BUILDING } from './buildings.js';
 
 const $ = (id) => document.getElementById(id);
 const PAPER = '#17427a', PAPER_DEEP = '#10335f', LINE = '127,184,230', INK = '#eaf6ff', AMBER = '#ffc857', RED = '#ff6b5e';
@@ -18,6 +19,7 @@ export class Editor {
   constructor({ onDrive, onClose, onSave, onShare, toast, preview, vehicles }) {
     this.cb = { onDrive, onClose, onSave, onShare, toast, vehicles };
     this.vehOpts = { car: '', mode: 'static' };
+    this.bldOpts = { w: 20, d: 20, h: 25, style: 0 };          // the next building placed
     this.preview = preview || null;               // optional 3D view (EditorPreview)
     if (this.preview) this.preview.onScale = (ex) => { $('ed-3d-ex').textContent = ex > 1 ? `heights \u00d7${ex}` : ''; };
     try { this.show3d = localStorage.getItem('cr.ed3d') !== '0'; } catch { this.show3d = true; }
@@ -330,8 +332,8 @@ export class Editor {
 
     // barriers along the edges (when ticked): red and white blocks, like the kerb stripes in the game
     if (t.def.walls !== false) {
-      g.save(); g.lineWidth = 4; g.lineCap = 'butt';
-      const blk = Math.max(5, Math.min(12, 4 * this.view.scale));
+      g.save(); g.lineWidth = 2; g.lineCap = 'butt';
+      const blk = Math.max(4, Math.min(9, 3 * this.view.scale));
       const ringPts = arena ? arenaOutline(arenaInfo(t), arenaInfo(t).hw, 160) : null;
       for (const [col, off] of [['#d8362b', 0], ['#ffffff', blk]]) {
         g.strokeStyle = col; g.setLineDash([blk, blk]); g.lineDashOffset = -off;
@@ -477,6 +479,17 @@ export class Editor {
         if (!driving) { g.fillStyle = '#fff'; g.font = `700 ${Math.round(wid * 0.8)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.rotate(-ang); g.fillText('P', 0, 1); }
         g.restore(); g.globalAlpha = 1; return;
       }
+      if (type === 'building') {                                   // a building seen from above: its real footprint, turned by its angle; a tunnel when it sits over the road
+        const w = vp?.w || BUILDING.w, d = vp?.d || BUILDING.d, th = (vp?.rot || 0) * Math.PI / 180, bw = Math.max(26, w * S), bd = Math.max(26, d * S);
+        const bl = vp && this.track?.buildings?.find((q) => this.def.props[q.pi] === vp), tun = !!bl?.tunnel;
+        g.save(); g.translate(x, y); g.rotate(-th);
+        g.fillStyle = tun ? '#6a6a70' : ['#a2543a', '#9a9a96', '#3e6a86', '#c9b48a', '#8e4a58', '#5f7a58', '#d7d3c4', '#394352'][(vp?.style || 0) % 8]; g.fillRect(-bw / 2, -bd / 2, bw, bd);
+        g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(-bw / 2 + i * bw / 4, -bd / 2); g.lineTo(-bw / 2 + i * bw / 4, bd / 2); } g.stroke();
+        g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.strokeRect(-bw / 2, -bd / 2, bw, bd);
+        g.restore();
+        g.fillStyle = '#fff'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(tun ? 'tunnel' : `${vp?.h || BUILDING.h} m`, x, y); g.textAlign = 'start'; g.textBaseline = 'alphabetic';
+        g.globalAlpha = 1; return;
+      }
       if (type === 'bus' || type === 'boxes' || type === 'target') {      // stunt props: true size when zoomed in, never smaller than a good handful of pixels, turned by their angle
         const th = (vp?.rot || 0) * Math.PI / 180, up = vp?.up || 0;
         g.save(); g.translate(x, y); g.rotate(-th);
@@ -574,6 +587,7 @@ export class Editor {
     if (nbus) parts.push(`${nbus} bus${nbus === 1 ? '' : 'es'}`);
     if (nbx) parts.push(`${nbx} stack${nbx === 1 ? '' : 's'} of boxes`);
     if (ntg) parts.push('a bullseye');
+    const nbl = this.def.props.filter((p) => p.type === 'building').length; if (nbl) parts.push(`${nbl} building${nbl === 1 ? '' : 's'}`);
     if (nv) parts.push(`${nv} car${nv === 1 ? '' : 's'}`);
     if (nf) parts.push(`${nf} fire pit${nf === 1 ? '' : 's'}`);
     if (nb) parts.push(`${nb} barrel${nb === 1 ? '' : 's'}`);
@@ -582,7 +596,7 @@ export class Editor {
     $('ed-props-clear').disabled = !n;
   }
   updateInspector() {
-    this.updateProps(); this._vehPanel(); this._stuntPanel();
+    this.updateProps(); this._vehPanel(); this._stuntPanel(); this._buildPanel();
     $('ed-h').max = this.def.weeval ? 120 : 40; $('ed-gap-len').max = this.def.weeval ? 150 : 70;      // (a stunt track is a great deal bigger)
     const h = this.def.handles[this.sel];
     $('ed-none').hidden = !!h; $('ed-inspector').hidden = !h;
@@ -731,15 +745,15 @@ export class Editor {
     let best = -1, bd = Infinity;
     const S = this.view.scale;
     this.def.props.forEach((p, k) => {
-      const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2, rr = Math.max(r, p.type === 'bus' ? 9 * S * 0.5 : p.type === 'boxes' ? 9 * S * 0.5 : p.type === 'target' ? 9 * S : 0);
+      const [x, y] = this.toScreen(p.x, p.z), d = (x - sx) ** 2 + (y - sy) ** 2, rr = Math.max(r, p.type === 'bus' ? 9 * S * 0.5 : p.type === 'boxes' ? 9 * S * 0.5 : p.type === 'target' ? 9 * S : p.type === 'building' ? Math.max(14, Math.min(p.w || BUILDING.w, p.d || BUILDING.d) * S * 0.5) : 0);
       if (d < rr * rr && d < bd) { bd = d; best = k; }
     });
     return best;
   }
   _setTool(t) {
     this.tool = t; this._ghost = null;
-    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); for (const k of STUNT_TOOLS) $('ed-tool-' + k).setAttribute('aria-pressed', String(t === k)); this._vehPanel(); this._stuntPanel();
-    const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles', bus: 'Stunt bus', boxes: 'Cardboard boxes', target: 'Bullseye target' };
+    $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); for (const k of STUNT_TOOLS) $('ed-tool-' + k).setAttribute('aria-pressed', String(t === k)); this._vehPanel(); this._stuntPanel(); this._buildPanel();
+    const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles', bus: 'Stunt bus', boxes: 'Cardboard boxes', target: 'Bullseye target', building: 'Buildings' };
     $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
     this._obstMenu(false); this._worksMenu(false);
     $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go. Esc stops adding.');
@@ -842,6 +856,16 @@ export class Editor {
   }
 
   /** The Stunt bus options (its height on a platform, a quarter turn): shown with a bus selected. */
+  /** Building size and look: shown with a building selected (or while placing, for the next one). */
+  _buildPanel() {
+    const box = $('ed-build'); if (!box) return;
+    const sel = this.def && this.def.props[this.selProp], isB = sel && sel.type === 'building';
+    box.hidden = !(this.tool === 'building' || isB); if (box.hidden) return;
+    const v = isB ? sel : this.bldOpts, set = (k, val, suf) => { $('ed-bld-' + k).value = val; $('ed-bld-' + k + '-o').textContent = `${val}${suf}`; };
+    set('w', v.w || BUILDING.w, ' m'); set('d', v.d || BUILDING.d, ' m'); set('h', v.h || BUILDING.h, ' m'); set('turn', v.rot || 0, '\u00b0');
+    $('ed-bld-turn').parentElement.hidden = !isB;
+    $('ed-bld-note').textContent = isB && this.track?.buildings?.find((q) => this.def.props[q.pi] === sel)?.tunnel ? 'Over the road: this is a tunnel. It lines up with the road and the road runs through it. Move it off the road for a building.' : 'Put one over the road and enlarge it to make a tunnel.';
+  }
   _stuntPanel() {
     const box = $('ed-stunt'); if (!box) return;
     const sel = this.def && this.def.props[this.selProp], on = sel && (sel.type === 'bus' || sel.type === 'boxes');
@@ -876,18 +900,20 @@ export class Editor {
   _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; if (open) { this._worksMenu(false); this._keysMenu(false); } m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
   _keysMenu(open) { const m = $('ed-keys-menu'); if (!m) return; if (open) { this._obstMenu(false); this._worksMenu(false); } m.hidden = !open; $('ed-keys-btn').setAttribute('aria-expanded', String(open)); }
   _worksMenu(open) { const m = $('ed-works-menu'); if (!m) return; if (open) this._keysMenu(false); m.hidden = !open; $('ed-works').setAttribute('aria-expanded', String(open)); }
-  propsChanged() { this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
+  propsChanged() {
+    const any = this.def.props.some((p) => p.type === 'building'); if (any || this._hadBuildings) this.rebuild(); this._hadBuildings = any;          // (buildings are part of the track's solid shape, and snap into tunnels over the road)
+    this.preview?.setProps(this.def.props); this.updateProps(); this._buttons(); this.draw(); }
   addProp(type, sx, sy, lethal = false) {
     if (!this.track) return;
     const [wx, wz] = this.toWorld(sx, sy);
-    if (this.def.props.length >= 400) { this.cb.toast('That is enough props (400).'); return; }
+    if (this.def.props.length >= MAX_PROPS) { this.cb.toast('That is enough props (' + MAX_PROPS + ').'); return; }
     const p = placeProp(this.track, wx, wz);
     this.snapshot();
     let extra = {};
     if (STUNT_TOOLS.includes(type)) {
       if (type === 'target') this.def.props = this.def.props.filter((q) => q.type !== 'target');            // (only one bullseye: placing it again moves it)
-      if (!this.def.weeval) { this.def.weeval = { stage: 1, custom: true }; this.cb.toast('This is now a stunt track: it plays like Weeval Knievel, with the gap as the jump. Run the road left to right (east) over the gap.'); }
     }
+    if (type === 'building') extra = { w: this.bldOpts.w, d: this.bldOpts.d, h: this.bldOpts.h, style: this.bldOpts.style = (this.bldOpts.style + 3) % 8 };      // (each one placed gets a different look)
     if (type === 'vehicle') {                                                  // facing along the road if it is on one; the person turns it with the Facing slider
       let yaw = 0; try { const s = this.track.progressAt(p.x, p.y, p.z), f = this.track.frameAt(s); yaw = Math.atan2(f.fx, f.fz); } catch { /* off the road */ }
       extra = { mode: this.vehOpts.mode, yaw: Math.round(yaw * 100) / 100, ...(this.vehOpts.car ? { car: this.vehOpts.car } : {}) };
@@ -897,7 +923,12 @@ export class Editor {
   }
   removeProp() {
     if (this.selProp < 0) return;
-    this.snapshot(); this.def.props.splice(this.selProp, 1); this.selProp = -1; this.propsChanged();
+    this.snapshot(); this.def.props.splice(this.selProp, 1); this.selProp = -1; this._unstunt(); this.propsChanged();
+  }
+  /** A track turned into a stunt track by its first stunt prop goes back to a normal track once the last one is removed (a stunt template, with its own one-road shape, stays). */
+  _unstunt() {
+    const w = this.def.weeval; if (!w || !w.custom || w.oneRoad || this.def.props.some((q) => STUNT_TOOLS.includes(q.type))) return;
+    delete this.def.weeval; this.cb.toast('No stunt pieces left: this is an ordinary track again.');
   }
   _nearestSample(sx, sy, r = 14) {
     const t = this.track; let best = -1, bd = r * r;
@@ -1107,6 +1138,14 @@ export class Editor {
     $('ed-veh-yaw').oninput = (e) => { const sel = this.def.props[this.selProp]; if (!sel || sel.type !== 'vehicle') return; if (!this._vehYawSnap) { this.snapshot(); this._vehYawSnap = true; } sel.yaw = Math.round(e.target.value * Math.PI / 180 * 100) / 100; $('ed-veh-yaw-o').textContent = `${e.target.value}\u00b0`; this.draw(); };
     $('ed-veh-yaw').onchange = () => { this._vehYawSnap = false; this.propsChanged(); };
     for (const k of STUNT_TOOLS) $('ed-tool-' + k).onclick = () => { this._setTool(this.tool === k ? 'road' : k); this.draw(); };
+    const bld = (k, key, lo, hi) => { $('ed-bld-' + k).oninput = (e) => {
+      const sel = this.def.props[this.selProp], isB = sel && sel.type === 'building', val = +e.target.value;
+      if (isB) { if (!this._bldSnap) { this.snapshot(); this._bldSnap = true; } if (key === 'rot') { if (val) sel.rot = val; else delete sel.rot; } else sel[key] = val; this.propsChanged(); }
+      else if (key !== 'rot') this.bldOpts[key] = val;
+      const suf = key === 'rot' ? '\u00b0' : ' m'; $('ed-bld-' + k + '-o').textContent = `${val}${suf}`;
+    }; $('ed-bld-' + k).onchange = () => { this._bldSnap = false; this._buildPanel(); }; };
+    bld('w', 'w'); bld('d', 'd'); bld('h', 'h'); bld('turn', 'rot');
+    $('ed-bld-look').onclick = () => { const sel = this.def.props[this.selProp]; if (sel && sel.type === 'building') { this.snapshot(); sel.style = ((sel.style || 0) + 1) % 8; this.propsChanged(); } else this.bldOpts.style = (this.bldOpts.style + 1) % 8; };
     $('ed-stunt-up').oninput = (e) => { const p = this.def.props[this.selProp]; if (!p || p.type !== 'bus') return; if (!this._stuntSnap) { this.snapshot(); this._stuntSnap = true; } p.up = +e.target.value; if (!p.up) delete p.up; $('ed-stunt-up-o').textContent = `${(+e.target.value).toFixed(1)} m`; this.draw(); };
     $('ed-stunt-up').onchange = () => { this._stuntSnap = false; this.propsChanged(); };
     const turnable = () => { const p = this.def.props[this.selProp]; return p && (p.type === 'bus' || p.type === 'boxes') ? p : null; };
@@ -1116,7 +1155,7 @@ export class Editor {
     $('ed-tool-fire').onclick = () => { this._setTool(this.tool === 'fire' ? 'road' : 'fire'); this.draw(); };
     $('ed-tool-skull').onclick = () => { this._setTool(this.tool === 'skull' ? 'road' : 'skull'); this.draw(); };
     $('ed-tool-barrel').onclick = () => { this._setTool(this.tool === 'barrel' ? 'road' : 'barrel'); this.draw(); };
-    $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this.propsChanged(); this.cb.toast('All props removed.'); };
+    $('ed-props-clear').onclick = () => { if (!this.def.props.length) return; this.snapshot(); this.def.props = []; this.selProp = -1; this._unstunt(); this.propsChanged(); this.cb.toast('All props removed.'); };
     $('ed-smooth').onclick = () => this._smoothOpen();
     $('ed-bank').onclick = () => {
       if (!this.track) return; this.snapshot();
