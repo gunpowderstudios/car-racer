@@ -29,3 +29,12 @@ test('ramp sizes are clamped, and a ramp survives a share link', async () => {
   const r = back.props.find((p) => p.type === 'ramp'); assert.deepEqual([r.w, r.d, r.h], [8, 14, 3]); assert.ok(r.rot !== undefined || true);
   assert.equal(RAMP.d, 14);
 });
+
+test('a ramp is solid: the sheer back of the lip is a wall, but the foot is open for a car to drive up', () => {
+  const { T, i } = setup(), road = T.py[i];
+  const solidAt = (back, y) => { const [x, z] = along(T, i, back); return T.blocks.some((b) => x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y >= b.y - 1.5 && y <= b.y + b.h); };
+  assert.ok(solidAt(6.5, road + 2), 'just under the lip is solid');
+  assert.ok(!solidAt(6.5, road + 3.6), 'but a car flying off above it is not blocked');
+  assert.ok(!solidAt(-6.5, road + 0.6), 'the foot is open');
+  assert.ok(!solidAt(0, road + 1.9), 'and so is the slope itself, above its surface');
+});

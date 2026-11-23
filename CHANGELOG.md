@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.688 — Solid ramps
+
+- **Ramps are now solid.** Approach one from the high end and you hit the sheer back of the lip instead of driving up the cliff; the sides step up with the slope. The foot is still open and you still drive up and launch off the lip as before.
+
 ## v17.687 — Every vehicle hits the boxes
 
 - **Rivals and cars placed in the editor now plough through cardboard boxes just as yours does**: the boxes are thrown, tumble and bring down whatever was stacked on them, and the car is slowed by the pile. Before, only your own car could move them.

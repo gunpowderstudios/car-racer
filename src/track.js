@@ -473,6 +473,26 @@ export class Track {
     if (this.def.blocks && this.def.blocks.length) { const y = this.py[0]; this.blocks = this.def.blocks.map((b) => ({ ...b, y: b.y ?? y, h: b.h ?? 14 })); }
     this.buildings = buildingLayout(this, GROUND_Y);                         // buildings placed in the editor (and the tunnels where they sit over the road)
     if (this.buildings.length) this.blocks = [...(this.blocks || []), ...buildingBlocks(this.buildings)];
+    if (this.ramps) { const rb = this._rampBlocks(); if (rb.length) this.blocks = [...(this.blocks || []), ...rb]; }      // ramps are solid: the sheer back of the lip and the sides will not let a car drive through
+  }
+
+  /** The solid boxes of the ramps (a grid of small boxes that follows each ramp's turn): the sheer back of the high end, and a stepped side wall each side. */
+  _rampBlocks() {
+    const out = [], q = Track.newQuery(), tmp = { h: 0, gx: 0, gz: 0 };
+    for (const r of this.ramps) {
+      this.query(r.x, this.py[0] + 20, r.z, q, 6); rampAt([r], r.x, r.z, tmp);
+      const y0 = (q.idx >= 0 ? q.y - tmp.h : this.py[0]) - 1.5, L = 2 * r.half, k = r.h / L, ac = Math.abs(r.cs), as = Math.abs(r.sn);
+      const box = (u, v, su, sv, top) => {                                             // a rotated su by sv rectangle centred at (u, v) from the ramp's low end, up to height `top` above the road
+        if (top < 0.3) return;
+        const cx = r.x + (u - r.half) * r.sn + v * r.cs, cz = r.z + (u - r.half) * r.cs - v * r.sn, hx = 0.85 * (as * su / 2 + ac * sv / 2), hz = 0.85 * (ac * su / 2 + as * sv / 2);
+        out.push({ x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, kind: 'wall', y: y0, h: top + 1.5 });
+      };
+      const nv = Math.max(1, Math.ceil(2 * r.hw / 1.5)), sv = 2 * r.hw / nv;
+      for (let j = 0; j < nv; j++) box(L - 0.6, -r.hw + sv * (j + 0.5), 1.2, sv, r.h - 0.25);               // the back of the lip
+      const nu = Math.max(1, Math.ceil(L / 2)), su = L / nu;
+      for (let i = 0; i < nu; i++) for (const sd of [-1, 1]) box(su * (i + 0.5), sd * (r.hw + 0.3), su, 0.6, k * su * i - 0.05);      // the sides, stepping up the slope (never above the surface)
+    }
+    return out;
   }
 
   /** Another player's boulder has been set off (multiplayer): ours rolls too, if it is still waiting. */
