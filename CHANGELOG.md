@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.680 — Editor cars lean like yours
+
+- **Cars you place in the editor now lean and roll over exactly like your own car.** They were getting the computer drivers' extra roll stiffening, which made their tilt in corners look jerky and unlike the main game.
+
 ## v17.679 — Ramp, shovable parked cars, wheels on the road
 
 - **New Ramp in the Scenery menu.** Drop it on a track and adjust width, length and height (and turn it) for a random jump. Only the road surface under it is lifted.

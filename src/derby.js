@@ -391,7 +391,7 @@ export class Derby {
         car.reset(new V3(p.x, gy + car.restHeight + 0.08, p.z), new V3(Math.sin(p.yaw || 0), 0, Math.cos(p.yaw || 0)), new V3(0, 1, 0), 0);
       }
       car.opts.assist = 0.7;
-      const f = this.add(car, driver, null, kind); f.placed = true; f.parked = p.mode !== 'driving'; n++;
+      const f = this.add(car, driver, null, kind); car.aiRollGuard = 0; f.placed = true; f.parked = p.mode !== 'driving'; n++;
     }
     return n;
   }
