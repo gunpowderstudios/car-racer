@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.671 — Barriers show in the editor; no stray blue line on arenas
+
+- **Barriers along the edges now show in the editor** as red and white blocks whenever that tickbox is on (and disappear when it is off).
+- The blue road centre line and its arrows are no longer drawn on arenas such as Deep Pan Pizza (they showed the hidden path inside the floor).
+
 ## v17.670 — Fill a shape to make a solid arena
 
 - **New "Fill it: a solid arena, not a road" tickbox in the editor.** Draw a circle, oval or any rounded shape as usual, tick Fill and it becomes one solid floor with a crash wall round the edge, a derby arena where the last car running wins. Untick it to go back to a road round the same outline. The floor follows the oval that fits your shape. No 4-point rule applies to the arena.

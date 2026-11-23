@@ -328,10 +328,31 @@ export class Editor {
       }
     }
 
+    // barriers along the edges (when ticked): red and white blocks, like the kerb stripes in the game
+    if (!arena && t.def.walls !== false) {
+      g.save(); g.lineWidth = 4; g.lineCap = 'butt';
+      const blk = Math.max(5, Math.min(12, 4 * this.view.scale));
+      for (const [col, off] of [['#d8362b', 0], ['#ffffff', blk]]) {
+        g.strokeStyle = col; g.setLineDash([blk, blk]); g.lineDashOffset = -off;
+        for (const sg of [1, -1]) {
+          let i = 0;
+          while (i < t.n) {
+            while (i < t.n && t.gap[i]) i++;
+            const a = i; while (i < t.n && !t.gap[i]) i++;
+            const b = i - 1; if (b <= a) continue;
+            g.beginPath();
+            for (let k = a; k <= b; k += step) { const [x, y] = edge(k, sg); k === a ? g.moveTo(x, y) : g.lineTo(x, y); }
+            g.stroke();
+          }
+        }
+      }
+      g.restore();
+    }
+
     // centre line coloured by height
     const maxY = Math.max(6, ...t.py);
     g.lineWidth = 2; g.setLineDash([]);
-    for (let i = 0; i < t.n; i += 4) {
+    for (let i = 0; i < t.n && !arena; i += 4) {                      // (an arena has no road line to show)
       const j = (i + 4) % t.n; if (t.gap[i] || t.gap[j]) continue;
       const u = clamp(t.py[i] / maxY, 0, 1);
       g.strokeStyle = `rgb(${Math.round(lerp(127, 255, u))},${Math.round(lerp(227, 200, u))},${Math.round(lerp(255, 87, u))})`;
@@ -341,7 +362,7 @@ export class Editor {
 
     // direction arrows
     g.fillStyle = INK;
-    for (let i = 30; i < t.n; i += 80) {
+    for (let i = 30; i < t.n && !arena; i += 80) {
       if (t.gap[i]) continue;
       const [x, y] = this.toScreen(t.px[i], t.pz[i]), dx = t.tx[i], dz = t.tz[i], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
       g.beginPath(); g.moveTo(x + ux * 7, y + uz * 7); g.lineTo(x - ux * 5 - uz * 5, y - uz * 5 + ux * 5); g.lineTo(x - ux * 5 + uz * 5, y - uz * 5 - ux * 5); g.closePath(); g.fill();
@@ -1159,7 +1180,7 @@ export class Editor {
       this.rebuild(true); this.updateInspector(); this.draw();
     };
     $('ed-fill').onchange = (e) => this._fill(e.target.checked);
-    $('ed-walls').onchange = (e) => { this.snapshot(); this.def.walls = e.target.checked; };
+    $('ed-walls').onchange = (e) => { this.snapshot(); this.def.walls = e.target.checked; this.draw(); };
     $('ed-name').oninput = (e) => { this.def.name = e.target.value; };
 
     addEventListener('keydown', (e) => {
