@@ -161,7 +161,7 @@ export class WeevalView {
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const a = j * (n + 1) + i, b = a + 1, c = a + n + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
-    const tex = bullseyeTex(), mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    const tex = bullseyeTex(), mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
     mesh.frustumCulled = false; mesh.renderOrder = 3; this.group.add(mesh); this.bullseye = mesh;
   }
 
@@ -197,6 +197,15 @@ export class WeevalView {
     b.x = st.x + lx * cs + lz * sn; b.z = st.z - lx * sn + lz * cs; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
     b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = th + ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
   }
+  /** One face of a box: cardboard, a strip of tape, and the logo across the middle (once it has loaded) at its own proportions, about four fifths of the width. */
+  _boxFace(g, w, h) {
+    g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 320; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 36, 4); }
+    g.fillStyle = '#d9c28f'; g.fillRect(0, h / 2 - 14, w, 28); g.strokeStyle = '#7a5a30'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
+    const im = this._logoImg; if (!im) return;
+    const lw = w * 0.8, lh = lw * im.naturalHeight / im.naturalWidth;
+    g.globalAlpha = 0.88; g.globalCompositeOperation = 'multiply'; g.drawImage(im, (w - lw) / 2, (h - lh) / 2, lw, lh); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  }
+
   /** Big stacks of cardboard boxes, tallest at the back: the official one down the landing ramp, or each 'boxes' prop of a stunt track. Drive into them and the boxes fly, tumble, knock each other about and crumple. */
   _boxes() {
     const L = this.L, W = WEEVAL.width, { S, depth, top } = BOXES, t = this.track, q = Track.newQuery();
@@ -217,7 +226,10 @@ export class WeevalView {
       g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 18, 2); }
       g.fillStyle = '#d9c28f'; g.fillRect(0, h / 2 - 7, w, 14); g.strokeStyle = '#7a5a30'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
     });
-    this.boxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), this.boxes.length);
+    // the front of every box (the face the road runs into) carries the Gunpowder Studios logo, printed over the cardboard and kept in proportion
+    const logoTex = canvasTex(256, 256, (g, w, h) => this._boxFace(g, w, h)), face = new THREE.MeshStandardMaterial({ map: logoTex, roughness: 0.9 }), plain = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+    const img = new Image(); img.onload = () => { this._logoImg = img; const c = logoTex.image, g = c.getContext('2d'); this._boxFace(g, c.width, c.height); logoTex.needsUpdate = true; }; img.src = assetUrl('img/gunpowder-box.png');
+    this.boxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), [plain, face, plain, plain, plain, plain], this.boxes.length);      // (BoxGeometry faces: +x, -x, +y, -y, +z, -z: the logo is on -x, where the stack is met)
     this.boxMesh.frustumCulled = false; this.boxMesh.castShadow = true; this.boxMesh.receiveShadow = true; this.group.add(this.boxMesh);
     this._boxDummy = new THREE.Object3D(); this._boxDummy.rotation.order = 'YXZ'; this._boxAll = true; this._syncBoxes();
   }

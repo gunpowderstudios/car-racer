@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.689 — Logo on the boxes, painted target
+
+- **The Gunpowder Studios logo is printed on the front of every cardboard box** (the face you drive into), fitted across it in its own proportions over the tape.
+- **The target is now 90% transparent**, so it looks painted onto the road surface.
+
 ## v17.688 — Solid ramps
 
 - **Ramps are now solid.** Approach one from the high end and you hit the sheer back of the lip instead of driving up the cliff; the sides step up with the slope. The foot is still open and you still drive up and launch off the lip as before.
