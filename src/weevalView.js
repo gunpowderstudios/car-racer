@@ -197,10 +197,10 @@ export class WeevalView {
     b.x = st.x + lx * cs + lz * sn; b.z = st.z - lx * sn + lz * cs; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
     b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = th + ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
   }
-  /** One face of a box: cardboard, a strip of tape, and the logo across the middle (once it has loaded) at its own proportions, about four fifths of the width. */
+  /** The front face of a box: bare cardboard and the logo across the middle (once it has loaded) at its own proportions, about four fifths of the width. */
   _boxFace(g, w, h) {
     g.fillStyle = '#b98a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 320; i++) { g.fillStyle = `rgba(${90 + (i * 7) % 40},${60 + (i * 5) % 30},30,0.12)`; g.fillRect((i * 37) % w, (i * 53) % h, 36, 4); }
-    g.fillStyle = '#d9c28f'; g.fillRect(0, h / 2 - 14, w, 28); g.strokeStyle = '#7a5a30'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
+    g.strokeStyle = '#7a5a30'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);      // (the front has no packing tape: just the logo)
     const im = this._logoImg; if (!im) return;
     const lw = w * 0.8, lh = lw * im.naturalHeight / im.naturalWidth;
     g.globalAlpha = 0.88; g.globalCompositeOperation = 'multiply'; g.drawImage(im, (w - lw) / 2, (h - lh) / 2, lw, lh); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';

@@ -121,6 +121,18 @@ function installListeners() {
   document.addEventListener('pointerup', end, { capture: true });
   document.addEventListener('pointercancel', end, { capture: true });
 
+  // The scroll wheel zooms the chase and high cameras in and out (a trackpad pinch or two-finger scroll too).
+  document.addEventListener('wheel', (e) => {
+    const cam = currentCamera;
+    if (!cam || cam.mode >= 2 || isUiControl(e.target)) return;
+    const canvas = gameCanvas();
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    cam._orbitZoom = clamp((cam._orbitZoom || 1) * Math.exp(e.deltaY * (e.deltaMode === 1 ? 0.04 : 0.0012)), 0.35, 3);
+    e.preventDefault();
+  }, { passive: false, capture: true });
+
   // Reset an orbited gameplay camera with a double-click/tap on the game view.
   document.addEventListener('dblclick', (e) => {
     const cam = currentCamera;
@@ -164,13 +176,14 @@ ChaseCamera.prototype.update = function updateWithOrbit(dt, p, quat, vel, track)
   if (this.mode >= 2) return;
   const yaw = this._orbitYaw || 0;
   const pitchOffset = this._orbitPitch || 0;
-  if (Math.abs(yaw) < 1e-5 && Math.abs(pitchOffset) < 1e-5) return;
+  const zoom = this._orbitZoom || 1;
+  if (Math.abs(yaw) < 1e-5 && Math.abs(pitchOffset) < 1e-5 && Math.abs(zoom - 1) < 1e-4) return;
 
   target.set(p.x, p.y + (this.mode === 1 ? 0.4 : 1.0), p.z);
   const dx = this.cam.position.x - target.x;
   const dy = this.cam.position.y - target.y;
   const dz = this.cam.position.z - target.z;
-  const radius = Math.max(0.1, Math.hypot(dx, dy, dz));
+  const radius = Math.max(0.1, Math.hypot(dx, dy, dz)) * zoom;      // (the scroll wheel moves the camera in and out)
   const baseYaw = Math.atan2(dx, dz);
   const basePitch = Math.asin(clamp(dy / radius, -1, 1));
   const pitch = clamp(basePitch + pitchOffset, -0.55, 1.15);
@@ -189,6 +202,7 @@ const originalSnap = ChaseCamera.prototype.snap;
 ChaseCamera.prototype.snap = function snapAndCentre() {
   this._orbitYaw = 0;
   this._orbitPitch = 0;
+  this._orbitZoom = 1;
   if (drag?.cam === this) drag = null;
   return originalSnap.call(this);
 };
@@ -197,6 +211,7 @@ const originalCycle = ChaseCamera.prototype.cycle;
 ChaseCamera.prototype.cycle = function cycleAndCentre() {
   this._orbitYaw = 0;
   this._orbitPitch = 0;
+  this._orbitZoom = 1;
   if (drag?.cam === this) drag = null;
   return originalCycle.call(this);
 };
