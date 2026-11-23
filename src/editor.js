@@ -483,7 +483,7 @@ export class Editor {
         const w = vp?.w || BUILDING.w, d = vp?.d || BUILDING.d, th = (vp?.rot || 0) * Math.PI / 180, bw = Math.max(26, w * S), bd = Math.max(26, d * S);
         const bl = vp && this.track?.buildings?.find((q) => this.def.props[q.pi] === vp), tun = !!bl?.tunnel;
         g.save(); g.translate(x, y); g.rotate(-th);
-        g.fillStyle = tun ? '#6a6a70' : ['#a2543a', '#9a9a96', '#3e6a86', '#c9b48a', '#8e4a58', '#5f7a58', '#d7d3c4', '#394352'][(vp?.style || 0) % 8]; g.fillRect(-bw / 2, -bd / 2, bw, bd);
+        g.fillStyle = tun ? '#6a6a70' : ['#3a3550', '#4a4540', '#35465a', '#5a4a42', '#2f4a4a', '#553c48', '#4d5260', '#403a30'][(vp?.style || 0) % 8]; g.fillRect(-bw / 2, -bd / 2, bw, bd);
         g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(-bw / 2 + i * bw / 4, -bd / 2); g.lineTo(-bw / 2 + i * bw / 4, bd / 2); } g.stroke();
         g.lineWidth = on ? 3 : 1.6; g.strokeStyle = on ? '#fff' : INK; g.strokeRect(-bw / 2, -bd / 2, bw, bd);
         g.restore();
@@ -754,7 +754,7 @@ export class Editor {
     this.tool = t; this._ghost = null;
     $('ed-tool-barrel').setAttribute('aria-pressed', String(t === 'barrel')); $('ed-tool-skull').setAttribute('aria-pressed', String(t === 'skull')); $('ed-tool-fire').setAttribute('aria-pressed', String(t === 'fire')); $('ed-tool-vehicle').setAttribute('aria-pressed', String(t === 'vehicle')); for (const k of STUNT_TOOLS) $('ed-tool-' + k).setAttribute('aria-pressed', String(t === k)); this._vehPanel(); this._stuntPanel(); this._buildPanel();
     const names = { barrel: 'Barrels', skull: 'Skull barrels', fire: 'Fire pits', vehicle: 'Vehicles', bus: 'Stunt bus', boxes: 'Cardboard boxes', target: 'Bullseye target', building: 'Buildings' };
-    $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Obstacles') + ' &#9662;';
+    $('ed-obst').setAttribute('aria-pressed', String(!!names[t])); $('ed-obst').innerHTML = (names[t] || 'Scenery') + ' &#9662;';
     this._obstMenu(false); this._worksMenu(false);
     $('ed-add').setAttribute('aria-pressed', String(t === 'addpoint')); if (t === 'addpoint') this.cb.toast('Add point: click on the track where the new point should go. Esc stops adding.');
     $('ed-pen').setAttribute('aria-pressed', String(t === 'pen')); if (t !== 'pen') { this.pen = []; this.penRedo = []; this._penDrag = null; }
@@ -896,7 +896,7 @@ export class Editor {
     this._vehPanel();
   }
 
-  /** Open or close the Obstacles dropdown. */
+  /** Open or close the Scenery dropdown. */
   _obstMenu(open) { const m = $('ed-obst-menu'); if (!m) return; if (open) { this._worksMenu(false); this._keysMenu(false); } m.hidden = !open; $('ed-obst').setAttribute('aria-expanded', String(open)); }
   _keysMenu(open) { const m = $('ed-keys-menu'); if (!m) return; if (open) { this._obstMenu(false); this._worksMenu(false); } m.hidden = !open; $('ed-keys-btn').setAttribute('aria-expanded', String(open)); }
   _worksMenu(open) { const m = $('ed-works-menu'); if (!m) return; if (open) this._keysMenu(false); m.hidden = !open; $('ed-works').setAttribute('aria-expanded', String(open)); }

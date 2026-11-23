@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.677 — Smoother cornering, skyline buildings, Scenery menu
+
+- **Fast corners no longer jolt.** The help that stops a car tipping over used to wait until it had leaned about 21 degrees and then push it back up hard, which looked like a sudden lift. It now starts earlier and builds up gradually (easing in), so the body rolls on its suspension and settles smoothly, and it still stops the car going over.
+- **Buildings look like the skyline behind the track**: dark, muted blocks (eight colours) with small warm glowing windows, instead of bright flat colours.
+- The editor's **Obstacles** menu is now called **Scenery**.
+
 ## v17.676 — Send in the clones, and copy and paste in the editor
 
 - **Copy, cut, paste and duplicate in the editor.** Select a prop (a barrel, building, vehicle, bus, boxes...) and press Ctrl+C (Cmd on a Mac) to copy, Ctrl+X to cut, Ctrl+V to paste and Ctrl+D to duplicate in one go. Each paste lands a little further along, on whatever is under it, with the same size, angle and look. Handy for building a town. (Ctrl+V no longer switches to the vehicle tool.)
