@@ -183,6 +183,13 @@ export class WeevalView {
   }
 
   /** The ground under a box's stack: the landing ramp slopes, so the floor is a plane along it. */
+  /** What a box in flight can land on: the road if it is over the road (wherever that runs, up or down a slope), otherwise the grass. */
+  _ground(b) {
+    const q = this._gq || (this._gq = Track.newQuery());
+    this.track.query(b.x, b.y + 0.4, b.z, q, 2.5);
+    if (q.idx >= 0 && q.y <= b.y + 1.5) return q.y;
+    return this.L.pieces ? GROUND_Y : Math.max(this.L.low, GROUND_Y);
+  }
   _floor(x, b) { const k = b.stk; return Math.max(this.L.low, k.gy0 + k.gsl * (x - k.x)); }
   _boxHome(b, d, c, k) {
     const { S } = BOXES, st = b.stk;
@@ -268,7 +275,7 @@ export class WeevalView {
       // how far the lowest corner sits below the centre at the angle it is now (a tilted box is taller than a flat one, so it never sinks into the road)
       const e = M.makeRotationFromEuler(E.set(b.rx, b.ry, b.rz)).elements, hx = b.sz / 2, hy = b.sz * b.crush / 2;
       const drop = Math.abs(e[1]) * hx + Math.abs(e[5]) * hy + Math.abs(e[9]) * hx;
-      const floor = this._floor(b.x, b) + drop;
+      const floor = this._ground(b) + drop;
       let down = false;
       if (b.y <= floor) {
         down = true; const vin = -b.vy; b.y = floor;

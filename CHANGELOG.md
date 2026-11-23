@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.685 — Knocked boxes rest on the grass
+
+- **Cardboard boxes knocked off the road now fall to the grass and rest on it**, instead of hanging at the height of the road. Over the road they still land on its surface, up or down a slope.
+
 ## v17.684 — No gap under a building over the road
 
 - **The side walls of a building placed over a road now always reach down to the grass.** They used to start at the road surface where you put it, so on a raised, sloping or banked road there was a gap underneath. They now run from below the grass (and below the lowest road under the building) all the way up.
