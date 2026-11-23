@@ -3,7 +3,7 @@
 import { pendingJunctions, keepCrossroad, forgetCrossroad, makeGap, flattenCrossing, structureAt, setStructure, GAP_HEIGHT, TUNNEL_HEIGHT, CROSS_MIN_SIN } from './junctions.js';
 import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoffRamp, crCentripetal, openRoad, MAX_PROPS } from './track.js';
 import { smoothHandles } from './smoothTrack.js';
-import { makeTemplate, makeRandomTrack, TEMPLATE_KEYS } from './templates.js';
+import { makeTemplate, makeRandomTrack, EDITOR_TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
 const STUNT_TOOLS = ['bus', 'boxes', 'target', 'building', 'ramp'];
 const STUNT_LABEL = { bus: 'Bus', boxes: 'Cardboard boxes', target: 'Bullseye', building: 'Building', ramp: 'Ramp' };
@@ -37,7 +37,7 @@ export class Editor {
     this.map = new EditorMap(this);                // (before _bind: its mouse handlers must run first)
     this._bind();
     const sel = $('ed-template');
-    sel.innerHTML = '<option value="">Start from a template</option>' + TEMPLATE_KEYS.map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
+    sel.innerHTML = '<option value="">Start from a template</option>' + EDITOR_TEMPLATE_KEYS.map((k) => `<option value="${k}">${makeTemplate(k).name}</option>`).join('');
     new ResizeObserver(() => { if (this.visible) { this._resize(); this.draw(); } }).observe(this.c.parentElement);
     new ResizeObserver(() => { if (this.visible) { this._resizeProfile(); this.drawProfile(); } }).observe(this.pc.parentElement);
   }
@@ -1213,7 +1213,7 @@ export class Editor {
     };
     $('ed-template').onchange = (e) => {
       const k = e.target.value; e.target.value = ''; if (!k) return;
-      this.snapshot(); const t = k === 'random' ? makeRandomTrack() : makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name;
+      this.snapshot(); const t = k === 'random' ? makeRandomTrack() : makeTemplate(k); this.def = normalizeTrack(t); this.sel = -1; $('ed-name').value = this.def.name; this.map.load(this.def.name);
       this.rebuild(true); this.fit(); this.updateUI(); this.draw();
     };
     const resize = (f) => {                                           // the whole track (road, jumps, props) bigger or smaller, about its middle; heights, banking and widths stay as they are

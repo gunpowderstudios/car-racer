@@ -23,3 +23,15 @@ test('drawing scale: one image pixel covers width*zoom/imagewidth screen pixels,
   const p = drawParams({ w: 600, rot: 90 }, 1200, 2);
   assert.equal(p.k, 1); assert.ok(Math.abs(p.rot - Math.PI / 2) < 1e-9);
 });
+
+import { makeTemplate, TEMPLATE_KEYS, EDITOR_TEMPLATE_KEYS } from '../src/templates.js';
+import { Track, analyzeTrack } from '../src/track.js';
+test('Crystal Palace: editor-only, flat, about 0.6 miles, clean, and says where its picture goes', () => {
+  assert.ok(!TEMPLATE_KEYS.includes('crystalpalace') && EDITOR_TEMPLATE_KEYS.includes('crystalpalace'));
+  const def = makeTemplate('crystalpalace'), t = new Track(def), a = analyzeTrack(t);
+  assert.equal(def.name, 'Crystal Palace');
+  assert.ok(t.length > 900 && t.length < 1150, `length ${t.length}`);
+  assert.deepEqual(a.tight, []); assert.equal(a.crossings.length, 0);
+  assert.ok(def.handles.every((h) => h.y === 0) && def.props.length === 0);
+  assert.deepEqual(def.mapFit, { x: 0, z: 0, w: 502, rot: 0 });
+});

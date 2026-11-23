@@ -54,9 +54,10 @@ export class EditorMap {
     cv.width = Math.round(bmp.width * f); cv.height = Math.round(bmp.height * f);
     cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
     const src = cv.toDataURL('image/jpeg', 0.82), v = this.ed.view;
-    this.m = { src, x: v.x, z: v.z, w: startWidth(this.ed.w, v.scale), rot: 0, op: 0.6 };
+    const fit = this.ed.def?.mapFit;                                  // (a tracing track says where its picture goes)
+    this.m = fit ? { src, x: fit.x, z: fit.z, w: fit.w, rot: fit.rot, op: 0.6 } : { src, x: v.x, z: v.z, w: startWidth(this.ed.w, v.scale), rot: 0, op: 0.6 };
     this._img(src); this.mode = 'move'; this._save(); this._sync();
-    this.ed.cb.toast('Picture added. Drag it into place, then use Set scale to make the streets the right size.');
+    this.ed.cb.toast(fit ? 'Picture added and lined up with this track.' : 'Picture added. Drag it into place, then use Set scale to make the streets the right size.');
   }
   remove() { this.m = null; this.img = null; this.mode = null; this.A = this.B = null; this._forget(); this._sync(); this.ed.draw(); }
 

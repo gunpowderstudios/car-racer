@@ -543,7 +543,16 @@ function getawayTrack() {
   return normalizeTrack({ name: 'The Getaway', width: 440, mode: 'lastStanding', getaway: true, handles: ellipse(30, 30, 20).map((h) => ({ ...h, y: 0.65 })), blocks: L.boxes });
 }
 
+
+/** Crystal Palace: the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot (about 0.64 miles, all flat, no scenery yet). Editor only: it is not in the race menus.
+ *  `mapFit` says where the matching screenshot goes behind it (metres), so the editor's Map button can line it up. */
+function crystalPalaceTrack() {
+  const P = [[-22, -128], [11, -126], [43, -122], [77, -122], [110, -126], [143, -132], [166, -131], [181, -118], [172, -92], [143, -64], [113, -37], [96, -9], [81, 20], [66, 50], [50, 80], [31, 106], [10, 133], [5, 158], [-12, 176], [-36, 184], [-56, 173], [-63, 148], [-58, 115], [-70, 84], [-81, 52], [-92, 21], [-104, -10], [-114, -42], [-125, -73], [-135, -105], [-124, -119], [-82, -128], [-56, -133]];
+  return normalizeTrack({ name: 'Crystal Palace', width: 14, walls: true, defaultLaps: 3, handles: P.map(([x, z]) => ({ x, y: 0, z })), props: [], mapFit: { x: 0, z: 0, w: 502, rot: 0 } });
+}
+
 export function makeTemplate(key) {
+  if (key === 'crystalpalace') return crystalPalaceTrack();       // (editor only, so left out of TEMPLATE_KEYS)
   if (key === 'getaway') return getawayTrack();            // The Getaway: a two-player cops and robbers game (see getaway.js); not one of the race tracks, so left out of TEMPLATE_KEYS
   if (key === 'apple') {                                   // Apple Crumple: its own course, not one of the race tracks (so it is left out of TEMPLATE_KEYS)
     const base = normalizeTrack({ name: 'Apple Crumple', width: CRUMPLE.width, defaultLaps: 1, handles: crumpleHandles(), walls: true });
@@ -573,6 +582,7 @@ export function makeTemplate(key) {
 }
 
 export const TEMPLATE_KEYS = [...Object.keys(RAW), 'random'];
+export const EDITOR_TEMPLATE_KEYS = [...TEMPLATE_KEYS, 'crystalpalace'];     // what the editor's template list offers: the race tracks plus the editor-only ones
 export const TEMPLATE_INFO = {
   getaway: 'Cops and robbers in a small town: rob the banks and get the cash to the safehouse - or catch the robbers and put it back. Two players, or one against the AI.',
   apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, fire pits, a jump and a final gauntlet - then fly through the flaming hoop. Every stage has its own clock!',

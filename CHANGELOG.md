@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.698 — Crystal Palace track for the editor
+
+- New editor template **Crystal Palace**: a flat 1.03 km (0.64 mile) loop round the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot. Pick it from "Start from a template" in the editor. It is editor-only, so it is not in the race menus.
+- Add the matching map screenshot with the **Map** button and it lines up behind the road automatically. Tracks can now carry a `mapFit` (where their picture goes).
+
 ## v17.697 — Map backdrop in the editor
 
 - New **Map** button in the editor: add a screenshot (or any picture) of a real place and it lies flat under the grid, so you can draw the road over the top of it. Handy for tracing a town.
