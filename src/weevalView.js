@@ -195,7 +195,7 @@ export class WeevalView {
     const { S } = BOXES, st = b.stk;
     const lx = (d - (st.depth - 1) / 2) * S, lz = (c - (st.cols - 1) / 2) * S, th = st.rot || 0, cs = Math.cos(th), sn = Math.sin(th);      // (a turned stack: the whole stack swings round its middle)
     b.x = st.x + lx * cs + lz * sn; b.z = st.z - lx * sn + lz * cs; b.y = this._floor(b.x, b) + b.sz / 2 + k * S;
-    b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = th + ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1;
+    b.vx = b.vy = b.vz = b.wx = b.wy = b.wz = b.rx = b.rz = 0; b.ry = th + ((d * 3 + c) % 7) * 0.02; b.awake = false; b.hit = false; b.crush = 1; b.moved = false; b.still = 0;
   }
   /** The front face of a box: bare cardboard and the logo across the middle (once it has loaded) at its own proportions, about four fifths of the width. */
   _boxFace(g, w, h) {
@@ -267,7 +267,18 @@ export class WeevalView {
       }
       if (n && !mine) c.vel.scale(Math.max(0.6, 1 - n * 0.011));                                           // (the same drag as the player gets for ploughing through a pile)
     }
+    if (this._anyAwake && (this._supT = (this._supT || 0) + 1) % 4 === 0) {          // a box left sitting with nothing under it (the ones below were knocked away) comes tumbling down
+      for (const b of B) {
+        if (b.awake || b.moved) continue;                                         // (only a box still sitting where the stack put it can be left hanging)
+        const gnd = this._ground(b) + b.sz * b.crush / 2;
+        if (b.y < gnd + 0.25) continue;
+        let held = false;
+        for (const o of B) { if (o === b || o.awake) continue; const dy = b.y - o.y; if (dy > 0.45 * b.sz && dy < 1.5 * b.sz && Math.abs(o.x - b.x) < 0.85 * b.sz && Math.abs(o.z - b.z) < 0.85 * b.sz) { held = true; break; } }
+        if (!held) { b.awake = true; b.vx += (Math.random() - 0.5) * 1.2; b.vz += (Math.random() - 0.5) * 1.2; b.wx += (Math.random() - 0.5) * 3; b.wz += (Math.random() - 0.5) * 3; }
+      }
+    }
     const awake = B.filter((b) => b.awake);
+    this._anyAwake = awake.length > 0;
     for (const b of awake) {                                                       // boxes bang into each other: a moving box shoves whatever it touches
       for (const o of B) {
         if (o === b) continue;
@@ -278,7 +289,7 @@ export class WeevalView {
         if (rv <= 0 && o.awake) continue;
         const j = Math.max(rv, 0.5) * 0.55;
         b.vx -= nx * j; b.vy -= ny * j * 0.5; b.vz -= nz * j; o.vx += nx * j * 1.1; o.vy += Math.abs(ny * j) * 0.5 + 0.3; o.vz += nz * j * 1.1;
-        o.wx += (Math.random() - 0.5) * 6; o.wz += (Math.random() - 0.5) * 6; o.awake = true; o.crush = Math.max(0.6, o.crush * 0.93);
+        if (rv > 1.5) { const kk = Math.min(1, rv / 6); o.wx += (Math.random() - 0.5) * 6 * kk; o.wz += (Math.random() - 0.5) * 6 * kk; o.crush = Math.max(0.6, o.crush * 0.93); } o.awake = true;      // (a real knock sets it spinning; just leaning on each other does not)
         const push = (r - d) * 0.5; o.x += nx * push; o.y += ny * push * 0.3; o.z += nz * push; b.x -= nx * push; b.z -= nz * push;
         if (!o.hit) { o.hit = true; hits += 0.25; }
       }
@@ -286,7 +297,7 @@ export class WeevalView {
     const Q = Math.PI / 2, E = this._boxEuler || (this._boxEuler = new THREE.Euler(0, 0, 0, 'YXZ')), M = this._boxMat || (this._boxMat = new THREE.Matrix4());
     for (const b of B) {
       if (!b.awake) continue;
-      moved = true;
+      moved = true; b.moved = true;
       b.vy -= 9.81 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.rx += b.wx * dt; b.ry += b.wy * dt; b.rz += b.wz * dt;
       // how far the lowest corner sits below the centre at the angle it is now (a tilted box is taller than a flat one, so it never sinks into the road)
       const e = M.makeRotationFromEuler(E.set(b.rx, b.ry, b.rz)).elements, hx = b.sz / 2, hy = b.sz * b.crush / 2;
@@ -308,7 +319,9 @@ export class WeevalView {
         b.rx += (Math.round(b.rx / Q) * Q - b.rx) * k; b.rz += (Math.round(b.rz / Q) * Q - b.rz) * k;
       }
       const flat = Math.abs(b.rx - Math.round(b.rx / Q) * Q) < 0.03 && Math.abs(b.rz - Math.round(b.rz / Q) * Q) < 0.03;
+      b.still = Math.hypot(b.vx, b.vy, b.vz) < 0.6 && Math.hypot(b.wx, b.wy, b.wz) < 2.2 ? (b.still || 0) + dt : 0;
       if (down && flat && b.y <= floor + 0.01 && Math.abs(b.vx) + Math.abs(b.vz) < 0.45 && Math.hypot(b.wx, b.wy, b.wz) < 0.8) { b.vx = b.vz = 0; b.wx = b.wy = b.wz = 0; b.rx = Math.round(b.rx / Q) * Q; b.rz = Math.round(b.rz / Q) * Q; b.awake = false; }
+      else if (!down && b.still > 1) { b.vx = b.vy = b.vz = 0; b.wx = b.wy = b.wz = 0; b.awake = false; }      // (lying on other boxes, not on the ground: it settles there once it has stopped moving)
     }
     if (moved || hits) this._syncBoxes();
     return hits;

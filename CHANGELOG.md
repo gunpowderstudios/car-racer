@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.692 — Hanging boxes fall
+
+- **A box left floating when the ones under it are knocked away now tumbles down.** Before, only boxes the car touched directly brought down what was stacked above them; boxes knocked by other boxes could leave a stack hanging in mid-air.
+- Boxes lying on a pile now settle and stop rather than jittering, and boxes only spin when they are properly knocked, not when they merely lean on each other.
+
 ## v17.691 — Camera zoom, tidier box fronts
 
 - **The scroll wheel (or a trackpad pinch/two-finger scroll) zooms the chase and high cameras in and out.** Dragging with the mouse already rotated them; R or a double-click puts the view back, zoom included.
