@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.672 — Barriers round solid arenas in the editor
+
+- A filled (solid) arena now shows its barriers as red and white blocks round the whole outline in the editor, when "Barriers along the edges" is ticked.
+
 ## v17.671 — Barriers show in the editor; no stray blue line on arenas
 
 - **Barriers along the edges now show in the editor** as red and white blocks whenever that tickbox is on (and disappear when it is off).

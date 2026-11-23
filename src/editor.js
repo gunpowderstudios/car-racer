@@ -329,11 +329,16 @@ export class Editor {
     }
 
     // barriers along the edges (when ticked): red and white blocks, like the kerb stripes in the game
-    if (!arena && t.def.walls !== false) {
+    if (t.def.walls !== false) {
       g.save(); g.lineWidth = 4; g.lineCap = 'butt';
       const blk = Math.max(5, Math.min(12, 4 * this.view.scale));
+      const ringPts = arena ? arenaOutline(arenaInfo(t), arenaInfo(t).hw, 160) : null;
       for (const [col, off] of [['#d8362b', 0], ['#ffffff', blk]]) {
         g.strokeStyle = col; g.setLineDash([blk, blk]); g.lineDashOffset = -off;
+        if (arena) {                                                   // a solid arena: the crash wall round the whole outline
+          g.beginPath(); ringPts.forEach((q, k) => { const [x, y] = this.toScreen(q.x, q.z); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.stroke();
+          continue;
+        }
         for (const sg of [1, -1]) {
           let i = 0;
           while (i < t.n) {
