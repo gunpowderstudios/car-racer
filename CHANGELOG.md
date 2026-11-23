@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.686 — Esc returns to the editor, buses on platforms, burning wrecks
+
+- **Esc during a Test Drive from the editor takes you back to the editor**, not the home screen.
+- **Buses placed on a raised platform now stand on it.** The real bus was starting inside the solid platform and being thrown into the air.
+- **A wrecked vehicle left on the track keeps burning and smoking**, at a lower flame once the first fireball has died down, so you can always see which ones are destroyed.
+
 ## v17.685 — Knocked boxes rest on the grass
 
 - **Cardboard boxes knocked off the road now fall to the grass and rest on it**, instead of hanging at the height of the road. Over the road they still land on its surface, up or down a slope.

@@ -266,7 +266,7 @@ const input = new Input({
   onPause: () => togglePause(),
   onBoom: () => selfDestruct(),
   onReplay: () => startReplay(),
-  onMenu: () => (mode === 'drive' ? showMenu() : null),
+  onMenu: () => (mode === 'drive' ? (testDrive && editor.def ? openEditor(editor.def, true) : showMenu()) : null),      // (a Test Drive from the editor: Esc goes back to the editor, not the home screen)
   onEditor: () => mode === 'drive' && (testDrive && editor.def ? openEditor(editor.def, true) : openEditor(def)),
   onDebug: () => { const d = $('debug'); d.hidden = !d.hidden; },
   onMusic: () => { sound.setEnabled('music', !sound.musicOn); syncSoundUI(); },
@@ -1010,7 +1010,7 @@ let menuBackdrop = false, jamBuilt = false;      // the grid behind the home scr
 /** The stunt buses of an ordinary track are real parked Rootmasters (they shove, dent and wreck like any car); a stunt-jump track keeps its solid buses. */
 function busCars(d) {
   if (!d || d.weeval) return [];
-  return (d.props || []).filter((p) => p.type === 'bus').map((p) => ({ type: 'vehicle', x: p.x, z: p.z, y: p.y + (p.up || 0), mode: 'static', car: 'bus', yaw: (p.rot || 0) * Math.PI / 180 }));
+  return (d.props || []).filter((p) => p.type === 'bus').map((p) => ({ type: 'vehicle', x: p.x, z: p.z, y: p.y + (p.up || 0), exactY: (p.up || 0) > 0.5 ? p.y + p.up + 0.05 : undefined, mode: 'static', car: 'bus', yaw: (p.rot || 0) * Math.PI / 180 }));
 }
 function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
@@ -1264,7 +1264,7 @@ function derbyFx(dt) {
       if (dx * dx + dz * dz > 160 * 160) continue;
     }
     if (f.wrecked) {
-      if (f.isPlayer || f.wreckT < DERBY.wreckLife) particles.burn(c.pos.x, c.pos.y, c.pos.z, c.vel.x, c.vel.z, dt, f.isPlayer ? 1 : Math.max(0.3, 1 - f.wreckT / DERBY.wreckLife));
+      if (f.isPlayer || f.wreckT < DERBY.wreckLife || f.scrap) particles.burn(c.pos.x, c.pos.y, c.pos.z, c.vel.x, c.vel.z, dt, f.isPlayer ? 1 : f.scrap && f.wreckT >= DERBY.wreckLife ? 0.45 : Math.max(0.3, 1 - f.wreckT / DERBY.wreckLife));      // (a burnt-out hulk left on the track keeps burning, lower, and smoking)
       // the fire's died down, but a burnt-out hulk still smoulders - a thin trail rising up, for good
       else if (Math.random() < 1.4 * dt) particles.puff(c.pos.x + (Math.random() - 0.5) * 1.0, c.pos.y + 0.5, c.pos.z + (Math.random() - 0.5) * 1.0, 0, 0, 2.2 + Math.random() * 1.4, 3.4 + Math.random() * 2.0, 0x49454a);
       continue;
