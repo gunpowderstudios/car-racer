@@ -798,7 +798,7 @@ function syncGetawayVehicle() {
   if ((forcedVehicle() || null) === want) return;
   forceVehicle(want);
   applySelectedProfile(); car.respec();
-  const old = visual; visual = new CarVisual(stage.scene, car.restHeight); wireVisual(visual); old.dispose();
+  const old = visual; visual = new CarVisual(stage.scene, car.restHeight); wireVisual(visual); old.dispose(); clearViews(); flushViewPool();
   const id = selectedVehicle().id; caravan.hitch = { ...(HITCH[id] || HITCH.escort) };
   { const cb = $('opt-caravan'); if (cb) cb.checked = !!opts.caravan && TOW_CARS.includes(id) && !caravanBlocked(); }
   window.dispatchEvent(new Event('vehiclechange'));
@@ -1158,6 +1158,8 @@ function releaseView(id) {
   const bar = rivalBars.get(id); if (bar) { bar.el.remove(); rivalBars.delete(id); }
   v.restoreWheels(); v.root.visible = false; (viewPool[v.poolKey ?? v.hue] || (viewPool[v.poolKey ?? v.hue] = [])).push(v); views.delete(id);
 }
+/** Rival models that were recycled still wear the car they cloned: after you pick another car they must all be built again from the new one. */
+function flushViewPool() { for (const k of Object.keys(viewPool)) { for (const v of viewPool[k]) { v.root.removeFromParent?.(); v.dispose?.(); } delete viewPool[k]; } }
 function clearViews() { for (const id of [...views.keys()]) releaseView(id); for (const id of [...towViews.keys()]) dropTowView(id); }
 
 // ----- the rivals' caravans (each in its rival's colour)
@@ -1600,6 +1602,7 @@ function swapVehicle(id) {
   applySelectedProfile();
   car.respec();
   const old = visual; visual = new CarVisual(stage.scene, car.restHeight); wireVisual(visual); old.dispose();
+  clearViews(); flushViewPool();                              // (the rivals in Send in the clones were copies of the old car)
   caravan.hitch = { ...(HITCH[id] || HITCH.escort) };
   { const cb = $('opt-caravan'); if (cb) cb.checked = !!opts.caravan && TOW_CARS.includes(id) && !caravanBlocked(); }   // (the saved choice only shows on a car that can tow)
   window.dispatchEvent(new Event('vehiclechange'));

@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.676 — Send in the clones, and copy and paste in the editor
+
+- **Copy, cut, paste and duplicate in the editor.** Select a prop (a barrel, building, vehicle, bus, boxes...) and press Ctrl+C (Cmd on a Mac) to copy, Ctrl+X to cut, Ctrl+V to paste and Ctrl+D to duplicate in one go. Each paste lands a little further along, on whatever is under it, with the same size, angle and look. Handy for building a town. (Ctrl+V no longer switches to the vehicle tool.)
+- **Fix: after you picked another car on the menu, the rivals in "same vehicle" races were still copies of your previous car** (the Beema after you chose the Mini). They are now rebuilt from the car you chose.
+- The "Same vehicle, different colours" option is now called **Send in the clones**.
+
 ## v17.675 — Buildings and tunnels in the editor
 
 - **New Building tool (Obstacles menu).** Click the map to place a solid building with a random look (eight styles), then set its Width, Depth, Height and Angle, or press Different look. Cars crash into it like a wall. Make as many as you like (up to 600 props) to build a town. Buildings are saved in share links.

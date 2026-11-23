@@ -921,6 +921,25 @@ export class Editor {
     this.def.props.push({ type, ...extra, ...(lethal ? { lethal: true } : {}), x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, y: Math.round(p.y * 100) / 100 });
     this.selProp = this.def.props.length - 1; this.sel = -1; this.updateInspector(); this.propsChanged();
   }
+  /** Copy, cut, paste and duplicate for the selected prop (a barrel, building, vehicle, bus...): Ctrl/Cmd + C, X, V and D. A paste lands a little way from the last one, on whatever is under it. */
+  _clipKey(k) {
+    const sel = this.def.props[this.selProp];
+    if (k === 'c' || k === 'x' || k === 'd') {
+      if (!sel) { this.cb.toast('Select a barrel, building, vehicle or other prop first, then Ctrl+C to copy it.'); return; }
+      this.clip = JSON.parse(JSON.stringify(sel)); this.clipN = 0;
+      if (k === 'c') { this.cb.toast('Copied. Ctrl+V pastes it.'); return; }
+      if (k === 'x') { this.removeProp(); this.cb.toast('Cut. Ctrl+V pastes it.'); return; }
+    }
+    if (!this.clip) { this.cb.toast('Nothing copied yet. Select a prop and press Ctrl+C.'); return; }
+    if (!this.track) return;
+    if (this.clip.type === 'target' && this.def.props.some((q) => q.type === 'target')) { this.cb.toast('There is only one bullseye: drag it to move it.'); return; }
+    if (this.def.props.length >= MAX_PROPS) { this.cb.toast('That is enough props (' + MAX_PROPS + ').'); return; }
+    this.snapshot();
+    const n = (this.clipN = (this.clipN || 0) + 1), step = Math.max(6, (this.clip.w || 0) * 0.6, (this.clip.d || 0) * 0.6), q = { ...this.clip };
+    const at = placeProp(this.track, this.clip.x + step * n, this.clip.z + step * n * 0.5);
+    q.x = Math.round(at.x * 100) / 100; q.z = Math.round(at.z * 100) / 100; q.y = Math.round(at.y * 100) / 100;
+    this.def.props.push(q); this.selProp = this.def.props.length - 1; this.sel = -1; this.updateInspector(); this.propsChanged();
+  }
   removeProp() {
     if (this.selProp < 0) return;
     this.snapshot(); this.def.props.splice(this.selProp, 1); this.selProp = -1; this._unstunt(); this.propsChanged();
@@ -1232,7 +1251,9 @@ export class Editor {
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) && document.activeElement.type !== 'range' && document.activeElement.type !== 'checkbox';
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (this.tool === 'pen' && !e.shiftKey && this.penUndo()) return; if (this.tool === 'pen' && e.shiftKey && this.penRedoStep()) return; e.shiftKey ? this.redo() : this.undo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); if (this.tool === 'pen' && this.penRedoStep()) return; this.redo(); return; }
+      if (!typing && (e.ctrlKey || e.metaKey) && !e.altKey && ['c', 'x', 'v', 'd'].includes(e.key.toLowerCase())) { e.preventDefault(); this._clipKey(e.key.toLowerCase()); return; }
       if (typing) return;
+      if (e.ctrlKey || e.metaKey) return;                                                    // (no other shortcut fires with Ctrl held: Ctrl+V is paste, not the vehicle tool)
       if (this.tool === 'pen' && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); this.penUndo(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.removeSelected(); }
       else if (e.key === 'a') { this._setTool(this.tool === 'addpoint' ? 'road' : 'addpoint'); this.draw(); }
