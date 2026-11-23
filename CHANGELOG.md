@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.694 — Target easier to see
+
+- **The target is now 10% transparent** (it was set to 90% transparent in v17.689, which was too faint), so it reads as paint on the road but is easy to see.
+
 ## v17.693 — Smooth ramp entry
 
 - **Driving onto a ramp is smooth.** The ramp used to start at its full slope right at the foot, which gave the car a sudden jolt. It now eases up from the road over its first few metres, then climbs straight to the lip. The drawn shape, the driving surface and the solid walls all follow the same curve, so they still match exactly.
