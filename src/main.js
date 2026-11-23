@@ -1016,23 +1016,26 @@ function derbyStart() {
   // AI rivals run independently on each browser, so keep multiplayer human-only.
   // Rival count and Destruction are separate: 0 rivals is pure lap-time mode; with Destruction
   // off the same AI cars simply race and recover instead of taking damage.
-  const placedCars = busCars(def).concat((def && def.props || []).filter((p) => p.type === 'vehicle'));           // cars the track maker put on the track in the editor
-  const placedSolo = placedCars.length > 0 && !getaway && !(track && track.def && track.def.mode === 'lastStanding') && (testDrive || !(opts.rivals > 0 || demoDay));      // (a Test Drive with placed cars: no rivals, but the cars are real and take real damage, like Apple Crumple)
+  const raceCars = (def && def.props || []).filter((p) => p.type === 'vehicle' && p.mode === 'race');                  // race cars the track maker put down: the rivals you have to beat
+  const placedCars = busCars(def).concat((def && def.props || []).filter((p) => p.type === 'vehicle' && p.mode !== 'race'));           // the other cars the track maker put on the track in the editor
+  const designRace = raceCars.length > 0 && !getaway && !(track && track.def && track.def.mode === 'lastStanding') && !weeval && !assault && !net;      // (their race cars ARE the field)
+  const placedSolo = !designRace && placedCars.length > 0 && !getaway && !(track && track.def && track.def.mode === 'lastStanding') && (testDrive || !(opts.rivals > 0 || demoDay));      // (a Test Drive with placed cars: no rivals, but the cars are real and take real damage, like Apple Crumple)
   const solo = !!(assault || weeval) || placedSolo;
   const gw = !!getaway && !getaway.online;      // The Getaway: exactly one computer car, the other side, and nobody is hurt (online there are no computer cars: the other side is a person)
-  derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); if (gw) derby.enabled = !net; derby.brutal = demoDay;
+  derby.enabled = !net && ((!testDrive && (opts.rivals > 0 || demoDay)) || solo); if (designRace) derby.enabled = true;          // (the track maker's race cars are the field, even in a Test Drive) if (gw) derby.enabled = !net; derby.brutal = demoDay;
   const arena = !!(track && track.def && track.def.mode === 'lastStanding');           // The Oval: twice the rivals, all fighting each other
-  const mixedKinds = derby.enabled && !solo && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
+  const mixedKinds = derby.enabled && !solo && !designRace && (demoDay || opts.mode === 'jamboree' || opts.mode === 'demolition') && !(menuBackdrop && device.touch); jamBuilt = mixedKinds;
   const jamboree = mixedKinds && opts.mode === 'jamboree';                              // (the rules of a Jamboree: a race. Demolition keeps its own rules)
   derby.pool = mixedKinds ? jamboreePoolForRace() : null;                               // Wacky Racing and Demolition: every rival is a different vehicle
-  derby.towing = derby.enabled && !solo && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
-  const field = solo ? 0 : Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
+  derby.towing = derby.enabled && !solo && !designRace && caravanWanted();                                      // Jamboree: only some rivals tow, and never the buses (see Derby.add)
+  const field = solo ? 0 : designRace ? raceCars.length : Math.min(arena ? Math.min(tier.arenaField, demoDay ? 8 : opts.rivals * 2) : opts.rivals, derby.towing && !mixedKinds ? 4 : 99);
   // Damage is always on when there are rivals. Race: wrecked means a respawn. Demolition: wrecked means out, last one standing wins.
   derby.damageEnabled = derby.enabled;
   derby.getawaySetup = gw ? getawaySetup() : null;
   if (gw) { derby.pool = trafficPool(); derby.towing = true; }       // (every kind of civilian car, bus and camper too; some of the ones that can tow have a caravan on the back)
   derby.repairsMax = derby.enabled && !arena ? 0 : Infinity;      // no spanners (lives) in any racing game, Race Day included: the first wreck puts you out of the race
-  if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo ? 'race' : opts.mode); else derby.stop();
+  derby.slotKinds = designRace ? raceCars.map((p) => { const v = p.car ? vehicleById(p.car) : selectedVehicle(); return v ? { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null } : null; }) : null;      // (the first race car is rival 1, and so on)
+  if (derby.enabled) derby.start(track, car, gw ? 1 : field, (Math.random() * 1e9) | 0, jamboree || solo || designRace ? 'race' : opts.mode); else derby.stop();
   if (derby.enabled && !gw && !arena && placedCars.length) derby.addPlaced(placedCars, (id) => { const v = id ? vehicleById(id) : selectedVehicle(); return v && (!id || v.id === id) ? { id: v.id, spec: specForVehicle(v), damageMul: v.damageMul, hitch: HITCH[v.id] || null } : null; });
   document.body.classList.toggle('arena', derby.demolition);                            // no laps in an arena or a demolition: the lap card goes
   if (gw) placeGetawayCar(); else if (arena) placeCarInArena();

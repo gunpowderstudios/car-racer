@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.700 — Traffic, race cars, traffic lights and crossings
+
+- **Vehicles** in the editor now have a Behaviour of **Parked**, **Regular traffic** or **Race rival** (the old "Driving" is still there as "Driving (fast)"). A regular car drives round at ordinary traffic speed, keeps to its lane, steers round other vehicles and never goes after you. A race rival is a real opponent: it starts on the grid, counts in your race position and you have to beat it. Several race cars make the whole field, and the Rivals setting is ignored on that track.
+- **Traffic lights** and **Pedestrian crossing** in the Scenery menu and on the icon bar. Click the road: they line up with it. The lights cycle green, amber and red; regular traffic stops at red and amber and sets off on green. On a crossing, people walk across while the traffic waits. A crossing next to traffic lights shares them. Drag to move them along the road; they stay on it.
+- **Naming buildings**: the Name box now offers local places (Thai Crystal, GAIL's Bakery, Yalla Lebanese Grill and so on) and also works before you place a building: type the name, then click the map.
+
 ## v17.699 — Turn handles, scenery icons, named buildings, Crystal Palace town
 
 - **Turn handles**: select a building, ramp, bus, boxes or car in the editor and a round amber handle appears out in front of it. Drag it round to turn the object (snaps to 5 degrees; hold Alt for free turning).

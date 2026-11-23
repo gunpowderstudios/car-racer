@@ -581,6 +581,8 @@ html.invite-loading #invite-loading {
         <button id="ed-tool-boxes" role="menuitem" title="A stack of cardboard boxes that flies everywhere when you crash into it" aria-pressed="false">Cardboard boxes</button>
         <button id="ed-tool-building" role="menuitem" title="A solid building (random look). Click the map to place one, then set its size and angle. Put one over the road and enlarge it to make a tunnel; build a whole town" aria-pressed="false">Building</button>
         <button id="ed-tool-ramp" role="menuitem" title="A ramp to jump off: click the road to drop one, then set its length, height, width and angle" aria-pressed="false">Ramp</button>
+        <button id="ed-tool-lights" role="menuitem" title="Traffic lights: click the road. They cycle green, amber and red, and ordinary (Regular) traffic stops at them" aria-pressed="false">Traffic lights</button>
+        <button id="ed-tool-crossing" role="menuitem" title="A pedestrian crossing: click the road. People walk across and the Regular traffic waits for them (put it next to traffic lights and it shares them)" aria-pressed="false">Pedestrian crossing</button>
         <button id="ed-tool-target" role="menuitem" title="A bullseye: jump and land on it for points, more for the middle and a level landing (there is only one: placing it again moves it)" aria-pressed="false">Bullseye target</button>
         <button id="ed-tool-fire" role="menuitem" title="Drop fire pits: every few seconds they roar into a column of flame that throws a car into the air and burns it (L)" aria-pressed="false">Fire pits <kbd>L</kbd></button>
       </div>
@@ -656,12 +658,12 @@ html.invite-loading #invite-loading {
         <div class="field"><label for="ed-bld-h">Height</label><input id="ed-bld-h" type="range" min="3" max="150" step="1"><output id="ed-bld-h-o"></output></div>
         <div class="field"><label for="ed-bld-turn">Angle</label><input id="ed-bld-turn" type="range" min="0" max="355" step="5"><output id="ed-bld-turn-o"></output></div>
         <div class="field"><button id="ed-bld-look" type="button">Different look</button></div>
-        <div class="field"><label for="ed-bld-name">Name</label><input id="ed-bld-name" type="text" maxlength="24" placeholder="sign on the front" autocomplete="off"></div>
+        <div class="field"><label for="ed-bld-name">Name</label><input id="ed-bld-name" type="text" maxlength="24" placeholder="e.g. Thai Crystal" autocomplete="off" list="ed-bld-names"><datalist id="ed-bld-names"><option value="Thai Crystal"><option value="Chi Oriental"><option value="GAIL&amp;#39;s Bakery"><option value="The Faber Fox"><option value="Cocktail Embassy"><option value="Ivy and the Wolf"><option value="Four Boroughs"><option value="Yalla Lebanese Grill"><option value="Sound Vinyl"><option value="Everyman Cinema"><option value="Sainsbury&amp;#39;s"><option value="Crystal Palace Antiques"><option value="Norwood Library Hub"><option value="The Vicar&amp;#39;s Oak"><option value="Phoenix Community Centre"><option value="Secret Garden Centre"><option value="Gunpowder Studios"><option value="Westow House"><option value="The Sparrowhawk"><option value="The White Hart"><option value="Turkish Restaurant"><option value="Fish &amp; Chips"><option value="Pizza Place"><option value="Curry House"><option value="Corner Cafe"><option value="Bakery"><option value="Butcher"><option value="Chemist"><option value="Newsagent"><option value="Bank"><option value="Post Office"><option value="Barber Shop"><option value="Pub"><option value="Restaurant"></datalist></div>
         <div class="readout" id="ed-bld-note"></div>
       </div>
       <div id="ed-veh" hidden>
         <div class="field"><label for="ed-veh-car">Vehicle</label><select id="ed-veh-car"></select></div>
-        <div class="field"><label for="ed-veh-mode">Behaviour</label><select id="ed-veh-mode"><option value="static">Parked</option><option value="driving">Driving</option></select></div>
+        <div class="field"><label for="ed-veh-mode">Behaviour</label><select id="ed-veh-mode"><option value="static">Parked</option><option value="regular">Regular traffic</option><option value="race">Race rival</option><option value="driving">Driving (fast)</option></select></div>
         <div class="field"><label for="ed-veh-yaw">Facing</label><input id="ed-veh-yaw" type="range" min="-180" max="180" step="5"><output id="ed-veh-yaw-o"></output></div>
       </div>
       <p class="muted small">Press <b>B</b> (or the Barrels button), then click the map to drop a barrel. Drag one to move it, <b>Delete</b> removes it. Hit a barrel in the game and it starts to flash, then explodes a moment later, setting off its neighbours.</p>

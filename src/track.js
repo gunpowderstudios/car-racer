@@ -69,7 +69,8 @@ export const STUNT_TYPES = ['bus', 'boxes', 'target'];      // stunt-jump props 
 /** Does this track have stunt pieces (buses, cardboard stacks or a bullseye) on it? */
 export const hasStuntProps = (def) => !!(def && (def.props || []).some((p) => STUNT_TYPES.includes(p.type)));
 export const STUNT_BUS = { w: 2.6, len: 9, h: 4.7 };         // a bus: w along the run, len across it (turned a quarter when rot is 90)
-export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', 'ramp', ...STUNT_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
+export const SIGNAL_TYPES = ['lights', 'crossing'];      // traffic lights and a pedestrian crossing, set on the road (see signals.js)
+export const PROP_TYPES = ['barrel', 'fire', 'vehicle', 'building', 'ramp', ...STUNT_TYPES, ...SIGNAL_TYPES];      // (an old saved track or link that still has chickens in it just loses them)
 export const MAX_PROPS = 600;      // (a town of buildings needs room)
 
 /** Apple Crumple's obstacle course (see assault.js): keep only well-formed hazards, with sensible limits. */
@@ -100,7 +101,7 @@ export function normalizeProps(list) {
     const x = Number(p.x), z = Number(p.z);
     if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1e5 || Math.abs(z) > 1e5) continue;
     const o = { type: p.type, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: Number.isFinite(+p.y) ? Math.round(+p.y * 100) / 100 : 0 };
-    if (p.type === 'vehicle') { o.mode = p.mode === 'driving' ? 'driving' : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }
+    if (p.type === 'vehicle') { o.mode = ['driving', 'regular', 'race'].includes(p.mode) ? p.mode : 'static'; const yw = Number(p.yaw); o.yaw = Number.isFinite(yw) ? Math.round(((((yw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * 100) / 100 : 0; if (typeof p.car === 'string' && /^[a-z0-9_-]{1,24}$/i.test(p.car)) o.car = p.car; }      // mode: parked, regular (ordinary traffic), race (a rival you have to beat), or the old 'driving'
     if (STUNT_TYPES.includes(p.type)) { const up = Number(p.up); if (Number.isFinite(up) && up > 0) o.up = Math.round(clamp(up, 0, 80) * 10) / 10; if (p.type === 'bus' || p.type === 'boxes') { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; } }      // up: raised on a platform this far above the ground it stands on
     if (p.type === 'ramp') {                            // a straight wedge on the road: w across, d long (the car drives up it), h tall at the high end, turned by rot (the way it climbs)
       const cl = (v, a, b, dflt) => clamp(Number.isFinite(+v) && v !== null && v !== '' ? Math.round(+v * 2) / 2 : dflt, a, b);
@@ -114,6 +115,7 @@ export function normalizeProps(list) {
       const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot;
       const nm = String(p.name || '').replace(/\s+/g, ' ').trim().slice(0, 24); if (nm) o.name = nm;          // a name on the front (the +depth side), such as a pub sign
     }
+    if (SIGNAL_TYPES.includes(p.type)) { const rot = (((Math.round(Number(p.rot)) || 0) % 360) + 360) % 360; if (rot) o.rot = rot; }      // the way the road runs here (the traffic it stops comes from that way)
     if (p.lethal) o.lethal = true;                    // a black-and-yellow barrel: it goes off the moment anything touches it, and wrecks whatever is near
     out.push(o);
   }

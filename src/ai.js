@@ -11,6 +11,7 @@
 // Nothing here imports three.js.
 
 import { clamp } from './math.js';
+import { SIGNAL, signalClock, carState } from './signals.js';
 import { Track, SURF } from './track.js';
 
 export const IDLE = Object.freeze({ throttle: 0, brake: 0, steer: 0, handbrake: false, boost: false });
@@ -116,9 +117,9 @@ export class Driver {
     }
     // How hungry the field is for the player (0..1, set per game mode in derby.js): higher means rivals start hunting more often and from
     // further away, hunt for longer, and rest for less - a friend who keeps coming back for another go.
-    const hunger = clamp(ctx.huntBias || 0, 0, 1), reach = 1 + 1.5 * hunger;
-    const cStart = AI.catchupStart * (1 - 0.6 * Math.max(0, d)), catchup = pRoad ? clamp((playerLead - cStart) / Math.max(1, AI.catchupFull - cStart), 0, 1) : 0;
-    if (this.grudgeT > 0 && P && pRoad) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
+    const hunger = this.traffic ? 0 : clamp(ctx.huntBias || 0, 0, 1), reach = 1 + 1.5 * hunger, racePace = ctx.racePace && !this.traffic;          // (ordinary traffic never hunts, and does not race the player)
+    const cStart = AI.catchupStart * (1 - 0.6 * Math.max(0, d)), catchup = pRoad && !this.traffic ? clamp((playerLead - cStart) / Math.max(1, AI.catchupFull - cStart), 0, 1) : 0;
+    if (this.grudgeT > 0 && P && pRoad && !this.traffic) { this.mood = 'hunt'; this.moodT = Math.max(this.moodT, 1); }   // rammed: won't let it go
     else if (this.moodT <= 0) {
       if (this.mood === 'hunt') { this.mood = 'cruise'; this.moodT = (4 + this.rng() * 6 / (0.4 + this.aggr)) * (1 - 0.8 * hunger); }
       else if (P && pRoad && pd < AI.huntRange * reach && this.rng() < clamp(this.aggr + hunger, 0, 1)) { this.mood = 'hunt'; this.moodT = (5 + this.rng() * 6) * (1 + hunger); }
@@ -138,7 +139,7 @@ export class Driver {
     const aLat = (hunting ? AI.aLatHunt : AI.aLatCruise) * tow * tow;
     // In a race the rivals cruise as fast as the player's own car has shown it can go (ctx.playerTop, so it follows whichever vehicle was chosen), not at a fixed speed:
     // Normal ~90%, Hard ~95%, Expert 100% of that. Bends still slow them down as before.
-    const cruiseV = ctx.racePace && ctx.playerTop > 0 ? Math.max(this.cruise * pace, Math.min(AI.raceMax, ctx.playerTop * (0.8 + 0.2 * sk))) : this.cruise * pace;
+    const cruiseV = racePace && ctx.playerTop > 0 ? Math.max(this.cruise * pace, Math.min(AI.raceMax, ctx.playerTop * (0.8 + 0.2 * sk))) : this.cruise * pace;
     vT = Math.min((hunting ? AI.huntMax * (1 + 0.3 * d) : cruiseV) * tow, Math.sqrt(aLat * (1 + 0.5 * d) / Math.max(k, 1e-4)));
 
     if (hunting) {
@@ -176,7 +177,7 @@ export class Driver {
     // Arcade race pressure: once the player opens a gap, don't let a cautious cruise target make the
     // field give up. Match the player's real pace and ask for a little more on Hard/Expert. This is
     // still only a target speed: the rival must achieve it with its own tyres, gearbox and physics.
-    if (ctx.racePace && P && pRoad && playerLead > 5) {
+    if (racePace && P && pRoad && playerLead > 5) {
       const pressure = clamp((playerLead - 5) / 80, 0, 1);
       const paceMul = 0.98 + 0.13 * sk;                       // Hard ~112%, Expert ~115%
       const chaseTarget = P.speed * paceMul + pressure * (3 + 5 * sk);
@@ -185,6 +186,18 @@ export class Driver {
 
     // ---------------------------------------------------------------- other cars in the way
     let laneBias = 0, brake = 0;
+    if (this.traffic) {                                                                 // ordinary traffic stops at a red (or amber) light or a crossing with people on it
+      this.waiting = false;
+      for (const sg of ctx.signals || []) {
+        const dx = sg.x - car.pos.x, dz = sg.z - car.pos.z, dist = dx * sg.fx + dz * sg.fz - SIGNAL.stop;
+        if (dist < -2 || dist > 45 || fx * sg.fx + fz * sg.fz < 0.6 || Math.abs(dx * sg.lx + dz * sg.lz) > sg.hw + 2 || Math.abs(car.pos.y - sg.y) > 3) continue;
+        const st = carState(ctx.signals, sg, signalClock.t);
+        if (st === 'green' || (st === 'amber' && dist < car.fwdSpeed * 1.1)) continue;      // (too close to pull up on an amber: carry on through)
+        const vStop = Math.sqrt(2 * 3.5 * Math.max(0, dist));                          // a gentle stop at the line
+        if (vStop < vT) { vT = vStop; if (car.fwdSpeed > vStop + 1.5) brake = Math.max(brake, clamp((car.fwdSpeed - vStop) / 8, 0.2, 1)); }
+        if (dist < 6) this.waiting = true;
+      }
+    }
     for (const o of ctx.cars) {
       if (o === car || (hunting && o === P)) continue;
       const rx = o.pos.x - car.pos.x, rz = o.pos.z - car.pos.z;
@@ -304,6 +317,7 @@ export class Driver {
     let brk = err < -3.5 && car.fwdSpeed > 4 ? clamp((-err - 1) / 8, 0, 1) : 0;
     if (hunting && Math.abs(ang) > 1.1 && car.fwdSpeed > 14) { throttle *= 0.6; brk = Math.max(brk, 0.18); }   // turn first, then charge
     brk = Math.max(brk, err < -1.5 ? brake : 0);
+    if (this.traffic && this.waiting && vT < 1.5) { throttle = 0; brk = Math.max(brk, 0.8); }      // held at a red light: stay put
 
     // ---------------------------------------------------------------- stuck: back out
     if (this.reverse > 0) {
@@ -335,7 +349,7 @@ export class Driver {
 
     // Sliding sideways: lift off and steer into the slide (what a driver does) rather than keeping the pedal down and spinning.
     if (!jump && car.onGround && car.speed > 8 && Math.abs(car.sideSlip) > 0.28) { throttle = Math.min(throttle, 0.15); brk = Math.min(brk, 0.2); steer = clamp(steer + car.sideSlip * 1.6, -1, 1); }
-    inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = false;
+    inp.throttle = throttle; inp.brake = brk; inp.steer = steer; inp.handbrake = !!(this.traffic && this.waiting && vT < 1.5 && car.speed < 2);      // (held at a red light: handbrake on, so it cannot roll back down a slope)
     // Nitro still uses the real finite tank. Rivals may also spend it to rescue a genuine steep climb:
     // this mirrors what a human naturally does instead of leaving the pack stalled on procedural hills.
     const hillBoost = steepUphill

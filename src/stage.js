@@ -8,6 +8,7 @@ import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
 import { WeevalView } from './weevalView.js';
 import { buildBuildings } from './buildingView.js';
+import { buildSignals } from './signalView.js';
 import { GetawayView } from './getawayView.js';
 
 // Golden-hour look: a low sun (about 17 degrees up) from the side and a little behind, strong warm light, dark cool shadows, a hazy warm distance.
@@ -105,6 +106,7 @@ export class Stage {
 
   /** Follow the camera/car so the sky, ground and shadow box never run out. */
   update(focus, camPos) {
+    this.signalView?.update();
     this.sun.position.copy(focus).add(this.sunOffset);
     this.sun.target.position.copy(focus);
     this.sky.position.copy(camPos);
@@ -322,6 +324,7 @@ export class Stage {
     g.add(this._scenery(track, geo));
     if (track.def.weeval || hasStuntProps(track.def)) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
     if ((track.buildings && track.buildings.length) || track.ramps) g.add(buildBuildings(track));          // buildings and tunnels from the editor
+    this.signalView = buildSignals(track); if (this.signalView) g.add(this.signalView.group);               // traffic lights and crossings from the editor
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
     this.scene.add(g);
     this.trackGroup = g;

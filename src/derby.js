@@ -11,6 +11,7 @@
 //  * Nothing here imports three.js. main.js draws it, plays the sounds and reads `events`.
 
 import { V3 } from './math.js';
+import { signalLayout } from './signals.js';
 import { Vehicle } from './vehicle.js';
 import { Track, SURF } from './track.js';
 import { Driver, IDLE, AI } from './ai.js';
@@ -255,6 +256,8 @@ export class Derby {
     this.onImpact = null;                                 // The Getaway: (fighter, 'wall' | 'car', speed, other) for every knock, so main.js can wear the cars down
     this.getaway = false; this.getawaySetup = null;    // The Getaway (see _spawnGetaway): main.js fills in { L, role, makeDriver(rng), rescue(car) } before start()
     this.slotSkill = null;                               // optional { raceSlot: skill offset }
+    this.slotKinds = null;                               // optional [kind for rival 1, 2...]: the race cars the track maker placed (see main.js derbyStart)
+    this.signals = [];                                   // traffic lights and crossings on this track (signals.js)
     this.brutal = false;                                 // Demolition Day: tougher, Expert-skill rivals whatever the options say (main.js sets it)
     this.skill = 0.75;                                   // rival skill 0..1 (see ai.js skillOf); main.js sets it from the menu
     this.towing = false;                               // set by main.js: every rival tows a caravan
@@ -275,7 +278,7 @@ export class Derby {
 
   /** Begin a fresh game on `track` with the player's car and `count` rivals. */
   start(track, playerCar, count = DERBY.rivals, seed = 7, mode = 'race') {
-    this.track = track; this.count = count; this.rng = mulberry(seed);
+    this.track = track; this.count = count; this.rng = mulberry(seed); this.signals = signalLayout(track);
     this.raceSerial = (this.raceSerial || 0) + 1;
     this.fighters.length = 0; this.events.length = 0;
     this.score = 0; this.takedowns = 0; this.over = false; this.won = false; this.time = 0;
@@ -363,7 +366,7 @@ export class Derby {
     const fr = T.frameAt(s);
     const lane = Math.max(2, fr.hw - 3);
     const off = cols > 1 ? (col - (cols - 1) / 2) * lane * 0.85 : (rnd() - 0.5) * lane * 0.3;
-    const kind = this._kind(), car = new Vehicle(kind?.spec);
+    const kind = this.slotKinds && this.slotKinds[k] !== undefined ? this.slotKinds[k] : this._kind(), car = new Vehicle(kind?.spec);      // (slotKinds: the vehicles the track maker put down as race cars)
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, 0);        // stationary on the grid, like a real start
     car.opts.assist = 0.7;
@@ -383,15 +386,17 @@ export class Derby {
       const kind = (kindFor && kindFor(p.car || '')) || null;          // (no car chosen = "same as your car": kindFor('') gives the player's own)
       const car = new Vehicle(kind?.spec), g = T.groundAt(p.x, p.z, (p.y || 0) + 1, undefined, true), gy = Number.isFinite(p.exactY) ? p.exactY : g && g.idx >= 0 ? g.y : (p.y || 0);      // (exactY: a bus standing on a platform in the editor)
       let driver;
-      if (p.mode === 'driving') {
+      if (p.mode === 'driving' || p.mode === 'regular') {
         const s = T.progressAt(p.x, gy, p.z), fr = T.frameAt(s), off = (p.x - fr.x) * fr.lx + (p.z - fr.z) * fr.lz;
-        driver = new Driver(this.rng); placeOnRoad(car, T, s, Math.max(-fr.hw + 2, Math.min(fr.hw - 2, off)), driver.cruise * 0.85);
+        driver = new Driver(this.rng, p.mode === 'regular' ? 0 : undefined);
+        if (p.mode === 'regular') { driver.traffic = true; driver.cruise = 11 + this.rng() * 5; driver.lane = driver.lane0 = driver.laneNow = 0.35; }     // ordinary traffic: about 25 - 35 mph, keeps its lane, never hunts, obeys the lights
+        placeOnRoad(car, T, s, Math.max(-fr.hw + 2, Math.min(fr.hw - 2, off)), driver.cruise * 0.85);
       } else {
         driver = new ParkedDriver();
         car.reset(new V3(p.x, gy + car.restHeight + 0.08, p.z), new V3(Math.sin(p.yaw || 0), 0, Math.cos(p.yaw || 0)), new V3(0, 1, 0), 0);
       }
       car.opts.assist = 0.7;
-      const f = this.add(car, driver, null, kind); car.aiRollGuard = 0; f.placed = true; f.parked = p.mode !== 'driving'; n++;
+      const f = this.add(car, driver, null, kind); car.aiRollGuard = 0; f.placed = true; f.parked = p.mode !== 'driving' && p.mode !== 'regular'; n++;
     }
     return n;
   }
@@ -436,7 +441,7 @@ export class Derby {
     }
     if (!ok) return null;
     if (replacementS != null) this._replacementS.shift();
-    const kind = this._kind(), car = new Vehicle(kind?.spec);
+    const kind = this.slotKinds && replacementSlot != null && this.slotKinds[replacementSlot - 1] !== undefined ? this.slotKinds[replacementSlot - 1] : this._kind(), car = new Vehicle(kind?.spec);
     const driver = new Driver(rnd);
     placeOnRoad(car, T, s, off, driver.cruise * 0.85);
     car.opts.assist = 0.7;
@@ -512,6 +517,7 @@ export class Derby {
     this.playerTop = Math.max(P.car.speed, (this.playerTop || 0) - 0.4 * dt);       // the fastest the player's car has been going lately: the race pace for the rivals follows it
     ctx.playerTop = this.playerTop;
     const baseSkill = this.brutal ? 1 : this.skill; ctx.skill = baseSkill; const slotSkill = this.slotSkill;          // story mode gives each named rival their own pace
+    ctx.signals = this.signals;                                  // traffic lights and crossings the track maker put down (ordinary traffic obeys them)
     ctx.huntBias = this.demolition ? DERBY.huntBiasDemolition : DERBY.huntBiasRace;
     ctx.racePace = !this.demolition;                         // race AI may pace itself against the player; demolition keeps natural vehicle performance
     for (const f of F) {
@@ -721,7 +727,7 @@ export class Derby {
     f.flipT = c.ay.y < 0.15 && c.speed < 5 ? f.flipT + dt : 0;
     if (f.flipT > 3 && this.damageEnabled) this._damage(f, 'front', DAMAGE.burnPerSecond * dt, null);      // destruction: an engine fire, eventually
     f.idleT = c.speed < 2 && c.ay.y > 0.15 ? f.idleT + dt : 0;
-    if (f.placed && f.parked) { f.idleT = 0; f.offT = 0; f.wrongT = 0; }       // a car the track maker parked is never 'stuck' or 'lost': it stays where it was put
+    if (f.placed && (f.parked || f.driver?.waiting)) { f.idleT = 0; f.offT = 0; f.wrongT = 0; }       // a car the track maker parked is never 'stuck' or 'lost': it stays where it was put
     T.query(c.pos.x, c.pos.y + 0.5, c.pos.z, this._q, 1.2);
     f.offT = this._q.idx < 0 || this._q.surface === SURF.BASE ? f.offT + dt : 0;
     const far = this._dist(c.pos.x, c.pos.y, c.pos.z) > 45;
