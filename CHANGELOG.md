@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.702 — Sunny day sky and background buildings switch
+
+- The editor's Track panel has a **Sky** choice: **Golden dusk** (as before) or **Sunny day, blue sky** (bright blue sky, white sun, daylight shadows and a pale hazy distance).
+- New **Background buildings** tick box turns the far-off skyline round the edge on or off.
+- **Crystal Palace** now starts as a sunny day. Both settings are saved with the track, share links and JSON.
+- The transmitter tower can be dragged to a new place like any other scenery piece (click it, then drag).
+
 ## v17.701 — Crystal Palace transmitter tower
 
 - New scenery piece, the **Transmitter tower**: a tapering lattice mast with platforms, a slim upper shaft and the white aerial on top, 328 m tall by default (the Height slider changes it). It is scenery, not solid. Find it in the Scenery menu and on the icon bar.

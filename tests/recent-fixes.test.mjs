@@ -506,7 +506,7 @@ test('the shadow map is rebuilt when the game comes back, so the scene cannot st
 test('The Getaway always has the 1980s look: no ?retro switch is left', () => {
   const view = readFileSync(new URL('../src/getawayView.js', import.meta.url), 'utf8'), stg = readFileSync(new URL('../src/stage.js', import.meta.url), 'utf8');
   assert.doesNotMatch(view, /\bRETRO\b/); assert.doesNotMatch(stg, /\bRETRO\b/); assert.doesNotMatch(view + stg, /noretro/);
-  assert.match(view, /WALLS_RETRO\[Math\.floor\(r\(\) \* WALLS_RETRO\.length\)\]/); assert.match(stg, /this\._retroSky\(!!track\.def\.getaway\)/);
+  assert.match(view, /WALLS_RETRO\[Math\.floor\(r\(\) \* WALLS_RETRO\.length\)\]/); assert.match(stg, /this\._look\(track\)/); assert.match(stg, /retro = !!d\.getaway/);
 });
 
 test('The Getaway: the police player hears the police radio (sounds/police-radio.mp3) during a robbery, as well as the siren', () => {

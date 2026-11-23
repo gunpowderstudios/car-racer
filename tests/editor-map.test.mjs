@@ -61,3 +61,14 @@ test('Crystal Palace has its transmitter tower, 328 m tall, about 0.6 miles nort
   assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0 }] }).props[0].h, 328);        // the default height
   assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0, h: 5000 }] }).props[0].h, 600);
 });
+
+test('Sky and background buildings: Crystal Palace is a sunny day; the settings survive normalising; default stays dusk with a skyline', () => {
+  const def = makeTemplate('crystalpalace');
+  assert.equal(def.sky, 'day');
+  const base = { name: 'x', width: 20, handles: def.handles };
+  assert.equal(normalizeTrack({ ...base, sky: 'day', city: false }).sky, 'day');
+  assert.equal(normalizeTrack({ ...base, sky: 'day', city: false }).city, false);
+  const plain = normalizeTrack(base);
+  assert.equal(plain.sky, undefined); assert.equal(plain.city, undefined);
+  assert.equal(normalizeTrack({ ...base, sky: 'purple' }).sky, undefined);
+});

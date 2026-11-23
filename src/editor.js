@@ -647,7 +647,7 @@ export class Editor {
   updateUI() {
     const d = this.def;
     $('ed-width').value = d.width; $('ed-width-o').textContent = `${d.width} m`;
-    $('ed-walls').checked = d.walls;
+    $('ed-walls').checked = d.walls; $('ed-sky').value = d.sky === 'day' ? 'day' : 'dusk'; $('ed-city').checked = d.city !== false;
     { const arena = d.mode === 'lastStanding'; $('ed-fill').checked = arena; $('ed-fill').disabled = !!(d.getaway || d.weeval); $('ed-width').disabled = arena; }
     this.updateInspector(); this.updateIssues(); this._buttons();
   }
@@ -1348,6 +1348,8 @@ export class Editor {
       this.rebuild(true); this.updateInspector(); this.draw();
     };
     $('ed-fill').onchange = (e) => this._fill(e.target.checked);
+    $('ed-sky').onchange = (e) => { this.snapshot(); if (e.target.value === 'day') this.def.sky = 'day'; else delete this.def.sky; this.rebuild?.(true); };
+    $('ed-city').onchange = (e) => { this.snapshot(); if (e.target.checked) delete this.def.city; else this.def.city = false; this.rebuild?.(true); };
     $('ed-walls').onchange = (e) => { this.snapshot(); this.def.walls = e.target.checked; this.draw(); };
     $('ed-name').oninput = (e) => { this.def.name = e.target.value; };
 

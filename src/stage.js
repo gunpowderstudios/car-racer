@@ -51,13 +51,13 @@ export class Stage {
     // sky dome
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { top: { value: new THREE.Color(SKY_TOP) }, mid: { value: new THREE.Color(SKY_MID) }, low: { value: new THREE.Color(SKY_LOW) }, sunDir: { value: new THREE.Vector3(...SUN_OFFSET).normalize() } },
+      uniforms: { top: { value: new THREE.Color(SKY_TOP) }, mid: { value: new THREE.Color(SKY_MID) }, low: { value: new THREE.Color(SKY_LOW) }, sunDir: { value: new THREE.Vector3(...SUN_OFFSET).normalize() }, glow: { value: new THREE.Color(1.0, 0.55, 0.22) }, glowK: { value: 1 } },
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low; uniform vec3 sunDir;
+      fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low; uniform vec3 sunDir; uniform vec3 glow; uniform float glowK;
         void main(){ float h = clamp(vP.y, -0.1, 1.0);
           vec3 c = mix(low, mid, smoothstep(0.0, 0.28, h)); c = mix(c, top, smoothstep(0.22, 0.8, h));
           float sd = max(dot(normalize(vP), sunDir), 0.0);
-          c += vec3(1.0, 0.55, 0.22) * (pow(sd, 6.0) * 0.45 + pow(sd, 28.0) * 0.5) * (1.0 - smoothstep(0.0, 0.7, h));   // warm glow round the sun, strongest low down
+          c += glow * glowK * (pow(sd, 6.0) * 0.45 + pow(sd, 28.0) * 0.5) * (1.0 - smoothstep(0.0, 0.7, h));   // warm glow round the sun, strongest low down
           c = mix(c, vec3(1.0, 0.93, 0.78), smoothstep(0.9988, 0.9996, sd));                                          // the sun itself
           gl_FragColor = vec4(c, 1.0); }`,
     });
@@ -187,7 +187,7 @@ export class Stage {
   }
 
   setTrack(track) {
-    this.clearTrack();
+    this.clearTrack(); this._look(track);
     if (track.def.mode === 'lastStanding') return this._setArena(track);
     const geo = buildTrackGeometry(track);
     const g = new THREE.Group();
@@ -333,11 +333,18 @@ export class Stage {
     return geo;
   }
 
-  /** The Getaway: the sky, fog and golden light stay exactly as in the rest of the game; only the sun is lifted (about 50 degrees, the sky's own glow stays where it was)
-   *  so the buildings throw shadows across the streets and onto the cars. Every other track puts the low dusk sun back. */
-  _retroSky(on) {
-    this.sunOffset.set(...(on ? [-120, 170, -80] : SUN_OFFSET));
-    this.hemi.intensity = on ? 1.15 : 0.3;                // (the town in shadow was too dark: a stronger cool fill lifts the shadows and keeps their direction)
+  /** The light and sky for a track: the golden-hour dusk everywhere, a bright blue sunny day when the track says `sky: 'day'`, and The Getaway's lifted sun. */
+  _look(track) {
+    const d = track.def, day = d.sky === 'day' && !d.getaway, retro = !!d.getaway, u = this.skyU;
+    const off = day ? [-120, 170, -80] : retro ? [-120, 170, -80] : SUN_OFFSET;
+    this.sunOffset.set(...off); u.sunDir.value.set(...off).normalize();
+    u.top.value.set(day ? 0x2a74d8 : SKY_TOP); u.mid.value.set(day ? 0x7fb9ee : SKY_MID); u.low.value.set(day ? 0xd6ecfb : SKY_LOW);
+    u.glow.value.set(day ? 0xffffff : 0xff8c38); u.glowK.value = day ? 0.35 : 1;
+    this.scene.fog.color.set(day ? 0xc4e0f4 : FOG);
+    this.sun.color.set(day ? 0xfff3dc : 0xffb468); this.sun.intensity = day ? 3.4 : 4.3;
+    this.hemi.color.set(day ? 0xb6d4ff : 0x6a80c4); this.hemi.groundColor.set(day ? 0x7d8a5a : 0x3c2a24);
+    this.hemi.intensity = day ? 1.2 : retro ? 1.15 : 0.3;      // (the town in shadow was too dark: a stronger cool fill lifts the shadows and keeps their direction)
+    this.scene.environmentIntensity = day ? 0.7 : 0.4;
   }
 
   /** An open arena (see arena.js) has no road to draw: a dirt floor, a wall and stands instead. */
@@ -345,7 +352,6 @@ export class Stage {
     const g = new THREE.Group(), arena = buildArena(track, this.aniso);
     g.add(arena);
     const geo = { bounds: arena.userData.bounds, arena: true };
-    this._retroSky(!!track.def.getaway);
     if (track.def.getaway) this.getawayView = new GetawayView(track, g);          // The Getaway: the town, its bags and the safehouse (no scenery in the streets)
     else g.add(this._scenery(track, geo, arena.userData.clear));
     this.scene.add(g); this.trackGroup = g;
@@ -413,9 +419,11 @@ export class Stage {
       g.add(trunk, crown);
     }
 
-    // distant city
+    // distant city (the editor can switch it off)
+    if (track.def.city === false) return g;
+    const day = track.def.sky === 'day';
     const wtex = windowTexture();
-    const cityMat = new THREE.MeshStandardMaterial({ color: 0x1a1733, roughness: 1, emissive: 0xffffff, emissiveMap: wtex, emissiveIntensity: 0.9 });
+    const cityMat = new THREE.MeshStandardMaterial({ color: day ? 0x9aa8bd : 0x1a1733, roughness: 1, emissive: 0xffffff, emissiveMap: wtex, emissiveIntensity: day ? 0.08 : 0.9 });
     const N = 110;
     const city = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), cityMat, N);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();

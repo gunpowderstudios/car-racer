@@ -346,6 +346,8 @@ export function normalizeTrack(input) {
   };
   if (src.assault) { const as = normalizeAssault(src.assault); if (as) out.assault = as; }       // Apple Crumple: a solo timed obstacle course
   if (src.mapFit && [src.mapFit.x, src.mapFit.z, src.mapFit.w].every(Number.isFinite)) out.mapFit = { x: src.mapFit.x, z: src.mapFit.z, w: clamp(src.mapFit.w, 10, 20000), rot: Number(src.mapFit.rot) || 0 };     // where the editor's Map backdrop picture goes for this track (metres), so a built-in tracing track can line it up
+  if (src.sky === 'day') out.sky = 'day';                       // a bright sunny day with a blue sky (the default is the golden-hour dusk)
+  if (src.city === false) out.city = false;                     // no far-off city skyline round the edge
   if (src.defaultLaps) out.defaultLaps = clamp(Math.round(Number(src.defaultLaps)) || 1, 1, 3);      // how many laps this track starts with, until the player picks a number of laps themselves
   if (src.quickRace) out.quickRace = true;                      // Buckle up!: a quick random race (it uses the laps you picked)
   if (src.lowCam) out.lowCam = true;             // roads stacked above each other: the game uses a low tail camera so the road above cannot hide the car
