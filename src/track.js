@@ -329,6 +329,7 @@ export function normalizeTrack(input) {
     bank: clamp(Number(h.bank) || 0, -20, 20),          // degrees
     gap: h.gap ? clamp(Number(h.gap), 6, src.weeval ? 400 : 70) : (h.gapAfter ? 14 : 0), // metres of missing road
     lip: clamp(Number.isFinite(+h.lip) && h.lip !== null && h.lip !== '' ? +h.lip : TAKEOFF_RISE, LIP.minH, LIP.maxH),   // takeoff ramp height (m)
+    sharp: h.sharp ? true : undefined,                  // a tight corner here: the road turns in a small neat arc instead of a wide bend (see filletSharp)
     open: h.open ? true : undefined,                    // no barriers on the stretch from here to the next point (a spiral ramp)
     kick: clamp(Number(h.kick) || 0, 0, LIP.maxDeg),    // launch angle at the lip (degrees); 0 = ramp flattens out
     ...(Number.isFinite(+h.hx) && Number.isFinite(+h.hz) && h.hx !== null && h.hz !== null && (+h.hx || +h.hz) ? { hx: clamp(+h.hx, -200, 200), hz: clamp(+h.hz, -200, 200) } : {}),   // curve handle: where the road leaves this point (metres from it); the mirror image is where it arrives
@@ -406,6 +407,45 @@ export function curveHandle(H, i) {
   return [(q.x - p.x) / 6, (q.z - p.z) / 6];
 }
 
+/** Tight corners: where a point is marked `sharp`, the road (which runs straight into and out of it) turns in a small circular arc cut into the corner,
+ *  just wide enough that the inner wall does not fold over itself and the outer wall stays a clean curve. `pts` is the closed loop without its repeated first point;
+ *  `hd` is where each handle sits in it. Returns the new pts and hd. */
+function filletSharp(H, pts, hd, defWidth) {
+  const n = H.length;
+  hd = hd.slice();
+  for (let i = 0; i < n; i++) {
+    if (!H[i].sharp) continue;
+    const m = pts.length, rot = (((hd[i] - (m >> 1)) % m) + m) % m;
+    if (rot) { pts = pts.slice(rot).concat(pts.slice(0, rot)); hd = hd.map((v) => (v - rot + m) % m); }       // (so the corner is in the middle and nothing wraps round the ends)
+    const k = hd[i], C = pts[k], dist = (a, b) => Math.hypot(pts[a].x - pts[b].x, pts[a].z - pts[b].z);
+    const back = (L) => { let j = k, acc = 0; while (j > 0 && acc < L) { acc += dist(j, j - 1); j--; } return { j, acc }; };
+    const fwd = (L) => { let j = k, acc = 0; while (j < m - 1 && acc < L) { acc += dist(j, j + 1); j++; } return { j, acc }; };
+    const A0 = back(8), B0 = fwd(8);
+    let t1 = [C.x - pts[A0.j].x, C.z - pts[A0.j].z], t2 = [pts[B0.j].x - C.x, pts[B0.j].z - C.z];
+    const l1 = Math.hypot(...t1) || 1, l2 = Math.hypot(...t2) || 1; t1 = [t1[0] / l1, t1[1] / l1]; t2 = [t2[0] / l2, t2[1] / l2];
+    const cr = t1[0] * t2[1] - t1[1] * t2[0], th = Math.atan2(Math.abs(cr), t1[0] * t2[0] + t1[1] * t2[1]);
+    if (th < 0.17) continue;                                                         // under 10 degrees: nothing to tighten
+    const pk = hd[(i - 1 + n) % n], nk = hd[(i + 1) % n], prevK = pk < k ? pk : 0, nextK = nk > k ? nk : m - 1;
+    const room = (a, b) => { let acc = 0; for (let j = a; j < b; j++) acc += dist(j, j + 1); return acc; };
+    const hw = (C.w || defWidth) / 2, want = hw + WALL_GAP + 1.5, tn = Math.tan(th / 2);
+    const d = Math.min(want * tn, 0.45 * room(prevK, k), 0.45 * room(k, nextK)), r = d / tn;
+    if (!(d > 0.5)) continue;
+    const a = back(d), b = fwd(d), sgn = cr > 0 ? 1 : -1;
+    const Ax = C.x - t1[0] * d, Az = C.z - t1[1] * d, cx = Ax + (-t1[1] * sgn) * r, cz = Az + (t1[0] * sgn) * r;       // (the centre sits on the inside of the turn)
+    const steps = Math.max(3, Math.ceil(r * th / 0.6)), pa = pts[a.j], pb = pts[b.j], arc = [];
+    for (let q = 0; q <= steps; q++) {
+      const u = q / steps, ang = th * u * sgn, ca = Math.cos(ang), sa = Math.sin(ang), vx = Ax - cx, vz = Az - cz;
+      arc.push({ x: cx + vx * ca - vz * sa, y: Math.max(0, lerp(pa.y, pb.y, u)), z: cz + vx * sa + vz * ca, w: lerp(pa.w, pb.w, u), bank: lerp(pa.bank, pb.bank, u) });
+    }
+    const removed = b.j - a.j + 1, delta = arc.length - removed;
+    pts = pts.slice(0, a.j).concat(arc, pts.slice(b.j + 1));
+    hd = hd.map((v, q) => (q === i ? a.j + (arc.length >> 1) : v > k ? v + delta : v));
+  }
+  const rot0 = hd[0];
+  if (rot0) { const m = pts.length; pts = pts.slice(rot0).concat(pts.slice(0, rot0)); hd = hd.map((v) => (v - rot0 + m) % m); }
+  return { pts, hd };
+}
+
 /** Dense polyline through the handles (closed). Returns points + cumulative length per handle. */
 function densePolyline(def) {
   const H = def.handles, n = H.length;
@@ -419,7 +459,7 @@ function densePolyline(def) {
     const steps = clamp(Math.ceil(chord / 0.6), 12, 260);
     const h1 = H[i], h2 = H[(i + 1) % n];
     const w1 = h1.w || def.width, w2 = h2.w || def.width;
-    const custom = h1.hx !== undefined || h2.hx !== undefined, o1 = custom ? curveHandle(H, i) : null, o2 = custom ? curveHandle(H, (i + 1) % n) : null;
+    const custom = h1.hx !== undefined || h2.hx !== undefined || h1.sharp || h2.sharp, o1 = custom ? (h1.sharp ? [0, 0] : curveHandle(H, i)) : null, o2 = custom ? (h2.sharp ? [0, 0] : curveHandle(H, (i + 1) % n)) : null;      // (a sharp point has no curve handle: the road runs straight into it and out of it)
     handleDense.push(pts.length);
     for (let s = 0; s < steps; s++) {
       const t = s / steps;
@@ -429,6 +469,7 @@ function densePolyline(def) {
       pts.push({ x: tmp[0], y: Math.max(0, tmp[1]), z: tmp[2], w: lerp(w1, w2, u), bank: lerp(h1.bank, h2.bank, u) });
     }
   }
+  if (H.some((h) => h.sharp)) { const r = filletSharp(H, pts, handleDense, def.width); pts.length = 0; pts.push(...r.pts); handleDense.length = 0; handleDense.push(...r.hd); }
   const first = pts[0];
   pts.push({ ...first });        // close the loop
   return { pts, handleDense };

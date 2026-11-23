@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.703 — Sharp corners
+
+- New **Sharp corner** tick for any point in the editor (Selected point panel). The road runs straight into the point and turns in a small, neat arc instead of a wide bend, and the walls follow it, so the road and barriers join cleanly with nothing folding over on the inside. The arc is as tight as a road of that width allows (inner wall about 1.5 m radius). The point's dot sits at the outer corner, a little way out from the road.
+
 ## v17.702 — Sunny day sky and background buildings switch
 
 - The editor's Track panel has a **Sky** choice: **Golden dusk** (as before) or **Sunny day, blue sky** (bright blue sky, white sun, daylight shadows and a pale hazy distance).

@@ -72,3 +72,17 @@ test('Sky and background buildings: Crystal Palace is a sunny day; the settings 
   assert.equal(plain.sky, undefined); assert.equal(plain.city, undefined);
   assert.equal(normalizeTrack({ ...base, sky: 'purple' }).sky, undefined);
 });
+
+test('Sharp corner: the road turns in a small neat arc, keeps its length and point order, and the setting survives normalising', () => {
+  const sq = [[-120, -120], [120, -120], [120, 120], [-120, 120]].map(([x, z]) => ({ x, y: 0, z }));
+  const plain = new Track(normalizeTrack({ name: 's', width: 14, handles: sq }));
+  const sharp = new Track(normalizeTrack({ name: 's', width: 14, handles: sq.map((h, i) => (i === 1 ? { ...h, sharp: true } : h)) }));
+  const minR = (t) => { let m = 0; for (let i = 0; i < t.n; i++) m = Math.max(m, Math.abs(t.curv[i])); return 1 / m; };
+  assert.ok(minR(sharp) < minR(plain), `tighter: ${minR(sharp)} < ${minR(plain)}`);
+  assert.ok(minR(sharp) >= 7, 'but not so tight the inner edge folds over (half the road is 7 m)');
+  assert.ok(sharp.handleS.every((v, i, a) => i === 0 || v > a[i - 1]), 'points stay in order along the road');
+  assert.equal(normalizeTrack({ name: 's', handles: sq.map((h) => ({ ...h, sharp: true })) }).handles[0].sharp, true);
+  assert.equal(normalizeTrack({ name: 's', handles: sq }).handles[0].sharp, undefined);
+  const first = new Track(normalizeTrack({ name: 's', width: 14, handles: sq.map((h, i) => (i === 0 ? { ...h, sharp: true } : h)) }));        // the first point too (the loop wraps round it)
+  assert.ok(minR(first) >= 7 && first.handleS[0] === 0 && first.length > 900);
+});
