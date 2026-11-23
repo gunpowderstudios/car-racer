@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.684 — No gap under a building over the road
+
+- **The side walls of a building placed over a road now always reach down to the grass.** They used to start at the road surface where you put it, so on a raised, sloping or banked road there was a gap underneath. They now run from below the grass (and below the lowest road under the building) all the way up.
+
 ## v17.683 — Stunt buses are real vehicles
 
 - **Buses you place on an ordinary track are now real parked Rootmasters.** Ram one and it shoves along, dents, smokes and can be wrecked, like any other car in the game (a bus is heavy, so it takes a proper hit to move it).

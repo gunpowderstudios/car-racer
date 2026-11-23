@@ -44,3 +44,14 @@ test('buildings survive a share link', async () => {
   assert.deepEqual([b.w, b.d, b.h, b.style, b.rot], [33, 14.5, 60, 5, 40]);
   assert.ok(back.props.some((p) => p.type === 'barrel'));
 });
+
+test('a tunnel\'s side walls reach down below the grass and below the lowest road under it', () => {
+  const d = base(), T0 = new Track(normalizeTrack(d));
+  for (const f of [0.1, 0.3, 0.6]) {
+    const on = at(T0, f);
+    const T = new Track(normalizeTrack({ ...d, props: [{ type: 'building', x: on.x, z: on.z, y: 0.65, w: 30, d: 30, h: 20 }] }));
+    const b = T.buildings[0]; if (!b.tunnel) continue;
+    let low = Infinity; for (let k = 0; k < T.n; k++) if (Math.hypot(T.px[k] - T.px[on.i], T.pz[k] - T.pz[on.i]) < 15) low = Math.min(low, T.py[k]);
+    for (const w of [b.parts[0], b.parts[1]]) assert.ok(w.y <= Math.min(0, low) - 1, `a wall starts at ${w.y}, ground 0, lowest road ${low}`);
+  }
+});

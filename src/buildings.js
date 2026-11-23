@@ -22,9 +22,12 @@ export function buildingLayout(track, groundY = 0) {
       const i = best, hw = track.hw[i], inner = hw + MARGIN, W = Math.max(w, 2 * inner + 8), y0 = track.py[i] - 1;
       const th = Math.atan2(track.tx[i], track.tz[i]);                      // v runs along the road, u across it
       const top = Math.max(h, CLEAR + 3);
+      let low = track.py[i];                                                 // the lowest the road goes along the tunnel's length: the walls must reach below that and below the grass (a raised or sloping road leaves a gap otherwise)
+      for (let k = 0; k < n; k++) if (!track.gap[k] && Math.hypot(track.px[k] - track.px[i], track.pz[k] - track.pz[i]) < d / 2 + 6) low = Math.min(low, track.py[k]);
+      const yb = Math.min(groundY, low) - 1.5, sideH = y0 + top + 1 - yb;
       out.push({ pi, tunnel: true, x: track.px[i], z: track.pz[i], th, style: p.style || 0, w: W, d, h: top, y: y0, parts: [
-        { u0: -W / 2, u1: -inner, v0: -d / 2, v1: d / 2, y: y0, h: top + 1 },
-        { u0: inner, u1: W / 2, v0: -d / 2, v1: d / 2, y: y0, h: top + 1 },
+        { u0: -W / 2, u1: -inner, v0: -d / 2, v1: d / 2, y: yb, h: sideH },
+        { u0: inner, u1: W / 2, v0: -d / 2, v1: d / 2, y: yb, h: sideH },
         { u0: -inner, u1: inner, v0: -d / 2, v1: d / 2, y: track.py[i] + CLEAR, h: top - CLEAR },
       ] });
     } else {
