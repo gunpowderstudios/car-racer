@@ -274,7 +274,7 @@ export function puddleEdge(sh, angle) {
 export function normalizeTrack(input) {
   const src = input || {};
   const arena = src.mode === 'lastStanding';
-  const width = clamp(Number(src.width) || 22, 12, arena ? (src.getaway ? 460 : 120) : 40);          // an arena's 'road' is a whole dirt floor
+  const width = clamp(Number(src.width) || 22, 12, arena ? 460 : 40);          // an arena's 'road' is a whole dirt floor
   const handles = (Array.isArray(src.handles) ? src.handles : []).map((h) => ({
     x: Number(h.x) || 0,
     y: Math.max(0, Number.isFinite(+h.y) ? +h.y : 0.65),

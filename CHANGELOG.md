@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.670 — Fill a shape to make a solid arena
+
+- **New "Fill it: a solid arena, not a road" tickbox in the editor.** Draw a circle, oval or any rounded shape as usual, tick Fill and it becomes one solid floor with a crash wall round the edge, a derby arena where the last car running wins. Untick it to go back to a road round the same outline. The floor follows the oval that fits your shape. No 4-point rule applies to the arena.
+- Arenas (Deep Pan Pizza and your own) no longer show their road points in the editor: they sat inside the floor and did nothing useful. Use Shorter / Longer to resize an arena.
+- Arena floors can now be up to 460 m wide.
+
 ## v17.669 — Solid walls under all the high hills
 
 - High hills now stand on the same solid wall as the low ones. The wall used to be skipped wherever any lower road ran near it sideways, which left gaps on steep hills; now it is only skipped where another road really passes underneath (or at a flyover or tunnel).

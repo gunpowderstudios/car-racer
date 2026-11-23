@@ -193,6 +193,26 @@ export class Editor {
     };
     this.draw();
   }
+  /** Fill: turn the drawn shape into one solid arena floor (mode 'lastStanding'), or back into a road round the same outline.
+   *  An arena is a short centreline ellipse with a very wide "road": the floor reaches `hw` beyond it, so the outer edge lands on the drawn shape's bounding oval. */
+  _fill(on) {
+    const t = this.track, d = this.def; if (!t || (!on && d.mode !== 'lastStanding') || (on && d.mode === 'lastStanding')) { this.updateUI(); return; }
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    if (d.mode === 'lastStanding') { const A = arenaInfo(t); x0 = A.cx - A.ax; x1 = A.cx + A.ax; z0 = A.cz - A.az; z1 = A.cz + A.az; }
+    else for (let i = 0; i < t.n; i += 2) { const hw = t.hw[i]; x0 = Math.min(x0, t.px[i] - hw * 0.5); x1 = Math.max(x1, t.px[i] + hw * 0.5); z0 = Math.min(z0, t.pz[i] - hw * 0.5); z1 = Math.max(z1, t.pz[i] + hw * 0.5); }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, Rx = Math.max(20, (x1 - x0) / 2), Rz = Math.max(20, (z1 - z0) / 2);
+    this.snapshot();
+    const ring = (a, b) => Array.from({ length: 12 }, (_, k) => { const u = (k / 12) * Math.PI * 2; return { x: cx + a * Math.cos(u), y: 0.65, z: cz + b * Math.sin(u) }; });
+    if (on) {
+      const hw = Math.min(230, Math.max(8, Math.min(Rx, Rz) * 0.5));
+      d.mode = 'lastStanding'; d.width = Math.round(hw * 2); d.handles = ring(Math.max(1, Rx - hw), Math.max(1, Rz - hw));
+      d.structures = []; d.blocks = []; d.rollers = []; d.puddles = []; d.rough = [];
+    } else {
+      delete d.mode; delete d.bumps; d.width = 22; d.handles = ring(Rx - 11, Rz - 11);
+    }
+    this.def = normalizeTrack(d); this.sel = -1; this.rebuild(true); this.fit(); this.updateUI(); this.draw();
+    this.cb.toast(on ? 'Filled: a solid arena. The last car running wins. Untick to go back to a road.' : 'Back to a road round the same outline.');
+  }
   changed() { this.rebuild(); this.updateInspector(); this.draw(); }
 
   // ----------------------------------------------------------- view maths
@@ -377,7 +397,7 @@ export class Editor {
 
     if (this.drag?.type === 'marquee') { const m = this.drag; g.save(); g.fillStyle = 'rgba(255,170,0,0.12)'; g.strokeStyle = AMBER; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.fillRect(Math.min(m.sx, m.x2), Math.min(m.sy, m.y2), Math.abs(m.x2 - m.sx), Math.abs(m.y2 - m.sy)); g.strokeRect(Math.min(m.sx, m.x2), Math.min(m.sy, m.y2), Math.abs(m.x2 - m.sx), Math.abs(m.y2 - m.sy)); g.restore(); }
     // handles
-    this.def.handles.forEach((h, k) => {
+    if (!arena) this.def.handles.forEach((h, k) => {
       const [x, y] = this.toScreen(h.x, h.z), on = k === this.sel || !!this.multi?.has(k), hov = k === this.hover;
       g.beginPath(); g.arc(x, y, on ? 9 : 7, 0, 7);
       g.fillStyle = on ? AMBER : PAPER_DEEP; g.fill();
@@ -517,6 +537,7 @@ export class Editor {
     const d = this.def;
     $('ed-width').value = d.width; $('ed-width-o').textContent = `${d.width} m`;
     $('ed-walls').checked = d.walls;
+    { const arena = d.mode === 'lastStanding'; $('ed-fill').checked = arena; $('ed-fill').disabled = !!(d.getaway || d.weeval); $('ed-width').disabled = arena; }
     this.updateInspector(); this.updateIssues(); this._buttons();
   }
   updateProps() {
@@ -596,7 +617,7 @@ export class Editor {
   updateIssues() {
     const el = $('ed-issues'); el.innerHTML = '';
     const a = this.analysis, add = (txt, ok) => { const d = document.createElement('div'); d.textContent = txt; if (ok) d.className = 'ok'; el.appendChild(d); };
-    if (this.def.mode === 'lastStanding') { add('Open arena: the floor is everything inside the outline, and the wall stands at its edge. Drag the points to reshape it.', true); return; }
+    if (this.def.mode === 'lastStanding') { add('Open arena: the floor is everything inside the outline, and the wall stands at its edge. Use Shorter / Longer to resize it, or untick Fill to go back to a road and reshape it.', true); return; }
     if (a.tight.length) add(`Corner too tight for a ${this.def.width} m road (red circles). Move points apart or narrow the road.`);
     if (a.crossings.length) add(`The road crosses itself at the same height (red crosses), but too differently or too slantwise to be a crossroad. Make the two roads meet at the same height, cross more squarely, or raise one point by 5 m or more to make a bridge.`);
     if (a.crossroads?.length && !a.crossings.length) add(`${a.crossroads.length} crossroad${a.crossroads.length === 1 ? '' : 's'} (white squares): the barriers are open and the roads are levelled where they cross. Raise one road by 5 m or more to make a bridge instead.`, true);
@@ -605,6 +626,7 @@ export class Editor {
 
   // ----------------------------------------------------------- interaction
   _hit(sx, sy, r = 12) {
+    if (this.def.mode === 'lastStanding') return -1;                 // an arena is a shape, not a road: its few centre points mean nothing to you, so they are not shown or grabbed
     let best = -1, bd = r * r;
     this.def.handles.forEach((h, k) => { const [x, y] = this.toScreen(h.x, h.z), d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = k; } });
     return best;
@@ -997,7 +1019,7 @@ export class Editor {
       if (this.tool !== 'road') return;
       const [sx0, sy0] = pos(e), hb = this._hitBez(sx0, sy0);
       if (hb) { const h = this.def.handles[hb.k]; if (h.hx !== undefined) { this.snapshot(); delete h.hx; delete h.hz; this.rebuild(true); this.draw(); this.cb.toast('Curve handle back to automatic.'); } return; }
-      const [sx, sy] = pos(e); if (this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
+      const [sx, sy] = pos(e); if (this.def.mode === 'lastStanding' || this._hit(sx, sy) >= 0 || this._hitProp(sx, sy) >= 0) return;
       const i = this._nearestSample(sx, sy, Math.max(14, (this.track?.hw?.[0] || 10) * this.view.scale));      // (anywhere on the road surface, not only on the centre line)
       if (i >= 0) this.insertAt(i);
     });
@@ -1136,6 +1158,7 @@ export class Editor {
       if (h.gap) { if (!Number.isFinite(+h.lip) || h.lip === null || h.lip === '') h.lip = 0.5; if (!Number.isFinite(+h.kick)) h.kick = 0; }          // (a new point has neither: give it the usual flat ramp)
       this.rebuild(true); this.updateInspector(); this.draw();
     };
+    $('ed-fill').onchange = (e) => this._fill(e.target.checked);
     $('ed-walls').onchange = (e) => { this.snapshot(); this.def.walls = e.target.checked; };
     $('ed-name').oninput = (e) => { this.def.name = e.target.value; };
 
