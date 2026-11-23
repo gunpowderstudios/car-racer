@@ -38,3 +38,19 @@ test('a ramp is solid: the sheer back of the lip is a wall, but the foot is open
   assert.ok(!solidAt(-6.5, road + 0.6), 'the foot is open');
   assert.ok(!solidAt(0, road + 1.9), 'and so is the slope itself, above its surface');
 });
+
+test('ramp walls are accurate: no solid space outside the ramp itself, even when it is turned', () => {
+  for (const turn of [0, 25, 45, 70]) {
+    const { T } = setup({ rot: turn }), r = T.ramps[0], road = T.py[0];
+    let outside = 0, inside = 0;
+    for (const b of T.blocks) {
+      if (b.kind !== 'wall') continue;
+      for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1], [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2]]) {      // the box's corners and middle against the ramp's rectangle
+        const dx = x - r.x, dz = z - r.z, u = dx * r.sn + dz * r.cs + r.half, v = dx * r.cs - dz * r.sn;
+        const out = Math.max(-u, u - 2 * r.half, Math.abs(v) - r.hw);
+        if (out > 0.45) outside++; else inside++;
+      }
+    }
+    assert.equal(outside, 0, `turn ${turn}: ${outside} box points stick out of the ramp`); assert.ok(inside > 10);
+  }
+});

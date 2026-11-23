@@ -482,15 +482,14 @@ export class Track {
     for (const r of this.ramps) {
       this.query(r.x, this.py[0] + 20, r.z, q, 6); rampAt([r], r.x, r.z, tmp);
       const y0 = (q.idx >= 0 ? q.y - tmp.h : this.py[0]) - 1.5, L = 2 * r.half, k = r.h / L, ac = Math.abs(r.cs), as = Math.abs(r.sn);
-      const box = (u, v, su, sv, top) => {                                             // a rotated su by sv rectangle centred at (u, v) from the ramp's low end, up to height `top` above the road
+      const box = (u, v, sz, top) => {                                                     // a small square cell centred at (u, v) from the ramp's low end, up to `top` above the road (squares keep the box close to the ramp's true outline when it is turned)
         if (top < 0.3) return;
-        const cx = r.x + (u - r.half) * r.sn + v * r.cs, cz = r.z + (u - r.half) * r.cs - v * r.sn, hx = 0.85 * (as * su / 2 + ac * sv / 2), hz = 0.85 * (ac * su / 2 + as * sv / 2);
-        out.push({ x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, kind: 'wall', y: y0, h: top + 1.5 });
+        const cx = r.x + (u - r.half) * r.sn + v * r.cs, cz = r.z + (u - r.half) * r.cs - v * r.sn, e = 0.5 * sz * (ac + as) * 0.82;
+        out.push({ x0: cx - e, x1: cx + e, z0: cz - e, z1: cz + e, kind: 'wall', y: y0, h: top + 1.5 });
       };
-      const nv = Math.max(1, Math.ceil(2 * r.hw / 1.5)), sv = 2 * r.hw / nv;
-      for (let j = 0; j < nv; j++) box(L - 0.6, -r.hw + sv * (j + 0.5), 1.2, sv, r.h - 0.25);               // the back of the lip
-      const nu = Math.max(1, Math.ceil(L / 2)), su = L / nu;
-      for (let i = 0; i < nu; i++) for (const sd of [-1, 1]) box(su * (i + 0.5), sd * (r.hw + 0.3), su, 0.6, k * su * i - 0.05);      // the sides, stepping up the slope (never above the surface)
+      const cell = Math.max(0.7, Math.max(L, 2 * r.hw) / 40), nv = Math.max(1, Math.round(2 * r.hw / cell)), sv = 2 * r.hw / nv, nu = Math.max(1, Math.round(L / cell)), su = L / nu;
+      for (let j = 0; j < nv; j++) box(L - su / 2, -r.hw + sv * (j + 0.5), Math.max(su, sv), r.h - 0.25);              // the back of the lip: one row of cells right under it
+      for (let i = 0; i < nu; i++) for (const sd of [-1, 1]) box(su * (i + 0.5), sd * (r.hw - sv / 2), Math.max(su, sv), k * su * i - 0.05);      // the sides, stepping up the slope, kept inside the ramp's own edge
     }
     return out;
   }

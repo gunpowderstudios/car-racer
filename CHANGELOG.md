@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.690 — Ramp collision follows the ramp
+
+- **No more invisible walls beside a ramp.** The solid parts are now a fine grid of small cells kept inside the ramp's own edges, so they follow it exactly even when it is turned across the road. (They used to be long boxes that stuck out beside a turned ramp.)
+
 ## v17.689 — Logo on the boxes, painted target
 
 - **The Gunpowder Studios logo is printed on the front of every cardboard box** (the face you drive into), fitted across it in its own proportions over the tape.
