@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.708 — Tower icon out of the scenery picker
+
+- The Crystal Palace tower is no longer offered in the editor's scenery icons or Scenery menu. The tower already on the Crystal Palace track stays, and can still be selected, moved and given a different height.
+- (There is only one tower on the track; the earlier second one sat about a kilometre off the edge of the editor view, which is why it could not be seen.)
+
 ## v17.707 — Crystal Palace description and tower
 
 - The transmitter tower is now in Tim's chosen place (north-east of the triangle, beyond the Westow House); there is just the one.

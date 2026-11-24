@@ -5,7 +5,7 @@ import { curveHandle, Track, normalizeTrack, analyzeTrack, suggestBanks, takeoff
 import { smoothHandles } from './smoothTrack.js';
 import { makeTemplate, makeRandomTrack, EDITOR_TEMPLATE_KEYS } from './templates.js';
 import { placeProp, BARREL } from './props.js';
-const STUNT_TOOLS = ['bus', 'boxes', 'target', 'building', 'ramp', 'lights', 'crossing', 'tower'];
+const STUNT_TOOLS = ['bus', 'boxes', 'target', 'building', 'ramp', 'lights', 'crossing'];
 const STUNT_LABEL = { bus: 'Bus', boxes: 'Cardboard boxes', target: 'Bullseye', building: 'Building', ramp: 'Ramp', lights: 'Traffic lights', crossing: 'Pedestrian crossing', tower: 'Transmitter tower' };
 const SIGNALS = ['lights', 'crossing'];                        // set on the road, turned to the way it runs (see signals.js)
 import { clamp, lerp } from './math.js';
@@ -46,7 +46,7 @@ export class Editor {
 
   /** The scenery icons along the bottom of the map: one click picks a tool, click the map to place it (the same tools as the Scenery menu). */
   _iconBar() {
-    const items = [['barrel', '\u{1F6E2}\uFE0F', 'Barrel'], ['skull', '\u2620\uFE0F', 'Skull barrel'], ['fire', '\u{1F525}', 'Fire pit'], ['vehicle', '\u{1F697}', 'Car'], ['bus', '\u{1F68C}', 'Stunt bus'], ['boxes', '\u{1F4E6}', 'Cardboard boxes'], ['target', '\u{1F3AF}', 'Bullseye'], ['building', '\u{1F3E2}', 'Building'], ['ramp', '\u25E2', 'Ramp'], ['lights', '\u{1F6A6}', 'Traffic lights'], ['crossing', '\u{1F6B8}', 'Crossing'], ['tower', '\u{1F4E1}', 'Tower']];
+    const items = [['barrel', '\u{1F6E2}\uFE0F', 'Barrel'], ['skull', '\u2620\uFE0F', 'Skull barrel'], ['fire', '\u{1F525}', 'Fire pit'], ['vehicle', '\u{1F697}', 'Car'], ['bus', '\u{1F68C}', 'Stunt bus'], ['boxes', '\u{1F4E6}', 'Cardboard boxes'], ['target', '\u{1F3AF}', 'Bullseye'], ['building', '\u{1F3E2}', 'Building'], ['ramp', '\u25E2', 'Ramp'], ['lights', '\u{1F6A6}', 'Traffic lights'], ['crossing', '\u{1F6B8}', 'Crossing']];
     const bar = this.iconBar = document.createElement('div'); bar.id = 'ed-icons'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Scenery');
     for (const [k, ic, nm] of items) {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.tool = k; b.title = `${nm}: click, then click the map to place one`; b.setAttribute('aria-label', nm); b.setAttribute('aria-pressed', 'false');
