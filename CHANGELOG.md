@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.704 — Import in the editor
+
+- New **Import** button in the editor's top bar (next to Export): opens a track file you saved or downloaded (.json) straight into the editor, with its buildings, scenery and settings. Undo brings back the track that was there. A file that isn't a track is refused with a message.
+
 ## v17.703 — Sharp corners
 
 - New **Sharp corner** tick for any point in the editor (Selected point panel). The road runs straight into the point and turns in a small, neat arc instead of a wide bend, and the walls follow it, so the road and barriers join cleanly with nothing folding over on the inside. The arc is as tight as a road of that width allows (inner wall about 1.5 m radius). The point's dot sits at the outer corner, a little way out from the road.

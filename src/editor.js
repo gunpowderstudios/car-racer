@@ -1319,6 +1319,14 @@ export class Editor {
     $('ed-3d-hide').onclick = () => { this._show3d(false); this.draw(); };
     $('ed-save').onclick = () => { if (this._needTrack()) return; this.cb.onSave(this.def); };
     $('ed-share').onclick = () => { if (this._needTrack()) return; this.cb.onShare?.(this.def); };
+    $('ed-import-btn').onclick = () => $('ed-import').click();
+    $('ed-import').onchange = async (e) => {                          // open a saved / downloaded track file in the editor (Undo brings the old one back)
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      let d;
+      try { d = normalizeTrack(JSON.parse(await f.text())); new Track(d); if (!d.handles.length) throw new Error('empty'); } catch { this.cb.toast('That file is not a valid track.'); return; }
+      this.snapshot(); this.def = d; this.blank = false; this.sel = -1; this.selProp = -1; $('ed-name').value = d.name; this.map.load(d.name);
+      this.rebuild(true); this.fit(); this.updateUI(); this.propsChanged(); this.draw(); this.cb.toast(`Imported "${d.name}". Undo brings back the old track.`);
+    };
     $('ed-export').onclick = () => {
       if (this._needTrack()) return;
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([this.json], { type: 'application/json' }));

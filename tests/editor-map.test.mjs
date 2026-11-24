@@ -86,3 +86,10 @@ test('Sharp corner: the road turns in a small neat arc, keeps its length and poi
   const first = new Track(normalizeTrack({ name: 's', width: 14, handles: sq.map((h, i) => (i === 0 ? { ...h, sharp: true } : h)) }));        // the first point too (the loop wraps round it)
   assert.ok(minR(first) >= 7 && first.handleS[0] === 0 && first.length > 900);
 });
+
+test('Editor Import button is wired to a file input and reads track files', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), ed = fs.readFileSync(new URL('../src/editor.js', import.meta.url), 'utf8');
+  assert.match(html, /id="ed-import-btn"/); assert.match(html, /id="ed-import" type="file"/);
+  assert.match(ed, /\$\('ed-import'\)\.onchange/); assert.match(ed, /normalizeTrack\(JSON\.parse\(await f\.text\(\)\)\)/);
+});
