@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.713 — Your car stays when you pick a track
+
+- Choosing a track no longer swaps your turning car for the track panel: the car (the one you picked, or the default) stays on the right, a little smaller, with the track's name, description and a **Drive!** button underneath it. The button used to say Go!
+- The **Back to my vehicle** button is gone; just pick another track, or another car from the grid on the left.
+
 ## v17.712 — New track descriptions
 
 - **Croydon Overpass:** "Straight Outta Croydon. The city that is South London in glorious Technicolor!"

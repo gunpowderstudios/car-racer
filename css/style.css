@@ -673,7 +673,15 @@ html.chat-quick-only .chat-row { display: none; }
 
 /* the track chosen from the list is shown on the right where the vehicle was; Go! starts it */
 #menu-track-preview[hidden] { display: none; }
-body.track-chosen #menu-vehicle-preview { display: none; }
+/* choosing a track keeps your car turning on the right, smaller, with the track's name, description and Drive! button underneath it (pick another track to change; the car grid on the left changes the car) */
+@media (min-width: 981px) {
+  body.track-chosen { --cw: clamp(300px, 30vw, 460px); }
+  body.track-chosen #menu-vehicle-preview { width: var(--cw); top: 66px; right: clamp(22px, 5vw, 78px); }
+  body.track-chosen #menu-vehicle-preview .menu-vehicle-stage { aspect-ratio: 2.15 / 1; }
+  body.track-chosen #menu-vehicle-preview h2 { margin-top: 4px; font-size: clamp(22px, 2.2vw, 30px); }
+  body.track-chosen #menu-vehicle-blurb, body.track-chosen #home-play { display: none; }
+  body.track-chosen #menu-track-preview { width: var(--cw); top: calc(66px + var(--cw) / 2.15 + 46px); right: clamp(22px, 5vw, 78px); }
+}
 #menu-track-preview { padding: 16px 22px 18px; border-radius: 14px; background: rgba(20, 12, 40, .66); border: 1px solid rgba(246, 217, 176, .22); box-shadow: 0 6px 24px rgba(0, 0, 0, .35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }      /* (a see-through panel, so the name and description can be read over the 3D view) */
 #menu-track-preview h2, #menu-track-blurb { text-shadow: none; }
 body.live-track #menu-track-preview .menu-vehicle-stage { display: none; }      /* (the 3D backdrop orbits the chosen track itself) */

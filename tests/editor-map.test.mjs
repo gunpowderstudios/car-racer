@@ -119,3 +119,9 @@ test('Choosing a track in the menu loads it behind the menu, and the little turn
   assert.match(src, /assaultHudShow\(false\); weevalHudShow\(false\)/);          // the courses' scoreboards stay hidden in the menu
   assert.match(css, /body\.live-track #menu-track-preview \.menu-vehicle-stage \{ display: none/);
 });
+
+test('Picking a track keeps the turning car above the track panel, with one Drive! button', async () => {
+  const fs = await import('node:fs'), html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), css = fs.readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(html, /id="menu-track-go"[^>]*>Drive!</); assert.ok(!/menu-track-back/.test(html));
+  assert.ok(!/body\.track-chosen #menu-vehicle-preview \{ display: none/.test(css), 'the car is no longer hidden');
+});

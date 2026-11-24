@@ -1917,7 +1917,6 @@ function renderMenu() {
 
 function bindMenu() {
   $('menu-track-go').onclick = () => { if (chosenDef) { const d = chosenDef; hideTrackPreview(); startDriving(d); } };
-  $('menu-track-back').onclick = hideTrackPreview;
   const bindOpt = (id, key, fn) => { const el = $(id); el.checked = key === 'sfx' ? sound.sfxOn : key === 'music' ? sound.musicOn : opts[key]; el.onchange = () => { fn(el.checked); store.set('cr.opts', opts); }; };
   { const co = $('caravan-opt'), cb = $('opt-caravan');          // The caravan option (a card in the vehicle gallery; the Saloon, Volvo, Saab and BMW can tow it)
     co.hidden = true; cb.checked = !!opts.caravan && TOW_CARS.includes(selectedVehicle().id);   // the checkbox just holds the state; the Hastings 2000 card in the vehicle gallery is the control
