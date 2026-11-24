@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.706 — Crystal Palace revised
+
+- Crystal Palace updated to Tim's revised version: spelling fixed (Greek Church) and one transmitter tower only (the spare one is gone), and more named places (D Solos Clothing, Sefgrove Chemist, Little Palace Cafe, Post Office).
+
 ## v17.705 — Crystal Palace in the Driving Tests
 
 - **Crystal Palace** is now Tim's own version of the track (his road with two sharp corners, extra named buildings such as The Alma, Everyman Cinema, Nandos, Zolas, Bambino and the Greek Church, traffic lights, crossings, parked cars, a second tower, sunny sky, no background skyline).

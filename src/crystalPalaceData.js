@@ -530,7 +530,8 @@ export const CRYSTAL_PALACE = {
    "d": 15,
    "h": 10,
    "style": 6,
-   "rot": 242
+   "rot": 242,
+   "name": "D Solos Clothing"
   },
   {
    "type": "building",
@@ -778,17 +779,6 @@ export const CRYSTAL_PALACE = {
   },
   {
    "type": "building",
-   "x": -145.4,
-   "z": -123.6,
-   "y": 0,
-   "w": 17,
-   "d": 15,
-   "h": 10,
-   "style": 3,
-   "rot": 52
-  },
-  {
-   "type": "building",
    "x": -124.2,
    "z": -138.7,
    "y": 0,
@@ -807,7 +797,8 @@ export const CRYSTAL_PALACE = {
    "d": 15,
    "h": 10,
    "style": 5,
-   "rot": 10
+   "rot": 10,
+   "name": "Sefgrove Chemist"
   },
   {
    "type": "building",
@@ -939,7 +930,8 @@ export const CRYSTAL_PALACE = {
    "d": 14,
    "h": 12,
    "style": 4,
-   "rot": 40
+   "rot": 40,
+   "name": "Little Palace Cafe"
   },
   {
    "type": "building",
@@ -1084,7 +1076,7 @@ export const CRYSTAL_PALACE = {
    "h": 16,
    "style": 7,
    "rot": 290,
-   "name": "Greek Curch"
+   "name": "Greek Church"
   },
   {
    "type": "building",
@@ -1106,7 +1098,8 @@ export const CRYSTAL_PALACE = {
    "d": 15,
    "h": 18,
    "style": 3,
-   "rot": 291
+   "rot": 291,
+   "name": "Post Office"
   },
   {
    "type": "building",
@@ -1178,13 +1171,6 @@ export const CRYSTAL_PALACE = {
    "type": "tower",
    "x": -813,
    "z": -795,
-   "y": 0,
-   "h": 328
-  },
-  {
-   "type": "tower",
-   "x": 354.05,
-   "z": -228.6,
    "y": 0,
    "h": 328
   },

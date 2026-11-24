@@ -55,7 +55,7 @@ test('Crystal Palace has its buildings, and the three pubs are named on their fr
 
 test('Crystal Palace has its transmitter tower, 328 m tall, about 0.6 miles north-west of the top-left corner', () => {
   const def = makeTemplate('crystalpalace'), tw = def.props.filter((p) => p.type === 'tower');
-  assert.ok(tw.length >= 1); assert.equal(tw[0].h, 328);
+  assert.equal(tw.length, 1, 'only one tower'); assert.equal(tw[0].h, 328);
   const corner = def.handles.reduce((b, h) => (h.x + h.z < b.x + b.z ? h : b));          // the north-west-most point of the road
   const d = Math.hypot(tw[0].x - corner.x, tw[0].z - corner.z);
   assert.ok(d > 880 && d < 1050, `distance ${d}`);                                        // 0.6 miles is 966 m
