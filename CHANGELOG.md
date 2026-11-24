@@ -2,6 +2,11 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.707 — Crystal Palace description and tower
+
+- The transmitter tower is now in Tim's chosen place (north-east of the triangle, beyond the Westow House); there is just the one.
+- New menu description for Crystal Palace: "Somewhere in South London resides the Crystal Palace Triangle. Take a drive around our town but drive carefully as the locals can get upset if you knock their bins over."
+
 ## v17.706 — Crystal Palace revised
 
 - Crystal Palace updated to Tim's revised version: spelling fixed (Greek Church) and one transmitter tower only (the spare one is gone), and more named places (D Solos Clothing, Sefgrove Chemist, Little Palace Cafe, Post Office).

@@ -1168,13 +1168,6 @@ export const CRYSTAL_PALACE = {
    "rot": 169
   },
   {
-   "type": "tower",
-   "x": -813,
-   "z": -795,
-   "y": 0,
-   "h": 328
-  },
-  {
    "type": "vehicle",
    "x": 98.52,
    "z": -25.18,
@@ -1252,6 +1245,13 @@ export const CRYSTAL_PALACE = {
    "z": -131.73,
    "y": 0,
    "rot": 82
+  },
+  {
+   "type": "tower",
+   "x": 273.92,
+   "z": -232.18,
+   "y": 0,
+   "h": 328
   }
  ],
  "structures": [],

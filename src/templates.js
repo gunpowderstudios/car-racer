@@ -590,7 +590,7 @@ export const TEMPLATE_INFO = {
   hills: 'Big elevation changes and a jump gap',
   overpass: 'Figure of eight with a bridge',
   stunt: 'Weeval Knievel as a track you can change: a high ramp, a gap with buses, a bullseye and a stack of boxes. Open it in the editor and move things about, add more buses, lengthen the gap.',
-  crystalpalace: 'Tim\'s home town: the triangle of Westow Hill, Westow Street and Church Road, with the pubs, shops and the transmitter tower. Flat out round the shops, mind the lights and crossings.',
+  crystalpalace: 'Somewhere in South London resides the Crystal Palace Triangle. Take a drive around our town but drive carefully as the locals can get upset if you knock their bins over.',
   soundwave: "Pump up da' volume! A hi-fidelity criss-cross of a track that goes up to 11: two crossroads and banking that flips at every crossing.",
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
   twister: 'A corkscrew: a banked spiral that climbs round a tower, with a long run back down',

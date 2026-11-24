@@ -53,13 +53,11 @@ test('Crystal Palace has its buildings, and the three pubs are named on their fr
   assert.equal(d2.props[1].name, undefined);
 });
 
-test('Crystal Palace has its transmitter tower, 328 m tall, about 0.6 miles north-west of the top-left corner', () => {
+test('Crystal Palace has its one transmitter tower, 328 m tall, set back from the town', () => {
   const def = makeTemplate('crystalpalace'), tw = def.props.filter((p) => p.type === 'tower');
   assert.equal(tw.length, 1, 'only one tower'); assert.equal(tw[0].h, 328);
-  const corner = def.handles.reduce((b, h) => (h.x + h.z < b.x + b.z ? h : b));          // the north-west-most point of the road
-  const d = Math.hypot(tw[0].x - corner.x, tw[0].z - corner.z);
-  assert.ok(d > 880 && d < 1050, `distance ${d}`);                                        // 0.6 miles is 966 m
-  assert.ok(tw[0].x < corner.x && tw[0].z < corner.z, 'north (up the map) and west (left)');
+  const near = Math.min(...def.handles.map((h) => Math.hypot(tw[0].x - h.x, tw[0].z - h.z)));
+  assert.ok(near > 50, `well clear of the road (${near} m)`);
   assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0 }] }).props[0].h, 328);        // the default height
   assert.equal(normalizeTrack({ ...def, props: [{ type: 'tower', x: 0, z: 0, h: 5000 }] }).props[0].h, 600);
 });
