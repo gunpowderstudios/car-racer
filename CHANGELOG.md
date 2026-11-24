@@ -2,6 +2,17 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.712 — New track descriptions
+
+- **Croydon Overpass:** "Straight Outta Croydon. The city that is South London in glorious Technicolor!"
+- **Curly Wurly:** "A chewy tight and twisty lunchtime snack, lots of braking"
+- **The Hills Have Highs:** "The hills have highs: Your vacation destination in this hillbilly scenic drive, watch out for steep drops."
+- **Bluebell Woods:** "A dirty, windy, bumpy rally stage through the woods, watch out for boulders and puddles"
+
+## v17.711 — Apple Crumple orbits too
+
+- **Apple Crumple** (and any other course or bus-jump track chosen from the list) now orbits live behind the menu like the others, with no scoreboard showing until you start. The only one left out is **The Getaway**, which has no Choose step: its Robber and Police buttons start it straight away.
+
 ## v17.710 — Live track preview in the menu
 
 - Pressing **Choose** on a track now loads it behind the menu, so the big 3D view slowly orbiting behind the menu shows the track you picked (before, it only changed after you had driven one). The small turning 3D window top right is gone for these tracks; the name, description and Go! button stay.

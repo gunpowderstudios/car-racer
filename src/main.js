@@ -1848,13 +1848,13 @@ function chooseTrack(d, blurb) {
   if (livePreview(d)) { document.body.classList.add('live-track'); trackPreview.stop(); }      // (the big 3D backdrop shows the track now, so the little turning window is not needed)
   else document.body.classList.remove('live-track');
 }
-/** Choosing a track also loads it behind the menu, so the big 3D orbit shows the track you picked instead of the last one you drove. The obstacle courses, the bus jump and The Getaway
- *  (their own screens and scores) keep the old backdrop. Picking a different track while a game is paused gives that game up, like starting the new one would. */
+/** Choosing a track also loads it behind the menu, so the big 3D orbit shows the track you picked instead of the last one you drove. The Getaway has no Choose step (its Robber and Police buttons start it straight away), so it keeps the old backdrop. Picking a different track while a game is paused gives that game up, like starting the new one would. */
 function livePreview(d) {
-  if (mode !== 'menu' || net || pendingStart || d.assault || d.weeval || d.getaway) return false;
+  if (mode !== 'menu' || net || pendingStart || d.getaway) return false;
   if (hasPlayed && def && d.name === def.name) return true;             // (the game in progress is already on screen: keep it to resume)
   try {
     loadTrack(d);
+    assaultHudShow(false); weevalHudShow(false); document.body.classList.remove('course');       // (the obstacle course and the bus jump load their scoreboards; the menu does not want them yet)
     if (hasPlayed) { hasPlayed = false; document.querySelectorAll('#track-list li.resume-row').forEach((x) => x.remove()); }
     return true;
   } catch { return false; /* the backdrop stays as it was */ }
