@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.716 — The Hills Have Highs, Tim's version
+
+- **The Hills Have Highs** is now the version Tim drew in the editor: his hill heights, banking, 22 m road and the jump gap on the far side.
+
 ## v17.715 — Tidier track panel and no lengths
 
 - Track descriptions no longer start with the length ("1.0 km."); your own tracks just say "Made in the editor".

@@ -3,6 +3,7 @@
 
 import { Track, suggestBanks, normalizeTrack, analyzeTrack } from './track.js';
 import { CRYSTAL_PALACE } from './crystalPalaceData.js';
+import { GOT_THE_HUMP } from './gotTheHumpData.js';
 import { weevalDef, stageLayout, WEEVAL } from './weeval.js';
 import { placeProp } from './props.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
@@ -175,7 +176,6 @@ function steepBanks(def) {
 }
 
 /** The Hills have highs: the same hilly loop drawn this much wider, so the many high hills keep gentle slopes. */
-function HILLS_SCALE(hs, k = 2.1, yk = 0.8) { return hs.map((h) => { const o = { ...h, x: Math.round(h.x * k), z: Math.round(h.z * k), y: h.gap ? 14 : h.y <= 6 ? h.y : Math.round(h.y * yk * 10) / 10 }; if (h.gap) o.gap = Math.round(h.gap); return o; }); }
 
 /** Humps and puddles scattered along a dirt stage at fixed random spots (never near the start or a jump, nor on top of each other). */
 function rallyScatter(def) {
@@ -362,26 +362,25 @@ const RAW = {
   },
   hills: {
     name: 'The hills have highs', width: 22,
-    handles: HILLS_SCALE([
-      { x: 0, y: 0.65, z: -170 },
-      { x: 75, y: 8, z: -185 },
-      { x: 150, y: 18, z: -190 },
-      { x: 225, y: 20, z: -155 },
-      { x: 300, y: 5, z: -120 },
-      { x: 330, y: 14, z: 20, gap: 13 },
-      { x: 230, y: 6, z: 170 },
-      { x: 170, y: 3, z: 200 },
-      { x: 90, y: 10, z: 230 },
-      { x: 0, y: 14, z: 215 },
-      { x: -90, y: 16, z: 200 },
-      { x: -175, y: 26, z: 160 },
-      { x: -260, y: 12, z: 120 },
-      { x: -310, y: 30, z: -30 },
-      { x: -265, y: 16, z: -90 },
-      { x: -220, y: 22, z: -150 },
-      { x: -110, y: 8, z: -165 },
-    ]),
-    autoBank: true,
+    handles: [      // (Tim's own version, drawn in the editor: the heights and the banking are exactly as he set them)
+      { x: 7.49, y: 0.65, z: -207.4, bank: -2 },
+      { x: 100.79, y: 40, z: -225.71, bank: 0.5 },
+      { x: 193.5, y: 14.4, z: -232.21, bank: 6.5 },
+      { x: 283.84, y: 40, z: -191.46, bank: -4 },
+      { x: 379.51, y: 5, z: -145.4, bank: 9 },
+      { x: 414.93, y: 40, z: 27.02, bank: 4.5, gap: 13 },
+      { x: 295.65, y: 33.5, z: 215.97, bank: 4.5 },
+      { x: 218.3, y: 3, z: 251.41, bank: -3 },
+      { x: 119.1, y: 37, z: 288.6, bank: 6.5 },
+      { x: 7.49, y: 11.2, z: 270.3, bank: -3 },
+      { x: -98.79, y: 40, z: 257.31, bank: 4.5 },
+      { x: -209.21, y: 20.8, z: 201.81, bank: -3.5 },
+      { x: -311.37, y: 33, z: 155.75, bank: 7.5 },
+      { x: -376.92, y: 24, z: -33.8, bank: 11.5 },
+      { x: -318.46, y: 31, z: -108.79, bank: -6.5 },
+      { x: -265.32, y: 17.6, z: -182.6, bank: 11 },
+      { x: -129.5, y: 6.4, z: -199.73, bank: -0.5 },
+    ],
   },
   bluebell: {
     name: 'Bluebell Woods', width: 20,
@@ -547,9 +546,11 @@ function getawayTrack() {
 
 /** Crystal Palace: the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot (about 0.64 miles, all flat) with the buildings along it and the Crystal Palace transmitter tower 0.6 miles away to the north-west. Editor only: it is not in the race menus.
  *  `mapFit` says where the matching screenshot goes behind it (metres), so the editor's Map button can line it up. */
+function gotTheHumpTrack() { return normalizeTrack(JSON.parse(JSON.stringify(GOT_THE_HUMP))); }
 function crystalPalaceTrack() { return normalizeTrack(JSON.parse(JSON.stringify(CRYSTAL_PALACE))); }
 
 export function makeTemplate(key) {
+  if (key === 'gothump') return gotTheHumpTrack();                 // (a Driving Test, left out of TEMPLATE_KEYS)
   if (key === 'crystalpalace') return crystalPalaceTrack();       // (a Driving Test and an editor template, so left out of TEMPLATE_KEYS)
   if (key === 'getaway') return getawayTrack();            // The Getaway: a two-player cops and robbers game (see getaway.js); not one of the race tracks, so left out of TEMPLATE_KEYS
   if (key === 'apple') {                                   // Apple Crumple: its own course, not one of the race tracks (so it is left out of TEMPLATE_KEYS)
@@ -590,6 +591,7 @@ export const TEMPLATE_INFO = {
   hills: 'The hills have highs: Your vacation destination in this hillbilly scenic drive, watch out for steep drops.',
   overpass: 'Straight Outta Croydon. The city that is South London in glorious Technicolor!',
   stunt: 'Weeval Knievel as a track you can change: a high ramp, a gap with buses, a bullseye and a stack of boxes. Open it in the editor and move things about, add more buses, lengthen the gap.',
+  gothump: 'Giant humps, a monster jump and a few barrels to knock about. Hold on tight!',
   crystalpalace: 'Somewhere in South London resides the Crystal Palace Triangle. Take a drive around our town but drive carefully as the locals can get upset if you knock their bins over.',
   soundwave: "Pump up da' volume! A hi-fidelity criss-cross of a track that goes up to 11: two crossroads and banking that flips at every crossing.",
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",
