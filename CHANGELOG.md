@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.705 — Crystal Palace in the Driving Tests
+
+- **Crystal Palace** is now Tim's own version of the track (his road with two sharp corners, extra named buildings such as The Alma, Everyman Cinema, Nandos, Zolas, Bambino and the Greek Church, traffic lights, crossings, parked cars, a second tower, sunny sky, no background skyline).
+- It is listed under **Driving Tests (beta)** in the track menu, with Choose and Edit buttons, and is still in the editor's template list.
+- The track now lives in its own file, `src/crystalPalaceData.js`; to update it again, send the exported JSON.
+
 ## v17.704 — Import in the editor
 
 - New **Import** button in the editor's top bar (next to Export): opens a track file you saved or downloaded (.json) straight into the editor, with its buildings, scenery and settings. Undo brings back the track that was there. A file that isn't a track is refused with a message.

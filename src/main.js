@@ -1890,7 +1890,7 @@ function renderMenu() {
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin', 'stunt']) addTemplate(k);
-  group('Driving Tests (beta)'); addTemplate('apple'); addTemplate('soundwave');
+  group('Driving Tests (beta)'); addTemplate('apple'); addTemplate('soundwave'); addTemplate('crystalpalace');
   { const d = makeTemplate('getaway'); row(d.name, TEMPLATE_INFO.getaway, '', [['Robber', () => startGetaway('robber')], ['Police', () => startGetaway('police')]]).dataset.slug = slugOf('getaway'); }
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {

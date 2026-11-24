@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { rescale, startWidth, drawParams } from '../src/editorMap.js';
 
 test('Set scale: two points 50 m apart that should be 100 m double the picture about the first point', () => {
@@ -28,6 +29,7 @@ import { makeTemplate, TEMPLATE_KEYS, EDITOR_TEMPLATE_KEYS } from '../src/templa
 import { Track, analyzeTrack, normalizeTrack } from '../src/track.js';
 test('Crystal Palace: editor-only, flat, about 0.6 miles, clean, and says where its picture goes', () => {
   assert.ok(!TEMPLATE_KEYS.includes('crystalpalace') && EDITOR_TEMPLATE_KEYS.includes('crystalpalace'));
+  assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /addTemplate\('crystalpalace'\)/);        // listed under Driving Tests
   const def = makeTemplate('crystalpalace'), t = new Track(def), a = analyzeTrack(t);
   assert.equal(def.name, 'Crystal Palace');
   assert.ok(t.length > 900 && t.length < 1150, `length ${t.length}`);
@@ -41,7 +43,7 @@ test('Crystal Palace has its buildings, and the three pubs are named on their fr
   const blds = def.props.filter((p) => p.type === 'building');
   assert.ok(blds.length > 40);
   const names = def.props.filter((p) => p.name).map((p) => p.name).sort();
-  assert.deepEqual(names, ['The Sparrowhawk', 'The Westow House', 'The White Hart']);
+  for (const n of ['The Sparrowhawk', 'The Westow House', 'The White Hart']) assert.ok(names.includes(n), n);        // (Tim has named more since)
   assert.equal(t.buildings.length, blds.length);
   assert.ok(t.buildings.every((b) => !b.tunnel), 'no building may sit over the road');
   assert.deepEqual(t.buildings.filter((b) => b.name).map((b) => b.name).sort(), names);
@@ -53,7 +55,7 @@ test('Crystal Palace has its buildings, and the three pubs are named on their fr
 
 test('Crystal Palace has its transmitter tower, 328 m tall, about 0.6 miles north-west of the top-left corner', () => {
   const def = makeTemplate('crystalpalace'), tw = def.props.filter((p) => p.type === 'tower');
-  assert.equal(tw.length, 1); assert.equal(tw[0].h, 328);
+  assert.ok(tw.length >= 1); assert.equal(tw[0].h, 328);
   const corner = def.handles.reduce((b, h) => (h.x + h.z < b.x + b.z ? h : b));          // the north-west-most point of the road
   const d = Math.hypot(tw[0].x - corner.x, tw[0].z - corner.z);
   assert.ok(d > 880 && d < 1050, `distance ${d}`);                                        // 0.6 miles is 966 m
