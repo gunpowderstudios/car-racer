@@ -1897,7 +1897,7 @@ function renderMenu() {
   };
   const addTemplate = (k) => {
     const d = k === 'random' ? makeRandomTrack() : makeTemplate(k), t = new Track(d);
-    const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
+    const info = TEMPLATE_INFO[k];
     row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]).dataset.slug = slugOf(k);      // (the obstacle course is not editable)
   };
   if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]).classList.add('resume-row'); ul = keep; }
@@ -1908,8 +1908,8 @@ function renderMenu() {
   if (Object.keys(userTracks()).length) group('My tracks');
   for (const [name, d] of Object.entries(userTracks())) {
     let km = '?'; try { km = (new Track(d).length / 1000).toFixed(1); } catch { /* broken file */ }
-    row(name, `${km} km. Made in the editor`, 'mine', [
-      ['Choose', () => chooseTrack(d, `${km} km. Made in the editor`)], ['Edit', () => openEditor(d)],
+    row(name, 'Made in the editor', 'mine', [
+      ['Choose', () => chooseTrack(d, 'Made in the editor')], ['Edit', () => openEditor(d)],
       ['Delete', () => { const a = userTracks(); delete a[name]; store.set('cr.tracks', a); renderMenu(); }, 'danger'],
     ]);
   }

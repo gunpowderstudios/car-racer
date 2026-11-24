@@ -584,7 +584,7 @@ export const EDITOR_TEMPLATE_KEYS = [...TEMPLATE_KEYS, 'crystalpalace'];     // 
 export const TEMPLATE_INFO = {
   getaway: 'Cops and robbers in a small town: rob the banks and get the cash to the safehouse - or catch the robbers and put it back. Two players, or one against the AI.',
   apple: 'A timed obstacle course: hammers, boulders, spinning arms, crushing presses, fire pits, a jump and a final gauntlet - then fly through the flaming hoop. Every stage has its own clock!',
-  speedway: 'A fast 1.6 km banked Nascar-style paint-scraping, head rush',
+  speedway: 'A fast banked Nascar-style paint-scraping, head rush',
   oval: 'A cheesy pizza-shaped pile up of olives and exploding peppers!',
   technical: 'A chewy tight and twisty lunchtime snack, lots of braking',
   hills: 'The hills have highs: Your vacation destination in this hillbilly scenic drive, watch out for steep drops.',

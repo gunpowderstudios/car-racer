@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.715 — Tidier track panel and no lengths
+
+- Track descriptions no longer start with the length ("1.0 km."); your own tracks just say "Made in the editor".
+- The panel under the car shows just the track name and the **Drive!** button. The description stays in the track's own row in the list on the left.
+
+
 ## v17.713 — Your car stays when you pick a track
 
 - Choosing a track no longer swaps your turning car for the track panel: the car (the one you picked, or the default) stays on the right, a little smaller, with the track's name, description and a **Drive!** button underneath it. The button used to say Go!

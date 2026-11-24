@@ -124,4 +124,5 @@ test('Picking a track keeps the turning car above the track panel, with one Driv
   const fs = await import('node:fs'), html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), css = fs.readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(html, /id="menu-track-go"[^>]*>Drive!</); assert.ok(!/menu-track-back/.test(html));
   assert.ok(!/body\.track-chosen #menu-vehicle-preview \{ display: none/.test(css), 'the car is no longer hidden');
+  assert.match(css, /body\.track-chosen #menu-track-blurb \{ display: none|body\.track-chosen #menu-track-blurb \{ display: none|#menu-track-blurb \{ display: none/);        // the description stays in the list row
 });
