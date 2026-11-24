@@ -111,3 +111,10 @@ test('A knocked parked car is held by the handbrake, never the foot brake (which
   const fs = await import('node:fs'), src = fs.readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
   assert.match(src, /const SETTLING = Object\.freeze\(\{ \.\.\.IDLE, handbrake: true \}\)/);
 });
+
+test('Choosing a track in the menu loads it behind the menu, and the little turning window is dropped for it', async () => {
+  const fs = await import('node:fs'), src = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), css = fs.readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.match(src, /function livePreview\(d\)/); assert.match(src, /if \(livePreview\(d\)\)/);
+  assert.match(src, /d\.assault \|\| d\.weeval \|\| d\.getaway\) return false/);        // the courses with their own screens keep the old backdrop
+  assert.match(css, /body\.live-track #menu-track-preview \.menu-vehicle-stage \{ display: none/);
+});

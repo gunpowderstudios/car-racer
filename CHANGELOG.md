@@ -2,6 +2,13 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.710 — Live track preview in the menu
+
+- Pressing **Choose** on a track now loads it behind the menu, so the big 3D view slowly orbiting behind the menu shows the track you picked (before, it only changed after you had driven one). The small turning 3D window top right is gone for these tracks; the name, description and Go! button stay.
+- The track's name, description and Go! button sit on a see-through dark panel so they can be read over the 3D view.
+- Apple Crumple, the Weeval Knievel jump and The Getaway keep the old backdrop and the small window (they have their own screens).
+- Choosing a different track while a game is paused gives that game up (the Resume line goes), as starting the other track would have anyway.
+
 ## v17.709 — Replay sees through buildings, parked cars stay put
 
 - **Replay cameras:** a building that is between the camera and the car it is watching (or that the camera goes behind or through) is hidden until the camera is clear of it, so tall buildings never block the TV, Chase, Top or Mix views.

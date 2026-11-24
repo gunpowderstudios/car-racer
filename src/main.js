@@ -1836,7 +1836,7 @@ function homePick(btnId, title, make, go) {
   $('home-play-what').textContent = d.name === title ? title : `${title}: ${d.name}`; $('home-play').hidden = !homeSel;
   hideTrackPreview();
 }
-function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; trackPreview?.stop(); }
+function hideTrackPreview() { chosenDef = null; document.body.classList.remove('track-chosen'); $('menu-track-preview').hidden = true; document.body.classList.remove('live-track'); trackPreview?.stop(); }
 function chooseTrack(d, blurb) {
   chosenDef = d; { const k = [...TEMPLATE_KEYS, 'apple'].find((x) => x !== 'random' && makeTemplate(x).name === d.name); if (k) setHash(slugOf(k)); else if (d.name === 'Got the hump' || /hump/i.test(d.name)) setHash('got-the-hump'); } window.__raceLaps?.syncFor?.(d);
   let t; try { t = new Track(d); } catch { toast('That track could not be read.'); return; }
@@ -1845,6 +1845,19 @@ function chooseTrack(d, blurb) {
   $('menu-track-preview').hidden = false; document.body.classList.add('track-chosen');
   trackPreview.setTrack(t); trackPreview.spin = true; trackPreview.play();
   $('menu-track-preview').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (livePreview(d)) { document.body.classList.add('live-track'); trackPreview.stop(); }      // (the big 3D backdrop shows the track now, so the little turning window is not needed)
+  else document.body.classList.remove('live-track');
+}
+/** Choosing a track also loads it behind the menu, so the big 3D orbit shows the track you picked instead of the last one you drove. The obstacle courses, the bus jump and The Getaway
+ *  (their own screens and scores) keep the old backdrop. Picking a different track while a game is paused gives that game up, like starting the new one would. */
+function livePreview(d) {
+  if (mode !== 'menu' || net || pendingStart || d.assault || d.weeval || d.getaway) return false;
+  if (hasPlayed && def && d.name === def.name) return true;             // (the game in progress is already on screen: keep it to resume)
+  try {
+    loadTrack(d);
+    if (hasPlayed) { hasPlayed = false; document.querySelectorAll('#track-list li.resume-row').forEach((x) => x.remove()); }
+    return true;
+  } catch { return false; /* the backdrop stays as it was */ }
 }
 // ---- a web address for every game: bangersandsmash.co.uk/#the-getaway (the menu opens on that track), #the-getaway/robber or /police starts it
 const slugOf = (k) => (k === 'random' ? 'got-the-hump' : makeTemplate(k).name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -1887,7 +1900,7 @@ function renderMenu() {
     const info = /\bkm\b/.test(TEMPLATE_INFO[k]) ? TEMPLATE_INFO[k] : `${(t.length / 1000).toFixed(1)} km. ${TEMPLATE_INFO[k]}`;      // (a description that already gives its own length is shown as it is)
     row(d.name, info, '', k === 'apple' ? [['Choose', () => chooseTrack(d, info)]] : [['Choose', () => chooseTrack(d, info)], ['Edit', () => openEditor(d)]]).dataset.slug = slugOf(k);      // (the obstacle course is not editable)
   };
-  if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]); ul = keep; }
+  if (track && hasPlayed) { const keep = ul; ul = document.createElement('ul'); ul.className = 'track-list'; box.appendChild(ul); row(`Resume ${def.name}`, 'Carry on where you left off', '', [['Resume', () => startDriving(null)]]).classList.add('resume-row'); ul = keep; }
   group('Wacky Racing'); for (const k of ['speedway', 'barrels', 'technical', 'overpass', 'random']) addTemplate(k);
   group('Stunt and Shunts'); for (const k of ['oval', 'hills', 'twister', 'bluebell', 'thin', 'stunt']) addTemplate(k);
   group('Driving Tests (beta)'); addTemplate('apple'); addTemplate('soundwave'); addTemplate('crystalpalace');
