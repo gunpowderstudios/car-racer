@@ -37,7 +37,8 @@ export function buildBuildings(track) {
   if (track.ramps) grp.add(buildRamps(track));
   for (const b of list) {
     const body = new THREE.Color(BODY[b.style % BODY.length]), base = facade(b.style), roofMat = new THREE.MeshStandardMaterial({ color: body.clone().multiplyScalar(0.55), roughness: 0.95 }), dark = new THREE.MeshStandardMaterial({ color: 0x15151a, roughness: 1 });
-    const holder = new THREE.Group(); holder.position.set(b.x, 0, b.z); holder.rotation.y = b.th; grp.add(holder);      // (the layout's frame: u across (+x), v along (+z), turned by th)
+    const holder = new THREE.Group(); holder.position.set(b.x, 0, b.z); holder.rotation.y = b.th; grp.add(holder);
+    if (!b.tunnel) (grp.userData.blockers || (grp.userData.blockers = [])).push({ holder, x: b.x, z: b.z, c: Math.cos(b.th), s: Math.sin(b.th), parts: b.parts.map((q) => [q.u0, q.y, q.v0, q.u1, q.y + q.h, q.v1]) });      // (what the replay camera checks, to hide a building that is in the way)      // (the layout's frame: u across (+x), v along (+z), turned by th)
     for (const q of b.parts) {
       const W = q.u1 - q.u0, D = q.v1 - q.v0, H = q.h, face = (across, tall) => {
         const m = new THREE.MeshStandardMaterial({ color: body, map: base.map.clone(), emissive: 0xffffff, emissiveMap: base.lit.clone(), emissiveIntensity: 0.9, roughness: 1 });

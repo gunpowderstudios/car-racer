@@ -2,6 +2,12 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.709 — Replay sees through buildings, parked cars stay put
+
+- **Replay cameras:** a building that is between the camera and the car it is watching (or that the camera goes behind or through) is hidden until the camera is clear of it, so tall buildings never block the TV, Chase, Top or Mix views.
+- **Parked cars** you place in the editor no longer drive off backwards after they are knocked: they were held by the foot brake, which the automatic gearbox reads as "reverse" at walking pace. They now slide to a stop on the handbrake. They can still be shunted and wrecked.
+- The **Stunt bus** icon is gone from the scenery picker (the bus is in the Car list). Buses already on a track stay.
+
 ## v17.708 — Tower icon out of the scenery picker
 
 - The Crystal Palace tower is no longer offered in the editor's scenery icons or Scenery menu. The tower already on the Crystal Palace track stays, and can still be selected, moved and given a different height.

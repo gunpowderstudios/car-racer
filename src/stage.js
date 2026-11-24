@@ -8,6 +8,7 @@ import { buildArena } from './arenaView.js';
 import { AssaultView } from './assaultView.js';
 import { WeevalView } from './weevalView.js';
 import { buildBuildings } from './buildingView.js';
+import { lineHitsBuilding } from './viewBlock.js';
 import { buildSignals } from './signalView.js';
 import { buildTowers } from './towerView.js';
 import { GetawayView } from './getawayView.js';
@@ -324,7 +325,8 @@ export class Stage {
     g.add(this._startLine(geo.start));
     g.add(this._scenery(track, geo));
     if (track.def.weeval || hasStuntProps(track.def)) this.weevalView = new WeevalView(track, g);          // Weeval Knievel: the buses, the bullseye and the barrier
-    if ((track.buildings && track.buildings.length) || track.ramps) g.add(buildBuildings(track));          // buildings and tunnels from the editor
+    this.buildingsGroup = null;
+    if ((track.buildings && track.buildings.length) || track.ramps) g.add(this.buildingsGroup = buildBuildings(track));          // buildings and tunnels from the editor
     { const tw = buildTowers(track); if (tw) g.add(tw); }                                                   // the transmitter tower in the distance
     this.signalView = buildSignals(track); if (this.signalView) g.add(this.signalView.group);               // traffic lights and crossings from the editor
     if (track.def.assault) this.assaultView = new AssaultView(track, g);          // Apple Crumple: the hazards, signs and checkpoint gates
@@ -332,6 +334,14 @@ export class Stage {
     this.trackGroup = g;
     return geo;
   }
+
+  /** Replay cameras: hide any building standing between the camera and the car it is watching (or round the camera), and show it again once it is clear. */
+  clearView(cam, target) {
+    const list = this.buildingsGroup?.userData.blockers; if (!list) return;
+    const to = { x: target.x, y: target.y + 1, z: target.z };
+    for (const B of list) B.holder.visible = !lineHitsBuilding(B, cam, to);
+  }
+  showAllBuildings() { for (const B of this.buildingsGroup?.userData.blockers || []) B.holder.visible = true; }
 
   /** The light and sky for a track: the golden-hour dusk everywhere, a bright blue sunny day when the track says `sky: 'day'`, and The Getaway's lifted sun. */
   _look(track) {

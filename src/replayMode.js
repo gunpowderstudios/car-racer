@@ -130,6 +130,7 @@ export function createReplayMode(d) {
       if (Math.abs(cam.fov - o.fov) > 0.05) { cam.fov = o.fov; dirty = true; }
       if (dirty) cam.updateProjectionMatrix();
     }
+    d.clearView?.(cam.position, f);                                          // (a building in the way of the camera is hidden until it is clear)
     return f;
   }
 
@@ -374,7 +375,7 @@ export function createReplayMode(d) {
     if (!R.active) return;
     if (R.saving) stopSave(false);
     if (el.ready) el.ready.hidden = true; R.ready = null; tabTitle(null);
-    cleanView(false);
+    cleanView(false); d.showAllBuildings?.();
     d.sound.filmTrack?.(null); d.sound.sirenLoop?.(null); d.sound.radioLoop?.(false); replayAlarmFlash(false); R.active = false; el.bar.hidden = true; document.body.classList.remove('rp-docked'); d.sound.update(hear, 0, false);
     // cars that were only in the replay go back; the others get their true dents and wheels back
     for (const id of R.seen) if (id !== 'p' && !d.derby.fighters.some((f) => f.id === id && !f.gone)) { d.dropTow(id); d.releaseView(id); }

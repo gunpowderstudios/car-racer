@@ -93,3 +93,21 @@ test('Editor Import button is wired to a file input and reads track files', asyn
   assert.match(html, /id="ed-import-btn"/); assert.match(html, /id="ed-import" type="file"/);
   assert.match(ed, /\$\('ed-import'\)\.onchange/); assert.match(ed, /normalizeTrack\(JSON\.parse\(await f\.text\(\)\)\)/);
 });
+
+test('Replay camera: a building between the camera and the car is hidden; one that is clear is not', async () => {
+  const { lineHitsBuilding } = await import('../src/viewBlock.js');
+  const B = { x: 0, z: 0, c: 1, s: 0, parts: [[-5, 0, -5, 5, 12, 5]] };                  // a 10 m block, 12 m tall, at the origin
+  assert.ok(lineHitsBuilding(B, { x: -30, y: 3, z: 0 }, { x: 30, y: 1, z: 0 }), 'camera and car on opposite sides');
+  assert.ok(lineHitsBuilding(B, { x: 0, y: 3, z: 0 }, { x: 30, y: 1, z: 0 }), 'camera inside the building');
+  assert.ok(!lineHitsBuilding(B, { x: -30, y: 3, z: 20 }, { x: 30, y: 1, z: 20 }), 'a line passing well beside it');
+  assert.ok(!lineHitsBuilding(B, { x: -30, y: 40, z: 0 }, { x: 30, y: 30, z: 0 }), 'a camera high above the roof');
+  const turned = { x: 0, z: 0, c: Math.cos(Math.PI / 2), s: Math.sin(Math.PI / 2), parts: [[-20, 0, -2, 20, 10, 2]] };       // a long block turned a quarter turn: long along z, not x
+  assert.ok(lineHitsBuilding(turned, { x: 0, y: 3, z: -30 }, { x: 0, y: 1, z: 30 }), 'through the long way');
+  const fs = await import('node:fs');
+  assert.match(fs.readFileSync(new URL('../src/replayMode.js', import.meta.url), 'utf8'), /d\.clearView\?\.\(cam\.position, f\)/);
+});
+
+test('A knocked parked car is held by the handbrake, never the foot brake (which would reverse it)', async () => {
+  const fs = await import('node:fs'), src = fs.readFileSync(new URL('../src/derby.js', import.meta.url), 'utf8');
+  assert.match(src, /const SETTLING = Object\.freeze\(\{ \.\.\.IDLE, handbrake: true \}\)/);
+});

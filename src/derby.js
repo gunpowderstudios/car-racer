@@ -245,7 +245,7 @@ class ParkedDriver {
   }
 }
 const PARKED = Object.freeze({ ...IDLE, handbrake: true });
-const SETTLING = Object.freeze({ ...IDLE, brake: 0.6 });
+const SETTLING = Object.freeze({ ...IDLE, handbrake: true });      // (the foot brake would not do: at walking pace the automatic gearbox reads it as "reverse" and drives the knocked car backwards)
 
 export class Derby {
   constructor() {

@@ -1382,7 +1382,7 @@ function recHit(x, y, z, speed, kind) {
 let rpAdopt = 0, rpFrame = -1, replayMode = null;
 const replay = () => replayMode || (replayMode = createReplayMode({
   $, canvas, rec: replayRec, sound, camera, chase, get visual() { return visual; }, caravanView, views, derby, tier, particles, debris, wheelFlyers, arenaInfo,
-  getTrack: () => track, inNet: () => !!net, setMode, setPaused, toast, debrisGround,
+  getTrack: () => track, clearView: (c, t) => stage.clearView(c, t), showAllBuildings: () => stage.showAllBuildings(), inNet: () => !!net, setMode, setPaused, toast, debrisGround,
   viewFor(ent) {                                                    // the model that shows this car in the replay (rivals that have gone are brought back)
     if (ent.isPlayer) return visual;
     let v = views.get(ent.id);
