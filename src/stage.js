@@ -350,7 +350,7 @@ export class Stage {
     this.sunOffset.set(...off); u.sunDir.value.set(...off).normalize();
     u.top.value.set(day ? 0x2a74d8 : SKY_TOP); u.mid.value.set(day ? 0x7fb9ee : SKY_MID); u.low.value.set(day ? 0xd6ecfb : SKY_LOW);
     u.glow.value.set(day ? 0xffffff : 0xff8c38); u.glowK.value = day ? 0.35 : 1;
-    this.scene.fog.color.set(day ? 0xc4e0f4 : FOG);
+    this.scene.fog.color.set(day ? 0xc4e0f4 : FOG); this.scene.fog.far = day ? 3600 : 2200;      // (a sunny day: the far buildings keep their colour instead of fading to haze)
     this.sun.color.set(day ? 0xfff3dc : 0xffb468); this.sun.intensity = day ? 3.4 : 4.3;
     this.hemi.color.set(day ? 0xb6d4ff : 0x6a80c4); this.hemi.groundColor.set(day ? 0x7d8a5a : 0x3c2a24);
     this.hemi.intensity = day ? 1.2 : retro ? 1.15 : 0.3;      // (the town in shadow was too dark: a stronger cool fill lifts the shadows and keeps their direction)
@@ -433,7 +433,7 @@ export class Stage {
     if (track.def.city === false) return g;
     const day = track.def.sky === 'day';
     const wtex = windowTexture();
-    const cityMat = new THREE.MeshStandardMaterial({ color: day ? 0x9aa8bd : 0x1a1733, roughness: 1, emissive: 0xffffff, emissiveMap: wtex, emissiveIntensity: day ? 0.08 : 0.9 });
+    const cityMat = new THREE.MeshStandardMaterial({ color: day ? 0x3f4a5c : 0x1a1733, roughness: 1, emissive: 0xffffff, emissiveMap: wtex, emissiveIntensity: day ? 0.08 : 0.9 });
     const N = 110;
     const city = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), cityMat, N);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();

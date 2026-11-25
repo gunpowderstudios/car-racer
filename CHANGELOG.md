@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.719 — Darker sunny-day buildings
+
+- On a sunny day the background buildings are darker and less hazy, so they no longer look washed out.
+
 ## v17.718 — Got the hump removed
 
 - Removed the Got the hump track from Driving Tests.
