@@ -3,7 +3,6 @@
 
 import { Track, suggestBanks, normalizeTrack, analyzeTrack } from './track.js';
 import { CRYSTAL_PALACE } from './crystalPalaceData.js';
-import { GOT_THE_HUMP } from './gotTheHumpData.js';
 import { weevalDef, stageLayout, WEEVAL } from './weeval.js';
 import { placeProp } from './props.js';
 import { arenaInfo, arenaPlayerStart } from './arena.js';
@@ -546,11 +545,9 @@ function getawayTrack() {
 
 /** Crystal Palace: the triangle of Westow Hill, Westow Street and Church Road, traced from a map screenshot (about 0.64 miles, all flat) with the buildings along it and the Crystal Palace transmitter tower 0.6 miles away to the north-west. Editor only: it is not in the race menus.
  *  `mapFit` says where the matching screenshot goes behind it (metres), so the editor's Map button can line it up. */
-function gotTheHumpTrack() { return normalizeTrack(JSON.parse(JSON.stringify(GOT_THE_HUMP))); }
 function crystalPalaceTrack() { return normalizeTrack(JSON.parse(JSON.stringify(CRYSTAL_PALACE))); }
 
 export function makeTemplate(key) {
-  if (key === 'gothump') return gotTheHumpTrack();                 // (a Driving Test, left out of TEMPLATE_KEYS)
   if (key === 'crystalpalace') return crystalPalaceTrack();       // (a Driving Test and an editor template, so left out of TEMPLATE_KEYS)
   if (key === 'getaway') return getawayTrack();            // The Getaway: a two-player cops and robbers game (see getaway.js); not one of the race tracks, so left out of TEMPLATE_KEYS
   if (key === 'apple') {                                   // Apple Crumple: its own course, not one of the race tracks (so it is left out of TEMPLATE_KEYS)
@@ -591,7 +588,6 @@ export const TEMPLATE_INFO = {
   hills: 'The hills have highs: Your vacation destination in this hillbilly scenic drive, watch out for steep drops.',
   overpass: 'Straight Outta Croydon. The city that is South London in glorious Technicolor!',
   stunt: 'Weeval Knievel as a track you can change: a high ramp, a gap with buses, a bullseye and a stack of boxes. Open it in the editor and move things about, add more buses, lengthen the gap.',
-  gothump: 'Giant humps, a monster jump and a few barrels to knock about. Hold on tight!',
   crystalpalace: 'Somewhere in South London resides the Crystal Palace Triangle. Take a drive around our town but drive carefully as the locals can get upset if you knock their bins over.',
   soundwave: "Pump up da' volume! A hi-fidelity criss-cross of a track that goes up to 11: two crossroads and banking that flips at every crossing.",
   barrels: "We'll have a barrel of fun... or not. An exploding minefield of a ride.",

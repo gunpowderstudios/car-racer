@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.718 — Got the hump removed
+
+- Removed the Got the hump track from Driving Tests.
+
 ## v17.717 — Faster menu orbit
 
 - The rotating orbit round the track on the home page is 50% faster.
