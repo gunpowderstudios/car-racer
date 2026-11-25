@@ -1524,7 +1524,7 @@ function frame(now) {
   } else {
     drawPos.copy(curPos); drawQ.copy(curQ);
     if (mode === 'menu') {
-      orbit += dt * 0.07;
+      orbit += dt * 0.105;
       const f = weeval ? { x: weeval.L.lipX + weeval.L.gap / 2, y: weeval.L.lipY, z: weeval.L.cz || 0 } : track.frameAt(0), R = weeval ? 110 : 46;      // (the bus jump is watched from the middle of the gap)
       camera.position.set(f.x + Math.cos(orbit) * R, f.y + 16 + Math.sin(orbit * 0.7) * 3, f.z + Math.sin(orbit) * R);
       camera.lookAt(f.x, f.y + 1.2, f.z); camera.fov = 52; camera.updateProjectionMatrix();

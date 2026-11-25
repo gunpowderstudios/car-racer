@@ -2,6 +2,10 @@
 
 This file records notable user-facing changes. New entries go at the top.
 
+## v17.717 — Faster menu orbit
+
+- The rotating orbit round the track on the home page is 50% faster.
+
 ## v17.716 — The Hills Have Highs, Tim's version
 
 - **The Hills Have Highs** is now the version Tim drew in the editor: his hill heights, banking, 22 m road and the jump gap on the far side.

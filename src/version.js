@@ -3,5 +3,5 @@ import './bootstrap.js';
 // VERSION is edited by hand, every time a change lands - bump it and set NOTE to a short line describing
 // what changed, e.g. 'AI cars now line up on the grid'. NOTE isn't shown on screen any more (removed from
 // the menu), but keep filling it in anyway: it's a handy one-line changelog to glance back through.
-export const VERSION = '17.716';
-export const NOTE = 'The Hills Have Highs updated to Tim\'s own version';
+export const VERSION = '17.717';
+export const NOTE = 'Menu orbit camera 50 percent faster';
